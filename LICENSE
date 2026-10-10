@@ -1,0 +1,14 @@
+This repository is multi-licensed.
+
+The majority of the code and technical specifications (schemas) in this repository are licensed under the Apache License, Version 2.0 (see LICENSES/Apache-2.0.txt), unless stated otherwise.
+
+Some files or directories are licensed differently. For example:
+  - Reference data, proposal documentation, or explanatory markdown files are licensed under Creative Commons Attribution 4.0 (see LICENSES/CC-BY-4.0.txt)
+
+The authoritative, per-file license is declared using an SPDX-License-Identifier comment at the top of each file (or, where a header cannot be added natively such as in JSON files, via the .reuse/dep5-style mapping in REUSE.toml). If there is any conflict between this file and a file's own SPDX header, the per-file header governs that file.
+
+This repository aims to comply with the REUSE specification (https://reuse.software) so that licensing is machine-readable and auditable. Run `reuse lint` to verify.
+
+Full license texts are provided, unmodified, in the LICENSES/ directory:
+  - LICENSES/Apache-2.0.txt
+  - LICENSES/CC-BY-4.0.txt

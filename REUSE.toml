@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+version = 1
+SPDX-PackageName = "ga4gh-io-schema"
+SPDX-PackageSupplier = "ELIXIR On-Cloud <cloud-service@elixir-europe.org>"
+SPDX-PackageDownloadLocation = "https://github.com/uniqueg/ga4gh-io-schema"
+
+# Default license for the schemas and the bulk of the codebase.
+# Individual files can still override this with their own
+# SPDX-License-Identifier header — that always takes precedence.
+[[annotations]]
+path = "src/**"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "tests/**"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "schemas/**"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-License-Identifier = "Apache-2.0"
+
+# Docs released under a data-appropriate license.
+[[annotations]]
+path = "docs/**"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# Files where headers are impractical (images, generated files, etc.)
+[[annotations]]
+path = ["**.png", "**.svg", "**/generated/**"]
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-License-Identifier = "Apache-2.0"

@@ -1,0 +1,52 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+      - name: Install dependencies and build tools
+        run: |
+          python -m pip install --upgrade pip build
+          pip install -e ".[dev]"
+
+      - name: Verify package build (sdist and wheel)
+        run: python -m build
+
+      - name: Check license compliance (REUSE)
+        run: reuse lint
+
+      - name: Lint Markdown documentation
+        run: npx markdownlint-cli "**/*.md" --ignore "node_modules"
+
+      - name: Check code formatting (Ruff)
+        run: ruff format --check .
+
+      - name: Lint Python code (Ruff)
+        run: ruff check .
+
+      - name: Validate GA4GH Meta-Schema syntax
+        run: |
+          check-jsonschema --check-metaschema schemas/ga4gh-io-profile.schema.json
+          check-jsonschema --check-metaschema schemas/vocabularies/ui-widgets.schema.json
+
+      - name: Run Python validator tests
+        run: pytest

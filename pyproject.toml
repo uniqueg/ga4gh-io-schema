@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ga4gh-io-schema"
+version = "0.1.0"
+description = "GA4GH standard profile for workflow and tool inputs and outputs"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "jsonschema>=4.21.1",
+]
+
+[project.scripts]
+ga4gh-io-schema-validator = "ga4gh_io_schema.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.1.1",
+    "check-jsonschema>=0.28.1",
+    "reuse>=3.0.2",
+    "ruff>=0.4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+# D: pydocstyle, E: pycodestyle, F: pyflakes, I: isort
+select = ["D", "E", "F", "I"]
+# Ignore line length errors in linting if formatting handles it
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

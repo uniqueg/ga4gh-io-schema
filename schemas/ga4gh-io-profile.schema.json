@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
+  "title": "GA4GH IO Profile Meta-Schema",
+  "description": "A JSON Schema meta-schema defining the GA4GH standard profile for workflow and tool inputs and outputs across WES and TES.",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "https://json-schema.org/draft/2020-12/schema"
+    }
+  ],
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "description": "Definition of the inputs required by the workflow or tool."
+    },
+    "outputs": {
+      "type": "object",
+      "description": "Definition of the outputs produced by the workflow or tool."
+    }
+  },
+  "required": [
+    "inputs"
+  ],
+  "$defs": {
+    "ga4gh-extensions": {
+      "type": "object",
+      "properties": {
+        "x-ga4gh-drs-uri": {
+          "type": "boolean",
+          "description": "Indicates if a string field is expected to be a valid DRS URI."
+        },
+        "x-ga4gh-format": {
+          "type": "string",
+          "format": "uri",
+          "description": "An ontology URI (e.g., EDAM format) explicitly defining the semantic type of the file."
+        },
+        "x-ga4gh-ui-widget": {
+          "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/vocabularies/ui-widgets.schema.json",
+          "description": "A hint for UI clients on how to render this input or output."
+        },
+        "x-ga4gh-tabular-schema": {
+          "type": "object",
+          "description": "An inline JSON schema validating the rows and columns of a sample sheet or tabular file."
+        },
+        "x-ga4gh-fa-icon": {
+          "type": "string",
+          "description": "A FontAwesome icon class to render next to the input field in the UI (e.g., 'fas fa-file-csv')."
+        },
+        "x-ga4gh-description-format": {
+          "type": "string",
+          "enum": [
+            "plain_text",
+            "markdown",
+            "rst"
+          ],
+          "default": "plain_text",
+          "description": "The text format of the 'description' field, allowing smart clients to render rich text."
+        },
+        "x-ga4gh-hidden": {
+          "type": "boolean",
+          "default": false,
+          "description": "A flag to tell the UI and CLI help to hide advanced or system-level parameters from the default view."
+        },
+        "x-ga4gh-error-message": {
+          "type": "string",
+          "description": "A custom, human-readable error message to display if validation fails."
+        }
+      }
+    }
+  }
+}
