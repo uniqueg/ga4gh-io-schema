@@ -10,17 +10,44 @@
     }
   ],
   "properties": {
-    "inputs": {
+    "properties": {
       "type": "object",
-      "description": "Definition of the inputs required by the workflow or tool."
-    },
-    "outputs": {
-      "type": "object",
-      "description": "Definition of the outputs produced by the workflow or tool."
+      "required": [
+        "inputs",
+        "outputs"
+      ],
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "description": "Definition of the inputs required by the workflow or tool.",
+          "properties": {
+            "properties": {
+              "patternProperties": {
+                "^.*$": {
+                  "$ref": "#/$defs/ga4gh-extensions"
+                }
+              }
+            }
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "description": "Definition of the outputs produced by the workflow or tool.",
+          "properties": {
+            "properties": {
+              "patternProperties": {
+                "^.*$": {
+                  "$ref": "#/$defs/ga4gh-extensions"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "required": [
-    "inputs"
+    "properties"
   ],
   "$defs": {
     "ga4gh-extensions": {
@@ -30,7 +57,7 @@
           "type": "boolean",
           "description": "Indicates if a string field is expected to be a valid DRS URI."
         },
-        "x-ga4gh-format": {
+        "x-ga4gh-ontology": {
           "type": "string",
           "format": "uri",
           "description": "An ontology URI (e.g., EDAM format) explicitly defining the semantic type of the file."

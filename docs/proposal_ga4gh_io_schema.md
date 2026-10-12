@@ -155,109 +155,15 @@ To bridge the gap left by JSON Schema's lack of scientific context, we introduce
 
 Below are two illustrative examples of the GA4GH JSON Schema Profile. Note that both explicitly reference the proposed GA4GH Meta-Schema (`https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json`) via the `$schema` keyword to enforce the presence of the structural and custom annotations discussed in Section 7.
 
-### 8.1 Example 1: Full Workflow (WES) with Tabular Validation
+### 8.1 Example 1: Full Workflow with Tabular Validation
 
-This example demonstrates how to validate a workflow that takes a CSV sample sheet as input.
+This example demonstrates how to validate a workflow that takes a CSV sample sheet as input:
+../tests/data/example_workflow.schema.json.
 
-```json
-{
-  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
-  "$id": "https://ga4gh.org/schemas/workflow-io-profile/v1",
-  "title": "RNA-Seq Pipeline",
-  "description": "Bulk RNA-Seq alignment and QC workflow.",
-  "type": "object",
-  "properties": {
-    "inputs": {
-      "type": "object",
-      "properties": {
-        "sample_manifest": {
-          "type": "string",
-          "format": "uri",
-          "title": "Sample Manifest",
-          "description": "Path to a CSV sample sheet containing biological replicate information.",
-          "x-ga4gh-drs-uri": true,
-          "x-ga4gh-tabular-schema": {
-            "type": "array",
-            "description": "Validates the internal columns of the provided CSV file.",
-            "items": {
-              "type": "object",
-              "properties": {
-                "sample_id": { "type": "string", "title": "Sample ID", "pattern": "^[a-zA-Z0-9_]+$" },
-                "fastq_1": { "type": "string", "title": "Read 1 FASTQ", "format": "uri" },
-                "condition": { "type": "string", "title": "Condition", "enum": ["control", "treatment"] }
-              },
-              "required": ["sample_id", "fastq_1", "condition"]
-            }
-          }
-        }
-      },
-      "required": ["sample_manifest"]
-    },
-    "outputs": {
-      "type": "object",
-      "properties": {
-        "qc_report": {
-          "type": "string",
-          "format": "uri",
-          "title": "QC HTML Report",
-          "x-ga4gh-ui-widget": "html-iframe"
-        }
-      }
-    }
-  }
-}
-```
+### 8.2 Example 2: Standalone Tool
 
-### 8.2 Example 2: Standalone Tool (TES)
-
-This standard works equally well for defining standalone tool executables shipped to a Task Execution Service (TES).
-
-```json
-{
-  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
-  "$id": "https://ga4gh.org/schemas/tool-io-profile/v1",
-  "title": "BWA MEM Aligner",
-  "description": "Burrows-Wheeler Aligner for short read mapping.",
-  "type": "object",
-  "properties": {
-    "inputs": {
-      "type": "object",
-      "properties": {
-        "reference_fasta": {
-          "type": "string",
-          "format": "uri",
-          "title": "Reference FASTA",
-          "x-ga4gh-ontology": "http://edamontology.org/format_1929"
-        },
-        "read_1": {
-          "type": "string",
-          "format": "uri",
-          "title": "Read 1 FASTQ"
-        },
-        "threads": {
-          "type": "integer",
-          "minimum": 1,
-          "default": 4,
-          "title": "CPU Threads"
-        }
-      },
-      "required": ["reference_fasta", "read_1"]
-    },
-    "outputs": {
-      "type": "object",
-      "properties": {
-        "alignment_bam": {
-          "type": "string",
-          "format": "uri",
-          "title": "Aligned BAM",
-          "x-ga4gh-ontology": "http://edamontology.org/format_2572",
-          "x-ga4gh-ui-widget": "genome-browser"
-        }
-      }
-    }
-  }
-}
-```
+This standard works equally well for defining standalone tool executables. An example is available
+here: ../tests/data/example_tool.schema.json.
 
 ## 9. Discussion
 

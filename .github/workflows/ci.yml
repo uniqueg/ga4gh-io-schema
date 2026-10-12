@@ -50,3 +50,13 @@ jobs:
 
       - name: Run Python validator tests
         run: pytest
+
+      - name: E2E CLI Validation (Valid Schemas)
+        run: |
+          ga4gh-io-schema-validator tests/data/valid.schema.json
+          ga4gh-io-schema-validator tests/data/example_workflow.schema.json
+          ga4gh-io-schema-validator tests/data/example_tool.schema.json
+
+      - name: E2E CLI Validation (Invalid Schemas)
+        run: |
+          ! ga4gh-io-schema-validator tests/data/invalid.schema.json
