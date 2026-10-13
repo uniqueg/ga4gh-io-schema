@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # GA4GH IO Schema Profile (Incubator)
 >
-> Incubating a proposed GA4GH JSON Schema Profile for describing the inputs and outputs of computational workflows and tool executables.
+> Incubating a proposed GA4GH JSON Schema Profile to standardize workflow and modular component I/O across WES and Registries, featuring a Python validation package.
 
 ---
 
@@ -25,9 +25,9 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Overview
 
-Currently, the GA4GH Cloud API ecosystem (TRS, WES, TES, DRS) provides a robust infrastructure for executing workloads, but lacks a standardized, machine-readable contract for describing workflow and tool parameters.
+Currently, the GA4GH Federated Analysis API ecosystem (TRS, WES, DRS) provides a robust infrastructure for executing workloads, but lacks a standardized, machine-readable contract for describing workflow and modular component parameters.
 
-This repository incubates a proposed **GA4GH JSON Schema Profile** (and accompanying meta-schema). By establishing a strict I/O contract that sits above underlying workflow languages (e.g., CWL, WDL, Nextflow), this profile enables generic WES/TES clients to automatically generate UI forms, validate complex inputs (like sample tables) client-side, and allows AI agents to deterministically construct valid execution payloads.
+This repository incubates a proposed **GA4GH JSON Schema Profile** (and accompanying meta-schema). By establishing a strict I/O contract that sits above underlying workflow languages (e.g., CWL, WDL, Nextflow), this profile enables generic WES clients to automatically generate UI forms, validate complex inputs (like sample tables) client-side, and allows AI agents to deterministically construct valid execution payloads.
 
 Please see the [Formal Proposal Document](docs/proposal_ga4gh_io_schema.md) for full context, ecosystem survey, and design decisions.
 
