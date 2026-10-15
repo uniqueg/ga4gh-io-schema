@@ -64,6 +64,18 @@ Inside your own drafted schemas, you can reference the meta-schema directly to e
 }
 ```
 
+### Converting existing schemas
+
+The package also ships a converter that translates schemas from existing workflow ecosystems into GA4GH IO Profile schemas. Currently, Nextflow `nf-schema` files (`nextflow_schema.json`) are supported:
+
+```bash
+ga4gh-io-schema-converter --format nextflow --input nextflow_schema.json --output ga4gh_profile.schema.json
+```
+
+The Nextflow converter promotes the schema to JSON Schema Draft 2020-12, references the GA4GH meta-schema in `$schema`, moves all pipeline parameters under `properties.inputs`, maps `nf-schema` UI keywords to the `x-ga4gh-*` vocabulary (`fa_icon` → `x-ga4gh-fa-icon`, `hidden` → `x-ga4gh-hidden`, `errorMessage` → `x-ga4gh-error-message`), and strips engine directives that cannot be honoured in the cloud (`exists`). If `--output` is omitted, the result is printed to stdout.
+
+Parsers are pluggable: support for further ecosystems is added by implementing `ga4gh_io_schema.parsers.AbstractParser` and registering it in `ga4gh_io_schema.parsers.PARSERS`.
+
 ---
 
 ## Development & Testing

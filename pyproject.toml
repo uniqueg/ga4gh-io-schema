@@ -18,6 +18,7 @@ dependencies = [
 
 [project.scripts]
 ga4gh-io-schema-validator = "ga4gh_io_schema.cli:main"
+ga4gh-io-schema-converter = "ga4gh_io_schema.converter:main"
 
 [project.optional-dependencies]
 dev = [
