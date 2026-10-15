@@ -60,3 +60,8 @@ jobs:
       - name: E2E CLI Validation (Invalid Schemas)
         run: |
           ! ga4gh-io-schema-validator tests/data/invalid.schema.json
+
+      - name: E2E CLI Conversion (Nextflow)
+        run: |
+          ga4gh-io-schema-converter --format nextflow --input tests/data/nextflow_schema.json --output "$RUNNER_TEMP/nextflow.ga4gh.schema.json"
+          ga4gh-io-schema-validator "$RUNNER_TEMP/nextflow.ga4gh.schema.json"
