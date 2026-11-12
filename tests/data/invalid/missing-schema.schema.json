@@ -1,0 +1,16 @@
+{
+  "$id": "https://example.org/schemas/invalid/missing-schema",
+  "title": "Invalid: missing-schema",
+  "description": "The schema doesn't name the meta-schema in $schema.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

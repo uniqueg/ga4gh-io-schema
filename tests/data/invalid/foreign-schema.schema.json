@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.org/schemas/invalid/foreign-schema",
+  "title": "Invalid: foreign-schema",
+  "description": "The schema names another meta-schema (JSON Schema draft-07) in $schema.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

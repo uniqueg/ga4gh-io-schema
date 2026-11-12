@@ -45,4 +45,7 @@ We propose the following initial set of custom annotations to support execution 
 * `x-ga4gh-error-message` *(string)*: A custom, human-readable error message to display if payload validation fails. *Relation to nf-schema: Equivalent to the `errorMessage` property.*
 
 The keywords and the vocabulary of UI widgets are defined in the
-[meta-schema](meta-schema.md).
+[meta-schema](meta-schema.md), which checks them in every schema of an IO
+schema, at any depth, and rejects other keywords that start with `x-ga4gh-`
+(see [Structure of the meta-schema](meta-schema.md#structure-of-the-meta-schema)
+for the allowed values and the vocabulary file of each keyword).
