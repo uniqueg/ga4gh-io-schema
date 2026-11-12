@@ -41,7 +41,24 @@
           "description": "JSON Schema block defining the expected input parameters for the workflow or tool."
         },
         "outputs": {
-          "description": "JSON Schema block defining the expected output structure from the workflow or tool."
+          "description": "JSON Schema block defining the outputs of the workflow or tool: an object schema whose properties are the outputs. Optional; without it, the schema describes no outputs.",
+          "$comment": "The outputs are the direct properties of this schema, so that normalisers find them without resolving references or applicators.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "object"
+            },
+            "$ref": false,
+            "$dynamicRef": false,
+            "allOf": false,
+            "anyOf": false,
+            "oneOf": false,
+            "not": false,
+            "if": false,
+            "then": false,
+            "else": false,
+            "dependentSchemas": false
+          }
         }
       },
       "required": [
@@ -82,6 +99,9 @@
             },
             {
               "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/parameter.schema.json"
+            },
+            {
+              "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/outputs.schema.json"
             }
           ]
         }

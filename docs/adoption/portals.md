@@ -7,7 +7,7 @@ A [file reference](../specification/files.md) whose `schemes` include `drs` tell
 The client submits the `drs://` identifier itself in `workflow_params`, not a resolved access URL, and no credentials; the execution side resolves the identifier with credentials delegated by the user. See [Access to data](../security.md#access-to-data) for the requirements and the reasons.
 
 See also [the `x-ga4gh-*` vocabulary](../specification/keywords.md#the-x-ga4gh-vocabulary)
-and the [output contract](../specification/outputs.md).
+and the [outputs model](../specification/outputs.md).
 
 ## Form libraries
 

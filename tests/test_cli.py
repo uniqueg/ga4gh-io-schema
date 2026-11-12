@@ -21,6 +21,17 @@ VALID = sorted(DATA_DIR.glob("*.schema.json")) + sorted(
     (SUITE_DIR / "valid").glob("*.schema.json")
 )
 
+#: Definition of ``x-ga4gh-output-glob`` in its vocabulary.
+_OUTPUT_GLOB = json.loads(
+    (
+        DATA_DIR.parents[1] / "schemas" / "vocabularies" / "outputs.schema.json"
+    ).read_text(encoding="utf-8")
+)["$defs"]["outputGlob"]
+#: Patterns of ``x-ga4gh-output-glob`` as error messages show them (as their
+#: repr without the quotes, with backslashes doubled).
+OUTPUT_GLOB_PATTERN = repr(_OUTPUT_GLOB["pattern"])[1:-1]
+OUTPUT_GLOB_NOT_PATTERN = repr(_OUTPUT_GLOB["not"]["pattern"])[1:-1]
+
 #: Expected error message (on stderr) for each deliberately bad schema.
 INVALID = {
     "missing-inputs": "Validation Error: 'inputs' is a required property (at $.properties)",
@@ -200,6 +211,61 @@ INVALID = {
     "outputs-nested": (
         "Validation Error: 3 is not of type 'string' "
         "(at $.properties.outputs.properties.report['x-ga4gh-ui-widget'])"
+    ),
+    # The outputs model
+    "outputs-boolean": (
+        "Validation Error: True is not of type 'object' (at $.properties.outputs)"
+    ),
+    "outputs-not-object-type": (
+        "Validation Error: 'object' was expected (at $.properties.outputs.type)"
+    ),
+    "outputs-applicator": (
+        "Validation Error: False schema does not allow '#/$defs/outputs' "
+        "(at $.properties.outputs)"
+    ),
+    "output-glob-tuple": (
+        "Validation Error: False schema does not allow [{'type': 'integer'}] "
+        "(at $.properties.outputs.properties.report)"
+    ),
+    "output-glob-not-string": (
+        "Validation Error: 3 is not of type 'string' "
+        "(at $.properties.outputs.properties.report['x-ga4gh-output-glob'])"
+    ),
+    **{
+        name: (
+            f"Validation Error: '{glob}' does not match '{OUTPUT_GLOB_PATTERN}' "
+            "(at $.properties.outputs.properties.report['x-ga4gh-output-glob'])"
+        )
+        for name, glob in [
+            ("output-glob-absolute", "/results/*.html"),
+            # The message shows the value's repr, with the backslash doubled
+            ("output-glob-backslash", r"results\\*.html"),
+            ("output-glob-braces", "results/*.{html,htm}"),
+            ("output-glob-empty-segment", "results//report.html"),
+        ]
+    },
+    **{
+        name: (
+            f"Validation Error: '{glob}' should not be valid under "
+            f"{{'pattern': '{OUTPUT_GLOB_NOT_PATTERN}'}} "
+            "(at $.properties.outputs.properties.report['x-ga4gh-output-glob'])"
+        )
+        for name, glob in [
+            ("output-glob-parent", "../secrets/*.txt"),
+            ("output-glob-double-star", "results/**.html"),
+        ]
+    },
+    "output-glob-on-scalar": (
+        "Validation Error: 'integer' is not one of ['string', 'array'] "
+        "(at $.properties.outputs.properties.report.type)"
+    ),
+    "output-glob-not-file": (
+        "Validation Error: 'x-ga4gh-file' is a required property "
+        "(at $.properties.outputs.properties.report)"
+    ),
+    "output-glob-items-not-file": (
+        "Validation Error: 'x-ga4gh-file' is a required property "
+        "(at $.properties.outputs.properties.report.items)"
     ),
     "workflow-not-object": (
         "Validation Error: 'WDL' is not of type 'object' (at $['x-ga4gh-workflow'])"
