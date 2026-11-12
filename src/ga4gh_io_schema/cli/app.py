@@ -41,6 +41,8 @@ def load_commands() -> None:
     when it's imported; importing a module again has no effect.
     """
     for module in pkgutil.iter_modules(commands.__path__):
+        # The names come from the package's own directory, not from input.
+        # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
         importlib.import_module(f"{commands.__name__}.{module.name}")
 
 
