@@ -25,7 +25,11 @@ the error message of each; a new rule needs a new bad schema and its
 expected message. `tests/test_conformance.py` is the runner of the
 conformance suite for this package: it checks every case against the
 Python API, without error messages, as other implementations do.
-`tests/test_cli_framework.py` tests the shared conventions of all
+`tests/test_wes.py` runs the [test
+vectors](specification/engine-bindings.md#test-vectors) of `tests/vectors/`
+against the library, and `tests/test_cli_wes.py` tests the `wes-params`
+subcommand; a change of the engine bindings comes with new or changed
+vectors. `tests/test_cli_framework.py` tests the shared conventions of all
 subcommands (standard input, `--output`, `--json`, exit codes) and the
 subcommand registry.
 
@@ -58,7 +62,8 @@ The versions of the validators are pinned in `package.json` and
 ## Schema versions
 
 The `$id`s of the schemas in `schemas/`, and the `$schema` of the examples in
-`tests/data/`, of the cases in `tests/conformance/` and of the snippet in the
+`tests/data/`, of the cases in `tests/conformance/` and `tests/vectors/` and
+of the snippet in the
 meta-schema documentation, name the release tag of the profile (e.g.,
 `v0.3.0`). For a new release, change the tag in all of them at once (the
 tests check that they agree), and push the tag so that the URLs resolve.

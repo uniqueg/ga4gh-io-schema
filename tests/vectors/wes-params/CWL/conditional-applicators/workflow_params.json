@@ -1,0 +1,24 @@
+{
+  "mode": "paired",
+  "reads": {
+    "class": "File",
+    "location": "https://data.example.org/r1.fq"
+  },
+  "mates": {
+    "class": "File",
+    "location": "https://data.example.org/r2.fq"
+  },
+  "extra": {
+    "note": "x",
+    "panel": {
+      "class": "File",
+      "location": "https://data.example.org/panel.bed"
+    }
+  },
+  "inputs_list": [
+    {
+      "class": "File",
+      "location": "https://data.example.org/a.txt"
+    }
+  ]
+}

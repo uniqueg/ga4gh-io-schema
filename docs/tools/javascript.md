@@ -28,9 +28,28 @@ These are the results of the Python validator, too. Without format
 assertion (Ajv without ajv-formats, or hyperjump with its default), both
 accept `ontology-not-uri`, whose `x-ga4gh-ontology` isn't a URI: a
 [validator](../specification/conformance.md#validator) must check the
-`format` keywords of the meta-schema. Unlike the Python validator, both also
-check the `regex` format of `pattern`, with the regular expressions of
-JavaScript (ECMA-262).
+`format` keywords of the meta-schema.
+
+The validators differ in the formats of the Draft 2020-12 meta-schema,
+which the profile's meta-schema applies to every schema, and which no case
+of the suite tests yet:
+
+- Ajv doesn't check them, even with ajv-formats, because it turns format
+  validation off for its built-in meta-schemas. It accepts, for example, a
+  nested `{"$ref": "#/$defs/a b"}` (not a `uri-reference`) or
+  `{"$schema": "not a uri"}`, which the Python validator and hyperjump
+  reject.
+- hyperjump also checks the `regex` format of `pattern` with the regular
+  expressions of JavaScript (ECMA-262), e.g., it rejects `"pattern": "("`;
+  the Python validator and Ajv don't.
+
+Validators that report all errors (e.g., Ajv with `allErrors: true`) report
+a problem in a nested schema more than once: both the Draft 2020-12
+meta-schema and the rules of the profile check every subschema. They also
+report the valid `x-ga4gh-*` keywords of the enclosing schemas (e.g., an
+`x-ga4gh-hidden` of the parent) as unevaluated properties, because a failed
+subschema drops the annotations of the vocabularies; the error at the
+deepest location is the actual problem.
 
 The meta-schema applies the rules for nested schemas with explicit `$ref`s,
 not with `$dynamicAnchor`, which Ajv supports only at the root of a schema:

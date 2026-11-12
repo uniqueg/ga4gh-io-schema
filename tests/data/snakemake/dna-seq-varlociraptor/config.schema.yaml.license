@@ -1,0 +1,7 @@
+SPDX-FileCopyrightText: 2019 Felix Mölder, Johannes Köster
+
+SPDX-License-Identifier: MIT
+
+Unchanged copy of workflow/schemas/config.schema.yaml of
+https://github.com/snakemake-workflows/dna-seq-varlociraptor
+at commit 5d03db2459a9f8bdf75bbb2b626a8130ece2d107.

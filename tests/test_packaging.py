@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCHEMAS_DIR = REPO_ROOT / "schemas"
 DATA_DIR = REPO_ROOT / "tests" / "data"
 SUITE_DIR = REPO_ROOT / "tests" / "conformance"
+VECTORS_DIR = REPO_ROOT / "tests" / "vectors"
 PROFILE_PATH = SCHEMAS_DIR / "ga4gh-io-profile.schema.json"
 # Docs that show CLI usage; mkdocs build --strict checks the links of docs/.
 USAGE_DOCS = [REPO_ROOT / "README.md", REPO_ROOT / "docs" / "tools" / "validator.md"]
@@ -65,6 +66,7 @@ def test_schema_ids_share_one_release_tag() -> None:
         *SCHEMAS_DIR.rglob("*.json"),
         *DATA_DIR.rglob("*.json"),
         *SUITE_DIR.rglob("*.json"),
+        *VECTORS_DIR.rglob("*.json"),
     ]:
         text = path.read_text(encoding="utf-8")
         assert "/main/" not in text, path
@@ -159,7 +161,7 @@ def test_every_vocabulary_is_registered() -> None:
     profile = load_json(PROFILE_PATH)
     keywords = profile["$defs"]["node"]["$defs"]["keywords"]["allOf"]
     every_schema = {entry["$ref"] for entry in keywords}
-    top_level = {entry["$ref"] for entry in profile["allOf"]}
+    top_level = {entry.get("$ref") for entry in profile["allOf"]} - {None}
     for path in (SCHEMAS_DIR / "vocabularies").glob("*.schema.json"):
         vocabulary_id = load_json(path)["$id"]
         if path.name == "ui-widgets.schema.json":
