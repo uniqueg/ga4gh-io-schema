@@ -48,8 +48,13 @@ ga4gh-io-schema convert snakemake workflow/schemas/config.schema.yaml \
 
 The command checks the result against the profile before it writes it, and
 fails (exit status 1) if the result doesn't comply, e.g., because the source
-uses an `x-ga4gh-*` keyword wrongly. The shared options and the exit status
-are those of all subcommands (see [Command-line interface](cli.md)).
+uses an `x-ga4gh-*` keyword wrongly. A schema that can't be converted (e.g.,
+Draft 3, or an option that names a property that doesn't exist or isn't a
+string) also exits with status 1; a source that can't be read (invalid JSON
+or YAML, values that JSON can't represent, YAML without the `snakemake`
+extra, or too deeply nested) exits with status 3. The shared options and the
+exit status are those of all subcommands (see [Command-line
+interface](cli.md)).
 
 ### Notes
 
@@ -163,3 +168,4 @@ is wrong. The converter doesn't guess `compression`, `ontology`,
         - Note
         - ConversionError
         - SourceError
+        - json_path

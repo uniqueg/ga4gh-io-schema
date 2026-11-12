@@ -38,7 +38,7 @@ dev = [
     "pytest-cov>=5.0.0",
     "check-jsonschema>=0.28.1",
     # The tests of `convert snakemake` need the `snakemake` extra.
-    "pyyaml>=6.0.1",
+    "ga4gh-io-schema[snakemake]",
     "reuse>=3.0.2",
     "ruff>=0.4.0",
 ]

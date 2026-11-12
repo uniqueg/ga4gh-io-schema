@@ -135,28 +135,98 @@ def test_rna_seq_workflow_converts_to_a_valid_io_schema(
     assert err.rstrip().endswith("(at $.properties.outputs)")
 
 
-def test_varlociraptor_references_point_into_defs(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """Test a public config schema with definitions and references.
+def references(node: Any) -> list[str]:
+    """Collect the values of all ``$ref`` keywords of a schema.
 
     Args:
+        node: The schema, or a part of it.
+
+    Returns:
+        The references, in document order.
+    """
+    if isinstance(node, list):
+        return [ref for item in node for ref in references(item)]
+    if not isinstance(node, dict):
+        return []
+    found = [node["$ref"]] if isinstance(node.get("$ref"), str) else []
+    return found + [ref for value in node.values() for ref in references(value)]
+
+
+def resolve(schema: dict[str, Any], ref: str) -> Any:
+    """Follow a local JSON pointer reference.
+
+    Args:
+        schema: The document.
+        ref: The reference, e.g. ``#/$defs/a``.
+
+    Returns:
+        The target.
+    """
+    node: Any = schema
+    for part in ref[2:].split("/"):
+        node = node[part.replace("~1", "/").replace("~0", "~")]
+    return node
+
+
+def test_varlociraptor_references_resolve() -> None:
+    """Test a public config schema with definitions and references.
+
+    The library is used without the CLI's check against the profile, which
+    is slow for a schema of this size; the CLI tests check that.
+    """
+    source = load_schema(
+        (VARLOCIRAPTOR / "config.schema.yaml").read_text(encoding="utf-8"), "x"
+    )
+
+    conversion = to_ga4gh(source)
+
+    schema = conversion.schema
+    assert set(schema["$defs"]) == {"aux-file", "filterentry", "evententry"}
+    refs = references(schema)
+    assert refs and all(ref.startswith("#/") for ref in refs)
+    for ref in refs:
+        assert isinstance(resolve(schema, ref), (dict, bool)), ref
+    marked = [
+        note.location
+        for note in conversion.notes
+        if note.message.startswith("Marked as a file reference")
+    ]
+    base = "$.properties.inputs.properties"
+    assert marked == [
+        f"{base}.samples",
+        f"{base}.primers.properties.trimming.properties.primers_fq1",
+        f"{base}.primers.properties.trimming.properties.primers_fq2",
+        f"{base}.primers.properties.trimming.properties.tsv",
+        f"{base}.population.properties.db.properties.path",
+        f"{base}.custom_alignment_properties.properties.tsv",
+    ]
+
+
+def test_json_result_has_schema_and_notes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test the result of ``--json``: the schema and the notes, no stderr.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
         capsys: Pytest fixture capturing the output.
     """
-    status, out, err = run(
-        ["convert", "snakemake", "--json", str(VARLOCIRAPTOR / "config.schema.yaml")],
-        capsys,
-    )
+    path = tmp_path / "config.schema.json"
+    path.write_text(json.dumps(config({"bam": {"type": "string"}})))
+
+    status, out, err = run(["convert", "snakemake", "--json", str(path)], capsys)
 
     assert status == 0, err
     assert err == ""
     result = json.loads(out)
-    schema = result["schema"]
-    assert set(schema["$defs"]) == {"aux-file", "filterentry", "evententry"}
-    text = json.dumps(schema)
-    assert "#/definitions/" not in text
-    assert '"$ref": "#/$defs/filterentry"' in text
-    assert {"message", "location"} == set(result["notes"][0])
+    assert result["schema"]["properties"]["inputs"]["properties"]["bam"] == {
+        "type": "string",
+        "x-ga4gh-file": {"kind": "file"},
+    }
+    assert [note["location"] for note in result["notes"]] == [
+        "$.properties.inputs.properties.bam",
+        "$.properties.outputs",
+    ]
 
 
 # --- Command line -----------------------------------------------------------

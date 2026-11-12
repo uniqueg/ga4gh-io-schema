@@ -25,10 +25,10 @@ from ga4gh_io_schema.converters.snakemake import (
 )
 from ga4gh_io_schema.validator import validate_schema
 
-#: Group of the converters; each converter module adds its command to it.
-CONVERT = ROOT.group(
-    "convert", "Convert the parameter descriptions of workflow languages."
-)
+#: Help of the ``convert`` group. Each converter module gets the group with
+#: ``ROOT.group("convert", CONVERT_HELP)`` (get or create), in any order; keep
+#: the text the same in every module.
+CONVERT_HELP = "Convert the parameter descriptions of workflow languages."
 
 
 def sample_sheet_argument(value: str) -> tuple[str | None, str]:
@@ -172,4 +172,4 @@ class SnakemakeCommand(Command):
         )
 
 
-CONVERT.register(SnakemakeCommand())
+ROOT.group("convert", CONVERT_HELP).register(SnakemakeCommand())
