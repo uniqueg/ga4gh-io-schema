@@ -4,27 +4,27 @@
 
 ## Executive summary
 
-This document proposes the creation of a **JSON Schema Profile**—an Interface Definition Language (IDL) acting as the "OpenAPI specification" for computational workflows and modular analytical components.
+This document proposes a **JSON Schema profile** that describes the inputs and outputs of computational workflows and workflow components, in the role that an OpenAPI description plays for a web API.
 
-Currently, computational tasks are tightly coupled to their underlying execution engines (e.g., Nextflow, CWL, WDL). This profile establishes a strict, machine-readable contract for inputs and outputs that sits *above* these execution languages. By defining the public presentation of a workload rather than its execution mechanics, this standard enables any generic web portal to automatically generate UI forms, allows metadata catalogs to seamlessly understand outputs, and provides AI agents with the deterministic schemas required for workflow composition.
+Today, the inputs and outputs of a workflow are described in the language of its engine (e.g., Nextflow, CWL, WDL), and each engine does it differently. The profile adds an engine-neutral contract for inputs and outputs that sits *above* these languages: it describes the public interface of a workflow, not how the workflow runs. With it, portals can render input forms (through an adapter that reads the `x-ga4gh-*` keywords, see [Portals and clients](adoption/portals.md)), catalogues and clients can interpret outputs, and AI agents can derive tool definitions for building run requests.
 
-While this standard seamlessly integrates with the GA4GH Federated Analysis ecosystem (TRS, WES, DRS) as a primary benefactor, it is fundamentally **domain-agnostic** and engine-independent, capable of describing generic ETL jobs or machine learning pipelines just as effectively as genomic aligners.
+The profile is designed for the GA4GH APIs for federated analysis (TRS, WES, DRS) and for workflows in the life sciences. Whether it also suits other kinds of workloads, such as machine learning pipelines, is an [open question](roadmap.md#open-questions).
 
 ## Contents
 
 - [Motivation](motivation.md): the usability gap, goals, non-goals and the
-  concept of a universal compute IDL.
+  concept of an interface description above workflow languages.
 - [Specification](specification/index.md): the keywords, the output contract,
   the meta-schema, conformance and examples.
 - [Rationale and related work](rationale.md): the ecosystem survey, why no
-  existing solution is adopted, applicability beyond genomics and RO-Crate
-  profiles.
+  existing solution is adopted, and RO-Crate profiles.
 - [Security considerations](security.md): what validation with the profile
   does and doesn't protect against.
 - [Tools](tools/index.md): the validator (CLI and Python API) and converters.
 - [Adoption](adoption/index.md): the adoption path and guides for TRS, WES,
   and portals and clients.
-- [Roadmap](roadmap.md): next steps and the history of this proposal.
+- [Roadmap](roadmap.md): next steps, open questions and the history of this
+  proposal.
 - [Development](development.md): tests and checks for contributors.
 
 ## License
