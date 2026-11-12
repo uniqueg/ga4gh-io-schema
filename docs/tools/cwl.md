@@ -175,9 +175,11 @@ These are errors, with exit status 1:
   that isn't imported, or on a remote server (see [Security](#security)).
 - **Enums without symbols and unions without types**, which no value matches.
 - **Documents that are too large**, so that a small document can't make the
-  converter run out of time or memory: more than 100,000 values once YAML
-  aliases are expanded, more than 10,000 schemas and values in the IO schema
-  (named types are inlined at every use), or types nested too deeply to
+  converter run out of time or memory: more than 100,000 values in the
+  document and the files it imports together, once YAML aliases are expanded;
+  more than 10,000 schemas and values, or more than 1,000,000 characters of
+  text (titles, descriptions, names, enum symbols, patterns), in the IO schema
+  (named types are inlined at every use); or types nested too deeply to
   convert or validate.
 
 The converter doesn't translate:
@@ -227,6 +229,12 @@ schema = parser.to_ga4gh(parser.parse("my-tool.cwl"))
 for note in parser.notes:
     print(note.location, note.message)
 ```
+
+`CwlParser(root=...)` sets the directory whose files a document may read,
+like `--root`. Without it, that is the directory of the document: for
+`parse_string(text, uri)`, the directory of the `file:` path in `uri` (`/`
+for `file:///tool.cwl`). Give `root` explicitly when the document comes from
+elsewhere (see [Security](#security)).
 
 ::: ga4gh_io_schema.cwl
     options:

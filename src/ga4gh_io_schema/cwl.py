@@ -74,8 +74,14 @@ SECONDARY_FILE_PATTERN = re.compile(r"\^*[.]*[A-Za-z0-9_+-][A-Za-z0-9_.+-]*")
 #: a very large schema.
 MAX_NODES = 10_000
 
-#: Most values (mappings, lists and scalars) of a document once its YAML
-#: aliases are expanded, as the parser of ``cwl-utils`` does.
+#: Most characters of text (titles, descriptions, names, enum symbols,
+#: patterns, ontology terms and string values) that a conversion may copy
+#: into a schema; named types are inlined with their texts.
+MAX_TEXT = 1_000_000
+
+#: Most values (mappings, lists and scalars) of a document and the files it
+#: imports, once their YAML aliases are expanded, as the parser of
+#: ``cwl-utils`` does.
 MAX_DOCUMENT_NODES = 100_000
 
 # Ontology terms that the profile accepts
@@ -136,6 +142,27 @@ class _LocalFetcher(DefaultFetcher):
         """
         super().__init__({}, None)
         self.root = root.resolve()
+        self.values = MAX_DOCUMENT_NODES
+
+    def count(self, document: Any) -> None:
+        """Count the values of a document towards :data:`MAX_DOCUMENT_NODES`.
+
+        The limit holds for a document and all the files that it imports
+        together.
+
+        Args:
+            document: The document, as loaded from YAML.
+
+        Raises:
+            ValidationException: If the documents have too many values.
+            RecursionError: If the document is nested too deeply to count.
+        """
+        self.values -= _expanded_size(document, {})
+        if self.values < 0:
+            raise ValidationException(
+                f"The document and the files it imports have more than "
+                f"{MAX_DOCUMENT_NODES} values once YAML aliases are expanded."
+            )
 
     def _allowed(self, url: str) -> Path:
         """Return the local path of a URL, if it may be read.
@@ -153,8 +180,12 @@ class _LocalFetcher(DefaultFetcher):
         split = urllib.parse.urlsplit(url)
         if split.scheme != "file":
             raise ValidationException(f"Not fetched (not a local file): {url}")
-        path = Path(urllib.request.url2pathname(split.path)).resolve()
-        if not path.is_relative_to(self.root) or not path.is_file():
+        try:
+            path = Path(urllib.request.url2pathname(split.path)).resolve()
+            allowed = path.is_relative_to(self.root) and path.is_file()
+        except (OSError, ValueError):  # e.g., a NUL character
+            allowed = False
+        if not allowed:
             raise ValidationException(f"Not read (not a file under {self.root}): {url}")
         return path
 
@@ -169,13 +200,22 @@ class _LocalFetcher(DefaultFetcher):
             The text of the file.
 
         Raises:
-            ValidationException: If the file may not be read, or isn't UTF-8.
+            ValidationException: If the file may not be read, isn't UTF-8,
+                is nested too deeply, or makes the documents too large.
         """
         path = self._allowed(url)
         try:
-            return path.read_bytes().decode("utf-8")
+            text = path.read_bytes().decode("utf-8")
         except UnicodeDecodeError as exc:
             raise ValidationException(f"Not UTF-8 text - {url}: {exc}") from exc
+        # The parser expands the YAML aliases of imported files too
+        try:
+            self.count(yaml_no_ts().load(text))
+        except YAMLError:
+            pass  # Plain text ($include), or reported by the parser
+        except RecursionError as exc:
+            raise ValidationException(f"Too deeply nested to read - {url}") from exc
+        return text
 
     def check_exists(self, url: str) -> bool:
         """Tell whether a referenced file may be read.
@@ -258,7 +298,9 @@ class CwlParser:
         Args:
             text: The CWL document (YAML or JSON).
             uri: URI of the document, against which the parser resolves
-                relative references (e.g., ``$import``).
+                relative references (e.g., ``$import``). Without
+                :attr:`root`, the document may read the files under the
+                directory of its path (``/`` for ``file:///tool.cwl``).
 
         Returns:
             The process, as an object of the parser of ``cwl-utils``. The
@@ -278,15 +320,14 @@ class CwlParser:
             raise CwlSyntaxError("Too deeply nested to read.") from exc
         if not isinstance(document, dict):
             raise CwlConversionError("A CWL document must be a YAML or JSON object.")
+        # Remote references aren't fetched; local files only under the root
+        fetcher = _LocalFetcher(self._root(uri))
         try:
-            size = _expanded_size(document, {})
+            fetcher.count(document)
         except RecursionError as exc:
             raise CwlSyntaxError("Too deeply nested to read.") from exc
-        if size > MAX_DOCUMENT_NODES:
-            raise CwlConversionError(
-                f"The document has more than {MAX_DOCUMENT_NODES} values once "
-                "its YAML aliases are expanded."
-            )
+        except ValidationException as exc:
+            raise CwlConversionError(str(exc)) from exc
         process_id = self.process
         if "$graph" in document:
             graph = document["$graph"]
@@ -305,8 +346,7 @@ class CwlParser:
                 f"The document has no $graph to select process {process_id!r} from."
             )
         options = LoadingOptions(
-            # Remote references aren't fetched; local files only under the root
-            fetcher=_LocalFetcher(self._root(uri)),
+            fetcher=fetcher,
             fileuri=uri,
             # Don't check that referenced files exist (e.g., default files)
             no_link_check=True,
@@ -315,6 +355,8 @@ class CwlParser:
             process = load_document_by_yaml(document, uri, options, process_id)
         except (ValidationException, GraphTargetMissingException) as exc:
             raise CwlConversionError(f"Invalid CWL document - {exc}") from exc
+        except RecursionError as exc:
+            raise CwlSyntaxError("Too deeply nested to read.") from exc
         if getattr(process, "class_", None) not in PROCESS_CLASSES:
             raise CwlConversionError(
                 "The document is not a CWL process; expected one of "
@@ -383,7 +425,7 @@ class CwlParser:
             The IO schema.
         """
         schema: dict[str, Any] = {"$schema": load_profile()["$id"]}
-        _add_text(schema, source)
+        converter.text(schema, source, "$")
         schema["x-ga4gh-workflow"] = dict(self.workflow or {"descriptor_type": "CWL"})
         schema["type"] = "object"
         schema["properties"] = {
@@ -416,6 +458,7 @@ class _Converter:
         self.index: dict[str, Any] = options.idx
         self.notes = notes
         self.budget = MAX_NODES
+        self.text_budget = MAX_TEXT
 
     def spend(self, location: str) -> None:
         """Count one schema or value towards :data:`MAX_NODES`.
@@ -434,6 +477,39 @@ class _Converter:
                 "times, or a default value expanded from YAML aliases?",
                 location,
             )
+
+    def spend_text(self, location: str, *texts: str) -> None:
+        """Count characters of copied texts towards :data:`MAX_TEXT`.
+
+        Args:
+            location: JSON path of the schema being converted.
+            *texts: The texts.
+
+        Raises:
+            CwlConversionError: If the conversion has copied too much text.
+        """
+        self.text_budget -= sum(len(text) for text in texts)
+        if self.text_budget < 0:
+            raise CwlConversionError(
+                f"The converted schema would be too large (more than {MAX_TEXT} "
+                "characters of text); is a named type with long texts or many "
+                "symbols used many times?",
+                location,
+            )
+
+    def text(self, schema: dict[str, Any], element: Any, location: str) -> None:
+        """Copy ``label`` and ``doc`` of a CWL element to a schema.
+
+        Args:
+            schema: The schema, which gets ``title`` and ``description``.
+            element: Process, parameter, field or type with ``label`` and
+                ``doc``.
+            location: JSON path of the schema.
+        """
+        _add_text(schema, element)
+        self.spend_text(
+            location, schema.get("title", ""), schema.get("description", "")
+        )
 
     def note(self, location: str, message: str) -> None:
         """Record what couldn't be converted.
@@ -505,7 +581,7 @@ class _Converter:
                 "'format' and 'secondaryFiles' apply only to files; the type "
                 "has no File (outside records), so they are left out.",
             )
-        _add_text(schema, parameter)
+        self.text(schema, parameter, location)
         default = getattr(parameter, "default", None)
         if is_input and default is not None:
             optional = True
@@ -537,6 +613,7 @@ class _Converter:
         )
         if patterns:
             annotation["secondaryFiles"] = patterns
+        self.spend_text(location, ontology or "", *patterns)
         return annotation
 
     def ontology(self, format_: Any, location: str) -> str | None:
@@ -687,7 +764,8 @@ class _Converter:
                 "type": "string",
                 "enum": [get_value_from_uri(symbol) for symbol in type_.symbols],
             }
-            _add_text(schema, type_)
+            self.spend_text(location, *schema["enum"])
+            self.text(schema, type_, location)
             return schema
         if kind == "record":
             return self.record(type_, location, files.is_input, names)
@@ -804,6 +882,7 @@ class _Converter:
         required: list[str] = []
         for field in record.fields or []:
             name = get_value_from_uri(field.name)
+            self.spend_text(location, name)
             optional, properties[name] = self.field(
                 field, _child(location, "properties", name), is_input, names
             )
@@ -813,7 +892,7 @@ class _Converter:
         if required:
             schema["required"] = required
         schema["additionalProperties"] = False
-        _add_text(schema, record)
+        self.text(schema, record, location)
         return schema
 
     def default(self, value: Any, location: str) -> tuple[bool, Any]:
@@ -867,6 +946,8 @@ class _Converter:
             return {key: self._value(item, location) for key, item in value.items()}
         if isinstance(value, list):
             return [self._value(item, location) for item in value]
+        if isinstance(value, str):
+            self.spend_text(location, value)
         return value
 
 
@@ -955,6 +1036,9 @@ def _expanded_size(node: Any, sizes: dict[int, int]) -> int:
     Returns:
         The number of values of the expansion, or a number just above
         :data:`MAX_DOCUMENT_NODES` once it exceeds that.
+
+    Raises:
+        RecursionError: If the document is nested too deeply.
     """
     if not isinstance(node, (dict, list)):
         return 1

@@ -1024,8 +1024,79 @@ def test_documents_too_large_after_alias_expansion_fail(
         "  a2: &a2 [*a1, *a1, *a1, *a1]\n  a3: [*a2, *a2, *a2, *a2]\n"
     )
 
-    with pytest.raises(cwl.CwlConversionError, match="once its YAML aliases"):
+    with pytest.raises(cwl.CwlConversionError, match="once YAML aliases"):
         convert(tool(header=header), tmp_path)
+
+
+def test_imported_files_count_towards_the_document_size(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that the YAML aliases of imported files count towards the limit."""
+    monkeypatch.setattr(cwl, "MAX_DOCUMENT_NODES", 200)
+    (tmp_path / "bomb.yml").write_text(
+        "- &a0 [1, 1, 1, 1]\n- &a1 [*a0, *a0, *a0, *a0]\n"
+        "- &a2 [*a1, *a1, *a1, *a1]\n- [*a2, *a2, *a2, *a2]\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(cwl.CwlConversionError) as info:
+        convert(tool("{a: {type: Any, default: {$import: bomb.yml}}}"), tmp_path)
+
+    assert "once YAML aliases are expanded" in flat(info.value.message)
+
+
+def test_include_of_text_that_isnt_yaml_is_read(tmp_path: Path) -> None:
+    """Test that included text that isn't valid YAML is still included."""
+    (tmp_path / "about.txt").write_text("key: [unclosed", encoding="utf-8")
+    text = tool().replace("inputs:", "doc: {$include: about.txt}\ninputs:")
+
+    assert convert(text, tmp_path).schema["description"] == "key: [unclosed"
+
+
+def test_imported_files_too_deep_to_read_fail(tmp_path: Path) -> None:
+    """Test that an imported file nested too deeply is an error."""
+    (tmp_path / "deep.yml").write_text("[" * 5000 + "]" * 5000, encoding="utf-8")
+
+    with pytest.raises(cwl.CwlConversionError) as info:
+        convert(tool("{a: {type: Any, default: {$import: deep.yml}}}"), tmp_path)
+
+    assert "Too deeply nested to read" in flat(info.value.message)
+
+
+def test_parser_recursion_is_a_syntax_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that the parser of cwl-utils running out of stack is reported."""
+
+    def deep(*args: Any) -> Any:
+        raise RecursionError
+
+    monkeypatch.setattr(cwl, "load_document_by_yaml", deep)
+
+    with pytest.raises(cwl.CwlSyntaxError, match="Too deeply nested"):
+        convert(tool(), tmp_path)
+
+
+def test_include_of_a_path_with_nul_is_not_read(tmp_path: Path) -> None:
+    """Test that a path the system can't look up is refused, not a crash."""
+    text = tool().replace("inputs:", "doc: {$include: a%00b.txt}\ninputs:")
+
+    with pytest.raises(cwl.CwlConversionError) as info:
+        convert(text, tmp_path)
+
+    assert "Not read (not a file under" in flat(info.value.message)
+
+
+def test_too_much_text_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that a conversion that would copy too much text fails."""
+    monkeypatch.setattr(cwl, "MAX_TEXT", 20)
+    header = (
+        "requirements: {SchemaDefRequirement: {types: [{name: E, type: enum, "
+        "symbols: [alpha, beta, gamma]}]}}\n"
+    )
+
+    with pytest.raises(cwl.CwlConversionError, match="characters of text"):
+        convert(tool("{a: '#E', b: '#E'}", header=header), tmp_path)
 
 
 def test_shared_values_are_counted_once_per_use(tmp_path: Path) -> None:
