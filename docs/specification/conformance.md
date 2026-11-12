@@ -49,12 +49,6 @@ roles of [Security considerations](../security.md) map to the classes: its
 **servers** are WES servers, and its **execution side** is a WES server
 together with the workflow engine that it runs.
 
-Some parts of the profile are still being specified for version 0.3: the
-bindings of input values to the parameters of each workflow engine. The
-requirements below that depend on them are marked
-*(pending)*; they name the feature, and the feature's page of the
-specification states the requirements once it is added.
-
 ### Schema document
 
 1. A schema document MUST be a JSON object that is valid against the
@@ -156,7 +150,9 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    resolve locally.
 2. A form renderer MUST let users set every input of `inputs`; it MAY show
    inputs with `"x-ga4gh-hidden": true` only on request (e.g., under
-   "Advanced").
+   "Advanced"), except that it MUST show hidden inputs that users must set
+   and hidden inputs whose values fail validation, as defined in
+   [Hidden inputs](keywords.md#hidden-inputs).
 3. A form renderer MUST meet the rules of [UI widgets](widgets.md#rules):
    (a) it MUST render an input whose `x-ga4gh-ui-widget` it doesn't know, or
    whose widget doesn't fit the input's schema (e.g., an output viewer), as
@@ -165,9 +161,12 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    defined in [Input widgets](widgets.md#input-widgets).
 4. A form renderer MUST meet the rules of
    [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)
-   for the text of a schema document. It SHOULD show the schema's
-   `x-ga4gh-error-message`, where there is one, when a value fails
-   validation.
+   for the text of a schema document, and MUST render Markdown descriptions
+   as defined in [Markdown descriptions](keywords.md#markdown-descriptions)
+   (or show them as plain text). When a value fails validation, it
+   SHOULD show the `x-ga4gh-error-message` that covers the failure, where
+   there is one, in place of the validator's message, as defined in
+   [Error messages](keywords.md#error-messages).
 5. A form renderer SHOULD NOT download data files into a browser to
    validate them (see
    [Validation of data files on the server](../security.md#validation-of-data-files-on-the-server)).
@@ -190,10 +189,22 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    access tokens or other credentials in `workflow_params`.
 4. A request builder MUST meet the rules of [Drift](identity.md#drift),
    as for form renderers, before it submits a run request.
-5. *(pending)* Translation of input values into the `workflow_params` of
-   each workflow engine (engine bindings, using `x-ga4gh-workflow` and
-   `x-ga4gh-parameter`), and the fields of the WES `RunRequest` that come
-   from TRS.
+5. A request builder MUST translate the input values into the
+   `workflow_params` of the schema document's descriptor type as defined in
+   [Engine bindings](engine-bindings.md): names from `x-ga4gh-parameter`
+   (qualified with the entry point for WDL), file values as the engine
+   takes them (CWL `File` and `Directory` objects), no `default`s inserted,
+   and colliding names rejected. It MUST reject schema documents whose
+   descriptor type has no binding (`GALAXY` in version 0.3).
+6. A request builder MUST set `workflow_type` and `workflow_type_version`
+   of the WES `RunRequest` from `x-ga4gh-workflow` (the version from TRS
+   only where the schema document has none), and `workflow_url` to a URL of
+   the workflow that the deployment accepts, with the CWL entry point as
+   its fragment (see [Run requests](engine-bindings.md#run-requests)).
+7. A request builder MUST produce the results of the
+   [test vectors](engine-bindings.md#test-vectors): the `workflow_params`
+   of every `wes-params` case, and the decision of every `file-values`
+   case.
 
 ### Output normaliser
 
@@ -244,7 +255,8 @@ document from a trusted source is available.
 3. A WES server MUST reject a request that fails validation with
    `HTTP 400 Bad Request` and the WES `ErrorResponse`, whose `msg` names the
    location of the error as a JSON Pointer relative to `workflow_params`
-   and the rule that failed, or the schema's `x-ga4gh-error-message` (see
+   and the rule that failed, or the `x-ga4gh-error-message` that covers the
+   failure (see [Error messages](keywords.md#error-messages),
    [WES](../adoption/wes.md) and
    [Error messages and logs](../security.md#error-messages-and-logs)).
 4. A WES server MUST meet all requirements for servers of
@@ -256,8 +268,11 @@ document from a trusted source is available.
 5. A WES server MUST meet the rules of [Drift](identity.md#drift): if the
    checksum of the primary descriptor doesn't match the schema document,
    it rejects the schema document or logs a warning before it uses it.
-6. *(pending)* Translation of `workflow_params` back into input values with
-   the engine bindings.
+6. A WES server MUST translate `workflow_params` back into input values with
+   the engine binding of the request's `workflow_type` before it validates
+   them, and MUST report errors at their location in `workflow_params`, as
+   defined in [From `workflow_params` back to input
+   values](engine-bindings.md#from-workflow_params-back-to-input-values).
 
 ## Conformance suite
 
@@ -287,9 +302,16 @@ tests/conformance/
   file. Error messages differ between validators and are not part of the
   suite. Files ending in `.license` hold licence information
   ([REUSE](https://reuse.software/)) and are not cases.
-- Cases for the other classes (e.g., test vectors for the engine bindings
-  and for the normalisation of outputs) are added to the suite with the
-  features they test.
+- **Test vectors** in
+  [`tests/vectors/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/tests/vectors)
+  test the class [Request builder](#request-builder): the translation of
+  input values into `workflow_params` for each descriptor type
+  (`wes-params/`), and the checks of file reference values (schemes,
+  compact DRS identifiers, paths; `file-values/`). Their format is described
+  in [Engine bindings](engine-bindings.md#test-vectors); this package runs
+  them with `tests/test_wes.py`.
+- Cases for the other classes (e.g., for the normalisation of outputs) are
+  added to the suite with the features they test.
 
 The runner of this package is `tests/test_conformance.py`; it checks every
 case against the [Python API](../tools/validator.md#python-api) of the
@@ -318,7 +340,8 @@ that they implement or plan to implement:
 | Implementation | Language | Classes | Status |
 | ----- | ----- | ----- | ----- |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Validator | Available (`ga4gh-io-schema validate`); passes the conformance suite |
-| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Producer, Request builder, Output normaliser | Planned (converters, translation to `workflow_params`, normalisation of outputs) |
+| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Request builder (translation and checks; submission is left to the caller) | Available (`ga4gh-io-schema wes-params`); passes the test vectors |
+| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Producer, Output normaliser | Planned (converters, normalisation of outputs) |
 | [ELIXIR Cloud Components](https://github.com/elixir-cloud-aai/cloud-components) | TypeScript | Form renderer, Request builder, Output normaliser | Planned |
 
 Further implementations are welcome: propose an entry for this table with a

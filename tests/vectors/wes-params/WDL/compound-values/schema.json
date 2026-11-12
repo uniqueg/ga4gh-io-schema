@@ -1,0 +1,59 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/vectors/wdl/1.0.0",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "WDL",
+    "descriptor_type_version": "1.1",
+    "entry_point": "variant_calling"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "interval": {
+          "type": "object",
+          "properties": {
+            "left": {
+              "type": "integer"
+            },
+            "right": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "left",
+            "right"
+          ],
+          "additionalProperties": false,
+          "x-ga4gh-parameter": {
+            "type": "Pair[Int,String]"
+          }
+        },
+        "references": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          },
+          "x-ga4gh-parameter": {
+            "type": "Map[String,File]"
+          }
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-ga4gh-parameter": {
+            "type": "String?"
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  }
+}

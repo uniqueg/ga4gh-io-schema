@@ -102,6 +102,7 @@ nav:
       - File references: specification/files.md
       - UI widgets: specification/widgets.md
       - Identity and engine binding: specification/identity.md
+      - Engine bindings: specification/engine-bindings.md
       - Outputs: specification/outputs.md
       - Meta-schema: specification/meta-schema.md
       - Conformance: specification/conformance.md
@@ -116,6 +117,7 @@ nav:
       - Converters: tools/converters.md
       - Snakemake converter: tools/convert-snakemake.md
       - WDL converter: tools/convert-wdl.md
+      - WES parameters: tools/wes-params.md
   - Adoption:
       - adoption/index.md
       - TRS: adoption/trs.md

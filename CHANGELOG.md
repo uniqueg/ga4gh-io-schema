@@ -133,8 +133,32 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A language-neutral conformance suite in `tests/conformance/` (the
   positive and negative schema documents of the tests, moved from
   `tests/data/`), with a runner for this package. (#14)
+- Markdown descriptions (`"x-ga4gh-description-format": "markdown"`) are
+  CommonMark 0.31.2, with raw HTML shown as text, images shown as their alt
+  text and not loaded, and links only with allowed schemes; of the GitHub
+  Flavored Markdown extensions, only tables, strikethrough and autolinks are
+  allowed. (#41)
 - Versioning policy and governance note, and this changelog in the
   documentation, with the history of versions 0.1 and 0.2. (#14)
+- Rules for `x-ga4gh-hidden` and `x-ga4gh-error-message`: form renderers
+  show hidden inputs that users must set (required, no default) and hidden
+  inputs whose values fail; an error message covers the failures at the
+  location of the value that its schema describes, not those of nested
+  values, replaces the validator's message, and the outermost message wins
+  where several apply. (#40)
+- Engine bindings: how input values become the `workflow_params` of a WES
+  run request for `NFL`, `SMK`, `WDL` and `CWL` (names from
+  `x-ga4gh-parameter`, WDL names qualified with the entry point, CWL `File`
+  and `Directory` objects, no defaults inserted), which `RunRequest` fields
+  come from TRS, and how servers translate `workflow_params` back; requirements
+  for request builders and WES servers on the conformance page; a guide for
+  WES clients and servers. (#18)
+- The subcommand `ga4gh-io-schema wes-params` and the module
+  `ga4gh_io_schema.wes`: validate input values against `inputs`, check file
+  reference values against the rules and the deployment's allow-list, and
+  write `workflow_params` or, with `--request`, a WES `RunRequest`. (#18)
+- Language-neutral test vectors in `tests/vectors/` for the translation
+  (`wes-params/`) and for file reference values (`file-values/`). (#18)
 
 ## v0.2 (2026-10-13)
 

@@ -18,6 +18,9 @@ described in [Notational conventions](conformance.md#notational-conventions).
 - [Identity and engine binding](identity.md): how a schema names the
   workflow version and engine it describes, how clients detect drift, and
   how parameters bind to the engine's parameters.
+- [Engine bindings](engine-bindings.md): how input values become the
+  `workflow_params` of a WES run request for each descriptor type, which
+  fields of the request come from TRS, and the test vectors.
 - [Outputs](outputs.md): the outputs schema, the shapes of output values,
   and how clients find the outputs of a run in what a WES server returns.
 - [Meta-schema](meta-schema.md): the meta-schema and vocabularies that
