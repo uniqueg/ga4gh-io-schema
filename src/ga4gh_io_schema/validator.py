@@ -12,13 +12,15 @@ from pathlib import Path
 from typing import Any
 
 import jsonschema
+from jsonschema.protocols import Validator
 from jsonschema.validators import validator_for
 from referencing import Registry, Resource
+from referencing.exceptions import Unresolvable
 
 #: Schemas shipped inside the installed package (see ``pyproject.toml``).
-PACKAGE_SCHEMAS_DIR = Path(__file__).resolve().parent / "schemas"
+_PACKAGE_SCHEMAS_DIR = Path(__file__).resolve().parent / "schemas"
 #: Schemas of a source checkout, used by editable installs.
-CHECKOUT_SCHEMAS_DIR = Path(__file__).resolve().parents[2] / "schemas"
+_CHECKOUT_SCHEMAS_DIR = Path(__file__).resolve().parents[2] / "schemas"
 
 
 def get_schemas_dir() -> Path:
@@ -31,9 +33,9 @@ def get_schemas_dir() -> Path:
     Returns:
         The directory that contains the meta-schema and its vocabularies.
     """
-    if PACKAGE_SCHEMAS_DIR.is_dir():
-        return PACKAGE_SCHEMAS_DIR
-    return CHECKOUT_SCHEMAS_DIR
+    if _PACKAGE_SCHEMAS_DIR.is_dir():
+        return _PACKAGE_SCHEMAS_DIR
+    return _CHECKOUT_SCHEMAS_DIR
 
 
 def load_json(file_path: Path | str) -> dict[str, Any]:
@@ -93,7 +95,8 @@ def validate_schema(
     If meta_schema is explicitly provided, it forces validation against it.
     Otherwise, the meta-schema is inferred from the target schema's '$schema' property.
     Local vocabulary and extension references are resolved automatically.
-    ``format`` keywords of the meta-schema (e.g. ``uri``) are enforced.
+    ``format`` keywords of the meta-schema (e.g. ``uri``) are enforced, except
+    ``regex``, because Python can't parse all ECMA-262 patterns.
 
     Args:
         target_schema: The JSON schema of the workflow or tool to validate.
@@ -128,6 +131,32 @@ def validate_schema(
     validator = validator_cls(
         meta_schema_instance,
         registry=registry,
-        format_checker=validator_cls.FORMAT_CHECKER,
+        format_checker=_format_checker(validator_cls),
     )
-    validator.validate(target_schema)
+    try:
+        validator.validate(target_schema)
+    except Unresolvable as exc:
+        raise jsonschema.exceptions.ValidationError(
+            f"Unknown meta-schema or reference '{exc.ref}': name a meta-schema that "
+            "the package ships (with its versioned '$id') in '$schema', or pass "
+            "--meta-schema."
+        ) from exc
+
+
+def _format_checker(validator_cls: type[Validator]) -> jsonschema.FormatChecker:
+    r"""Return the format checker of a validator class, without ``regex``.
+
+    JSON Schema patterns are ECMA-262 regular expressions, which Python's
+    ``re`` module, used by the ``regex`` format check, can't always parse
+    (e.g. ``\p{L}``).
+
+    Args:
+        validator_cls: The validator class whose format checks to use.
+
+    Returns:
+        A format checker for every format of the class except ``regex``.
+    """
+    formats = [
+        name for name in validator_cls.FORMAT_CHECKER.checkers if name != "regex"
+    ]
+    return jsonschema.FormatChecker(formats=formats)

@@ -63,6 +63,9 @@ packages = ["src/ga4gh_io_schema"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v"
+markers = [
+    "wheel: builds and installs the wheel (needs network access)",
+]
 
 [tool.ruff]
 line-length = 88

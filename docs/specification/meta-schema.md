@@ -12,9 +12,11 @@ The [validator](../tools/validator.md) checks schemas against them.
 
 ## Referencing the meta-schema
 
-Inside your own drafted schemas, you can reference the meta-schema directly to enable IDE autocompletion and validation. The identifier is
-versioned: it names a release of the profile, not a moving branch. Replace the
-`$id` of the example with an identifier of your own.
+Inside your own drafted schemas, you can reference the meta-schema directly to
+enable IDE autocompletion and validation. The identifier is versioned: it names
+a release of the profile, not a moving branch. Use the tag of the profile
+release that you target, and replace the `$id` of the example with an
+identifier of your own.
 
 ```json
 {

@@ -93,3 +93,25 @@ def test_validate_schema_checks_formats() -> None:
     )
     with pytest.raises(jsonschema.exceptions.ValidationError, match="is not a 'uri'"):
         validate_schema({"x-ga4gh-ontology": "not a uri"}, meta_schema)
+
+
+def test_validate_schema_accepts_ecma_regex_patterns() -> None:
+    """Test that ECMA-262 patterns that Python's ``re`` can't parse pass."""
+    meta_schema: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {"pattern": {"type": "string", "format": "regex"}},
+    }
+
+    validate_schema({"pattern": "^\\p{L}+$"}, meta_schema)
+
+
+def test_validate_schema_reports_unknown_meta_schema() -> None:
+    """Test that an unknown ``$schema`` URL gives a clear validation error."""
+    target_schema: dict[str, Any] = {
+        "$schema": "https://example.org/schemas/unknown-meta-schema.json"
+    }
+
+    with pytest.raises(
+        jsonschema.exceptions.ValidationError, match="Unknown meta-schema"
+    ):
+        validate_schema(target_schema)

@@ -45,7 +45,14 @@ with status 1 and an error message otherwise.
 The validator checks the `format` keywords of the meta-schema, for example
 that `$id` is a URI reference and that `x-ga4gh-ontology` is a URI. It uses
 the `format-nongpl` extra of `jsonschema`, which avoids GPL-licensed
-dependencies.
+dependencies. It doesn't check the `regex` format of `pattern` keywords,
+because patterns are ECMA-262 regular expressions, which Python can't always
+parse (e.g., `\p{L}`).
+
+A `$schema` that the package doesn't ship, for example the earlier
+unversioned URL with `main` in its path, is reported as an unknown
+meta-schema; use the versioned URL (see [Referencing the
+meta-schema](../specification/meta-schema.md#referencing-the-meta-schema)).
 
 These checks apply to the IO schema itself, not to the input values that a
 WES request sends later. If a client also checks those values against

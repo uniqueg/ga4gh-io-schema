@@ -5,7 +5,8 @@
 """Tests for the packaging, schema identifiers and documentation of the project."""
 
 import re
-import tomllib
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -32,8 +33,8 @@ def test_get_schemas_dir_prefers_package_dir(
     """
     package_dir = tmp_path / "package"
     package_dir.mkdir()
-    monkeypatch.setattr(validator, "PACKAGE_SCHEMAS_DIR", package_dir)
-    monkeypatch.setattr(validator, "CHECKOUT_SCHEMAS_DIR", tmp_path / "checkout")
+    monkeypatch.setattr(validator, "_PACKAGE_SCHEMAS_DIR", package_dir)
+    monkeypatch.setattr(validator, "_CHECKOUT_SCHEMAS_DIR", tmp_path / "checkout")
 
     assert get_schemas_dir() == package_dir
 
@@ -47,27 +48,29 @@ def test_get_schemas_dir_falls_back_to_checkout(
         tmp_path: Pytest fixture providing a temporary directory.
         monkeypatch: Pytest fixture for patching module attributes.
     """
-    monkeypatch.setattr(validator, "PACKAGE_SCHEMAS_DIR", tmp_path / "missing")
+    monkeypatch.setattr(validator, "_PACKAGE_SCHEMAS_DIR", tmp_path / "missing")
 
     assert get_schemas_dir() == SCHEMAS_DIR
 
 
-def test_pyproject_ships_schemas_in_wheel() -> None:
-    """Test that the wheel maps the repository schemas into the package."""
-    with (REPO_ROOT / "pyproject.toml").open("rb") as file:
-        pyproject = tomllib.load(file)
+def test_schema_ids_share_one_release_tag() -> None:
+    """Test that all schema URLs name the same release tag, not a branch.
 
-    force_include = pyproject["tool"]["hatch"]["build"]["targets"]["wheel"][
-        "force-include"
-    ]
-    assert force_include == {"schemas": "ga4gh_io_schema/schemas"}
-
-
-def test_meta_schema_ids_are_versioned() -> None:
-    """Test that no schema identifier points to a moving branch."""
-    for path in SCHEMAS_DIR.rglob("*.json"):
+    The tag must be bumped in every file at once for a new profile release
+    (see the release notes in ``docs/development.md``).
+    """
+    tags = set()
+    meta_schema_doc = REPO_ROOT / "docs" / "specification" / "meta-schema.md"
+    for path in [*SCHEMAS_DIR.rglob("*.json"), *DATA_DIR.glob("*.json")]:
         text = path.read_text(encoding="utf-8")
         assert "/main/" not in text, path
+        tags.update(re.findall(r"/ga4gh-io-schema/([^/]+)/schemas/", text))
+    doc_text = meta_schema_doc.read_text(encoding="utf-8")
+    tags.update(
+        re.findall(r'"\$schema": ".*?/ga4gh-io-schema/([^/]+)/schemas/', doc_text)
+    )
+    assert len(tags) == 1, tags
+    assert re.fullmatch(r"v\d+\.\d+\.\d+", tags.pop())
 
 
 def test_examples_reference_the_meta_schema() -> None:
@@ -91,7 +94,13 @@ def test_readme_relative_links_resolve() -> None:
 
 def test_docs_use_existing_cli_options() -> None:
     """Test that the documented CLI calls only use options the CLI defines."""
-    cli = (REPO_ROOT / "src" / "ga4gh_io_schema" / "cli.py").read_text(encoding="utf-8")
+    cli_help = subprocess.run(
+        [sys.executable, "-m", "ga4gh_io_schema.cli", "--help"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    defined = set(re.findall(r"(?<![\w-])(--?[a-z][a-z-]*)", cli_help))
     usage = [
         line
         for doc in USAGE_DOCS
@@ -101,11 +110,14 @@ def test_docs_use_existing_cli_options() -> None:
     assert usage
     for line in usage:
         for option in re.findall(r"(?<!\S)(--?[a-z][a-z-]*)", line):
-            assert f'"{option}"' in cli, option
+            assert option in defined, option
 
 
 def test_readme_licence_matches_reuse_metadata() -> None:
-    """Test that the README states the licence its own header declares."""
+    """Test that the README states the licence its own header declares.
+
+    ``reuse lint`` checks the headers but not the prose that describes them.
+    """
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     # Split the tag so that REUSE doesn't read this line as a licence header.
     header = re.search(r"SPDX-" r"License-Identifier: (\S+)", readme)

@@ -111,6 +111,8 @@ jobs:
       - name: Build documentation
         run: mkdocs build --strict
 
+  # The only required check: fails unless every job succeeded (a skipped or
+  # cancelled job fails it too).
   passed:
     name: CI passed
     needs: [lint, test, docs]
