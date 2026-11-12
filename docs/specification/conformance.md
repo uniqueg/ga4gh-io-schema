@@ -50,8 +50,7 @@ roles of [Security considerations](../security.md) map to the classes: its
 together with the workflow engine that it runs.
 
 Some parts of the profile are still being specified for version 0.3: the
-identity of the workflow that a schema document describes,
-the bindings of input values to the parameters of each workflow engine, and
+bindings of input values to the parameters of each workflow engine, and
 the model of outputs. The requirements below that depend on them are marked
 *(pending)*; they name the feature, and the feature's page of the
 specification states the requirements once it is added.
@@ -80,8 +79,16 @@ specification states the requirements once it is added.
    [Regular expressions and size limits](../security.md#regular-expressions-and-size-limits).
 4. A schema document MUST meet the requirements of
    [File references](files.md) for every file reference.
-5. *(pending)* Requirements on the identity of the workflow, and on
-   outputs.
+5. A schema document MUST meet the requirements of
+   [Identity and engine binding](identity.md) for its `$id`
+   ([Identifiers and versions](identity.md#identifiers-and-versions)), its
+   `x-ga4gh-workflow` ([The workflow block](identity.md#the-workflow-block))
+   and its `x-ga4gh-parameter` bindings
+   ([Parameter bindings](identity.md#parameter-bindings)). A schema
+   document published in a TRS SHOULD carry `trs_tool_id`,
+   `trs_version_id`, `primary_descriptor_path` and at least one
+   `checksum`.
+6. *(pending)* Requirements on outputs.
 
 ### Validator
 
@@ -125,8 +132,12 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    WDL `File`, nf-schema `format: file-path`) to file references as
    described in
    [Mapping to workflow languages](files.md#mapping-to-workflow-languages).
-4. *(pending)* Mapping of the source's workflow and entry point to the
-   identity of the workflow.
+4. A producer SHOULD fill `x-ga4gh-workflow` from its source (the
+   descriptor type, the entry point where the descriptor type needs one,
+   and, where known, the TRS identifiers and the checksum of the primary
+   descriptor), and SHOULD add `x-ga4gh-parameter` where the name or type
+   of an engine parameter isn't clear from the property (see
+   [Identity and engine binding](identity.md)).
 
 ### Form renderer
 
@@ -147,6 +158,10 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
 5. A form renderer SHOULD NOT download data files into a browser to
    validate them (see
    [Validation of data files on the server](../security.md#validation-of-data-files-on-the-server)).
+6. A form renderer MUST meet the rules of [Drift](identity.md#drift) and
+   of [The workflow block](identity.md#the-workflow-block) for a schema
+   document fetched for a tool version: it MUST NOT use a schema document
+   silently whose checksum or TRS identifiers don't match the workflow.
 
 ### Request builder
 
@@ -160,9 +175,12 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    [Access to data](../security.md#access-to-data) for clients: it SHOULD
    submit DRS objects as `drs://` identifiers, and MUST NOT put signed URLs,
    access tokens or other credentials in `workflow_params`.
-4. *(pending)* Translation of input values into the `workflow_params` of
-   each workflow engine (engine bindings), and the fields of the WES
-   `RunRequest` that come from TRS.
+4. A request builder MUST meet the rules of [Drift](identity.md#drift),
+   as for form renderers, before it submits a run request.
+5. *(pending)* Translation of input values into the `workflow_params` of
+   each workflow engine (engine bindings, using `x-ga4gh-workflow` and
+   `x-ga4gh-parameter`), and the fields of the WES `RunRequest` that come
+   from TRS.
 
 ### Output normaliser
 
@@ -203,9 +221,11 @@ document from a trusted source is available.
    validation of data files), and its execution side the requirements for
    staging data (hosts of file references,
    [Access to data](../security.md#access-to-data)).
-5. *(pending)* Translation of `workflow_params` back into input values with
-   the engine bindings, and the check of a schema document against the
-   identity of the workflow that it describes.
+5. A WES server MUST meet the rules of [Drift](identity.md#drift): if the
+   checksum of the primary descriptor doesn't match the schema document,
+   it rejects the schema document or logs a warning before it uses it.
+6. *(pending)* Translation of `workflow_params` back into input values with
+   the engine bindings.
 
 ## Conformance suite
 

@@ -19,7 +19,7 @@ Validation in the client catches mistakes before a run starts, which saves time 
 A schema decides what a server accepts and which addresses a validator may look up, so it has to come from a source that the deployment trusts.
 
 - Servers MUST use only IO schemas from trusted sources: the TRS entry of the workflow (see [TRS](adoption/trs.md)) in a registry that the deployment trusts, or a schema bundled with the deployment.
-- Servers MUST NOT accept IO schemas supplied by clients in a run request. Earlier versions of this proposal let servers use schemas that came with the request; version 0.3 removes that (see [#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17)).
+- Servers MUST NOT accept IO schemas supplied by clients in a run request. Earlier versions of this proposal let servers use schemas that came with the request; version 0.3 removes that (see [Roadmap](roadmap.md#cut) and [#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17)).
 - Servers MUST NOT retrieve any reference (`$ref` or `$dynamicRef`) over the network while validating, whatever the base URI (`$id`) of the schema. Network lookups would make the server send requests to addresses chosen by the schema's author, including internal addresses such as `169.254.169.254` (the metadata service of many cloud providers) or services behind the firewall; a valid URI is not a safe address.
 - A schema with a reference that the server can't resolve from its local copies is invalid. Servers MUST NOT validate requests against it, not even partially, and MUST NOT pass requests for that workflow to the engine unchecked: they reject them (fail closed) with a message that names the problem with the schema, and SHOULD report it to the operators of the deployment.
 - IO schemas MUST be bundled: all references are local (`#/$defs/…`) or point to the profile's meta-schema and vocabularies. Validators MUST load the meta-schema and vocabularies from local copies (as the [validator](tools/validator.md) does), not from the network.
@@ -57,12 +57,12 @@ Text in an IO schema comes from the author of the workflow, and outputs come fro
 
 The viewers below are values of `x-ga4gh-ui-widget` on outputs, from the profile's vocabulary of UI widgets (see [Meta-schema](specification/meta-schema.md)). The rules apply by content: they also apply to HTML, Markdown or tabular outputs without a widget hint.
 
-- **Text:** Clients MUST show `title`, `description`, enumeration values and `x-ga4gh-error-message` as text. If `x-ga4gh-description-format` is `markdown`, clients MUST render the Markdown with a sanitiser that removes raw HTML, scripts and event handlers, and that allows only links with schemes on the allow-list; images and other embedded resources are removed, or loaded only from origins that the client allows or through a proxy of the client. Descriptions in any other format, including `rst` (removed by [#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17) in version 0.3; reStructuredText has directives that embed raw HTML or include files), MUST be shown as plain text. Raw HTML in descriptions MUST NOT reach the page, whatever the format.
+- **Text:** Clients MUST show `title`, `description`, enumeration values and `x-ga4gh-error-message` as text. If `x-ga4gh-description-format` is `markdown`, clients MUST render the Markdown with a sanitiser that removes raw HTML, scripts and event handlers, and that allows only links with schemes on the allow-list; images and other embedded resources are removed, or loaded only from origins that the client allows or through a proxy of the client. Descriptions in any other format, including `rst` (removed in version 0.3, see [Roadmap](roadmap.md#cut); reStructuredText has directives that embed raw HTML or include files), MUST be shown as plain text. Raw HTML in descriptions MUST NOT reach the page, whatever the format.
 - **Links:** Clients MUST check every link, in descriptions and outputs, against the allow-list of schemes before showing it. Clients MUST NOT link directly to outputs that they don't show in a viewer: the stored file may have active content (e.g., HTML, SVG or PDF) whatever its name, and would open unsandboxed on the origin of the storage. They offer such outputs for download, through a proxy that sets `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`, or with a download link that makes the storage set them (e.g., the `response-content-disposition` parameter of a presigned URL).
 - **HTML outputs (`html-viewer`):** Clients MUST show HTML outputs only in an `iframe` with an empty `sandbox` attribute (no tokens: no scripts, forms, pop-ups or navigation of the top window; this also gives the frame an opaque origin), and with a Content Security Policy (sent with the document, or, for `srcdoc`, as a `<meta>` element placed before the untrusted markup) that blocks loading of external resources (e.g., `default-src 'none'; img-src data:; style-src 'unsafe-inline'`). Otherwise, they offer them for download only. HTML outputs are often built from files supplied by users (e.g., labels from a sample sheet), so a report from a trusted workflow can still contain markup from users, and external images or styles would tell a third party when and from where a report was viewed.
 - **Tables (`table-viewer`):** Clients MUST escape the cells of tables.
 
-Version 0.3 supports only download, tables and sandboxed HTML; the other viewers of the vocabulary (`markdown-viewer`, `pdf-viewer`, `genome-browser`, `scatter-plot`) are deferred (see [#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17)). Clients offer outputs with deferred or unknown viewers for download only, as for links to active content above.
+Version 0.3 supports only download, tables and sandboxed HTML; the other viewers of earlier versions (`markdown-viewer`, `pdf-viewer`, `genome-browser`, `scatter-plot`) are removed from the vocabulary and deferred (see [Roadmap](roadmap.md#deferred)). Clients offer outputs with deferred or unknown viewers for download only, as for links to active content above.
 
 ## Access to data
 
@@ -79,7 +79,7 @@ This replaces the flow of earlier versions, in which the client resolved DRS ide
 
 ## Secrets
 
-- Workflow parameters are not a channel for secrets: schemas MUST NOT define inputs for passwords, API keys, tokens or other credentials. Schemas MUST NOT use the `password` value of `x-ga4gh-ui-widget`, which [#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17) removes from the vocabulary in version 0.3.
+- Workflow parameters are not a channel for secrets: schemas MUST NOT define inputs for passwords, API keys, tokens or other credentials. Version 0.3 removed the `password` value of `x-ga4gh-ui-widget` from the vocabulary (see [Roadmap](roadmap.md#cut)), so the meta-schema rejects it; the rule also covers inputs that the meta-schema can't recognise as secrets, e.g., a `custom:` widget or `"format": "password"`.
 - Credentials that a workflow needs are provided by the deployment (e.g., a secret store of the execution side, or delegated tokens), never by the request.
 
 ## Error messages and logs
@@ -92,7 +92,7 @@ Validation errors and logs reach people and systems that may not be allowed to s
 
 ## Validation of data files on the server
 
-The profile's checks apply to `workflow_params`. Checking the contents of files that the request refers to, such as the rows of a sample sheet described by `x-ga4gh-tabular-schema`, is OPTIONAL, and validation of tabular files is deferred in version 0.3 (see [#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17)).
+The profile's checks apply to `workflow_params`. Checking the contents of files that the request refers to, such as the rows of a sample sheet described by `x-ga4gh-tabular-schema`, is OPTIONAL, and validation of tabular files is deferred in version 0.3 (see [Roadmap](roadmap.md#deferred)).
 
 A server that reads data files to validate them becomes a data accessor:
 

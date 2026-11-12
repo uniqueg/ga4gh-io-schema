@@ -85,6 +85,7 @@ jobs:
             ga4gh-io-schema validate "$schema"
           done
           ga4gh-io-schema validate tests/data/example_workflow.schema.json
+          ga4gh-io-schema validate tests/data/example_wdl.schema.json
           ga4gh-io-schema validate - < tests/data/example_tool.schema.json
 
       # Each bad schema must fail with exit code 1 and a validation error, not

@@ -66,7 +66,11 @@ Keywords live in one vocabulary file per keyword group in
 
 1. Add the keyword to the `properties` of its vocabulary file, or create a new
    file (with a versioned `$id`, like the others) and add a `$ref` to it to the
-   `allOf` of `$defs/node` in `schemas/ga4gh-io-profile.schema.json`.
+   `allOf` of `$defs/node/$defs/keywords` in
+   `schemas/ga4gh-io-profile.schema.json`. A keyword that is allowed only at
+   the top level (like `x-ga4gh-workflow`) goes into
+   `vocabularies/workflow.schema.json`, which the `allOf` of the top level
+   references.
    A keyword whose value is a schema (like `x-ga4gh-tabular-schema`) uses
    `"$dynamicRef": "#meta"`, and its vocabulary file declares
    `"$dynamicAnchor": "meta"` at its root, so that the nested schema is
