@@ -44,8 +44,13 @@ Keywords live in one vocabulary file per keyword group in
 1. Add the keyword to the `properties` of its vocabulary file, or create a new
    file (with a versioned `$id`, like the others) and add a `$ref` to it to the
    `allOf` of `$defs/node` in `schemas/ga4gh-io-profile.schema.json`.
+   A keyword whose value is a schema (like `x-ga4gh-tabular-schema`) uses
+   `"$dynamicRef": "#meta"`, and its vocabulary file declares
+   `"$dynamicAnchor": "meta"` at its root, so that the nested schema is
+   checked by all rules of the profile (see `vocabularies/file.schema.json`).
 2. Add one bad schema per new rule to `tests/data/invalid/` and its expected
-   message to `INVALID` in `tests/test_cli.py`.
+   message to `INVALID` in `tests/test_cli.py`; for a schema-valued keyword,
+   include a bad schema nested in it.
 3. Document the keyword in `docs/specification/keywords.md` and in the table
    in `docs/specification/meta-schema.md`.
 

@@ -59,7 +59,7 @@ The rules combine one vocabulary file per keyword group:
 | Keyword | Value | Vocabulary |
 | ----- | ----- | ----- |
 | `x-ga4gh-ontology` | string, a URI | `annotations` |
-| `x-ga4gh-ui-widget` | a widget of the [vocabulary](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json), or `custom:<name>` | `annotations` |
+| `x-ga4gh-ui-widget` | a widget of the [vocabulary](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json), or `custom:<name>` (lowercase letters, digits and hyphens) | `annotations` |
 | `x-ga4gh-fa-icon` | string | `annotations` |
 | `x-ga4gh-description-format` | `plain_text`, `markdown` or `rst` | `annotations` |
 | `x-ga4gh-hidden` | boolean | `annotations` |

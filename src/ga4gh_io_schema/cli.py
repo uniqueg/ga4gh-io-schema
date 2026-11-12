@@ -52,6 +52,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         if args.meta_schema:
             meta_schema = load_json(args.meta_schema)
             schema_dir = args.meta_schema.parent
+            if not isinstance(meta_schema, (dict, bool)):
+                raise jsonschema.exceptions.SchemaError(
+                    "The meta-schema must be a JSON object or a boolean."
+                )
 
         validate_schema(
             target_schema=target_schema, meta_schema=meta_schema, schema_dir=schema_dir

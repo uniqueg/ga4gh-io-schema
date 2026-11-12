@@ -288,3 +288,22 @@ def test_cli_omits_location_of_top_level_errors(
         main([str(DATA_DIR / "invalid" / "missing-schema.schema.json")])
 
     assert "(at $)" not in capsys.readouterr().err
+
+
+def test_cli_rejects_meta_schema_that_is_no_schema(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a meta-schema file holding e.g. ``null`` is reported.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    meta_schema = tmp_path / "null.json"
+    meta_schema.write_text("null", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as exc_info:
+        main([str(DATA_DIR / "valid.schema.json"), "-m", str(meta_schema)])
+
+    assert exc_info.value.code == 1
+    assert "Meta-schema Error: The meta-schema must be" in capsys.readouterr().err

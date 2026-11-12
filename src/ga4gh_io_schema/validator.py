@@ -80,7 +80,7 @@ def build_registry(search_dirs: list[Path]) -> Registry:
             try:
                 with path.open("r", encoding="utf-8") as f:
                     data = json.load(f)
-                if isinstance(data, dict) and "$id" in data:
+                if isinstance(data, dict) and isinstance(data.get("$id"), str):
                     resource = Resource.from_contents(
                         data, default_specification=DRAFT202012
                     )
@@ -94,7 +94,7 @@ def build_registry(search_dirs: list[Path]) -> Registry:
 
 def validate_schema(
     target_schema: dict[str, Any],
-    meta_schema: dict[str, Any] | None = None,
+    meta_schema: dict[str, Any] | bool | None = None,
     schema_dir: Path | None = None,
 ) -> None:
     """Validate a tool or workflow IO schema against a meta-schema.

@@ -194,6 +194,7 @@ def test_build_registry_skips_unusable_files(tmp_path: Path) -> None:
     (tmp_path / "broken.json").write_text("{not json", encoding="utf-8")
     (tmp_path / "no-id.json").write_text('{"type": "string"}', encoding="utf-8")
     (tmp_path / "list.json").write_text("[]", encoding="utf-8")
+    (tmp_path / "int-id.json").write_text('{"$id": 5}', encoding="utf-8")
     (tmp_path / "ok.json").write_text(
         '{"$id": "https://example.org/schemas/ok", "type": "string"}',
         encoding="utf-8",
@@ -206,4 +207,4 @@ def test_build_registry_skips_unusable_files(tmp_path: Path) -> None:
 
 def test_validate_schema_accepts_boolean_meta_schema() -> None:
     """Test that a boolean meta-schema (valid JSON Schema) is supported."""
-    validate_schema({}, True)  # type: ignore[arg-type]
+    validate_schema({}, True)
