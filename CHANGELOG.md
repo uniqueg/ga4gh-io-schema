@@ -78,6 +78,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`--out-file`, `--out-files`, `--out-dir`), the engine binding
   (`descriptor_type` `SMK`), and notes on every decision to check; YAML
   needs the new `snakemake` extra. (#20)
+- `ga4gh-io-schema convert wdl` converts the inputs and outputs of a WDL
+  1.0, 1.1 or 1.2 workflow or task to an IO schema: WDL types (files as file
+  references), literal defaults, common `parameter_meta` keys, nested
+  inputs of calls, outputs (as the outputs model requires: required unless
+  optional, no `null` outputs or list items), and the engine binding
+  (`x-ga4gh-workflow` with the entry point and checksum,
+  `x-ga4gh-parameter` with the WDL type); it needs the new `wdl` extra
+  (miniwdl). (#22)
 - An outputs model: the shapes of output values (files, lists, files keyed
   by sample, records, scalars; absent, never `null`, if not produced), the
   normalised outputs object that clients consume, how outputs are found in
