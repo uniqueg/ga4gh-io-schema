@@ -45,9 +45,11 @@ Options:
 - `--import-path DIR` (`-p`, repeatable): a directory to search imports in
   and to read them from (see [Imports](#imports)).
 
-A document that doesn't parse or type-check fails with exit status 1 and the
-position of the first error; the full [exit status](cli.md#exit-status)
-table applies.
+A document that doesn't parse or type-check, has an unsupported version
+or an import that isn't allowed, or can't be converted fails with exit
+status 1 and the position of the first error; a document or an import that
+can't be read (not found, not UTF-8) fails with exit status 3 (see [Exit
+status](cli.md#exit-status)).
 
 ## Mapping
 
@@ -134,12 +136,15 @@ the `--import-path` directories:
 - an import outside them (e.g., `../tasks/align.wdl`, or an absolute path)
   fails until its directory, or a directory above it, is given with
   `--import-path` (e.g., the root of the repository);
+- `file://` imports are local files, with the same rule;
 - remote imports (`https://…`) fail: the converter doesn't fetch URLs, so a
   registry can run it on documents that it doesn't trust; download them and
   import them from local files.
 
 A document from standard input (`-`) resolves its relative imports against
-the current directory.
+the current directory, which is then the directory that imports may be read
+from (besides the `--import-path` directories): run the converter in the
+directory of the document, not, e.g., in `/`.
 
 ## Limits
 

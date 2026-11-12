@@ -488,6 +488,17 @@ def test_absolute_imports_are_checked(tmp_path: Path) -> None:
             _convert(path)
 
 
+def test_file_uri_imports_inside_the_directory(tmp_path: Path) -> None:
+    """Test that ``file://`` imports below the document's directory work."""
+    task = _write(tmp_path, "version 1.0\ntask t {\n  command <<< >>>\n}\n", "t.wdl")
+    path = _write(
+        tmp_path,
+        f'version 1.0\nimport "file://{task}"\nworkflow w {{\n  call t.t\n}}\n',
+    )
+
+    assert _convert(path).schema["title"] == "w"
+
+
 def test_remote_imports_are_rejected(tmp_path: Path) -> None:
     """Test that the converter doesn't fetch remote imports."""
     path = _write(
@@ -563,7 +574,8 @@ def test_missing_miniwdl(monkeypatch: pytest.MonkeyPatch) -> None:
         wdl.miniwdl()
 
 
-# Types that WDL doesn't allow in inputs, built directly
+# Types that miniwdl rejects in inputs and outputs before the converter sees
+# them (e.g., Map keys that don't coerce to and from String), built directly
 
 
 def _converter() -> Any:
@@ -682,6 +694,11 @@ def test_cli_standard_input(
     ("arguments", "status", "message"),
     [
         (["missing.wdl"], 3, "Error: File not found"),
+        (
+            [str(WDL_DIR / "imports-missing.wdl")],
+            3,
+            "Error: Failed to import missing/t.wdl: file not found",
+        ),
         (["--task", "nope", str(QC)], 1, "Validation Error: The document has no task"),
     ],
 )
@@ -755,6 +772,9 @@ def test_docs_use_existing_options() -> None:
     for line in calls:
         for option in re.findall(r"(?<!\S)(--?[a-z][a-z-]*)", line):
             assert option in defined, option
+    listed = re.findall(r"^- `(--?[a-z][a-z-]*)", page.read_text("utf-8"), re.M)
+    assert set(listed) == {"--task", "--nested-inputs", "--import-path"}
+    assert set(listed) <= defined
 
 
 def test_struct_without_required_members(tmp_path: Path) -> None:

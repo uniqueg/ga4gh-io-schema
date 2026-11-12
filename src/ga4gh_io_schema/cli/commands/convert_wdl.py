@@ -94,6 +94,8 @@ class WdlCommand(Command):
             )
         except wdl.MissingDependencyError as exc:
             raise CliError(ErrorKind.IO, str(exc)) from exc
+        except wdl.ImportReadError as exc:
+            raise CliError(ErrorKind.IO, exc.message) from exc
         except wdl.SourceError as exc:
             raise CliError(ErrorKind.VALIDATION, exc.message) from exc
         except wdl.ConversionError as exc:

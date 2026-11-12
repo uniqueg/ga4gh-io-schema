@@ -73,6 +73,10 @@ class SourceError(ValueError):
         self.message = message
 
 
+class ImportReadError(SourceError):
+    """An import of a WDL document can't be read: not found, or not UTF-8."""
+
+
 class ConversionError(ValueError):
     """A WDL document can't be converted, as it is or with the given options.
 
@@ -250,7 +254,7 @@ def load_document(
             uri, path=[str(path) for path in import_paths], read_source=read_source
         )
     except wdl.Error.ImportError as exc:
-        raise SourceError(_import_error(exc)) from exc
+        raise _import_error(exc) from exc
     except wdl.Error.SyntaxError as exc:
         raise SourceError(f"WDL syntax error{_position(exc.pos)}: {exc}") from exc
     except wdl.Error.ValidationError as exc:
@@ -282,26 +286,27 @@ def _position(pos: Any) -> str:
     return f" in {pos.uri} at line {pos.line}, column {pos.column}"
 
 
-def _import_error(exc: BaseException) -> str:
+def _import_error(exc: BaseException) -> SourceError:
     """Describe a failed import, with the innermost cause.
 
     Args:
         exc: The ``WDL.Error.ImportError``, which may wrap others.
 
     Returns:
-        The message of the innermost error that explains the failure.
+        An :class:`ImportReadError` if the import can't be read, else a
+        :class:`SourceError`, with the message of the innermost error.
     """
     cause: BaseException = exc
     while cause.__cause__ is not None:
         cause = cause.__cause__
     if isinstance(cause, SourceError):
-        return cause.message
+        return cause
     if isinstance(cause, FileNotFoundError):
-        return f"{exc}: file not found"
+        return ImportReadError(f"{exc}: file not found")
     if isinstance(cause, UnicodeDecodeError):
-        return f"{exc}: not UTF-8 text"
+        return ImportReadError(f"{exc}: not UTF-8 text")
     # A syntax or type error of the imported document
-    return f"{exc}: {cause}"
+    return SourceError(f"{exc}: {cause}")
 
 
 def descriptor_checksum(text: str) -> str:
