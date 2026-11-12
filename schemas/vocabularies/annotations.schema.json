@@ -13,16 +13,11 @@
       "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/ui-widgets.schema.json",
       "description": "Hint for UI clients on how to render this input/output. References an external standardized vocabulary."
     },
-    "x-ga4gh-fa-icon": {
-      "type": "string",
-      "description": "Inspired by nf-core. FontAwesome icon class to display next to the parameter in dynamic UIs."
-    },
     "x-ga4gh-description-format": {
       "type": "string",
       "enum": [
         "plain_text",
-        "markdown",
-        "rst"
+        "markdown"
       ],
       "default": "plain_text",
       "description": "Hint for UI/CLI clients on how to parse and render the standard JSON Schema 'description' field, avoiding redundant text properties."

@@ -35,8 +35,7 @@
           "type": "string",
           "format": "uri",
           "title": "Aligned BAM",
-          "x-ga4gh-ontology": "http://edamontology.org/format_2572",
-          "x-ga4gh-ui-widget": "genome-browser"
+          "x-ga4gh-ontology": "http://edamontology.org/format_2572"
         }
       }
     }

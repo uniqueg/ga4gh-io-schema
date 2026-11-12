@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
-  "$id": "https://example.org/schemas/invalid/fa-icon-not-string",
-  "title": "Invalid: fa-icon-not-string",
-  "description": "x-ga4gh-fa-icon is a list, not a string.",
+  "$id": "https://example.org/schemas/invalid/fa-icon-removed",
+  "title": "Invalid: fa-icon-removed",
+  "description": "x-ga4gh-fa-icon was removed in version 0.3.",
   "type": "object",
   "properties": {
     "inputs": {
@@ -10,10 +10,7 @@
       "properties": {
         "sample_id": {
           "type": "string",
-          "x-ga4gh-fa-icon": [
-            "fas",
-            "fa-dna"
-          ]
+          "x-ga4gh-fa-icon": "fas fa-dna"
         }
       }
     }

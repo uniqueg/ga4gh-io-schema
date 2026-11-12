@@ -11,7 +11,7 @@
     },
     "x-ga4gh-tabular-schema": {
       "$dynamicRef": "#meta",
-      "description": "A nested JSON schema to validate the internal row/column structure of a tabular file. Checked by the same rules as every other schema of the IO schema."
+      "description": "Experimental. A nested JSON schema describing the rows of a tabular file (e.g., a sample sheet), as a hint for clients (e.g., to offer a spreadsheet editor). Not a validation rule: validation of tabular files is deferred. Checked by the same rules as every other schema of the IO schema."
     }
   }
 }

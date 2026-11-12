@@ -47,16 +47,30 @@ INVALID = {
         "(at $.properties.inputs.properties.sample_id['x-ga4gh-ontology'])"
     ),
     "description-format-unknown": (
-        "Validation Error: 'html' is not one of ['plain_text', 'markdown', 'rst'] "
+        "Validation Error: 'html' is not one of ['plain_text', 'markdown'] "
         "(at $.properties.inputs.properties.sample_id['x-ga4gh-description-format'])"
     ),
     "hidden-not-boolean": (
         "Validation Error: 'true' is not of type 'boolean' "
         "(at $.properties.inputs.properties.sample_id['x-ga4gh-hidden'])"
     ),
-    "fa-icon-not-string": (
-        "Validation Error: ['fas', 'fa-dna'] is not of type 'string' "
-        "(at $.properties.inputs.properties.sample_id['x-ga4gh-fa-icon'])"
+    # Keywords and values that version 0.3 removed (cut or deferred)
+    "fa-icon-removed": (
+        "Validation Error: Unevaluated properties are not allowed "
+        "('x-ga4gh-fa-icon' was unexpected) "
+        "(at $.properties.inputs.properties.sample_id)"
+    ),
+    "description-format-rst": (
+        "Validation Error: 'rst' is not one of ['plain_text', 'markdown'] "
+        "(at $.properties.inputs.properties.sample_id['x-ga4gh-description-format'])"
+    ),
+    "ui-widget-password": (
+        "Validation Error: 'password' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.sample_id['x-ga4gh-ui-widget'])"
+    ),
+    "ui-widget-deferred-viewer": (
+        "Validation Error: 'genome-browser' is not valid under any of the given "
+        "schemas (at $.properties.outputs.properties.alignment['x-ga4gh-ui-widget'])"
     ),
     "error-message-not-string": (
         "Validation Error: 404 is not of type 'string' "
