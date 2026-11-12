@@ -32,8 +32,12 @@ dependencies = [
 ga4gh-io-schema = "ga4gh_io_schema.cli:main"
 
 [project.optional-dependencies]
+# The CWL converter (`ga4gh-io-schema convert cwl`)
+cwl = ["cwl-utils>=0.47"]
 dev = [
     "build>=1.2.1",
+    # For the tests of the CWL converter; keep in sync with `cwl`
+    "cwl-utils>=0.47",
     "pytest>=8.1.1",
     "pytest-cov>=5.0.0",
     "check-jsonschema>=0.28.1",
