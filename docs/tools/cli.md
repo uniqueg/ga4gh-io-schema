@@ -6,6 +6,7 @@ tool:
 | Subcommand | Purpose |
 | --- | --- |
 | `validate` | Check an IO schema against the GA4GH IO Profile (see [Validator](validator.md)). |
+| `convert snakemake` | Convert a Snakemake config schema and sample-sheet schemas to an IO schema (see [Snakemake converter](convert-snakemake.md)). |
 | `convert cwl` | Convert the inputs and outputs of a CWL document to an IO schema (see [CWL converter](cwl.md)). |
 
 Further converters (e.g., `ga4gh-io-schema convert nextflow`) and the WES
@@ -37,14 +38,15 @@ All subcommands share these conventions; the shared options (`--output`,
     Validation Error: 'inputs' is a required property (at $.properties)
     ```
 
-- **Warnings:** converters report what they can't convert, and still
-  succeed. Each warning goes to standard error as one line,
+- **Warnings:** a converter that reports what it can't convert (e.g.,
+  `convert cwl`) still succeeds. Each warning goes to standard error as one line,
   `Warning: <message> (at <location>)`, where the location is the JSON path
   of the affected schema in the result; with `--json`, the result has
   `"warnings"` instead, a list of objects with `message` and `location`.
 - **JSON:** with `--json`, the result and the errors are JSON objects on one
   line. A command whose result is text (e.g., a converted file) writes
-  `{"output": "<text>"}`; a converter adds `"warnings"` (see below). An error has a `kind` (`validation`, `io`, `meta-schema` or
+  `{"output": "<text>"}`, plus `"warnings"` for a converter that reports
+  them (see above). An error has a `kind` (`validation`, `io`, `meta-schema` or
   `internal`), a `message`, the JSON path of the offending value as
   `location` (or `null`), and the `exitCode`:
 

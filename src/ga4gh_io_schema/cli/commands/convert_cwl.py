@@ -24,7 +24,7 @@ from ga4gh_io_schema.validator import validate_schema
 OPTIONAL_MODULES = frozenset({"cwl_utils", "schema_salad", "ruamel"})
 
 #: Help of the ``convert`` group, the same in every converter module.
-CONVERT_HELP = "Convert the parameter descriptions of workflow languages to IO schemas."
+CONVERT_HELP = "Convert the parameter descriptions of workflow languages."
 
 
 class ConvertCwlCommand(Command):

@@ -113,6 +113,7 @@ nav:
       - Command-line interface: tools/cli.md
       - Validator: tools/validator.md
       - Converters: tools/converters.md
+      - Snakemake converter: tools/convert-snakemake.md
       - CWL converter: tools/cwl.md
   - Adoption:
       - adoption/index.md
