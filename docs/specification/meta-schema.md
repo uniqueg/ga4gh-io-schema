@@ -12,12 +12,16 @@ The [validator](../tools/validator.md) checks schemas against them.
 
 ## Referencing the meta-schema
 
-Inside your own drafted schemas, you can reference the meta-schema directly to enable IDE autocompletion and validation:
+Inside your own drafted schemas, you can reference the meta-schema directly to
+enable IDE autocompletion and validation. The identifier is versioned: it names
+a release of the profile, not a moving branch. Use the tag of the profile
+release that you target, and replace the `$id` of the example with an
+identifier of your own.
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
-  "$id": "https://your-domain.org/my-tool-schema.json"
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/my-tool/v1"
 }
 ```
 

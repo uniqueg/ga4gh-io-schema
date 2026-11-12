@@ -13,6 +13,23 @@ Validate the core logic of the Python executable using `pytest`. The test suite 
 pytest
 ```
 
+`tests/test_wheel.py` builds the wheel, installs it into a fresh virtual
+environment and runs the command-line tool on the examples. It needs network
+access to install the build backend and the dependencies; deselect it with
+`pytest -m "not wheel"` when offline. CI runs the tests on every supported
+Python version, from the lowest to the newest. The supported versions are set
+in `requires-python` and the classifiers of `pyproject.toml`, ruff's
+`target-version` and the test matrix of `.github/workflows/ci.yml`; change
+them together.
+
+## Schema versions
+
+The `$id`s of the schemas in `schemas/`, and the `$schema` of the examples in
+`tests/data/` and of the snippet in the meta-schema documentation, name the
+release tag of the profile (e.g., `v0.3.0`). For a new release, change the tag
+in all of them at once (the tests check that they agree), and push the tag so
+that the URLs resolve.
+
 ## Code quality (Ruff)
 
 The codebase uses `Ruff` to enforce strict formatting, linting, and Google-style docstrings.

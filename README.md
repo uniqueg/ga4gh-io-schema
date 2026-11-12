@@ -41,10 +41,10 @@ Contributions, issues, and feature requests are welcome! If you have suggestions
 
 This repository is multi-licensed in compliance with the [REUSE specification](https://reuse.software/):
 
-- **Original Code & Schemas (`/src`, `/schemas`):** Licensed under **Apache-2.0**.
-- **Documentation (`/docs`, `README.md`):** Licensed under **CC-BY-4.0**.
+- **Code, schemas, tests and this README (`/src`, `/schemas`, `/tests`, `README.md`):** Licensed under **Apache-2.0**.
+- **Documentation (`/docs`):** Licensed under **CC-BY-4.0**.
 
-Please see the [`LICENSE`](LICENSE) file and `REUSE.toml` for complete details and mapping. Full license texts are located in the `/LICENSES` directory.
+Each file's SPDX header, or its entry in `REUSE.toml`, is authoritative; `reuse lint` checks them in CI. Please see the [`LICENSE`](LICENSE) file and `REUSE.toml` for complete details and mapping. Full license texts are located in the `/LICENSES` directory.
 
 ---
 

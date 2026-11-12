@@ -79,3 +79,64 @@ def test_validate_schema_meta_schema_error() -> None:
 
     with pytest.raises(jsonschema.exceptions.SchemaError):
         validate_schema(target_schema, meta_schema)
+
+
+def test_validate_schema_checks_formats() -> None:
+    """Test that ``format`` keywords of the meta-schema are enforced."""
+    meta_schema: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {"x-ga4gh-ontology": {"type": "string", "format": "uri"}},
+    }
+
+    validate_schema(
+        {"x-ga4gh-ontology": "http://edamontology.org/format_1929"}, meta_schema
+    )
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="is not a 'uri'"):
+        validate_schema({"x-ga4gh-ontology": "not a uri"}, meta_schema)
+
+
+def test_validate_schema_accepts_ecma_regex_patterns() -> None:
+    """Test that ECMA-262 patterns that Python's ``re`` can't parse pass."""
+    meta_schema: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {"pattern": {"type": "string", "format": "regex"}},
+    }
+
+    validate_schema({"pattern": "^\\p{L}+$"}, meta_schema)
+
+
+def test_validate_schema_reports_unknown_meta_schema() -> None:
+    """Test that an unknown ``$schema`` URL gives a clear validation error."""
+    target_schema: dict[str, Any] = {
+        "$schema": "https://example.org/schemas/unknown-meta-schema.json"
+    }
+
+    with pytest.raises(
+        jsonschema.exceptions.ValidationError, match="Unknown meta-schema"
+    ):
+        validate_schema(target_schema)
+
+
+def test_validate_schema_keeps_draft_format_checks() -> None:
+    """Test that the formats of the meta-schema's draft are used (e.g. ``time``)."""
+    meta_schema: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {"t": {"type": "string", "format": "time"}},
+    }
+
+    validate_schema({"t": "12:00:00Z"}, meta_schema)
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="is not a 'time'"):
+        validate_schema({"t": "12:00:00"}, meta_schema)
+
+
+def test_validate_schema_reports_unresolvable_reference_of_meta_schema() -> None:
+    """Test that a reference a custom meta-schema can't resolve is reported."""
+    meta_schema: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$ref": "https://example.org/schemas/missing",
+    }
+
+    with pytest.raises(
+        jsonschema.exceptions.ValidationError, match="directory of the meta-schema"
+    ):
+        validate_schema({}, meta_schema)
