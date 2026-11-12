@@ -2,11 +2,24 @@
 
 ## Workflow Execution Service (WES) validation
 
-While a primary goal of the JSON Schema is to enable automated client-side UI generation, it also drastically lowers the barrier for developers building simple, lightweight WES clients or autonomous AI agents, as they may no longer need to parse complex workflow DSLs to construct valid execution requests.
+Besides input forms, an IO schema helps developers of WES clients and AI agents: they can check run requests against one schema format instead of reading each workflow language.
 
 On the backend, WES implementations should adhere to a "trust but verify" security posture. If a WES gateway is aware of an IO Schema for a given workflow (either fetched from TRS or provided dynamically), the server *should* attempt to validate the incoming `workflow_params` JSON payload against it before passing the request to the underlying engine (e.g., Nextflow, Cromwell).
 
-Crucially, if this server-side validation fails, WES APIs must return a deterministic `HTTP 400 Bad Request`. The error response body should explicitly emit the standard JSON Schema validation error path (e.g., `$.inputs.sample_manifest[2].condition: value not in enum`). Furthermore, if the schema author provided an `x-ga4gh-error-message` for the failing property, the WES server should prioritize returning this human-readable instruction (e.g., "Condition must be either control or treatment") over the raw JSON Schema error. This provides human users and AI agents with actionable debugging feedback without having to dig through dense, engine-specific execution logs.
+An IO schema describes input *values* (the `inputs` part of the schema); WES receives `workflow_params`, whose shape depends on the engine (e.g., WDL names qualified with the workflow name, CWL `File` objects). A server therefore translates `workflow_params` back into input values with the engine's binding before it validates them, and reports errors in terms of `workflow_params`, which is what the client sent.
+
+If this server-side validation fails, the server returns `HTTP 400 Bad Request` with the error body of WES 1.1, [`ErrorResponse`](https://github.com/ga4gh/workflow-execution-service-schemas/blob/1.1.0/openapi/workflow_execution_service.openapi.yaml), which has only the fields `msg` and `status_code`. The message names the failing parameter with a [JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901) relative to `workflow_params`, the form in which JSON Schema 2020-12 reports instance locations ([JSON Schema Core, §12.3.3](https://json-schema.org/draft/2020-12/json-schema-core#section-12.3.3)). If the schema author provided an `x-ga4gh-error-message` for the failing property, the server returns it instead of the validator's message. For example, a request with `"workflow_params": {"condition": "contrl"}`, where `condition` must be `control` or `treatment`, gets:
+
+```json
+{
+  "msg": "/condition: Condition must be either control or treatment",
+  "status_code": 400
+}
+```
+
+Validation covers the request itself. Contents of files referenced by the request, such as the rows of a sample sheet, are not part of `workflow_params`; checking them means reading the files on the server (see [Security considerations](../security.md)).
+
+WES 1.1 has no structured error body (e.g., a list of errors, each with a pointer and a message). Such a body would need a change to WES; the venue for proposing it is the open pull request on structured parameters and outputs, [ga4gh/workflow-execution-service-schemas#226](https://github.com/ga4gh/workflow-execution-service-schemas/pull/226).
 
 See also [Security considerations](../security.md).
 
