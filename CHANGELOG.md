@@ -60,9 +60,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     the profile suits machine learning pipelines (cut; an open question on
     the roadmap).
 - `outputs` must be an object schema (not a boolean schema), with
-  `"type": "object"` if it sets `type`. It stays optional, as since
-  version 0.1; without it, a schema now explicitly describes no outputs.
-  (#11)
+  `"type": "object"` if it sets `type`, and without references or
+  applicators (`$ref`, `$dynamicRef`, `allOf`, `anyOf`, `oneOf`, `not`,
+  `if`, `then`, `else`, `dependentSchemas`) on `outputs` itself: the
+  outputs are its direct `properties`. Schemas that keep their outputs
+  behind a `$ref` inline the referenced schema. `x-ga4gh-output-glob`
+  needs a list's `items` written in place, not as a `$ref`. `outputs`
+  stays optional, as since version 0.1; without it, a schema now
+  explicitly describes no outputs. (#11)
 
 ### Added
 

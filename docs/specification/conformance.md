@@ -211,13 +211,16 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
 4. An output normaliser MUST validate the normalised outputs object of a
    run that completed against `outputs`, and report a run whose object
    isn't valid as non-conformant; it MUST NOT drop or change outputs to
-   make the object valid. It MUST report the outputs that it can't match
-   or that are ambiguous (e.g., several files for a one-file output), and
-   the outputs that the engine reports but the schema document doesn't
-   declare, instead of dropping them silently.
+   make the object valid. It MUST report ambiguous matches (e.g., several
+   files for a one-file output), skipped listed files, and the outputs that
+   the engine reports but the schema document doesn't declare, instead of
+   dropping them silently. Optional outputs that it doesn't find are
+   absent, not errors.
 5. An output normaliser MUST show the outputs of a run that didn't
-   complete, or isn't conformant, as partial, as defined in
-   [Runs that don't complete](outputs.md#runs-that-dont-complete).
+   complete as partial, as defined in
+   [Runs that don't complete](outputs.md#runs-that-dont-complete), and the
+   outputs of a non-conformant run with the same warning, keeping all of
+   them.
 
 ### WES server
 

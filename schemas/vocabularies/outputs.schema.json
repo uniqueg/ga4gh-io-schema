@@ -54,11 +54,11 @@
   "$defs": {
     "outputGlob": {
       "type": "string",
-      "description": "Glob pattern, relative to the output directory of the run, that finds the output among the files of the run when the engine doesn't report the output by name. Segments are separated by /; * matches any characters within a segment, ? one character, and a segment ** any number of segments. Not allowed: absolute paths, empty segments, . and .. segments, backslashes, control characters (C0, DEL, C1), line and paragraph separators, brackets and braces.",
-      "$comment": "pattern: non-empty segments without backslashes, brackets, braces and control characters; not: no . or .. segment, no ** that is not a whole segment, and no control characters anywhere (Python's $ also matches before a final newline, ECMA-262's doesn't, so the anchors alone don't reject one).",
+      "description": "Glob pattern, relative to the output directory of the run, that finds the output among the files of the run when the engine doesn't report the output by name. Segments are separated by /; * matches any characters within a segment, ? one character, and a segment ** any number of segments. Not allowed: absolute paths, empty segments, . and .. segments, a colon in the first segment, backslashes, control characters (C0, DEL, C1), line and paragraph separators, brackets and braces.",
+      "$comment": "pattern: non-empty segments without backslashes, brackets, braces and control characters; not: no . or .. segment, no ** that is not a whole segment, no colon in the first segment (it would look like a URI scheme), and no control characters anywhere (Python's $ also matches before a final newline, ECMA-262's doesn't, so the anchors alone don't reject one).",
       "pattern": "^[^/\\\\\\[\\]{}\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]+(/[^/\\\\\\[\\]{}\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]+)*$",
       "not": {
-        "pattern": "(^|/)[.][.]?(/|$)|[^/][*][*]|[*][*][^/]|[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]"
+        "pattern": "(^|/)[.][.]?(/|$)|[^/][*][*]|[*][*][^/]|^[^/]*:|[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]"
       }
     }
   }

@@ -332,6 +332,7 @@ FILE_OUTPUT: dict[str, Any] = {"type": "string", "x-ga4gh-file": {"kind": "file"
         ".nextflow/report.html",
         "a..b/c.d",
         "names with spaces/*.txt",
+        "results/v1:2/*.tsv",
     ],
 )
 def test_validate_schema_accepts_output_glob(glob: str) -> None:
@@ -353,13 +354,16 @@ def test_validate_schema_accepts_output_glob(glob: str) -> None:
         "a/***/b",
         "x**",
         "[ab].txt",
+        "C:/results/*.tsv",
+        "results:v1/*.tsv",
         # Python's ``$`` matches before a final newline; ECMA-262's doesn't
         "alignments/*.bam\n",
         "..\n",
         "a\u007fb",
         "a\u0085b",
-        "a b",
+        "a\u2028b",
     ],
+    ids=repr,
 )
 def test_validate_schema_rejects_output_glob(glob: str) -> None:
     """Test that globs outside the profile's syntax fail.
@@ -427,6 +431,55 @@ def test_validate_schema_accepts_empty_outputs() -> None:
     schema["properties"]["outputs"] = {"type": "object", "properties": {}}
 
     validate_schema(schema)
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value"),
+    [
+        ("$ref", "#/$defs/outputs"),
+        ("$dynamicRef", "#meta"),
+        ("allOf", [{"properties": {}}]),
+        ("anyOf", [{"properties": {}}]),
+        ("oneOf", [{"properties": {}}]),
+        ("not", {"required": ["x"]}),
+        ("if", {"required": ["x"]}),
+        ("then", {"properties": {}}),
+        ("else", {"properties": {}}),
+        ("dependentSchemas", {"x": {"properties": {}}}),
+    ],
+)
+def test_validate_schema_rejects_applicator_on_outputs(
+    keyword: str, value: Any
+) -> None:
+    """Test that ``outputs`` lists its outputs directly, without applicators.
+
+    Args:
+        keyword: A reference or in-place applicator.
+        value: A value of the keyword.
+    """
+    schema = _schema_with_output(FILE_OUTPUT)
+    schema["properties"]["outputs"][keyword] = value
+
+    with pytest.raises(
+        jsonschema.exceptions.ValidationError, match="False schema does not allow"
+    ):
+        validate_schema(schema)
+
+
+def test_validate_schema_rejects_output_glob_on_list_of_references() -> None:
+    """Test that a glob needs the ``items`` of a list written in place."""
+    output = {
+        "type": "array",
+        "items": {"$ref": "#/$defs/bam"},
+        "x-ga4gh-output-glob": "*.bam",
+    }
+    schema = _schema_with_output(output)
+    schema["$defs"] = {"bam": FILE_OUTPUT}
+
+    with pytest.raises(
+        jsonschema.exceptions.ValidationError, match="'x-ga4gh-file' is a required"
+    ):
+        validate_schema(schema)
 
 
 def test_validate_schema_accepts_outputs_without_type() -> None:

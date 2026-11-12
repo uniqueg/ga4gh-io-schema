@@ -88,8 +88,10 @@ to the schema. A normaliser validates the object. If it isn't valid (e.g., a
 required output is missing, or a list has fewer files than `minItems`), the
 normaliser reports the outputs of the run as non-conformant, with the
 errors, and still returns the object; it never drops or changes outputs to
-make the object valid. Clients show non-conformant outputs like partial ones
-(see [Runs that don't complete](#runs-that-dont-complete)). For the workflow
+make the object valid. Clients show non-conformant outputs with the same
+warning as the outputs of [runs that don't
+complete](#runs-that-dont-complete), but all outputs are kept. For the
+workflow
 example ([Example 1](examples.md#example-1-full-workflow-with-a-sample-sheet)):
 
 ```json
@@ -132,7 +134,8 @@ each output of `outputs.properties` in this order:
    absent).
 2. **By glob.** Otherwise, if the output has `x-ga4gh-output-glob`, the
    normaliser matches the glob against the files of the run (see below).
-3. Otherwise, the output is absent.
+3. Otherwise, the output is absent. That is normal for an optional output;
+   for a required output of a completed run, validation reports it.
 
 ### `x-ga4gh-output-glob`
 
@@ -167,8 +170,12 @@ matches:
   the segments to the URI of the output directory, not by resolving the path
   as a URI reference.
 - Where the server lists URIs instead of paths, a normaliser MUST accept a
-  listed URI only if it starts with the URI of the output directory,
-  followed by `/`; it derives the relative path from the rest.
+  listed URI only if it starts with the URI of the output directory with
+  exactly one trailing `/`, and has no query or fragment. It derives the
+  relative path from the rest: split at `/`, each segment percent-decoded.
+  The decoded path MUST pass the checks of listed paths above (e.g., a
+  listed `…/out/../8/secret.bam` is skipped), and the URI of a match is
+  built from it as above.
 
 Syntax:
 
@@ -179,7 +186,8 @@ Syntax:
   leading `.`.
 - Not allowed (the meta-schema rejects them): absolute paths, empty segments
   (so also a trailing `/`), `.` and `..` segments, `**` within a segment
-  (e.g., `**.bam`), backslashes, control characters (C0, DEL and C1), line
+  (e.g., `**.bam`), a colon in the first segment (it would look like a URI
+  scheme, and normalisers skip such listed paths), backslashes, control characters (C0, DEL and C1), line
   and paragraph separators, and brackets and braces (`[`, `]`, `{`, `}`),
   whose meaning differs between glob dialects.
 - A glob always matches at least one segment: `**` alone matches every
