@@ -13,11 +13,12 @@
   the experimental `x-ga4gh-tabular-schema` hint, and not to map
   `uniqueEntries` to `uniqueItems`, which means something else (see
   [Keywords](../specification/keywords.md#leveraging-native-json-schema-what-we-dont-reinvent)).
-- **Snakemake:** from JSON Schema and PEP configuration; planned.
+- **Snakemake:** from the config schema and the sample-sheet schemas; see
+  [Snakemake converter](convert-snakemake.md).
 - **CWL:** from the inputs and outputs of a `Workflow` or `CommandLineTool`;
   planned.
 - **WDL:** from `input`, `output` and `parameter_meta` blocks:
-  `ga4gh-io-schema convert wdl` (see [WDL converter](wdl.md)).
+  `ga4gh-io-schema convert wdl` (see [WDL converter](convert-wdl.md)).
 
 Converters emit only keywords and values of the profile version that they
 target: output with removed ones (e.g., `x-ga4gh-fa-icon`, the `rst`

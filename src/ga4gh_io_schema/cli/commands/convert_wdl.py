@@ -16,10 +16,10 @@ from ga4gh_io_schema.cli.base import (
 )
 from ga4gh_io_schema.converters import wdl
 
-#: Group of the converters; each converter module adds its command to it.
+#: Group of the converters; each converter module gets or creates it with
+#: the same help text (see :mod:`~ga4gh_io_schema.cli.commands.convert_snakemake`).
 CONVERT = ROOT.group(
-    "convert",
-    help="Convert the parameter descriptions of workflow languages to IO schemas.",
+    "convert", "Convert the parameter descriptions of workflow languages."
 )
 
 

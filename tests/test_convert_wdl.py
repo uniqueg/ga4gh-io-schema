@@ -958,7 +958,7 @@ def test_cli_without_miniwdl(
 
 def test_docs_use_existing_options() -> None:
     """Test that the WDL converter page uses only options the command has."""
-    page = Path(__file__).resolve().parent.parent / "docs" / "tools" / "wdl.md"
+    page = Path(__file__).resolve().parent.parent / "docs" / "tools" / "convert-wdl.md"
     reference = render_reference()
     defined = set(re.findall(r"(?<![\w-])(--?[a-z][a-z-]*)", reference))
     calls = [
