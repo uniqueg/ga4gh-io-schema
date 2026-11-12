@@ -46,8 +46,8 @@ FIXTURES = {
         "The default value can't be converted (a File next to the CWL document, "
         "'blacklist.bed'); it is left out, and the input stays optional. "
         "(at $.properties.inputs.properties.blacklist)",
-        "Type 'Any' allows any value; values that are files are not checked as "
-        "file references. (at $.properties.inputs.properties.options)",
+        "Type 'Any' allows any value but null; values that are files are not "
+        "checked as file references. (at $.properties.inputs.properties.options)",
         "Secondary file '.csi' is optional; the profile has only required "
         "secondary files, so it is left out. "
         "(at $.properties.outputs.properties.variants)",
@@ -154,6 +154,18 @@ def tool(inputs: str = "{}", outputs: str = "{}", header: str = "") -> str:
         "$namespaces: {edam: 'http://edamontology.org/'}\n"
         f"{header}inputs: {inputs}\noutputs: {outputs}\n"
     )
+
+
+def flat(text: str) -> str:
+    """Join the lines of a wrapped message of the parser of ``cwl-utils``.
+
+    Args:
+        text: The message.
+
+    Returns:
+        The message, with runs of whitespace as single spaces.
+    """
+    return " ".join(text.split())
 
 
 def empty_converter(notes: list[cwl.ConversionNote] | None = None) -> Any:
@@ -852,6 +864,224 @@ def test_document_that_is_no_process_fails(
 
     with pytest.raises(cwl.CwlConversionError, match="is not a CWL process"):
         convert(tool(), tmp_path)
+
+
+def test_include_outside_the_root_is_not_read(tmp_path: Path) -> None:
+    """Test that only files under the directory of the document are read."""
+    (tmp_path / "secret.txt").write_text("secret", encoding="utf-8")
+    document = tmp_path / "doc"
+    document.mkdir()
+    text = tool().replace("inputs:", "doc: {$include: ../secret.txt}\ninputs:")
+
+    with pytest.raises(cwl.CwlConversionError) as info:
+        convert(text, document)
+    assert f"Not read (not a file under {document})" in flat(info.value.message)
+
+    path = document / "tool.cwl"
+    parser = cwl.CwlParser(root=tmp_path)
+    assert parser.to_ga4gh(parser.parse(path))["description"] == "secret"
+
+
+def test_include_through_a_symlink_out_of_the_root_is_not_read(
+    tmp_path: Path,
+) -> None:
+    """Test that a symbolic link can't point the parser out of the root."""
+    (tmp_path / "secret.txt").write_text("secret", encoding="utf-8")
+    document = tmp_path / "doc"
+    document.mkdir()
+    (document / "link.txt").symlink_to(tmp_path / "secret.txt")
+
+    with pytest.raises(cwl.CwlConversionError) as info:
+        convert(
+            tool().replace("inputs:", "doc: {$include: link.txt}\ninputs:"), document
+        )
+
+    assert "Not read (not a file under" in flat(info.value.message)
+
+
+def test_include_of_a_remote_or_non_utf8_file_fails(tmp_path: Path) -> None:
+    """Test that remote and non-UTF-8 includes fail and name the file."""
+    remote = "doc: {$include: 'https://x.invalid/a'}\ninputs:"
+    with pytest.raises(cwl.CwlConversionError) as info:
+        convert(tool().replace("inputs:", remote), tmp_path)
+    assert "Not fetched (not a local file): https://x.invalid/a" in flat(
+        info.value.message
+    )
+
+    (tmp_path / "latin1.txt").write_bytes(b"caf\xe9")
+    local = "doc: {$include: latin1.txt}\ninputs:"
+    with pytest.raises(cwl.CwlConversionError) as info:
+        convert(tool().replace("inputs:", local), tmp_path)
+    uri = (tmp_path / "latin1.txt").as_uri()
+    assert f"Not UTF-8 text - {uri}" in flat(info.value.message)
+
+
+def test_fetcher_checks_existence_under_the_root(tmp_path: Path) -> None:
+    """Test the existence check of the fetcher (not used with no_link_check)."""
+    (tmp_path / "a.txt").write_text("a", encoding="utf-8")
+    fetcher = cwl._LocalFetcher(tmp_path)
+
+    assert fetcher.check_exists((tmp_path / "a.txt").as_uri())
+    assert not fetcher.check_exists((tmp_path / "b.txt").as_uri())
+    assert not fetcher.check_exists("https://example.org/a.txt")
+
+
+def test_cli_root_widens_the_readable_files(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that ``--root`` lets a document include files above it."""
+    (tmp_path / "about.txt").write_text("About", encoding="utf-8")
+    (tmp_path / "doc").mkdir()
+    path = tmp_path / "doc" / "tool.cwl"
+    path.write_text(
+        tool().replace("inputs:", "doc: {$include: ../about.txt}\ninputs:"),
+        encoding="utf-8",
+    )
+
+    assert main(["convert", "cwl", str(path)]) == 1
+    assert "Not read" in capsys.readouterr().err
+    assert main(["convert", "cwl", "--root", str(tmp_path), str(path)]) == 0
+    assert json.loads(capsys.readouterr().out)["description"] == "About"
+
+
+@pytest.mark.parametrize(
+    "inputs",
+    [
+        "{a: '#T0'}",
+        "{a: {type: Any, default: [[1, 2, 3], [4, 5, 6], [7, 8, 9]]}}",
+    ],
+)
+def test_too_large_schemas_fail(
+    inputs: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that a conversion that would create too many schemas or values fails."""
+    monkeypatch.setattr(cwl, "MAX_NODES", 10)
+    types = ", ".join(
+        f"{{name: T{level}, type: record, fields: "
+        f"{{x: '#T{level + 1}', y: '#T{level + 1}'}}}}"
+        for level in range(3)
+    )
+    header = (
+        "requirements: {SchemaDefRequirement: {types: ["
+        f"{types}, {{name: T3, type: record, fields: {{z: int}}}}]}}}}\n"
+    )
+
+    with pytest.raises(cwl.CwlConversionError, match="would be too large"):
+        convert(tool(inputs, header=header), tmp_path)
+
+
+def test_deep_types_fail_as_conversion_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that types nested beyond the recursion limit are errors."""
+
+    def deep(*args: Any, **kwargs: Any) -> Any:
+        raise RecursionError
+
+    monkeypatch.setattr(cwl._Converter, "parameters", deep)
+
+    with pytest.raises(cwl.CwlConversionError, match="nested too deeply"):
+        convert(tool(), tmp_path)
+
+
+def test_cli_deep_types_fail_validation(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a schema too deep to validate exits with status 1."""
+
+    def deep(*args: Any, **kwargs: Any) -> None:
+        raise RecursionError
+
+    monkeypatch.setattr(convert_cwl, "validate_schema", deep)
+
+    assert main(["convert", "cwl", str(CWL_DIR / "bwa-mem-tool.cwl")]) == 1
+    assert "Types nested too deeply to validate." in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("inputs", "message"),
+    [
+        ("{a: {type: {type: enum, symbols: []}}}", "An enum without symbols."),
+        ("{a: {type: []}}", "A union without types."),
+    ],
+)
+def test_empty_types_fail(inputs: str, message: str, tmp_path: Path) -> None:
+    """Test that enums and unions without members are errors."""
+    with pytest.raises(cwl.CwlConversionError) as info:
+        convert(tool(inputs), tmp_path)
+
+    assert info.value.message == message
+
+
+def test_documents_too_large_after_alias_expansion_fail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that YAML aliases can't expand a document beyond the limit."""
+    monkeypatch.setattr(cwl, "MAX_DOCUMENT_NODES", 200)
+    # Aliases that expand to more than 4**4 = 256 values
+    header = (
+        "$x:\n  a0: &a0 [1, 1, 1, 1]\n  a1: &a1 [*a0, *a0, *a0, *a0]\n"
+        "  a2: &a2 [*a1, *a1, *a1, *a1]\n  a3: [*a2, *a2, *a2, *a2]\n"
+    )
+
+    with pytest.raises(cwl.CwlConversionError, match="once its YAML aliases"):
+        convert(tool(header=header), tmp_path)
+
+
+def test_shared_values_are_counted_once_per_use(tmp_path: Path) -> None:
+    """Test that the size of a document counts each use of an alias."""
+    shared = [1, 2]
+    document = {"a": shared, "b": shared, "c": {"d": "e"}}
+
+    assert cwl._expanded_size(document, {}) == 1 + 2 * 3 + 2
+
+
+def test_documents_too_deep_to_measure_fail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that a document too deep to measure is a syntax error."""
+
+    def deep(*args: Any) -> int:
+        raise RecursionError
+
+    monkeypatch.setattr(cwl, "_expanded_size", deep)
+
+    with pytest.raises(cwl.CwlSyntaxError, match="Too deeply nested"):
+        convert(tool(), tmp_path)
+
+
+def test_non_finite_default_is_left_out(tmp_path: Path) -> None:
+    """Test that NaN and infinite defaults, which JSON lacks, are left out."""
+    result = convert(tool("{a: {type: double, default: .nan}}"), tmp_path)
+
+    assert "default" not in result.inputs["properties"]["a"]
+    assert result.messages == [
+        "The default value can't be converted (nan is not a finite number); it "
+        "is left out, and the input stays optional."
+    ]
+
+
+def test_null_and_any_types(tmp_path: Path) -> None:
+    """Test that a null type is optional and that Any excludes null."""
+    result = convert(tool("{a: Any}", "{n: 'null', m: Any}"), tmp_path)
+
+    assert result.inputs["properties"]["a"] == {"not": {"type": "null"}}
+    assert result.outputs["properties"]["m"] == {"not": {"type": "null"}}
+    assert result.outputs["required"] == ["m"]
+
+
+def test_format_that_is_not_a_uri_is_reported(tmp_path: Path) -> None:
+    """Test that an http(s) format that isn't a valid URI is left out."""
+    result = convert(
+        tool("{a: {type: File, format: 'ex:fmt'}}").replace(
+            "{edam: 'http://edamontology.org/'}",
+            "{edam: 'http://edamontology.org/', ex: 'http://ex.org/a b#'}",
+        ),
+        tmp_path,
+    )
+
+    assert result.inputs["properties"]["a"]["x-ga4gh-file"] == {"kind": "file"}
+    assert "is not an http(s) IRI" in result.messages[0]
 
 
 def test_remote_references_are_not_fetched(tmp_path: Path) -> None:

@@ -56,6 +56,16 @@ class ConvertCwlCommand(Command):
                 "$graph; defaults to 'main', or to the only process of the graph."
             ),
         )
+        parser.add_argument(
+            "--root",
+            type=Path,
+            help=(
+                "Directory whose files the document may import or include "
+                "($import, $include); defaults to the directory of the document "
+                "(the working directory for standard input). Other local files "
+                "are not read."
+            ),
+        )
 
     def run(self, args: argparse.Namespace) -> CommandResult:
         """Convert the document.
@@ -85,7 +95,10 @@ class ConvertCwlCommand(Command):
                 "install it with: pip install 'ga4gh-io-schema[cwl]'",
             ) from exc
 
-        parser = cwl.CwlParser(process=args.process)
+        root = args.root
+        if root is None and args.document == STDIN:
+            root = Path.cwd()
+        parser = cwl.CwlParser(process=args.process, root=root)
         try:
             if args.document == STDIN:
                 # Relative references resolve against the working directory
@@ -118,7 +131,9 @@ class ConvertCwlCommand(Command):
                     f"Warning: {warning['message']} (at {warning['location']})",
                     file=sys.stderr,
                 )
-        output = json.dumps(schema, indent=2)
+        # Defaults are finite (NaN and infinities are left out), so this is
+        # strict JSON
+        output = json.dumps(schema, indent=2, allow_nan=False)
         return CommandResult(text=output, data={"output": output, "warnings": warnings})
 
 
@@ -133,6 +148,10 @@ def _check(schema: dict[str, Any]) -> None:
     """
     try:
         validate_schema(schema)
+    except RecursionError as exc:
+        raise CliError(
+            ErrorKind.VALIDATION, "Types nested too deeply to validate."
+        ) from exc
     except jsonschema.exceptions.ValidationError as exc:
         raise CliError(
             ErrorKind.INTERNAL,

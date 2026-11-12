@@ -107,8 +107,10 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   required secondary files, `x-ga4gh-workflow` (descriptor type and
   version, checksum, entry point) and the CWL type of each parameter in
   `x-ga4gh-parameter`; what it can't convert (e.g., expressions) is
-  reported as warnings. It needs the optional dependency `cwl-utils`
-  (`ga4gh-io-schema[cwl]`). (#21)
+  reported as warnings. It reads only local files under the directory of
+  the document (`--root` names another one) and rejects documents that
+  would expand to very large schemas. It needs the optional dependency
+  `cwl-utils` (`ga4gh-io-schema[cwl]`). (#21)
 - Conformance: BCP 14 (RFC 2119, RFC 8174) key words, used consistently in
   the normative text; conformance classes (Schema document, Validator,
   Producer, Form renderer, Request builder, Output normaliser, WES server)

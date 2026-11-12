@@ -38,7 +38,14 @@ ga4gh-io-schema convert cwl --process main packed-workflow.cwl
 The converter checks its result against the profile before it writes it, so
 the IO schema always complies (see [Validator](validator.md)). Relative
 references (`$import`, `$include`) resolve against the directory of the
-document, or the working directory for standard input (`-`).
+document, or the working directory for standard input (`-`). The converter
+reads only files under that directory; `--root` names another one, e.g., for
+a document that imports types from a sibling directory (see
+[Security](#security)):
+
+```bash
+ga4gh-io-schema convert cwl --root . tools/my-tool.cwl
+```
 
 ### Warnings
 
@@ -109,11 +116,11 @@ The types map as follows:
 | array, e.g., `File[]` | `{"type": "array", "items": ...}` |
 | record | `{"type": "object", "properties": ..., "required": [...], "additionalProperties": false}`, one property per field |
 | union, e.g., `[File, string]` | `anyOf`, one branch per type |
-| `null` in the type of a parameter or a record field, e.g., `File?` | not in `required`; elsewhere (e.g., in the items of an array), a `{"type": "null"}` branch |
+| `null` in the type of a parameter or a record field, e.g., `File?` or `"null"` | not in `required`; elsewhere (e.g., in the items of an array), a `{"type": "null"}` branch |
 | named types (`SchemaDefRequirement`, also with `$import`) | inlined where they are used |
 | `default` | `default`; a file or directory becomes its location, if that is an absolute URI other than `file:` (e.g., `https:` or `s3:`) |
 | an input with a `default` | not in `required` |
-| `Any` | `{}` (any value), with a warning |
+| `Any` | `{"not": {"type": "null"}}` (any value but `null`), with a warning |
 
 Inputs reject unknown properties (`"additionalProperties": false`), like the
 [examples](../specification/examples.md) of the profile: a client sends only the
@@ -156,8 +163,9 @@ The converter leaves out, and reports:
 - **Default files that the IO schema can't refer to:** files next to the CWL
   document (relative locations, which the parser resolves to `file:` URIs) and
   file literals (`contents`). The input stays optional, as in CWL.
-- **`Any`**, which becomes a schema that allows any value: values that are
-  files aren't checked as file references.
+- **`Any`**, which becomes a schema that allows any value but `null`: values
+  that are files aren't checked as file references.
+- **Defaults that JSON lacks:** `.nan` and `.inf`. The input stays optional.
 
 These are errors, with exit status 1:
 
@@ -165,6 +173,12 @@ These are errors, with exit status 1:
   IO schema has no references between its schemas.
 - **Types that the document doesn't define**, e.g., a named type in a file
   that isn't imported, or on a remote server (see [Security](#security)).
+- **Enums without symbols and unions without types**, which no value matches.
+- **Documents that are too large**, so that a small document can't make the
+  converter run out of time or memory: more than 100,000 values once YAML
+  aliases are expanded, more than 10,000 schemas and values in the IO schema
+  (named types are inlined at every use), or types nested too deeply to
+  convert or validate.
 
 The converter doesn't translate:
 
@@ -176,10 +190,13 @@ The converter doesn't translate:
 ## Security
 
 The converter reads the local files that a document imports (`$import`,
-`$include`), as every CWL loader does: `$include` copies the content of any
-local file that the user running the converter can read into the document,
-and thus into the IO schema (e.g., into a `description`). Convert only
-documents that you trust, or check the result before you publish it.
+`$include`), as every CWL loader does: `$include` copies the content of a file
+into the document, and thus into the IO schema (e.g., into a `description`).
+It reads only regular files under the directory of the document (or the one
+given with `--root`); a reference to any other file fails, also through a
+symbolic link. Don't give a `--root` that holds files that mustn't end up in
+an IO schema, and check the result of a document that you don't trust before
+you publish it.
 
 It never fetches remote resources: a document that imports a remote file
 fails, and a workflow step that runs a remote tool is not read (only the

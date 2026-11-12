@@ -209,6 +209,9 @@
           }
         },
         "options": {
+          "not": {
+            "type": "null"
+          },
           "x-ga4gh-parameter": {
             "type": "Any"
           }

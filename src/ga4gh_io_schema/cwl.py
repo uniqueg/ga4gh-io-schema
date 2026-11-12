@@ -24,7 +24,10 @@ a document refers to exist; it reads local files that the document imports
 """
 
 import hashlib
+import math
 import re
+import urllib.parse
+import urllib.request
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,6 +36,7 @@ from typing import Any
 from cwl_utils.errors import GraphTargetMissingException
 from cwl_utils.parser import LoadingOptions, load_document_by_yaml
 from cwl_utils.utils import get_value_from_uri
+from jsonschema import Draft202012Validator
 from ruamel.yaml import YAMLError
 from schema_salad.exceptions import ValidationException
 from schema_salad.fetcher import DefaultFetcher
@@ -65,8 +69,19 @@ FILE_TYPES = frozenset({"File", "stdin", "stdout", "stderr"})
 #: check that converted schemas comply with the meta-schema).
 SECONDARY_FILE_PATTERN = re.compile(r"\^*[.]*[A-Za-z0-9_+-][A-Za-z0-9_.+-]*")
 
+#: Most schemas (types, values of defaults) that a conversion may create;
+#: named types are inlined, so a small document could otherwise expand to
+#: a very large schema.
+MAX_NODES = 10_000
+
+#: Most values (mappings, lists and scalars) of a document once its YAML
+#: aliases are expanded, as the parser of ``cwl-utils`` does.
+MAX_DOCUMENT_NODES = 100_000
+
 # Ontology terms that the profile accepts
 _HTTP_IRI = re.compile(r"https?://")
+# Format checks of the meta-schema (``ontology`` has ``format: uri``)
+_FORMATS = Draft202012Validator.FORMAT_CHECKER
 # Absolute URIs, as defined for the values of file references
 _URI_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
 # Keys of JSON paths that need no brackets, as in the paths of jsonschema
@@ -106,6 +121,78 @@ class CwlConversionError(ValueError):
         self.location = location
 
 
+class _LocalFetcher(DefaultFetcher):
+    """Fetcher of the parser that reads only regular files under a directory.
+
+    It has no HTTP session, so remote references aren't fetched, and it
+    refuses local files outside ``root`` (e.g., ``/proc/self/environ``).
+    """
+
+    def __init__(self, root: Path) -> None:
+        """Initialise the fetcher.
+
+        Args:
+            root: Directory whose files (at any depth) may be read.
+        """
+        super().__init__({}, None)
+        self.root = root.resolve()
+
+    def _allowed(self, url: str) -> Path:
+        """Return the local path of a URL, if it may be read.
+
+        Args:
+            url: URL of the file.
+
+        Returns:
+            The resolved path of the file.
+
+        Raises:
+            ValidationException: If the URL isn't a regular file under the
+                root.
+        """
+        split = urllib.parse.urlsplit(url)
+        if split.scheme != "file":
+            raise ValidationException(f"Not fetched (not a local file): {url}")
+        path = Path(urllib.request.url2pathname(split.path)).resolve()
+        if not path.is_relative_to(self.root) or not path.is_file():
+            raise ValidationException(f"Not read (not a file under {self.root}): {url}")
+        return path
+
+    def fetch_text(self, url: str, content_types: list[str] | None = None) -> str:
+        """Read a local file under the root.
+
+        Args:
+            url: URL of the file.
+            content_types: Ignored; for the interface of the fetcher.
+
+        Returns:
+            The text of the file.
+
+        Raises:
+            ValidationException: If the file may not be read, or isn't UTF-8.
+        """
+        path = self._allowed(url)
+        try:
+            return path.read_bytes().decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValidationException(f"Not UTF-8 text - {url}: {exc}") from exc
+
+    def check_exists(self, url: str) -> bool:
+        """Tell whether a referenced file may be read.
+
+        Args:
+            url: URL of the file.
+
+        Returns:
+            Whether it is a regular file under the root.
+        """
+        try:
+            self._allowed(url)
+        except ValidationException:
+            return False
+        return True
+
+
 class CwlSyntaxError(CwlConversionError):
     """The CWL document isn't valid YAML or JSON, or is nested too deeply."""
 
@@ -129,14 +216,18 @@ class CwlParser:
             the primary descriptor aren't known to the converter.
     """
 
-    def __init__(self, process: str | None = None) -> None:
+    def __init__(self, process: str | None = None, root: Path | None = None) -> None:
         """Initialise the parser.
 
         Args:
             process: ID of the process to convert in a document with a
                 ``$graph``, with or without a leading ``#``.
+            root: Directory whose files the document may import or include
+                (``$import``, ``$include``); by default, the directory of the
+                document.
         """
         self.process = process.lstrip("#") if process else None
+        self.root = root
         self.notes: list[ConversionNote] = []
         self.workflow: dict[str, Any] | None = None
 
@@ -187,6 +278,15 @@ class CwlParser:
             raise CwlSyntaxError("Too deeply nested to read.") from exc
         if not isinstance(document, dict):
             raise CwlConversionError("A CWL document must be a YAML or JSON object.")
+        try:
+            size = _expanded_size(document, {})
+        except RecursionError as exc:
+            raise CwlSyntaxError("Too deeply nested to read.") from exc
+        if size > MAX_DOCUMENT_NODES:
+            raise CwlConversionError(
+                f"The document has more than {MAX_DOCUMENT_NODES} values once "
+                "its YAML aliases are expanded."
+            )
         process_id = self.process
         if "$graph" in document:
             graph = document["$graph"]
@@ -205,8 +305,8 @@ class CwlParser:
                 f"The document has no $graph to select process {process_id!r} from."
             )
         options = LoadingOptions(
-            # No session: remote references aren't fetched
-            fetcher=DefaultFetcher({}, None),
+            # Remote references aren't fetched; local files only under the root
+            fetcher=_LocalFetcher(self._root(uri)),
             fileuri=uri,
             # Don't check that referenced files exist (e.g., default files)
             no_link_check=True,
@@ -236,6 +336,20 @@ class CwlParser:
         self.workflow = workflow
         return process
 
+    def _root(self, uri: str) -> Path:
+        """Return the directory whose files a document may read.
+
+        Args:
+            uri: URI of the document.
+
+        Returns:
+            :attr:`root`, or the directory of the document.
+        """
+        if self.root is not None:
+            return self.root
+        path = urllib.request.url2pathname(urllib.parse.urlsplit(uri).path)
+        return Path(path).parent
+
     def to_ga4gh(self, source: Any) -> dict[str, Any]:
         """Translate a CWL process into an IO schema.
 
@@ -253,6 +367,21 @@ class CwlParser:
         """
         self.notes = []
         converter = _Converter(source.loadingOptions, self.notes)
+        try:
+            return self._schema(source, converter)
+        except RecursionError as exc:
+            raise CwlConversionError("Types nested too deeply to convert.") from exc
+
+    def _schema(self, source: Any, converter: "_Converter") -> dict[str, Any]:
+        """Build the IO schema of a process.
+
+        Args:
+            source: The process.
+            converter: Converter of its types.
+
+        Returns:
+            The IO schema.
+        """
         schema: dict[str, Any] = {"$schema": load_profile()["$id"]}
         _add_text(schema, source)
         schema["x-ga4gh-workflow"] = dict(self.workflow or {"descriptor_type": "CWL"})
@@ -286,6 +415,25 @@ class _Converter:
         """
         self.index: dict[str, Any] = options.idx
         self.notes = notes
+        self.budget = MAX_NODES
+
+    def spend(self, location: str) -> None:
+        """Count one schema or value towards :data:`MAX_NODES`.
+
+        Args:
+            location: JSON path of the schema being converted.
+
+        Raises:
+            CwlConversionError: If the conversion has created too many.
+        """
+        self.budget -= 1
+        if self.budget < 0:
+            raise CwlConversionError(
+                f"The converted schema would be too large (more than "
+                f"{MAX_NODES} types and values); is a named type used many "
+                "times, or a default value expanded from YAML aliases?",
+                location,
+            )
 
     def note(self, location: str, message: str) -> None:
         """Record what couldn't be converted.
@@ -421,7 +569,7 @@ class _Converter:
                 "evaluated; it is left out.",
             )
             return None
-        if not _HTTP_IRI.match(format_):
+        if not _HTTP_IRI.match(format_) or not _FORMATS.conforms(format_, "uri"):
             self.note(
                 location,
                 f"'format' {format_!r} is not an http(s) IRI (is its namespace "
@@ -516,8 +664,10 @@ class _Converter:
             The schema of the type.
 
         Raises:
-            CwlConversionError: If the type is unknown or recursive.
+            CwlConversionError: If the type is unknown or recursive, or the
+                schema would be too large.
         """
+        self.spend(location)
         if isinstance(type_, list):
             return self.union(type_, location, files, names)
         if isinstance(type_, str):
@@ -531,6 +681,8 @@ class _Converter:
                 ),
             }
         if kind == "enum":
+            if not type_.symbols:
+                raise CwlConversionError("An enum without symbols.", location)
             schema: dict[str, Any] = {
                 "type": "string",
                 "enum": [get_value_from_uri(symbol) for symbol in type_.symbols],
@@ -564,6 +716,8 @@ class _Converter:
         """
         if not files.is_input and "null" in types and len(types) > 1:
             types = [member for member in types if member != "null"]
+        if not types:
+            raise CwlConversionError("A union without types.", location)
         if len(types) == 1:
             return self.type_schema(types[0], location, files, names)
         return {
@@ -614,10 +768,10 @@ class _Converter:
         if name == "Any":
             self.note(
                 location,
-                "Type 'Any' allows any value; values that are files are not "
-                "checked as file references.",
+                "Type 'Any' allows any value but null; values that are files "
+                "are not checked as file references.",
             )
-            return {}
+            return {"not": {"type": "null"}}
         if name in names:
             raise CwlConversionError(
                 f"Recursive CWL type {get_value_from_uri(name)!r} can't be converted.",
@@ -677,7 +831,7 @@ class _Converter:
             Whether the value could be converted, and the converted value.
         """
         try:
-            return True, self._value(value)
+            return True, self._value(value, location)
         except _UnconvertibleDefault as exc:
             self.note(
                 location,
@@ -686,28 +840,33 @@ class _Converter:
             )
             return False, None
 
-    def _value(self, value: Any) -> Any:
+    def _value(self, value: Any, location: str) -> Any:
         """Convert a value of a CWL input to a value of the IO schema.
 
         Args:
             value: The value, as loaded by the parser of ``cwl-utils``.
+            location: JSON path of the schema of the input.
 
         Returns:
             The converted value.
 
         Raises:
             _UnconvertibleDefault: If the value contains a file that can't be
-                referred to.
+                referred to, or a number that isn't finite (JSON has none).
+            CwlConversionError: If the value is too large.
         """
+        self.spend(location)
+        if isinstance(value, float) and not math.isfinite(value):
+            raise _UnconvertibleDefault(f"{value} is not a finite number")
         class_ = getattr(value, "class_", None)
         if class_ in ("File", "Directory"):
             return _file_location(class_, getattr(value, "location", None))
         if isinstance(value, dict):
             if value.get("class") in ("File", "Directory"):
                 return _file_location(value["class"], value.get("location"))
-            return {key: self._value(item) for key, item in value.items()}
+            return {key: self._value(item, location) for key, item in value.items()}
         if isinstance(value, list):
-            return [self._value(item) for item in value]
+            return [self._value(item, location) for item in value]
         return value
 
 
@@ -783,6 +942,35 @@ def _type_name(type_: Any) -> str:
     return str(kind)
 
 
+def _expanded_size(node: Any, sizes: dict[int, int]) -> int:
+    """Count the values of a YAML document as if its aliases were expanded.
+
+    Aliases share one object, so the count is memoised by identity: it
+    takes time in the size of the document, not of its expansion.
+
+    Args:
+        node: A value of the document.
+        sizes: Expanded sizes of the mappings and lists counted so far.
+
+    Returns:
+        The number of values of the expansion, or a number just above
+        :data:`MAX_DOCUMENT_NODES` once it exceeds that.
+    """
+    if not isinstance(node, (dict, list)):
+        return 1
+    key = id(node)
+    if key in sizes:
+        return sizes[key]
+    children = node.values() if isinstance(node, dict) else node
+    size = 1
+    for child in children:
+        size += _expanded_size(child, sizes)
+        if size > MAX_DOCUMENT_NODES:
+            break
+    sizes[key] = size
+    return size
+
+
 def _without_null(type_: Any) -> tuple[bool, Any]:
     """Remove ``null`` from the type of a parameter or field.
 
@@ -793,6 +981,8 @@ def _without_null(type_: Any) -> tuple[bool, Any]:
         Whether the type allowed ``null`` (the parameter is optional), and the
         type without it.
     """
+    if type_ == "null":
+        return True, "null"
     if not isinstance(type_, list) or "null" not in type_:
         return False, type_
     rest = [member for member in type_ if member != "null"]
