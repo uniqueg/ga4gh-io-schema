@@ -2,6 +2,7 @@
 
 import copy
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,14 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 #: Test vectors of the normaliser, one directory per case.
 VECTORS_DIR = Path(__file__).resolve().parent / "vectors" / "wes-outputs"
 CASES = sorted(path for path in VECTORS_DIR.iterdir() if path.is_dir())
+#: The cases whose run conforms to the schema.
+CONFORMANT_CASES = [
+    case
+    for case in CASES
+    if (case / "expected.json").exists()
+    and json.loads((case / "expected.json").read_text(encoding="utf-8"))["conformance"]
+    == "conformant"
+]
 WORKFLOW = json.loads(
     (DATA_DIR / "example_workflow.schema.json").read_text(encoding="utf-8")
 )
@@ -119,7 +128,9 @@ def test_vector(case: Path) -> None:
     assert summary(run_case(case)) == expected
 
 
-@pytest.mark.parametrize("case", CASES, ids=[case.name for case in CASES])
+@pytest.mark.parametrize(
+    "case", CONFORMANT_CASES, ids=[case.name for case in CONFORMANT_CASES]
+)
 def test_vector_outputs_conform_unless_reported(case: Path) -> None:
     """Test that each vector's outputs are valid unless reported otherwise.
 
@@ -130,8 +141,6 @@ def test_vector_outputs_conform_unless_reported(case: Path) -> None:
         case: The directory of the case.
     """
     expected_file = case / "expected.json"
-    if not expected_file.exists() or read(expected_file)["conformance"] != CONFORMANT:
-        pytest.skip("not a conformant case")
     schema = read(case / "schema.json")
     outputs = schema["properties"].get("outputs", {"additionalProperties": False})
     resource = {**outputs, "$defs": schema.get("$defs", {})}
@@ -199,8 +208,7 @@ def test_errors_of_partial_runs_name_their_outputs() -> None:
 def test_file_values_must_be_uris() -> None:
     """Test that a file reference that is left a path fails validation.
 
-    A CWL ``File`` object without ``location`` or ``path`` stays as it is,
-    and so do the values of tuples, whose shape isn't converted.
+    Values of tuples, whose shape isn't converted, stay as they are.
     """
     schema = copy.deepcopy(WORKFLOW)
     outputs = schema["properties"]["outputs"]["properties"]
@@ -211,7 +219,7 @@ def test_file_values_must_be_uris() -> None:
     log = {
         "state": "COMPLETE",
         "outputs": {
-            "qc_report": {"class": "File"},
+            "qc_report": 3,
             "alignments": ["relative.bam"],
             "pair": ["relative.txt"],
         },
@@ -220,14 +228,14 @@ def test_file_values_must_be_uris() -> None:
     result = normalise_outputs(schema, log, output_dir=BASE)
 
     assert result.outputs == {
-        "qc_report": {"class": "File"},
+        "qc_report": 3,
         "alignments": [f"{BASE}/relative.bam"],
         "pair": ["relative.txt"],
     }
     assert result.conformance == NON_CONFORMANT
     assert [(e.location, e.message) for e in result.errors] == [
         ("$.pair[0]", "'relative.txt' is not an absolute URI"),
-        ("$.qc_report", "{'class': 'File'} is not of type 'string'"),
+        ("$.qc_report", "3 is not of type 'string'"),
     ]
 
 
@@ -388,15 +396,16 @@ def test_schema_without_id_resolves_local_references() -> None:
 
 
 def test_weskit_shape_needs_no_declared_filesystem_output() -> None:
-    """Test that ``filesystem`` is an output if the schema declares one."""
+    """Test that ``filesystem`` and ``S3`` are outputs if the schema declares them."""
     schema = copy.deepcopy(WORKFLOW)
     outputs = schema["properties"]["outputs"]["properties"]
     outputs["filesystem"] = {"type": "array", "items": {"type": "string"}}
-    log = {"state": "CANCELED", "outputs": {"filesystem": ["a", "b"]}}
+    outputs["S3"] = {"type": "integer"}
+    log = {"state": "CANCELED", "outputs": {"filesystem": ["a", "b"], "S3": 1}}
 
     result = normalise_outputs(schema, log)
 
-    assert result.outputs == {"filesystem": ["a", "b"]}
+    assert result.outputs == {"filesystem": ["a", "b"], "S3": 1}
 
 
 def test_listing_strings_and_unknown_entries() -> None:
@@ -483,12 +492,23 @@ def test_listed_uri_with_trailing_slash_of_output_dir() -> None:
 def test_secondary_file_names(name: str, pattern: str, secondary: str) -> None:
     """Test the names of secondary files, as in the table of File references.
 
+    A glob that matches a file and its secondary file finds only the file.
+
     Args:
         name: The name of the file.
         pattern: The suffix pattern.
         secondary: The expected name of the secondary file.
     """
-    assert outputs_module._secondary_name(name, pattern) == secondary
+    schema = copy.deepcopy(WORKFLOW)
+    alignments = schema["properties"]["outputs"]["properties"]["alignments"]
+    alignments["x-ga4gh-output-glob"] = "*"
+    alignments["items"]["x-ga4gh-file"]["secondaryFiles"] = [pattern]
+    log = {"state": "CANCELED", "outputs": [name, secondary]}
+
+    result = normalise_outputs(schema, log, output_dir=BASE)
+
+    assert result.outputs == {"alignments": [f"{BASE}/{name}"]}
+    assert result.unmatched_files == []
 
 
 def test_partial_output_with_several_errors_is_removed_once() -> None:
@@ -502,3 +522,135 @@ def test_partial_output_with_several_errors_is_removed_once() -> None:
         "$.alignments[0]",
         "$.alignments[1]",
     ]
+
+
+def test_globs_match_in_polynomial_time() -> None:
+    """Test that globs with many wildcards don't backtrack exponentially.
+
+    Schemas are untrusted; a normaliser in a gateway must not hang on them.
+    """
+    schema = copy.deepcopy(WORKFLOW)
+    outputs = schema["properties"]["outputs"]["properties"]
+    outputs["alignments"]["x-ga4gh-output-glob"] = "/".join(
+        ["**"] * 8 + ["*a" * 12 + "*b"]
+    )
+    deep = "/".join(["d"] * 26 + ["a" * 60])
+    log = {"state": "CANCELED", "outputs": [deep]}
+
+    started = time.monotonic()
+    result = normalise_outputs(schema, log, output_dir=BASE)
+
+    assert time.monotonic() - started < 10
+    assert result.outputs == {}
+
+
+@pytest.mark.parametrize(
+    ("glob", "path", "matches"),
+    [
+        ("*", "", True),
+        ("a*b*c", "aXbYc", True),
+        ("a*b*c", "aXbY", False),
+        ("?b", "ab", True),
+        ("?b", "b", False),
+        ("*.txt", ".x.txt", True),
+        ("a*", "a", True),
+        ("a*a", "a", False),
+    ],
+)
+def test_segment_wildcards(glob: str, path: str, matches: bool) -> None:
+    """Test ``*`` and ``?`` within a segment.
+
+    Args:
+        glob: A segment of a glob.
+        path: A segment of a path.
+        matches: Whether they match.
+    """
+    assert outputs_module._match_segment(glob, path) is matches
+
+
+@pytest.mark.parametrize(
+    "outputs",
+    [
+        {"filesystem": None, "S3": ["https://s3.example.org/x?X-Amz-Signature=S"]},
+        {"S3": ["https://s3.example.org/x?X-Amz-Signature=S"]},
+        {"filesystem": [], "S3": ["https://s3.example.org/x?sig=S"], "other": 1},
+    ],
+)
+def test_presigned_urls_never_reach_the_report(outputs: dict[str, Any]) -> None:
+    """Test that WESkit's ``S3`` presigned URLs are dropped in any shape.
+
+    Args:
+        outputs: ``RunLog.outputs``.
+    """
+    log = {"state": "COMPLETE", "outputs": outputs}
+
+    report = normalise_outputs(WORKFLOW, log, output_dir=BASE).to_json()
+
+    assert "Signature" not in json.dumps(report)
+    assert "sig=" not in json.dumps(report)
+
+
+def test_skipped_entries_hide_queries_and_sapporo_urls() -> None:
+    """Test that skipped entries don't repeat queries, fragments or file URLs."""
+    log = {
+        "state": "COMPLETE",
+        "outputs": [
+            f"{BASE}/a.bam?X-Amz-Signature=S#frag",
+            {"file_name": 3, "file_url": "https://x/?token=S"},
+        ],
+    }
+
+    result = normalise_outputs(WORKFLOW, log, output_dir=BASE)
+
+    assert [s.entry for s in result.skipped_files] == [
+        f"{BASE}/a.bam",
+        {"file_name": 3},
+    ]
+
+
+def test_encoded_slashes_in_listed_uris_are_skipped() -> None:
+    """Test that a ``%2F`` in a listed URI doesn't hide segments in one."""
+    log = {
+        "state": "COMPLETE",
+        "outputs": [f"{BASE}/alignments/sub%2Fdeep.bam", f"{BASE}/x%2F..%2Fy"],
+    }
+
+    result = normalise_outputs(WORKFLOW, log, output_dir=BASE)
+
+    assert "alignments" not in result.outputs
+    assert [s.reason for s in result.skipped_files] == ["an encoded '/'"] * 2
+
+
+@pytest.mark.parametrize(
+    ("value", "reason"),
+    [
+        ({"class": "File", "location": None}, "a File or Directory object"),
+        ({"class": "Directory"}, "a File or Directory object"),
+        ("C:\\data\\r.html", "a Windows path"),
+        ("c:/data/r.html", "a Windows path"),
+    ],
+)
+def test_values_that_arent_uris_are_unconverted(value: Any, reason: str) -> None:
+    """Test that objects without location and Windows paths are reported.
+
+    Args:
+        value: The reported value.
+        reason: The start of the expected reason.
+    """
+    log = {"state": "COMPLETE", "outputs": {"qc_report": value}}
+
+    result = normalise_outputs(WORKFLOW, log, output_dir=BASE)
+
+    assert "qc_report" not in result.outputs
+    assert result.unconverted[0].reason.startswith(reason)
+
+
+@pytest.mark.parametrize("state", [["COMPLETE"], {"s": 1}, 3])
+def test_states_that_arent_strings(state: Any) -> None:
+    """Test that a state that isn't a string is a normalisation error.
+
+    Args:
+        state: The state.
+    """
+    with pytest.raises(NormalisationError, match="not in a final state"):
+        normalise_outputs(WORKFLOW, {"state": state})

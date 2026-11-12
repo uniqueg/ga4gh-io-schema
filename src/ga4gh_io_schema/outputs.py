@@ -22,6 +22,7 @@ from urllib.parse import quote, unquote, urlsplit
 import jsonschema
 from jsonschema.protocols import Validator
 from referencing import Registry, Resource
+from referencing._core import Resolver
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
@@ -39,15 +40,14 @@ CONFORMANT = "conformant"
 NON_CONFORMANT = "non-conformant"
 PARTIAL = "partial"
 
-#: Keys of ``RunLog.outputs`` of WESkit: ``filesystem`` lists the files of the
-#: run, relative to its working directory; ``S3`` the same files as presigned
-#: URLs, which carry credentials and are never copied into a report.
-_WESKIT_KEYS = frozenset({"filesystem", "S3"})
-
 # A value has a scheme if it starts with one (see File references, Values).
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 # C0 and C1 control characters and DEL, which listed paths must not contain
+# (Outputs, x-ga4gh-output-glob); the input checks of wes.py follow other
+# rules (File references, Values), so the expressions aren't shared.
 _CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+# A Windows path, whose drive letter would look like a scheme
+_WINDOWS_PATH = re.compile(r"^[A-Za-z]:[\\/]")
 # A percent sign that doesn't start a valid percent-encoded octet
 _BAD_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")
 # Base URI of a schema document without $id, to resolve its local references
@@ -304,13 +304,13 @@ def _final_state(run_log: Mapping[str, Any]) -> str:
     if not isinstance(run_log, Mapping):
         raise NormalisationError("The run log must be a JSON object.")
     state = run_log.get("state")
-    if state not in FINAL_STATES:
+    if not isinstance(state, str) or state not in FINAL_STATES:
         raise NormalisationError(
             f"The run is in the state {state!r}, not in a final state "
             f"({', '.join(sorted(FINAL_STATES))}): outputs are normalised only "
             "for runs that have ended."
         )
-    return str(state)
+    return state
 
 
 def _check_output_dir(output_dir: str | None) -> str | None:
@@ -389,14 +389,15 @@ def _split_run_log(
             f"{type(outputs).__name__}."
         )
     names = set(_engine_names(schema, _output_properties(schema)).values())
-    if (
-        "filesystem" in outputs
-        and isinstance(outputs["filesystem"], list)
-        and set(outputs) <= _WESKIT_KEYS
-        and not names & _WESKIT_KEYS
-    ):
-        return {}, list(outputs["filesystem"])
-    return dict(outputs), []
+    named = dict(outputs)
+    if "S3" not in names:
+        # WESkit's presigned URLs: credentials, never copied into a report
+        named.pop("S3", None)
+    if "filesystem" not in names and isinstance(named.get("filesystem"), list):
+        return {k: v for k, v in named.items() if k != "filesystem"}, list(
+            named["filesystem"]
+        )
+    return named, []
 
 
 def _sapporo_entry(entry: Any) -> Any:
@@ -409,8 +410,10 @@ def _sapporo_entry(entry: Any) -> Any:
     Returns:
         The ``file_name`` of a Sapporo object, or the entry.
     """
-    if isinstance(entry, dict) and isinstance(entry.get("file_name"), str):
-        return entry["file_name"]
+    if isinstance(entry, dict) and "file_name" in entry:
+        name = entry["file_name"]
+        # Without file_url, which may carry credentials (e.g., a token)
+        return name if isinstance(name, str) else {"file_name": name}
     return entry
 
 
@@ -475,7 +478,7 @@ def _registry(schema: dict[str, Any]) -> tuple[str, Registry]:
     return base, Registry().with_resource(base, resource).crawl()
 
 
-def _resolver(schema: dict[str, Any]) -> Any:
+def _resolver(schema: dict[str, Any]) -> Resolver[Any]:
     """Return a resolver of the references of an IO schema.
 
     Args:
@@ -516,10 +519,26 @@ def _check_listing(
                 segments = tuple(entry.split("/"))
             _check_segments(segments)
         except _Unconvertible as exc:
-            skipped.append(SkippedFile(entry=entry, reason=str(exc)))
+            skipped.append(SkippedFile(entry=_redact(entry), reason=str(exc)))
             continue
         checked[segments] = None
     return list(checked)
+
+
+def _redact(entry: Any) -> Any:
+    """Remove the query and fragment of a listed URI, before reporting it.
+
+    Queries of listed URIs (e.g., of presigned URLs) may carry credentials.
+
+    Args:
+        entry: The listed entry.
+
+    Returns:
+        The entry, without query and fragment if it is a URI.
+    """
+    if isinstance(entry, str) and _SCHEME.match(entry):
+        return re.split(r"[?#]", entry, maxsplit=1)[0]
+    return entry
 
 
 def _uri_segments(uri: str, base: str) -> tuple[str, ...]:
@@ -545,9 +564,13 @@ def _uri_segments(uri: str, base: str) -> tuple[str, ...]:
     if _BAD_ESCAPE.search(rest):
         raise _Unconvertible("invalid percent-encoding")
     try:
-        return tuple(unquote(segment, errors="strict") for segment in rest.split("/"))
+        segments = tuple(unquote(s, errors="strict") for s in rest.split("/"))
     except UnicodeDecodeError as exc:
         raise _Unconvertible("percent-encoding that isn't UTF-8") from exc
+    if any("/" in segment for segment in segments):
+        # A %2F would hide several segments in one (e.g., x%2F..%2F..%2Fy)
+        raise _Unconvertible("an encoded '/'")
+    return segments
 
 
 def _check_segments(segments: tuple[str, ...]) -> None:
@@ -595,7 +618,7 @@ def _take_named(
     name: str,
     prop: Any,
     value: Any,
-    resolver: Any,
+    resolver: Resolver[Any],
     context: _Context,
     result: NormalisedOutputs,
 ) -> None:
@@ -619,7 +642,9 @@ def _take_named(
         )
 
 
-def _convert(value: Any, schema: Any, resolver: Any, context: _Context) -> Any:
+def _convert(
+    value: Any, schema: Any, resolver: Resolver[Any], context: _Context
+) -> Any:
     """Convert a reported value into the shape of its schema.
 
     File references become URIs (the ``location`` of CWL ``File`` and
@@ -691,7 +716,7 @@ def _single_branch(schema: dict[str, Any]) -> Any:
     return None
 
 
-def _follow(schema: Any, resolver: Any) -> tuple[Any, Any]:
+def _follow(schema: Any, resolver: Resolver[Any]) -> tuple[Any, Resolver[Any]]:
     """Follow the ``$ref`` of a schema that has no shape of its own.
 
     Args:
@@ -732,9 +757,13 @@ def _convert_file(value: Any, context: _Context) -> Any:
             given as a URI of the output directory.
     """
     if isinstance(value, dict) and value.get("class") in ("File", "Directory"):
-        value = value.get("location", value.get("path", value))
+        value = value.get("location") or value.get("path")
+        if not isinstance(value, str):
+            raise _Unconvertible("a File or Directory object without location")
     if not isinstance(value, str):
         return value
+    if _WINDOWS_PATH.match(value):
+        raise _Unconvertible("a Windows path")
     if _SCHEME.match(value):
         if not value.lower().startswith("file:"):
             return value
@@ -824,6 +853,9 @@ def _take_glob(
 def _match(glob: tuple[str, ...], path: tuple[str, ...]) -> bool:
     """Match a glob against a relative path, segment by segment.
 
+    Dynamic programming over the segments, so that the time is polynomial in
+    the lengths of the glob and the path (globs come from untrusted schemas).
+
     Args:
         glob: The segments of the glob; ``**`` matches any number of segments.
         path: The segments of the path.
@@ -831,31 +863,49 @@ def _match(glob: tuple[str, ...], path: tuple[str, ...]) -> bool:
     Returns:
         Whether the glob matches the whole path.
     """
-    if not glob:
-        return not path
-    if glob[0] == "**":
-        return any(_match(glob[1:], path[i:]) for i in range(len(path) + 1))
-    return (
-        bool(path)
-        and _segment(glob[0]).fullmatch(path[0]) is not None
-        and (_match(glob[1:], path[1:]))
-    )
+    # ends[j]: whether the glob segments so far match the first j segments
+    ends = [True] + [False] * len(path)
+    for segment in glob:
+        if segment == "**":
+            for j in range(1, len(path) + 1):
+                ends[j] = ends[j] or ends[j - 1]
+        else:
+            ends = [False] + [
+                ends[j] and _match_segment(segment, path[j]) for j in range(len(path))
+            ]
+    return ends[-1]
 
 
-def _segment(glob: str) -> re.Pattern[str]:
-    """Translate a segment of a glob into a regular expression.
+def _match_segment(glob: str, name: str) -> bool:
+    """Match a segment of a glob against a segment of a path.
+
+    ``*`` matches any characters (also none) and ``?`` exactly one; all other
+    characters match themselves. Greedy matching with backtracking to the
+    last ``*`` only, in time proportional to the product of the lengths.
 
     Args:
-        glob: The segment; ``*`` matches any characters, ``?`` one.
+        glob: The segment of the glob.
+        name: The segment of the path.
 
     Returns:
-        The compiled expression, to be matched against a whole segment.
+        Whether the glob matches the whole segment.
     """
-    parts = [
-        ".*" if char == "*" else "." if char == "?" else re.escape(char)
-        for char in glob
-    ]
-    return re.compile("".join(parts), re.DOTALL)
+    g = n = 0
+    star, mark = -1, 0
+    while n < len(name):
+        if g < len(glob) and glob[g] in ("?", name[n]):
+            g += 1
+            n += 1
+        elif g < len(glob) and glob[g] == "*":
+            star, mark = g, n
+            g += 1
+        elif star >= 0:
+            g = star + 1
+            mark += 1
+            n = mark
+        else:
+            return False
+    return all(char == "*" for char in glob[g:])
 
 
 def _secondary_name(name: str, pattern: str) -> str:

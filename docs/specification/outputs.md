@@ -178,8 +178,10 @@ matches:
   exactly one trailing `/`, and has no query or fragment. It derives the
   relative path from the rest: split at `/`, each segment percent-decoded.
   The decoded path MUST pass the checks of listed paths above (e.g., a
-  listed `…/out/../8/secret.bam` is skipped), and the URI of a match is
-  built from it as above.
+  listed `…/out/../8/secret.bam` is skipped), and a decoded segment MUST
+  NOT contain `/` (e.g., `…/out/x%2F..%2F..%2Fsecret.bam` is skipped:
+  some storage treats `%2F` as `/`). The URI of a match is built from the
+  decoded path as above.
 
 Syntax:
 

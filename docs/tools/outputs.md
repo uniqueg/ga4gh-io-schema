@@ -64,14 +64,16 @@ The command writes a report (indented JSON; one line with `--json`):
 | `unconverted` | Outputs reported by name whose values can't be given as URIs (e.g., a local path outside `--local-dir`, or a relative path without `--output-dir`), with the reason. The outputs are absent. |
 | `undeclared` | Outputs that the engine reports by name but the schema doesn't declare, by their names in the engine. Clients MAY offer them for download, as files without a description. |
 | `unmatchedFiles` | URIs of listed files that no output found. |
-| `skippedFiles` | Entries of the listing that failed the checks of [`x-ga4gh-output-glob`](../specification/outputs.md#x-ga4gh-output-glob) (e.g., a `..` segment), with the reason. |
+| `skippedFiles` | Entries of the listing that failed the checks of [`x-ga4gh-output-glob`](../specification/outputs.md#x-ga4gh-output-glob) (e.g., a `..` segment, or an encoded `/`), with the reason. The query and fragment of a skipped URI are removed (they may carry credentials, e.g., of a presigned URL), and of a Sapporo entry only `file_name` is kept. |
 
 The exit status is 0 whenever the outputs could be normalised, also for
 non-conformant and partial runs: check `conformance`. It is 1 if the schema
 doesn't conform to the profile, the run hasn't ended, `RunLog.outputs` has
 no supported shape, the options are inconsistent, or the schema has a
-reference that can't be resolved; 3 if a file can't be read (see [Exit
-status](cli.md#exit-status)).
+reference that can't be resolved; 3 if a file can't be read or isn't
+valid JSON, if the schema or the run log is too deeply nested (e.g., a
+cycle of references), or if both `--schema` and `--run-log` are `-` (see
+[Exit status](cli.md#exit-status)).
 
 ## Supported shapes
 
@@ -81,7 +83,7 @@ The shape of `RunLog.outputs` is detected:
 | --- | --- | --- |
 | An object keyed by output name | cwltool and Toil (the CWL output object); Cromwell, miniwdl and Conquest for WDL (names qualified with the workflow name, e.g., `rnaseq.qc_report`) | By name. The name of an output is `name` of its `x-ga4gh-parameter` or its property name, qualified with `entry_point` of `x-ga4gh-workflow` for WDL. CWL `File` and `Directory` objects give their `location` (or `path`). |
 | An array of files | Sapporo: objects with `file_name`, relative to the output directory (`{base_url}/runs/{run_id}/outputs`), and `file_url`; or strings, paths or URIs | By glob, from the listing; `file_url` isn't used. |
-| An object with only `filesystem` (and `S3`) | WESkit: `filesystem` lists the files of the working directory of the run, relative to it; `S3` the same files as presigned URLs | By glob, from `filesystem`. The presigned URLs of `S3` carry credentials and are ignored; they never reach the report. If the schema declares an output named `filesystem` or `S3`, the object is taken as outputs by name. |
+| An object with `filesystem` (and `S3`) | WESkit: `filesystem` lists the files of the working directory of the run, relative to it; `S3` the same files as presigned URLs | By glob, from `filesystem`; other keys are outputs by name. The presigned URLs of `S3` carry credentials and are always dropped; they never reach the report. An output that the schema declares as `filesystem` or `S3` is taken by name instead. |
 | Absent, `null` or `{}` | Nextflow and Snakemake on most WES servers | By glob, if `--files` lists the files of the run; otherwise nothing is found. |
 
 Rules for values found by name:
@@ -90,7 +92,9 @@ Rules for values found by name:
   than `file:` are kept as they are; absolute paths and `file:` URIs (of no
   host or `localhost`) under `--local-dir`, and relative paths, become URIs
   under `--output-dir`, built as for listed files (each segment
-  percent-encoded); others are reported as `unconverted`.
+  percent-encoded); others, Windows paths (e.g., `C:\data\r.html`, whose
+  drive letter would look like a scheme), and `File` or `Directory`
+  objects without `location` or `path` are reported as `unconverted`.
 - Arrays, objects with `properties` (records), objects with a file
   reference as `additionalProperties` (files keyed by name), and `anyOf` or
   `oneOf` with a single branch besides `{"type": "null"}` (e.g., an optional
@@ -105,7 +109,9 @@ Rules for values found by name:
 
 Rules for the listing are those of
 [`x-ga4gh-output-glob`](../specification/outputs.md#x-ga4gh-output-glob):
-entries are checked before globs are matched, secondary files of a match
+entries are checked before globs are matched (in time polynomial in the
+lengths of the glob and the path: globs come from untrusted schemas),
+secondary files of a match
 are not values of their own, several matches of an array are sorted by path,
 and directories are those that contain listed files.
 
@@ -143,5 +149,11 @@ shapes in the documentation and source code of the engines and servers.
 ::: ga4gh_io_schema.outputs.normalise_outputs
 
 ::: ga4gh_io_schema.outputs.NormalisedOutputs
+
+::: ga4gh_io_schema.outputs.OutputError
+
+::: ga4gh_io_schema.outputs.SkippedFile
+
+::: ga4gh_io_schema.outputs.UnconvertedOutput
 
 ::: ga4gh_io_schema.outputs.NormalisationError

@@ -21,18 +21,27 @@ Each directory is one case:
 
 - `conformance`: `conformant`, `non-conformant` or `partial`;
 - `outputs`: the normalised outputs object;
-- optionally, what the normaliser reports, each empty if absent:
-  `removed` (names of outputs of a partial run left out as invalid),
-  `ambiguous` (names of one-file outputs with several matches, with the
-  URIs of the matches), `unconverted` (names of outputs reported by name
-  whose values can't be given as URIs), `undeclared` (names in the engine of
-  outputs that the schema doesn't declare), `unmatchedFiles` (URIs of listed
-  files that no output found, sorted by code point) and `skippedFiles` (the
-  listed entries that failed the checks, in the order of the listing).
+- optionally, what the normaliser reports, each empty (`[]` or `{}`) if
+  absent:
+  - `removed`: array of the names of outputs of a partial run left out as
+    invalid, sorted;
+  - `ambiguous`: object with the names of one-file outputs with several
+    matches as keys, and the URIs of the matches, sorted by path, as
+    values;
+  - `unconverted`: array of the names of outputs reported by name whose
+    values can't be given as URIs, sorted;
+  - `undeclared`: array of the names in the engine of outputs that the
+    schema doesn't declare, sorted;
+  - `unmatchedFiles`: array of the URIs of listed files that no output
+    found, sorted by code point;
+  - `skippedFiles`: array of the listed entries that failed the checks, as
+    they were listed (strings or other JSON values), in the order of the
+    listing.
 
-Compare JSON values, not their text; names in `removed`, `unconverted` and
-`undeclared` are sorted. Validation errors, their messages and the reasons
-of reports are not part of the vectors.
+Compare JSON values, not their text. Only the names of reported outputs
+are compared, not their values; a normaliser's own report may carry more
+(e.g., the values and reasons). Validation errors, their messages and the
+reasons of reports are not part of the vectors.
 
 The case `cwltool-file-objects` is the output object of a real cwltool run,
 with its paths anonymised. The others are written from the shapes that the
