@@ -65,7 +65,7 @@ The rules combine one vocabulary file per keyword group:
 | `x-ga4gh-description-format` | `plain_text`, `markdown` or `rst` | `annotations` |
 | `x-ga4gh-hidden` | boolean | `annotations` |
 | `x-ga4gh-error-message` | string | `annotations` |
-| `x-ga4gh-file` | an object with `kind` (`file` or `directory`) and optional `mediaType`, `ontology`, `compression`, `secondaryFiles` and `schemes` (see [File references](files.md)); the schema that carries it has `"type": "string"` and no `format` or `contentMediaType` | `file` |
+| `x-ga4gh-file` | an object with `kind` (`file` or `directory`) and optional `mediaType`, `ontology`, `compression`, `secondaryFiles` and `schemes` (see [File references](files.md)); the schema that carries it is a flat string schema (see [The annotation](files.md#the-annotation)) | `file` |
 | `x-ga4gh-tabular-schema` | a schema, checked by the same rules | `file` |
 
 Other keywords that start with `x-ga4gh-` (e.g., misspelled ones) are

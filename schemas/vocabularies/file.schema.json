@@ -15,7 +15,7 @@
   },
   "dependentSchemas": {
     "x-ga4gh-file": {
-      "$comment": "A file reference is a string. The profile defines its value syntax, not `format` (e.g., `uri` rejects compact DRS identifiers); the media type of the referenced file is `mediaType` of the annotation, not `contentMediaType`, which describes the string itself.",
+      "$comment": "A file reference is a flat string schema. The profile defines its value syntax, not `format` (e.g., `uri` rejects compact DRS identifiers); `contentMediaType`, `contentEncoding` and `contentSchema` describe the string itself, not the referenced file. In-place applicators are not allowed, so that these rules can't be bypassed (e.g., with `allOf: [{format: uri}]`).",
       "required": [
         "type"
       ],
@@ -24,7 +24,18 @@
           "const": "string"
         },
         "format": false,
-        "contentMediaType": false
+        "contentMediaType": false,
+        "contentEncoding": false,
+        "contentSchema": false,
+        "allOf": false,
+        "anyOf": false,
+        "oneOf": false,
+        "not": false,
+        "if": false,
+        "then": false,
+        "else": false,
+        "$ref": false,
+        "$dynamicRef": false
       }
     }
   },
@@ -52,7 +63,8 @@
         "ontology": {
           "type": "string",
           "format": "uri",
-          "description": "URI of an ontology term for the format of the referenced file or directory (e.g., an EDAM format term)."
+          "description": "HTTP(S) IRI of an ontology term for the format of the referenced file or directory (e.g., an EDAM format term), with namespace prefixes expanded.",
+          "pattern": "^https?://"
         },
         "compression": {
           "enum": [
@@ -68,17 +80,17 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "description": "Files that must exist next to the referenced file (e.g., indexes), as suffix patterns in the style of CWL: the suffix is appended to the name of the referenced file, after each leading ^ has removed one extension (e.g., .bai for sample.bam.bai, ^.bai for sample.bai).",
+          "description": "Files that must exist next to the referenced file (e.g., indexes), as suffix patterns in the style of CWL with at least one character other than a dot: the suffix is appended to the name of the referenced file, after each leading ^ has removed one extension (e.g., .bai for sample.bam.bai, ^.bai for sample.bai).",
           "items": {
             "type": "string",
-            "pattern": "^\\^*[A-Za-z0-9_.+-]+$"
+            "pattern": "^\\^*[.]*[A-Za-z0-9_+-][A-Za-z0-9_.+-]*$"
           }
         },
         "schemes": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "description": "URI schemes that values may use (e.g., drs, https, s3), in lowercase. If given, values must be absolute URIs with one of them; paths are not allowed. Schemes that run code in a browser or refer to local files are not allowed.",
+          "description": "URI schemes that values may use (e.g., drs, https, s3), in lowercase. If given, values must be absolute URIs with one of them; paths are not allowed. The schemes javascript, vbscript, livescript, data, blob, filesystem, file, jar, view-source and about are rejected; for all others, the deployment's allow-list is the control.",
           "items": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9+.-]*$",
@@ -86,9 +98,14 @@
               "enum": [
                 "javascript",
                 "vbscript",
+                "livescript",
                 "data",
                 "blob",
-                "file"
+                "filesystem",
+                "file",
+                "jar",
+                "view-source",
+                "about"
               ]
             }
           }

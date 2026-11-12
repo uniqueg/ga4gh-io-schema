@@ -20,13 +20,17 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   valid JSON, or the meta-schema is malformed or has references that can't
   be resolved, 4: unexpected errors); before,
   all failures exited with 1. (#9)
-- Files and directories are file references: strings with the new
-  `x-ga4gh-file` annotation, which the meta-schema checks. `x-ga4gh-drs-uri`
-  is removed; `"schemes": ["drs"]` of the annotation replaces it. Schemas with
-  `x-ga4gh-file` can't have `format` (e.g., `uri`, which rejects compact DRS
-  identifiers) or `contentMediaType`, which described the string, not the
-  referenced file; the media type goes into `mediaType` of the annotation.
-  (#10)
+- `x-ga4gh-drs-uri` is removed; `"schemes": ["drs"]` of the new
+  `x-ga4gh-file` annotation replaces it. (#10)
+- Files and directories are file references (`x-ga4gh-file`), no longer
+  strings with `"format": "uri"` and `contentMediaType`. A file reference is
+  a flat string schema: no `format` (`uri` rejects compact DRS identifiers),
+  no `contentMediaType`, `contentEncoding` or `contentSchema` (they describe
+  the string, not the referenced file; the media type goes into `mediaType`),
+  and no in-place applicators such as `allOf`. (#10)
+- The format of a file is named by `ontology` of the file reference;
+  `x-ga4gh-ontology` names the data of a parameter (e.g., an EDAM data
+  term), no longer also the format. (#10)
 
 ### Added
 
@@ -37,7 +41,6 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   specification page with the mapping to CWL, WDL and nf-schema. The
   examples use them, and their inputs reject unknown and missing values
   (`required`, `additionalProperties: false`). (#10)
-
 - Shared conventions of all subcommands: input from a path or `-` (standard
   input), `--output` for the result, `--json` for results and errors as JSON
   objects. (#9)
