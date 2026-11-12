@@ -83,6 +83,7 @@ With `--json`, the output is one object with the IO schema and the notes:
 | `format`, `contentMediaType`, `contentEncoding` and `contentSchema` of a file reference | dropped, with a note: file references can't have them (see [File references](../specification/files.md#the-annotation)) |
 | A sample-sheet schema (one row) | `"x-ga4gh-tabular-schema": {"type": "array", "items": <row schema>}` of the property of the sheet, which becomes a file reference; this hint is experimental. Its columns get file references by the same rules; its local references point into the hint |
 | Outputs | `"outputs": {"type": "object", "properties": {}}`, with a note: Snakemake schemas don't describe outputs; add them by hand |
+| The workflow | `"x-ga4gh-workflow": {"descriptor_type": "SMK"}` (see [Identity and engine binding](../specification/identity.md#the-workflow-block)); add an `$id`, and the TRS ids, the path and the checksum of the Snakefile when the workflow is published. Parameters keep their names, so no `x-ga4gh-parameter` is needed |
 | `x-ga4gh-*` keywords of the source | kept; the check of the result rejects wrong ones |
 
 ### Upgrade to Draft 2020-12

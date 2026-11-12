@@ -514,6 +514,9 @@ class _Converter:
         )
         schema: dict[str, Any] = {
             "$schema": load_profile()["$id"],
+            # The engine binding; the TRS fields are known only once the
+            # workflow is published (see the converter documentation)
+            "x-ga4gh-workflow": {"descriptor_type": "SMK"},
             "type": "object",
             "properties": {
                 "inputs": inputs,

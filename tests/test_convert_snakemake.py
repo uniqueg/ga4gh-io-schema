@@ -508,6 +508,7 @@ def test_structure_of_the_io_schema() -> None:
     validate_schema(conversion.schema)
     assert conversion.schema == {
         "$schema": load_profile()["$id"],
+        "x-ga4gh-workflow": {"descriptor_type": "SMK"},
         "type": "object",
         "properties": {
             "inputs": {
