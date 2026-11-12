@@ -221,6 +221,9 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    [Runs that don't complete](outputs.md#runs-that-dont-complete), and the
    outputs of a non-conformant run with the same warning, keeping all of
    them.
+6. An output normaliser SHOULD produce the results of the test vectors in
+   `tests/vectors/wes-outputs/` for the shapes of `RunLog.outputs` that it
+   supports (see [Output normaliser](../tools/outputs.md#test-vectors)).
 
 ### WES server
 
@@ -286,6 +289,11 @@ tests/conformance/
 - Cases for the other classes (e.g., test vectors for the engine bindings
   and for the normalisation of outputs) are added to the suite with the
   features they test.
+- **Outputs of runs** test the class [Output normaliser](#output-normaliser):
+  the cases of `tests/vectors/wes-outputs/` (described in its `README.md`)
+  give a schema document, a WES run log and options, and the normalised
+  outputs object and report that a normaliser produces, or that it rejects
+  the input.
 
 The runner of this package is `tests/test_conformance.py`; it checks every
 case against the [Python API](../tools/validator.md#python-api) of the
@@ -314,7 +322,8 @@ that they implement or plan to implement:
 | Implementation | Language | Classes | Status |
 | ----- | ----- | ----- | ----- |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Validator | Available (`ga4gh-io-schema validate`); passes the conformance suite |
-| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Producer, Request builder, Output normaliser | Planned (converters, translation to `workflow_params`, normalisation of outputs) |
+| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Output normaliser | Available (`ga4gh-io-schema outputs`); passes the `wes-outputs` test vectors |
+| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Producer, Request builder | Planned (converters, translation to `workflow_params`) |
 | [ELIXIR Cloud Components](https://github.com/elixir-cloud-aai/cloud-components) | TypeScript | Form renderer, Request builder, Output normaliser | Planned |
 
 Further implementations are welcome: propose an entry for this table with a
