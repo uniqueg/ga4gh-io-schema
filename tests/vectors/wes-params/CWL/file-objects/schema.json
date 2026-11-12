@@ -1,0 +1,55 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/vectors/cwl/1.0.0",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "CWL",
+    "descriptor_type_version": "v1.2"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "reads": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "secondaryFiles": [
+              "^.bai"
+            ]
+          }
+        },
+        "index": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "directory"
+          }
+        },
+        "fastqs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          }
+        },
+        "known_sites": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "reads",
+        "index",
+        "fastqs"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

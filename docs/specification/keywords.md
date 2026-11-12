@@ -28,13 +28,15 @@ We propose the following initial set of custom annotations to support execution 
 
 * `x-ga4gh-file` *(object)*: Marks a string as a reference to a file or directory: its kind, the media type, format term and compression of the referenced file, its required secondary files (e.g., indexes) and the URI schemes that values may use (e.g., `drs` for Data Repository Service identifiers, so that UIs can offer a DRS browser before a user provides input). See [File references](files.md). *Relation to nf-schema: replaces `format: file-path`, `directory-path` and `path`, and the `mimetype` property.* It replaces `x-ga4gh-drs-uri` of version 0.2 (`"schemes": ["drs"]`).
 
+* `x-ga4gh-output-glob` *(string)*: A glob, relative to the output directory of the run, that finds an output (a file reference or a list of them) among the files of a run when the engine doesn't report the output by name (e.g., Nextflow and Snakemake in current WES servers); it is ignored when the engine does. See [Outputs](outputs.md#x-ga4gh-output-glob). *Relation to nf-schema: none; `nextflow_schema.json` describes parameters only.*
+
 * `x-ga4gh-ontology` *(string, uri)*: Maps an input or output to a formal ontology term for its data (e.g., the EDAM data term `http://edamontology.org/data_2044`, *Sequence*), enabling semantic linking and automated reasoning. The format of a referenced file (e.g., an EDAM format term) goes into `ontology` of [`x-ga4gh-file`](files.md).
 
 * `x-ga4gh-ui-widget` *(string)*: A hint for web portals to render a specific component. *Relation to nf-schema: `nf-schema` has no widget keyword (see its [list of keys](https://nextflow-io.github.io/nf-schema/latest/nextflow_schema/nextflow_schema_specification/)); form controls in its ecosystem follow from a parameter's `type` and `format`. This profile adds an explicit hint from a GA4GH vocabulary (e.g., `slider`, `table-viewer`). Generic JSON Schema form libraries don't read it, so portals need an adapter (see [Portals and clients](../adoption/portals.md)).* The meta-schema rejects widgets that the vocabulary doesn't have, except `custom:<name>`; clients render a parameter whose widget they don't know (e.g., a `custom:` widget of another platform) by its `type` and `format`, and offer outputs without a known viewer for download. Version 0.3 removed the `password` widget (see [Secrets](../security.md#secrets)) and defers viewers other than `table-viewer` and `html-viewer` (see [Roadmap](../roadmap.md#deferred)).
 
 * `x-ga4gh-tabular-schema` *(object, experimental)*: A nested JSON schema describing the expected array/object structure of an opaque tabular file, as a hint for clients (see [Tabular data and cloud sovereignty](#tabular-data-and-cloud-sovereignty)). *Relation to nf-schema: Corresponds to `nf-schema`'s `schema` key, which points to a schema for a sample sheet; nf-schema validates the file with it, the profile doesn't (yet). nf-schema's `uniqueEntries` has no equivalent (see *Uniqueness* in [Leveraging native JSON Schema](#leveraging-native-json-schema-what-we-dont-reinvent)). We explicitly namespace it as `x-ga4gh-tabular-schema` to prevent standard JSON Schema validators from confusing it with standard object `properties` or the `$schema` keyword.*
 
-* `x-ga4gh-description-format` *(string)*: Indicates the formatting of the standard `description` field (accepted values: `plain_text` (default) and `markdown`; version 0.3 removed `rst`, see [Roadmap](../roadmap.md#cut), and clients show descriptions in any other format as plain text, see [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)). *Relation to nf-schema: Equivalent in intent to the `help_text` property, but relies on formatting the standard JSON Schema `description` field rather than creating a secondary text property.*
+* `x-ga4gh-description-format` *(string)*: Indicates the formatting of the standard `description` field (accepted values: `plain_text` (default) and `markdown`, which means CommonMark with a few named extensions, see [Markdown descriptions](#markdown-descriptions); version 0.3 removed `rst`, see [Roadmap](../roadmap.md#cut), and clients show descriptions in any other format as plain text, see [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)). *Relation to nf-schema: Equivalent in intent to the `help_text` property, but relies on formatting the standard JSON Schema `description` field rather than creating a secondary text property.*
 
 * `x-ga4gh-hidden` *(boolean)*: Signals UI generators to hide this parameter under "Advanced" toggles, except where users must set it (see [Hidden inputs](#hidden-inputs)). *Relation to nf-schema: Equivalent to the `hidden` property.*
 
@@ -52,6 +54,71 @@ for the allowed values and the vocabulary file of each keyword). Version 0.3
 removed `x-ga4gh-fa-icon`: icons are a choice of the portal, not part of the
 contract (see [Roadmap](../roadmap.md#cut)); the meta-schema rejects it like
 any other unknown `x-ga4gh-*` keyword.
+
+### Markdown descriptions
+
+With `"x-ga4gh-description-format": "markdown"`, the `description` of the
+schema is [CommonMark](https://spec.commonmark.org/0.31.2/) (version 0.31.2)
+with these changes:
+
+* **Raw HTML is text.** HTML blocks and inline HTML (e.g., `<b>`,
+  `<script>`, `<img src=x onerror=...>`) are not interpreted: clients MUST
+  show them as the literal characters of the source, escaped, as if they
+  were in a code span. They are neither passed to the page nor removed.
+  Entity and numeric character references (e.g., `&amp;`) are decoded as
+  CommonMark defines.
+* **Images are not rendered.** Clients MUST show the alt text of an image
+  (e.g., `![Workflow diagram](https://example.org/diagram.png)` shows
+  "Workflow diagram") as text, and MUST NOT load the image.
+* **Links only with allowed schemes.** Clients MUST render a link (inline,
+  reference or autolink) as a link only if its destination is an absolute
+  URI whose scheme is on the client's allow-list (see
+  [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)).
+  Other links, including relative ones, which have no base to resolve
+  against, are shown as their link text.
+* **Extensions:** of the
+  [GitHub Flavored Markdown](https://github.github.com/gfm/) extensions,
+  only *tables*, *strikethrough* and *autolinks* (extended: `www.` and bare
+  `https://` URLs) are allowed. Clients MAY support them; a client that
+  doesn't shows them as CommonMark, i.e., as the text of the source. Task
+  list items, footnotes, math, diagrams, front matter and other extensions
+  are not part of the format: clients MUST NOT render them as such (they
+  come out as the CommonMark rendering of their source), and authors
+  SHOULD NOT use them.
+
+The rules make the subset safe to render: a client meets the Markdown rules
+of [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)
+with an option of its CommonMark library that escapes raw HTML (e.g.,
+`html: false` of markdown-it) and with renderers of its own for images,
+which write the alt text, and for links, which check the destination; it
+doesn't need an HTML sanitiser for descriptions. Turning off images in a
+library is not enough where the library then shows the image as a link
+(e.g., markdown-it). Markdown reads well as plain text, so clients without a
+Markdown renderer MAY show such descriptions as plain text.
+
+For example, the description of this input has a link, an image and raw
+HTML:
+
+```json
+{
+  "type": "string",
+  "description": "Reads in **FASTQ** format, see [the format](https://en.wikipedia.org/wiki/FASTQ_format).\n\n![Quality plot](https://example.org/plot.png)\n\n<b onclick=\"alert(1)\">Paired-end</b> reads go into two files.",
+  "x-ga4gh-description-format": "markdown",
+  "x-ga4gh-file": {"kind": "file"}
+}
+```
+
+A conforming client renders it as (in HTML; the link is kept if `https` is
+on its allow-list):
+
+```html
+<p>Reads in <strong>FASTQ</strong> format, see <a href="https://en.wikipedia.org/wiki/FASTQ_format">the format</a>.</p>
+<p>Quality plot</p>
+<p>&lt;b onclick=&quot;alert(1)&quot;&gt;Paired-end&lt;/b&gt; reads go into two files.</p>
+```
+
+The `<b>` element comes out as text, with its attribute, and no image is
+loaded.
 
 ### Hidden inputs
 

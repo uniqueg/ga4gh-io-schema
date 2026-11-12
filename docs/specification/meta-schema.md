@@ -19,6 +19,9 @@ Schema (Draft 2020-12) of the repository:
 - [`schemas/vocabularies/workflow.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/workflow.schema.json):
   the top-level keywords: the workflow version and engine of the schema
   (`x-ga4gh-workflow`, see [Identity and engine binding](identity.md)).
+- [`schemas/vocabularies/outputs.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/outputs.schema.json):
+  the `x-ga4gh-*` keywords that find the outputs of a run
+  ([Outputs](outputs.md)).
 - [`schemas/vocabularies/ui-widgets.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json):
   the vocabulary of UI widgets (values of `x-ga4gh-ui-widget`).
 
@@ -57,7 +60,9 @@ that
 - has `"type": "object"`, if it sets `type`;
 - has `properties` with the wrapper of the parameters: `inputs` (required),
   the JSON Schema of the inputs, and `outputs` (optional), the JSON Schema of
-  the outputs;
+  the outputs: an object schema without references or applicators, with
+  `"type": "object"` if it sets `type`
+  (see [Outputs](outputs.md#the-outputs-schema));
 - may carry the top-level keywords of `vocabularies/workflow.schema.json`
   (`x-ga4gh-workflow`), which are allowed only there.
 
@@ -79,6 +84,7 @@ The rules combine one vocabulary file per keyword group:
 | `x-ga4gh-tabular-schema` (experimental) | a schema, checked by the same rules | `file` |
 | `x-ga4gh-parameter` | object with `name` and `type` (strings, at least one) | `parameter` |
 | `x-ga4gh-workflow` | object, see [The workflow block](identity.md#the-workflow-block); top level only | `workflow` |
+| `x-ga4gh-output-glob` | a relative glob (see [`x-ga4gh-output-glob`](outputs.md#x-ga4gh-output-glob)), on a file reference or on an array whose `items` is a file reference written in place, without `prefixItems` | `outputs` |
 
 Other keywords that start with `x-ga4gh-` (e.g., misspelled ones, or
 `x-ga4gh-fa-icon`, which version 0.3 removed) are rejected: no vocabulary evaluates them, and `$defs/node` doesn't allow

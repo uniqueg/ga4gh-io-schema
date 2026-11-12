@@ -14,7 +14,7 @@ The profile is designed for the GA4GH APIs for federated analysis (TRS, WES, DRS
 
 - [Motivation](motivation.md): the usability gap, goals, non-goals and the
   concept of an interface description above workflow languages.
-- [Specification](specification/index.md): the keywords, the output contract,
+- [Specification](specification/index.md): the keywords, the outputs model,
   the meta-schema, conformance and examples.
 - [Rationale](rationale.md): the ecosystem survey and why no existing
   solution is adopted.

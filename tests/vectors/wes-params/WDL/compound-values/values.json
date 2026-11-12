@@ -1,0 +1,10 @@
+{
+  "interval": {
+    "left": 1,
+    "right": "chr1"
+  },
+  "references": {
+    "GRCh38": "drs://drs.example.org/grch38"
+  },
+  "label": null
+}

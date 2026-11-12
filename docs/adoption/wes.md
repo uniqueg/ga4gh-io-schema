@@ -26,9 +26,57 @@ WES 1.1 has no structured error body (e.g., a list of errors, each with a pointe
 
 See also [Security considerations](../security.md).
 
+## Outputs of runs
+
+WES servers report the outputs of a run in `RunLog.outputs`, a free-form
+object whose shape depends on the engine and the server. Clients and
+gateways turn it into the *normalised outputs object* of the run, keyed by
+the outputs of the IO schema, as defined in
+[Outputs](../specification/outputs.md#the-normalised-outputs-object). For
+engines that don't report outputs by name, this needs the server to list the
+files of the run, relative to its output directory (see
+[`x-ga4gh-output-glob`](../specification/outputs.md#x-ga4gh-output-glob)).
+
 ## Guide for WES implementers
 
-> **To be written.** This section will describe, step by step, how a WES
-> implementation or gateway validates `workflow_params` against an IO
-> schema, and how clients build `workflow_params` from an IO schema (see
-> [Converters](../tools/converters.md#from-io-schemas-to-wes)).
+Version 0.3 of the profile needs no change of WES: clients send ordinary
+WES 1.1 run requests, and servers that validate them use only what WES and
+TRS already provide.
+
+### Building run requests (clients)
+
+1. Find the IO schema of the workflow in TRS and check it, as described in
+   [Discovery by clients](trs.md#discovery-by-clients) (file type `OTHER`,
+   path `ga4gh-io.schema.json`, `$schema`, `x-ga4gh-workflow`, drift).
+2. Collect the input values, e.g., with a form rendered from the schema
+   (see [Portals and clients](portals.md)).
+3. Validate the values against `inputs`, check every file reference value
+   against the deployment's allow-list, and translate the values into
+   `workflow_params` with the binding of the schema's descriptor type (see
+   [Engine bindings](../specification/engine-bindings.md)).
+4. Set `workflow_type`, `workflow_type_version` and `workflow_url` from the
+   schema and TRS (see [Run requests](../specification/engine-bindings.md#run-requests)),
+   and submit the request (`POST /runs`).
+
+The [`wes-params`](../tools/wes-params.md) tool does steps 3 and 4 (except
+the submission).
+
+### Validating run requests (servers)
+
+1. Get the IO schema of the workflow from a trusted source (the TRS entry
+   that `workflow_url` points to, or a schema bundled with the deployment);
+   never from the request. Reject requests for workflows whose schema has
+   references that can't be resolved locally.
+2. Check the size and depth of `workflow_params` against the limits of the
+   deployment (see [Regular expressions and size
+   limits](../security.md#regular-expressions-and-size-limits)).
+3. Translate `workflow_params` back into input values with the binding of
+   the request's `workflow_type` (see [From `workflow_params` back to input
+   values](../specification/engine-bindings.md#from-workflow_params-back-to-input-values)).
+4. Validate the values against `inputs`, and check every file reference
+   value (see [URIs and file
+   references](../security.md#uris-and-file-references)).
+5. On failure, reject the request with `HTTP 400 Bad Request` and an
+   `ErrorResponse` whose `msg` names the JSON Pointer into `workflow_params`
+   and the rule that failed (see above); otherwise, pass the request on to
+   the engine.

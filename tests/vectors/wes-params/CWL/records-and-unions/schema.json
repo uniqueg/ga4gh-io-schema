@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/vectors/cwl/1.0.0",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "CWL",
+    "descriptor_type_version": "v1.2"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample": {
+          "$ref": "#/$defs/sample"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            }
+          ]
+        },
+        "renamed": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          },
+          "x-ga4gh-parameter": {
+            "name": "input_file"
+          }
+        }
+      },
+      "required": [
+        "sample",
+        "target"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "sample": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "bam": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "bam"
+      ]
+    }
+  }
+}
