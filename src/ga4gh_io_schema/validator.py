@@ -27,6 +27,14 @@ _CHECKOUT_SCHEMAS_DIR = Path(__file__).resolve().parents[2] / "schemas"
 PROFILE_FILE = "ga4gh-io-profile.schema.json"
 
 
+class UnresolvableReferenceError(jsonschema.exceptions.ValidationError):
+    """A reference of the meta-schema can't be resolved locally.
+
+    A subclass of ``ValidationError``, so that callers that catch validation
+    errors also catch it, but a fault of the meta-schema, not of the schema.
+    """
+
+
 def get_schemas_dir() -> Path:
     """Return the directory holding the GA4GH IO Profile schemas.
 
@@ -87,7 +95,8 @@ def build_registry(search_dirs: list[Path]) -> Registry:
                     registry = registry.with_resource(
                         uri=data["$id"], resource=resource
                     )
-            except (json.JSONDecodeError, OSError, ValueError):
+            # RecursionError: JSON nested too deeply to parse
+            except (json.JSONDecodeError, OSError, RecursionError, ValueError):
                 continue
     return registry
 
@@ -147,7 +156,7 @@ def validate_schema(
     try:
         validator.validate(target_schema)
     except Unresolvable as exc:
-        raise jsonschema.exceptions.ValidationError(
+        raise UnresolvableReferenceError(
             f"The meta-schema references '{exc.ref}', which can't be resolved "
             "locally: put it in the directory of the meta-schema."
         ) from exc

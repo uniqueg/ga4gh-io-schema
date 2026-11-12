@@ -5,13 +5,12 @@
 """Tests for the packaging, schema identifiers and documentation of the project."""
 
 import re
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 from ga4gh_io_schema import validator
+from ga4gh_io_schema.cli.app import render_reference
 from ga4gh_io_schema.validator import get_schemas_dir, load_json
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -92,25 +91,40 @@ def test_readme_relative_links_resolve() -> None:
         assert (REPO_ROOT / target).exists(), target
 
 
-def test_docs_use_existing_cli_options() -> None:
-    """Test that the documented CLI calls only use options the CLI defines."""
-    cli_help = subprocess.run(
-        [sys.executable, "-m", "ga4gh_io_schema.cli", "--help"],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout
-    defined = set(re.findall(r"(?<![\w-])(--?[a-z][a-z-]*)", cli_help))
-    usage = [
+def _documented_calls() -> list[str]:
+    """Collect the documented calls of the CLI.
+
+    Returns:
+        Every line of the usage docs that starts with the command name.
+    """
+    return [
         line
         for doc in USAGE_DOCS
         for line in doc.read_text(encoding="utf-8").splitlines()
-        if line.startswith("ga4gh-io-schema-validator ")
+        if line.startswith("ga4gh-io-schema ")
     ]
-    assert usage
-    for line in usage:
+
+
+def test_docs_use_existing_cli_commands_and_options() -> None:
+    """Test that the documented CLI calls use only commands and options it has."""
+    reference = render_reference()
+    commands = set(re.findall(r"^## `ga4gh-io-schema ([a-z -]+)`$", reference, re.M))
+    defined = set(re.findall(r"(?<![\w-])(--?[a-z][a-z-]*)", reference))
+    calls = _documented_calls()
+    assert calls
+    for line in calls:
+        words = line.split()
+        assert any(
+            " ".join(words[1 : n + 1]) in commands for n in range(1, len(words))
+        ), line
         for option in re.findall(r"(?<!\S)(--?[a-z][a-z-]*)", line):
             assert option in defined, option
+
+
+def test_docs_drop_old_command() -> None:
+    """Test that the usage docs no longer show ``ga4gh-io-schema-validator``."""
+    for doc in USAGE_DOCS:
+        assert "ga4gh-io-schema-validator" not in doc.read_text(encoding="utf-8")
 
 
 def test_readme_licence_matches_reuse_metadata() -> None:
