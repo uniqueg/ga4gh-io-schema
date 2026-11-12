@@ -357,7 +357,7 @@ def test_reference_documents_every_command() -> None:
     assert "## `ga4gh-io-schema`\n" in reference
     assert "## `ga4gh-io-schema validate`\n" in reference
     assert "--meta-schema" in reference
-    assert reference.count("Exit status: 0: success;") == 1
+    assert reference.count("Exit status: 0 = success, 1 = ") == 1
     assert "\x1b[" not in reference
 
 
@@ -452,29 +452,20 @@ def test_non_utf8_input_is_an_io_error(
     assert "Error: Not UTF-8 text - " in capsys.readouterr().err
 
 
-def test_register_requires_name_and_help() -> None:
-    """Test that a command without ``name`` or ``help`` can't be registered."""
+@pytest.mark.parametrize("missing", ["name", "help"])
+def test_register_requires_name_and_help(missing: str) -> None:
+    """Test that a command without ``name`` or ``help`` can't be registered.
 
-    class Nameless(Command):
-        """Command without a name."""
-
-        help = "No name."
-
-        def run(self, args: argparse.Namespace) -> CommandResult:
-            """Do nothing.
-
-            Args:
-                args: Parsed arguments.
-
-            Returns:
-                An empty result.
-            """
-            return CommandResult(text="")
-
+    Args:
+        missing: Class attribute that the command lacks.
+    """
+    partial = type("Partial", (BareCommand,), {missing: None})
     group = CommandGroup(name="root", help="Root.")
 
-    with pytest.raises(TypeError, match="Nameless must set the class attribute 'name'"):
-        group.register(Nameless())
+    with pytest.raises(
+        TypeError, match=f"Partial must set the class attribute '{missing}'"
+    ):
+        group.register(partial())
 
 
 def test_every_error_kind_has_a_label() -> None:
@@ -489,6 +480,7 @@ def test_docs_list_every_error_kind_and_exit_status() -> None:
     for kind in ErrorKind:
         assert f"`{kind}`" in page, kind
     assert set(EXIT_STATUS) == set(ExitCode)
+    # Checks that each code has a row, not the wording of its meaning
     for code in ExitCode:
         assert f"\n| {int(code)} | " in page, code
 
@@ -560,3 +552,42 @@ def test_unresolvable_meta_schema_reference_is_a_meta_schema_error(
 
     assert main(["validate", str(VALID), "-m", str(meta_schema)]) == ExitCode.IO_ERROR
     assert "Meta-schema Error: The meta-schema references" in capsys.readouterr().err
+
+
+def test_closed_standard_input_is_an_io_error(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that reading a closed standard input exits with status 3.
+
+    Args:
+        monkeypatch: Pytest fixture for patching module attributes.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    monkeypatch.setattr(sys, "stdin", None)
+
+    assert main(["validate", "-"]) == ExitCode.IO_ERROR
+    assert "standard input is closed" in capsys.readouterr().err
+
+
+def test_schema_too_deep_to_validate_is_an_io_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a schema that parses but is too deep to validate exits 3.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    # 300 levels parse (below the parser's limit) but are too deep to validate;
+    # json.dumps can't write them on every Python version, so build the text.
+    levels = 300
+    deep = '{"type": "object", "properties": {"x": ' * levels
+    deep += '{"type": "object"}' + "}}" * levels
+    schema = json.loads(VALID.read_text(encoding="utf-8"))
+    schema["properties"]["inputs"]["properties"]["deep"] = "DEEP"
+    text = json.dumps(schema).replace('"DEEP"', deep)
+    path = tmp_path / "deep.schema.json"
+    path.write_text(text, encoding="utf-8")
+
+    assert main(["validate", str(path)]) == ExitCode.IO_ERROR
+    assert "Too deeply nested to validate" in capsys.readouterr().err

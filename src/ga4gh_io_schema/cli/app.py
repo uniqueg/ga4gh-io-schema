@@ -26,7 +26,7 @@ PROG = "ga4gh-io-schema"
 
 _EPILOG = (
     "Exit status: "
-    + "; ".join(f"{int(code)}: {meaning}" for code, meaning in EXIT_STATUS.items())
+    + ", ".join(f"{int(code)} = {meaning}" for code, meaning in EXIT_STATUS.items())
     + "."
 )
 

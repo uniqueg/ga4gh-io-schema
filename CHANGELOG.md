@@ -17,7 +17,8 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `ga4gh-io-schema validate` replaces `ga4gh-io-schema-validator`, which is
   removed without an alias. The exit status now tells failures apart (1: the
   schema doesn't comply, 2: wrong arguments, 3: a file can't be read, isn't
-  valid JSON, or the meta-schema is malformed, 4: unexpected errors); before,
+  valid JSON, or the meta-schema is malformed or has references that can't
+  be resolved, 4: unexpected errors); before,
   all failures exited with 1. (#9)
 
 ### Added

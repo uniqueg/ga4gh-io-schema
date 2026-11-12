@@ -38,8 +38,8 @@ EXIT_STATUS: dict[ExitCode, str] = {
     ExitCode.INVALID: "the input doesn't comply (e.g., a validation error)",
     ExitCode.USAGE: "wrong arguments, or no subcommand",
     ExitCode.IO_ERROR: (
-        "a file can't be read or written, or can't be used (e.g., invalid JSON "
-        "or a malformed meta-schema)"
+        "a file can't be read, written or used (e.g., invalid JSON, or a "
+        "meta-schema that is malformed or has references that can't be resolved)"
     ),
     ExitCode.INTERNAL: "an unexpected error",
 }
@@ -289,6 +289,8 @@ def read_text(source: str | Path) -> str:
     """
     try:
         if isinstance(source, str) and source == STDIN:
+            if sys.stdin is None:
+                raise CliError(ErrorKind.IO, "Can't read - standard input is closed")
             # As UTF-8, like files, whatever the locale
             return sys.stdin.buffer.read().decode("utf-8")
         return Path(source).read_text(encoding="utf-8")

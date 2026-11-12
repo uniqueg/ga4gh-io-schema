@@ -4,7 +4,6 @@ import argparse
 from pathlib import Path
 
 import jsonschema
-from referencing.exceptions import Unresolvable
 
 from ga4gh_io_schema.cli.base import (
     ROOT,
@@ -15,7 +14,7 @@ from ga4gh_io_schema.cli.base import (
     input_name,
     read_json,
 )
-from ga4gh_io_schema.validator import validate_schema
+from ga4gh_io_schema.validator import UnresolvableReferenceError, validate_schema
 
 
 class ValidateCommand(Command):
@@ -76,11 +75,14 @@ class ValidateCommand(Command):
                 meta_schema=meta_schema,
                 schema_dir=schema_dir,
             )
+        except UnresolvableReferenceError as exc:
+            raise CliError(ErrorKind.META_SCHEMA, exc.message) from exc
+        except RecursionError as exc:
+            raise CliError(
+                ErrorKind.IO,
+                f"Too deeply nested to validate - {input_name(args.schema)}",
+            ) from exc
         except jsonschema.exceptions.ValidationError as exc:
-            # A reference of the meta-schema that can't be resolved is a
-            # problem of the meta-schema, not of the schema.
-            if isinstance(exc.__cause__, Unresolvable):
-                raise CliError(ErrorKind.META_SCHEMA, exc.message) from exc
             raise CliError(
                 ErrorKind.VALIDATION,
                 exc.message,

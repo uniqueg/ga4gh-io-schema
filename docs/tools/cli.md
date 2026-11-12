@@ -58,7 +58,7 @@ All subcommands share these conventions; the shared options (`--output`,
 | 0 | Success (e.g., the schema complies). |
 | 1 | The input doesn't comply (e.g., a validation error). |
 | 2 | Wrong arguments, or no subcommand. |
-| 3 | A file can't be read or written, or can't be used: it isn't UTF-8 text or valid JSON, or the meta-schema given with `--meta-schema` is malformed. |
+| 3 | A file can't be read or written, or can't be used: it isn't UTF-8 text or valid JSON, is too deeply nested, or the meta-schema given with `--meta-schema` is malformed or has references that can't be resolved. |
 | 4 | An unexpected error (please report it). |
 
 ## Reference
