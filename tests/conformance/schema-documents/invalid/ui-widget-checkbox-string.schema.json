@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/ui-widget-checkbox-string",
+  "title": "Invalid: ui-widget-checkbox-string",
+  "description": "The checkbox widget is on a string.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "paired": {
+          "type": "string",
+          "x-ga4gh-ui-widget": "checkbox"
+        }
+      }
+    }
+  }
+}
