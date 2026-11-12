@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/description-markdown.schema.json",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "reads": {
+          "type": "string",
+          "description": "Reads in **FASTQ** format, see [the format](https://en.wikipedia.org/wiki/FASTQ_format).\n\n![Quality plot](https://example.org/plot.png)\n\n<b onclick=\"alert(1)\">Paired-end</b> reads go into two files.",
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        }
+      },
+      "required": [
+        "reads"
+      ]
+    }
+  }
+}

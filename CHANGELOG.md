@@ -123,6 +123,11 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A language-neutral conformance suite in `tests/conformance/` (the
   positive and negative schema documents of the tests, moved from
   `tests/data/`), with a runner for this package. (#14)
+- Markdown descriptions (`"x-ga4gh-description-format": "markdown"`) are
+  CommonMark 0.31.2, with raw HTML shown as text, images shown as their alt
+  text and not loaded, and links only with allowed schemes; of the GitHub
+  Flavored Markdown extensions, only tables, strikethrough and autolinks are
+  allowed. (#41)
 - Versioning policy and governance note, and this changelog in the
   documentation, with the history of versions 0.1 and 0.2. (#14)
 - Engine bindings: how input values become the `workflow_params` of a WES
