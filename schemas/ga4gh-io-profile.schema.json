@@ -9,6 +9,11 @@
     },
     {
       "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/workflow.schema.json"
+    },
+    {
+      "patternProperties": {
+        "^(?!x-ga4gh-)": true
+      }
     }
   ],
   "type": "object",
@@ -74,12 +79,19 @@
       "title": "GA4GH IO Profile Schema Rules",
       "description": "Applies to every schema of an IO schema, at any depth: JSON Schema Draft 2020-12 plus the x-ga4gh-* keywords of the vocabularies. Keywords starting with x-ga4gh- that no vocabulary defines are rejected.",
       "$ref": "#/$defs/keywords",
-      "$comment": "Every keyword that doesn't start with x-ga4gh- counts as evaluated; the vocabularies evaluate the x-ga4gh-* keywords they define; any other x-ga4gh-* keyword is unevaluated and rejected.",
+      "$comment": "Every keyword that doesn't start with x-ga4gh- counts as evaluated; the vocabularies evaluate the x-ga4gh-* keywords they define; any other x-ga4gh-* keyword is unevaluated and rejected. The pattern is in an allOf that always passes, so that its annotations survive when $defs/keywords fails (otherwise validators that report all errors flag every keyword of every ancestor as unevaluated), and Ajv handles it with allErrors.",
+      "allOf": [
+        {
+          "patternProperties": {
+            "^(?!x-ga4gh-)": true
+          }
+        }
+      ],
       "unevaluatedProperties": false,
       "$defs": {
         "keywords": {
           "title": "GA4GH IO Profile Keywords",
-          "description": "The keywords of every schema: JSON Schema Draft 2020-12 plus the x-ga4gh-* keywords of the vocabularies, with $defs/node applied to every subschema ($defs/subschemas), and every keyword that doesn't start with x-ga4gh- marked as evaluated. Used by $defs/node and, without the check of unevaluated keywords, by the top level.",
+          "description": "The keywords of every schema: JSON Schema Draft 2020-12 plus the x-ga4gh-* keywords of the vocabularies, with $defs/node applied to every subschema ($defs/subschemas). Used by $defs/node and, without the check of unevaluated keywords, by the top level.",
           "allOf": [
             {
               "$ref": "https://json-schema.org/draft/2020-12/schema"
@@ -99,10 +111,7 @@
             {
               "$ref": "#/$defs/subschemas"
             }
-          ],
-          "patternProperties": {
-            "^(?!x-ga4gh-)": true
-          }
+          ]
         },
         "subschemas": {
           "title": "GA4GH IO Profile Subschemas",

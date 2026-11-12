@@ -42,37 +42,90 @@ def _walk(value: Any) -> Iterator[dict[str, Any]]:
             yield from _walk(item)
 
 
-def _recursive_keywords() -> set[str]:
+def _recursion_paths(
+    schema: Any, document: dict[str, Any], path: tuple[str | int, ...] = ()
+) -> Iterator[tuple[str | int, ...]]:
+    """Yield the paths in a schema to its ``$dynamicRef``s to ``#meta``.
+
+    Local ``$ref``s (e.g., to ``#/$defs/schemaArray``) are followed, without
+    adding to the path, so that the path names where the recursion applies.
+
+    Args:
+        schema: A schema of a Draft 2020-12 meta-schema, or part of one.
+        document: The meta-schema that holds it, to resolve local ``$ref``s.
+        path: The path to ``schema``.
+
+    Yields:
+        Each path, e.g., ``("items",)`` for the schema of ``allOf``.
+    """
+    if isinstance(schema, dict):
+        if schema.get("$dynamicRef") == "#meta":
+            yield path
+        ref = schema.get("$ref")
+        if isinstance(ref, str) and ref.startswith("#/$defs/"):
+            target = document["$defs"][ref.removeprefix("#/$defs/")]
+            yield from _recursion_paths(target, document, path)
+        for key, value in schema.items():
+            yield from _recursion_paths(value, document, (*path, key))
+    elif isinstance(schema, list):
+        for index, item in enumerate(schema):
+            yield from _recursion_paths(item, document, (*path, index))
+
+
+def _recursive_keywords() -> dict[str, set[tuple[str | int, ...]]]:
     """Return the keywords whose values the Draft 2020-12 meta-schema recurses into.
 
     These are the keywords of the Draft 2020-12 meta-schemas whose schema
-    contains a ``$dynamicRef`` to ``#meta``, e.g., ``items`` or ``$defs``.
+    has a ``$dynamicRef`` to ``#meta``, e.g., ``items`` or ``$defs``.
 
     Returns:
-        The names of the keywords.
+        For each keyword, the paths to its ``$dynamicRef``s.
     """
-    keywords = set()
-    for uri, contents in REGISTRY.items():
+    keywords = {}
+    for uri, resource in REGISTRY.items():
         if not uri.startswith(DRAFT_2020_12):
             continue
-        for name, schema in contents.contents.get("properties", {}).items():
-            if any(node.get("$dynamicRef") == "#meta" for node in _walk(schema)):
-                keywords.add(name)
+        document = resource.contents
+        for name, schema in document.get("properties", {}).items():
+            paths = set(_recursion_paths(schema, document))
+            if paths:
+                keywords[name] = paths
     return keywords
+
+
+def _lookup(value: Any, path: tuple[str | int, ...]) -> Any:
+    """Return the part of a JSON value at a path.
+
+    Args:
+        value: A JSON value.
+        path: Keys and indexes.
+
+    Returns:
+        The part at the path.
+    """
+    for key in path:
+        value = value[key]
+    return value
 
 
 def test_subschemas_cover_every_applicator() -> None:
     """Test that the profile's rules reach every kind of subschema.
 
     Every keyword whose values the Draft 2020-12 meta-schema validates as
-    schemas must apply ``$defs/node`` to them as well.
+    schemas must apply ``$defs/node`` (``{"$ref": "#"}``) to them at the
+    same place, e.g., to the items of ``allOf`` and the values of
+    ``properties``.
     """
     keywords = _recursive_keywords()
-    assert {"items", "properties", "$defs", "contentSchema"} <= keywords
+    assert {"items", "allOf", "properties", "$defs", "contentSchema"} <= set(keywords)
     subschemas = load_profile()["$defs"]["node"]["$defs"]["subschemas"]
-    assert keywords | {"x-ga4gh-tabular-schema"} <= set(subschemas["properties"])
-    for name, schema in subschemas["properties"].items():
-        assert {"$ref": "#"} in list(_walk(schema)), name
+    for name, paths in keywords.items():
+        for path in paths:
+            assert _lookup(subschemas["properties"][name], path) == {"$ref": "#"}, (
+                name,
+                path,
+            )
+    assert subschemas["properties"]["x-ga4gh-tabular-schema"] == {"$ref": "#"}
 
 
 @pytest.mark.parametrize(

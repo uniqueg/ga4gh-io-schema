@@ -159,7 +159,7 @@ def test_every_vocabulary_is_registered() -> None:
     profile = load_json(PROFILE_PATH)
     keywords = profile["$defs"]["node"]["$defs"]["keywords"]["allOf"]
     every_schema = {entry["$ref"] for entry in keywords}
-    top_level = {entry["$ref"] for entry in profile["allOf"]}
+    top_level = {entry.get("$ref") for entry in profile["allOf"]} - {None}
     for path in (SCHEMAS_DIR / "vocabularies").glob("*.schema.json"):
         vocabulary_id = load_json(path)["$id"]
         if path.name == "ui-widgets.schema.json":

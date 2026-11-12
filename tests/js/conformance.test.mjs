@@ -101,3 +101,45 @@ for (const [name, setUp] of [
     }
   });
 }
+
+// A nested error must not make validators that report all errors flag the
+// keywords of the enclosing schemas as unevaluated: only the unknown
+// x-ga4gh-* keyword is unevaluated.
+describe("errors of a nested unknown keyword", () => {
+  const document = {
+    $schema: PROFILE.$id,
+    properties: {
+      inputs: {
+        type: "object",
+        properties: {
+          a: { type: "object", properties: { b: { "x-ga4gh-bogus": 1 } } },
+        },
+      },
+    },
+  };
+
+  test("Ajv (allErrors: true) reports only the unknown keyword", () => {
+    const ajv = new Ajv2020({ strict: false, allErrors: true });
+    addFormats(ajv);
+    for (const schema of VOCABULARY_SCHEMAS) ajv.addSchema(schema);
+    ajv.addSchema(PROFILE);
+    const check = ajv.getSchema(PROFILE.$id);
+    assert.equal(check(document), false);
+    const unevaluated = check.errors
+      .filter((error) => error.keyword === "unevaluatedProperties")
+      .map((error) => error.params.unevaluatedProperty);
+    assert.deepEqual([...new Set(unevaluated)], ["x-ga4gh-bogus"]);
+  });
+
+  // Runs after the describe blocks above, which registered the schemas.
+  test("@hyperjump/json-schema reports only the unknown keyword", async () => {
+    const output = await validate(PROFILE.$id, document, "BASIC");
+    assert.equal(output.valid, false);
+    // hyperjump reports the failing `false` of unevaluatedProperties at the
+    // location of the property.
+    assert.ok(output.errors.length > 0);
+    for (const error of output.errors) {
+      assert.match(error.instanceLocation, /\/x-ga4gh-bogus$/);
+    }
+  });
+});
