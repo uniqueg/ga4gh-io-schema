@@ -9,8 +9,8 @@
 - **Nextflow:** from `nextflow_schema.json` (`nf-schema`); planned (see
   [issue #1](https://github.com/uniqueg/ga4gh-io-schema/issues/1)).
 - **Snakemake:** from JSON Schema and PEP configuration; planned.
-- **CWL:** from the inputs and outputs of a `Workflow` or `CommandLineTool`;
-  planned.
+- **CWL:** from the inputs and outputs of a `Workflow` or `CommandLineTool`
+  (see [CWL converter](cwl.md)).
 - **WDL:** from `input`, `output` and `parameter_meta` blocks; planned.
 
 ## From IO schemas to WES

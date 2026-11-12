@@ -47,3 +47,9 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   input), `--output` for the result, `--json` for results and errors as JSON
   objects. (#9)
 - A CLI reference in the documentation, generated from the parser. (#9)
+- A CWL converter, `ga4gh-io-schema convert cwl`: the inputs and outputs of
+  CWL v1.0 to v1.2 documents (also packed) become an IO schema, with file
+  references for files and directories, `format` as ontology term and
+  required secondary files; what it can't convert (e.g., expressions) is
+  reported as warnings. It needs the optional dependency `cwl-utils`
+  (`ga4gh-io-schema[cwl]`). (#21)
