@@ -16,7 +16,8 @@
 - **Snakemake:** from JSON Schema and PEP configuration; planned.
 - **CWL:** from the inputs and outputs of a `Workflow` or `CommandLineTool`;
   planned.
-- **WDL:** from `input`, `output` and `parameter_meta` blocks; planned.
+- **WDL:** from `input`, `output` and `parameter_meta` blocks:
+  `ga4gh-io-schema convert wdl` (see [WDL converter](wdl.md)).
 
 Converters emit only keywords and values of the profile version that they
 target: output with removed ones (e.g., `x-ga4gh-fa-icon`, the `rst`

@@ -14,6 +14,7 @@ licence of the Leiden University Medical Center. ``types.wdl`` and
 
 import io
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,7 @@ from typing import Any
 import pytest
 
 from ga4gh_io_schema.cli import main
+from ga4gh_io_schema.cli.app import render_reference
 from ga4gh_io_schema.converters import wdl
 from ga4gh_io_schema.validator import load_profile, validate_schema
 
@@ -735,6 +737,24 @@ def test_cli_without_miniwdl(
 
     assert main(["convert", "wdl", str(QC)]) == 3
     assert "pip install 'ga4gh-io-schema[wdl]'" in capsys.readouterr().err
+
+
+def test_docs_use_existing_options() -> None:
+    """Test that the WDL converter page uses only options the command has."""
+    page = Path(__file__).resolve().parent.parent / "docs" / "tools" / "wdl.md"
+    reference = render_reference()
+    defined = set(re.findall(r"(?<![\w-])(--?[a-z][a-z-]*)", reference))
+    calls = [
+        line
+        for line in page.read_text(encoding="utf-8").splitlines()
+        if line.startswith("ga4gh-io-schema ")
+    ]
+
+    assert calls
+    assert "## `ga4gh-io-schema convert wdl`" in reference
+    for line in calls:
+        for option in re.findall(r"(?<!\S)(--?[a-z][a-z-]*)", line):
+            assert option in defined, option
 
 
 def test_struct_without_required_members(tmp_path: Path) -> None:

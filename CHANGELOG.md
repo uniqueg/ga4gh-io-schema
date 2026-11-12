@@ -84,6 +84,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   input), `--output` for the result, `--json` for results and errors as JSON
   objects. (#9)
 - A CLI reference in the documentation, generated from the parser. (#9)
+- `ga4gh-io-schema convert wdl` converts the inputs and outputs of a WDL
+  1.0, 1.1 or 1.2 workflow or task to an IO schema: WDL types (files as file
+  references), literal defaults, common `parameter_meta` keys, nested
+  inputs of calls, and the engine binding (`x-ga4gh-workflow` with the
+  entry point and checksum, `x-ga4gh-parameter` with the WDL type). It
+  needs the new `wdl` extra (miniwdl). (#22)
 - Conformance: BCP 14 (RFC 2119, RFC 8174) key words, used consistently in
   the normative text; conformance classes (Schema document, Validator,
   Producer, Form renderer, Request builder, Output normaliser, WES server)
