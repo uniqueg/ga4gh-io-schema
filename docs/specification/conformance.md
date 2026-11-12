@@ -175,8 +175,9 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
 ### Request builder
 
 1. A request builder MUST validate the input values against `inputs` of the
-   schema document before it submits a run request, and MUST NOT submit
-   values that fail.
+   schema document, as described in [Dialect and validation of
+   values](meta-schema.md#dialect-and-validation-of-values), before it
+   submits a run request, and MUST NOT submit values that fail.
 2. A request builder MUST check the scheme of every file reference against
    the allow-list of the deployment before it submits it (see
    [URIs and file references](../security.md#uris-and-file-references)).

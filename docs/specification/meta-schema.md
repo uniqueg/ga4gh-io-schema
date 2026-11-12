@@ -42,6 +42,38 @@ identifier of your own.
 }
 ```
 
+## Dialect and validation of values
+
+The meta-schema declares its vocabularies in `$vocabulary`, so that it is a
+dialect of JSON Schema Draft 2020-12: the vocabularies of Draft 2020-12
+(core, applicator, unevaluated, validation, meta-data, format-annotation,
+content) are required, as in the Draft 2020-12 meta-schema, and the
+profile's vocabulary
+(`https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/ga4gh-io`,
+an identifier, not a document) is optional, so that validators that don't
+know it still process IO schemas.
+
+Input values (e.g., the `workflow_params` of a WES request) are validated
+against `properties.inputs` of the IO schema, and normalised outputs against
+`properties.outputs`, with the semantics of Draft 2020-12:
+
+- The `x-ga4gh-*` keywords are annotations: they MUST NOT change whether a
+  value is valid. Their rules for values (e.g., the value syntax of [file
+  references](files.md#values)) are checked separately, where this
+  specification says so.
+- A validator MAY use the dialect of the profile (the `$schema` of the IO
+  schema) or the Draft 2020-12 dialect; the result is the same. Some
+  validators can't use the profile's dialect directly: Ajv needs the
+  meta-schema added as a meta-schema, and @hyperjump/json-schema rejects
+  every IO schema as invalid against it (see [JavaScript
+  validators](../tools/javascript.md#validating-input-values)). Such clients
+  validate values against a copy of the IO schema whose `$schema` names
+  Draft 2020-12 (`https://json-schema.org/draft/2020-12/schema`), after they
+  have checked the IO schema itself against the profile.
+- References in `inputs` (e.g., to the `$defs` of the IO schema) resolve
+  against the IO schema, so a validator that follows them validates against
+  `inputs` in place, e.g., by its URI `<$id>#/properties/inputs`.
+
 ## Where the meta-schema is served
 
 As a schema standard, there is no active deployment of a service. The schemas and vocabularies are served statically via raw GitHub URLs, at the release tag that their `$id`s name. IO schemas of workflows are published in **TRS (Tool Registry Service)** implementations as files of the existing type `OTHER` (see [TRS](../adoption/trs.md)); a dedicated file type such as `IO_SCHEMA` is deferred (see [Roadmap](../roadmap.md#deferred)).
