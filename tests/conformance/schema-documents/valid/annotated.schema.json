@@ -15,8 +15,17 @@
         },
         "input_bam": {
           "type": "string",
-          "description": "The aligned reads file in BAM format.",
-          "x-ga4gh-drs-uri": true,
+          "description": "The aligned reads file in BAM format, with its index (sample.bai).",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_2572",
+            "secondaryFiles": [
+              "^.bai"
+            ],
+            "schemes": [
+              "drs"
+            ]
+          },
           "x-ga4gh-ui-widget": "file-picker"
         },
         "threads": {
@@ -30,7 +39,8 @@
       "required": [
         "sample_id",
         "input_bam"
-      ]
+      ],
+      "additionalProperties": false
     },
     "outputs": {
       "type": "object",
@@ -38,7 +48,14 @@
         "output_vcf": {
           "type": "string",
           "description": "The resulting variant calls in VCF format.",
-          "x-ga4gh-ui-widget": "text"
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_3016",
+            "compression": "bgzip",
+            "secondaryFiles": [
+              ".tbi"
+            ]
+          }
         }
       }
     }

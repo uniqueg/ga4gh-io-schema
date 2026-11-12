@@ -208,3 +208,91 @@ def test_build_registry_skips_unusable_files(tmp_path: Path) -> None:
 def test_validate_schema_accepts_boolean_meta_schema() -> None:
     """Test that a boolean meta-schema (valid JSON Schema) is supported."""
     validate_schema({}, True)
+
+
+def _schema_with_schemes(schemes: list[str]) -> dict[str, Any]:
+    """Return an IO schema with one file reference that allows given schemes.
+
+    Args:
+        schemes: The value of ``schemes`` of the file reference.
+
+    Returns:
+        The IO schema.
+    """
+    return {
+        "$schema": load_profile()["$id"],
+        "properties": {
+            "inputs": {
+                "properties": {
+                    "reads": {
+                        "type": "string",
+                        "x-ga4gh-file": {"kind": "file", "schemes": schemes},
+                    }
+                }
+            }
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    "scheme",
+    [
+        "javascript",
+        "vbscript",
+        "livescript",
+        "data",
+        "blob",
+        "filesystem",
+        "file",
+        "jar",
+        "view-source",
+        "about",
+        "HTTPS",
+        "s3:",
+    ],
+)
+def test_validate_schema_rejects_file_scheme(scheme: str) -> None:
+    """Test that browser, local and malformed schemes of file references fail.
+
+    Args:
+        scheme: A scheme that the profile rejects.
+    """
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        validate_schema(_schema_with_schemes(["https", scheme]))
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value"),
+    [
+        ("allOf", [{"format": "uri"}]),
+        ("anyOf", [{"type": "integer"}]),
+        ("oneOf", [{"type": "integer"}]),
+        ("not", {"type": "integer"}),
+        ("if", {"type": "string"}),
+        ("then", {"format": "uri"}),
+        ("else", {"format": "uri"}),
+        ("$ref", "#/$defs/other"),
+        ("$dynamicRef", "#meta"),
+    ],
+)
+def test_validate_schema_rejects_applicator_on_file_reference(
+    keyword: str, value: Any
+) -> None:
+    """Test that a file reference can't have in-place applicators.
+
+    Args:
+        keyword: An in-place applicator.
+        value: A value of the applicator.
+    """
+    schema = _schema_with_schemes(["https"])
+    schema["properties"]["inputs"]["properties"]["reads"][keyword] = value
+
+    with pytest.raises(
+        jsonschema.exceptions.ValidationError, match="False schema does not allow"
+    ):
+        validate_schema(schema)
+
+
+def test_validate_schema_accepts_file_schemes() -> None:
+    """Test that common schemes of file references pass."""
+    validate_schema(_schema_with_schemes(["drs", "https", "s3", "gs", "ftp"]))

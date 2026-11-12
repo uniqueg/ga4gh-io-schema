@@ -12,7 +12,8 @@ Schema (Draft 2020-12) of the repository:
   parameters for clients (UI hints, error message, description format,
   ontology term).
 - [`schemas/vocabularies/file.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/file.schema.json):
-  the `x-ga4gh-*` keywords of file parameters (DRS URIs, tabular files).
+  the `x-ga4gh-*` keywords of file parameters ([file
+  references](files.md), tabular files).
 - [`schemas/vocabularies/ui-widgets.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json):
   the vocabulary of UI widgets (values of `x-ga4gh-ui-widget`).
 
@@ -65,7 +66,7 @@ The rules combine one vocabulary file per keyword group:
 | `x-ga4gh-description-format` | `plain_text`, `markdown` or `rst` | `annotations` |
 | `x-ga4gh-hidden` | boolean | `annotations` |
 | `x-ga4gh-error-message` | string | `annotations` |
-| `x-ga4gh-drs-uri` | boolean | `file` |
+| `x-ga4gh-file` | an object with `kind` (`file` or `directory`) and optional `mediaType`, `ontology`, `compression`, `secondaryFiles` and `schemes` (see [File references](files.md)); the schema that carries it is a flat string schema (see [The annotation](files.md#the-annotation)) | `file` |
 | `x-ga4gh-tabular-schema` | a schema, checked by the same rules | `file` |
 
 Other keywords that start with `x-ga4gh-` (e.g., misspelled ones) are

@@ -49,8 +49,8 @@ roles of [Security considerations](../security.md) map to the classes: its
 **servers** are WES servers, and its **execution side** is a WES server
 together with the workflow engine that it runs.
 
-Some parts of the profile are still being specified for version 0.3: file
-references, the identity of the workflow that a schema document describes,
+Some parts of the profile are still being specified for version 0.3: the
+identity of the workflow that a schema document describes,
 the bindings of input values to the parameters of each workflow engine, and
 the model of outputs. The requirements below that depend on them are marked
 *(pending)*; they name the feature, and the feature's page of the
@@ -74,12 +74,14 @@ specification states the requirements once it is added.
    [Security considerations](../security.md): it is bundled (see
    [Sources of schemas](../security.md#sources-of-schemas)), it defines no
    inputs for secrets (see [Secrets](../security.md#secrets)), and it marks
-   every file input and output (see
+   every file input and output as a [file reference](files.md) (see
    [URIs and file references](../security.md#uris-and-file-references)).
    Its regular expressions SHOULD follow
    [Regular expressions and size limits](../security.md#regular-expressions-and-size-limits).
-4. *(pending)* Requirements on file references, on the identity of the
-   workflow, and on outputs.
+4. A schema document MUST meet the requirements of
+   [File references](files.md) for every file reference.
+5. *(pending)* Requirements on the identity of the workflow, and on
+   outputs.
 
 ### Validator
 
@@ -119,9 +121,12 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    it names in `$schema`.
 2. A producer SHOULD report the parts of its source that it can't express in
    the profile (e.g., as warnings) instead of dropping them silently.
-3. *(pending)* Mapping of the file types of the source (e.g., CWL `File`,
-   WDL `File`, nf-schema `format: file-path`) to file references, and of the
-   source's workflow and entry point to the identity of the workflow.
+3. A producer SHOULD map the file types of its source (e.g., CWL `File`,
+   WDL `File`, nf-schema `format: file-path`) to file references as
+   described in
+   [Mapping to workflow languages](files.md#mapping-to-workflow-languages).
+4. *(pending)* Mapping of the source's workflow and entry point to the
+   identity of the workflow.
 
 ### Form renderer
 

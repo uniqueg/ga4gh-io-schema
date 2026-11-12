@@ -9,6 +9,9 @@ described in [Notational conventions](conformance.md#notational-conventions).
 
 - [Keywords](keywords.md): the native JSON Schema keywords that the profile
   uses, tabular data, and the `x-ga4gh-*` vocabulary.
+- [File references](files.md): how a string parameter refers to a file or
+  a directory, its values, secondary files, and the mapping to the file types
+  of CWL, WDL and nf-schema.
 - [Output contract](outputs.md): how clients match the outputs of a schema
   with the outputs of a run.
 - [Meta-schema](meta-schema.md): the meta-schema and vocabularies that

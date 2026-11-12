@@ -46,14 +46,14 @@ Several standards and tools overlap with this profile. This page says, for each 
 | Property name under `inputs` or `outputs` | `name`; the parameter is listed in the workflow's `input` or `output` |
 | `title`, `description` | `name` (if no separate identifier is needed), `description` |
 | `x-ga4gh-ontology` with an EDAM *data* term | `additionalType` |
-| `x-ga4gh-ontology` with an EDAM *format* term | `encodingFormat` |
-| Media type of a file (see the file reference type) | `encodingFormat` (IANA media type) |
+| `ontology` of a [file reference](specification/files.md) (e.g., an EDAM *format* term) | `encodingFormat` |
+| `mediaType` of a file reference | `encodingFormat` (IANA media type) |
 | Listed in `required` | `valueRequired: true` |
 | `default` | `defaultValue` |
 | `type`, `enum`, `minimum`, `pattern` and other constraints | No equivalent; stays in the IO schema |
 | `x-ga4gh-ui-widget`, `x-ga4gh-hidden` and other UI hints | No equivalent; stays in the IO schema |
 
-`FormalParameter` separates the type of data from the format; the profile currently has a single `x-ga4gh-ontology` keyword, so a converter decides by the EDAM branch (`data_…` or `format_…`) of the term.
+`FormalParameter` separates the type of data from the format, and so does the profile for files: `x-ga4gh-ontology` names the data, `ontology` of the file reference the format. Schemas written before version 0.3 may have an EDAM format term in `x-ga4gh-ontology`; a converter then decides by the EDAM branch (`data_…` or `format_…`) of the term.
 
 In a Workflow RO-Crate, the IO schema itself can be included as a file of the crate, next to the workflow.
 
