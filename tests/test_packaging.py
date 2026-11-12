@@ -141,3 +141,26 @@ def test_readme_licence_matches_reuse_metadata() -> None:
     assert readme_lines
     for line in readme_lines:
         assert header.group(1) in line, line
+
+
+def test_every_vocabulary_is_registered() -> None:
+    """Test that each keyword vocabulary is referenced from exactly one place.
+
+    Keywords of every schema go into ``$defs/node/$defs/keywords``; top-level
+    keywords (``workflow.schema.json``) into the ``allOf`` of the top level.
+    ``ui-widgets.schema.json`` is a value vocabulary, referenced from a keyword.
+    """
+    profile = load_json(PROFILE_PATH)
+    keywords = profile["$defs"]["node"]["$defs"]["keywords"]["allOf"]
+    every_schema = {entry["$ref"] for entry in keywords}
+    top_level = {entry["$ref"] for entry in profile["allOf"]}
+    for path in (SCHEMAS_DIR / "vocabularies").glob("*.schema.json"):
+        vocabulary_id = load_json(path)["$id"]
+        if path.name == "ui-widgets.schema.json":
+            continue
+        if path.name == "workflow.schema.json":
+            assert vocabulary_id in top_level, path
+            assert vocabulary_id not in every_schema, path
+        else:
+            assert vocabulary_id in every_schema, path
+            assert vocabulary_id not in top_level, path

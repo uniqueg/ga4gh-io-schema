@@ -42,6 +42,10 @@ We propose the following initial set of custom annotations to support execution 
 
 * `x-ga4gh-error-message` *(string)*: A custom, human-readable error message to display if payload validation fails. *Relation to nf-schema: Equivalent to the `errorMessage` property.*
 
+* `x-ga4gh-parameter` *(object)*: Binds a property of `inputs` or `outputs` to the engine's parameter: its `name` relative to the entry point, where it differs from the property name, and its `type` as declared in the workflow language (see [Parameter bindings](identity.md#parameter-bindings)). *Relation to nf-schema: none; Nextflow parameters have the names of the properties.*
+
+* `x-ga4gh-workflow` *(object, top level only)*: Ties the IO schema to a workflow version in a TRS and to its engine: TRS tool and version ids, descriptor type and version, path and checksum of the primary descriptor, and the entry point (see [The workflow block](identity.md#the-workflow-block)). *Relation to nf-schema: none; a `nextflow_schema.json` lives in the repository of its pipeline and isn't tied to a version by its content.*
+
 The keywords and the vocabulary of UI widgets are defined in the
 [meta-schema](meta-schema.md), which checks them in every schema of an IO
 schema, at any depth, and rejects other keywords that start with `x-ga4gh-`

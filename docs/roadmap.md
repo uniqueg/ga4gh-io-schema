@@ -8,7 +8,7 @@ To drive adoption and prove out the utility of the IO Schema Profile, we propose
 
 2. **AI Agent Reference Implementations:** Publish a reference implementation of an LLM agent instructed to "auto-draft" compliant IO Schemas.
 
-3. **End-to-End Proof of Concept (PoC):** Construct a sandbox environment featuring a mock TRS registry hosting `.schema.json` files, a generic frontend (e.g., via `react-jsonschema-form`) rendering input forms and compiling WES requests, and a proxy WES gateway enforcing server-side validation against the schema prior to execution.
+3. **End-to-End Proof of Concept (PoC):** Construct a sandbox environment featuring a mock TRS registry hosting IO schemas (as `ga4gh-io.schema.json` files, see [TRS](adoption/trs.md)), a generic frontend (e.g., via `react-jsonschema-form`) rendering input forms and compiling WES requests, and a proxy WES gateway enforcing server-side validation against the schema prior to execution.
 
 4. **Formal Specification Submission:** Following the PoC, submit the IDL schema structure, the `x-ga4gh-*` vocabulary, and the proposed API modifications to the GA4GH [Federated Analysis Work Stream](https://www.ga4gh.org/work_stream/federated-analysis-work-stream-formerly-cloud-work-stream/) (formerly the Cloud Work Stream, which develops TRS, WES, DRS and TES) for formal standardization review.
 
