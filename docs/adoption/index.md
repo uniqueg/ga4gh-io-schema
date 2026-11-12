@@ -1,6 +1,6 @@
 # Adoption
 
-While the schema is inherently domain and orchestrator-agnostic, formalizing its integration within the GA4GH Federated Analysis API ecosystem provides an immediate, massive capability upgrade for existing compliant platforms.
+The profile is independent of workflow engines. Its integration with the GA4GH APIs for federated analysis (TRS, WES, DRS) lets platforms that implement them offer workflows of several languages through one interface.
 
 * [TRS](trs.md): serving IO schemas from tool registries.
 * [WES](wes.md): validating run requests against IO schemas.
@@ -9,17 +9,17 @@ While the schema is inherently domain and orchestrator-agnostic, formalizing its
 
 ## The end-to-end GA4GH lifecycle (summary)
 
-By adopting this IO Schema across the GA4GH API portfolio, the ecosystem gains a cohesive, end-to-end execution lifecycle that completely decouples front-end clients from back-end engine implementations:
+With IO schemas served by TRS and used by clients and WES, a run goes through the following steps, without the client having to know the workflow's language:
 
 1. **Discovery (TRS):** A generic client or AI agent fetches a workflow and its abstract `IO_SCHEMA`.
 
-2. **Configuration (Client/UI):** The client automatically renders a type-safe form using off-the-shelf industry tools.
+2. **Configuration (Client/UI):** The client renders an input form from the schema, with a JSON Schema form library and an adapter for the `x-ga4gh-*` keywords (see [Portals and clients](portals.md)).
 
 3. **Data Access (DRS):** The schema's `x-ga4gh-drs-uri` flags prompt the client to securely resolve data identifiers and tokens.
 
-4. **Execution (WES):** The client constructs a deterministically valid JSON payload and submits it. The WES gateway performs final server-side validation against the schema, executing the job safely or returning immediate, actionable debugging context via `x-ga4gh-error-message`.
+4. **Execution (WES):** The client checks the input values against the schema, translates them into the `workflow_params` of the workflow's engine and submits the run. A WES server that knows the schema can check the request again and reject it with an error that names the failing parameter, using `x-ga4gh-error-message` where the schema provides one (see [WES](wes.md)).
 
-5. **Result Interpretation:** WES returns physical output URIs, and the client cross-references the schema to instantly apply UI visualization hints or semantic ontology tags for downstream chaining.
+5. **Result Interpretation:** WES returns the locations of the outputs, and the client matches them with the schema's outputs to choose viewers and to read their ontology terms.
 
 ## The adoption path (ecosystem independence)
 

@@ -9,9 +9,9 @@ SPDX-License-Identifier: Apache-2.0
 <!-- --8<-- [start:synopsis] -->
 > Incubating a proposed GA4GH JSON Schema Profile to standardize workflow and modular component I/O across WES and Registries, featuring a Python validation package.
 
-Currently, the GA4GH Federated Analysis API ecosystem (TRS, WES, DRS) provides a robust infrastructure for executing workloads, but lacks a standardized, machine-readable contract for describing workflow and modular component parameters.
+The GA4GH APIs for federated analysis (TRS, WES, DRS) let clients find and run workflows, but they have no engine-neutral, machine-readable contract for the inputs and outputs of workflows and workflow components.
 
-This repository incubates a proposed **GA4GH JSON Schema Profile** (and accompanying meta-schema). By establishing a strict I/O contract that sits above underlying workflow languages (e.g., CWL, WDL, Nextflow), this profile enables generic WES clients to automatically generate UI forms, validate complex inputs (like sample tables) client-side, and allows AI agents to deterministically construct valid execution payloads.
+This repository incubates a proposed **GA4GH JSON Schema Profile** (and accompanying meta-schema). By establishing an I/O contract that sits above workflow languages (e.g., CWL, WDL, Nextflow), this profile lets WES clients render input forms (through an adapter for the `x-ga4gh-*` keywords), check input values before they submit a run, and derive tool definitions for AI agents that build run requests.
 <!-- --8<-- [end:synopsis] -->
 
 ## Documentation

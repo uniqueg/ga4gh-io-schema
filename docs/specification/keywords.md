@@ -12,7 +12,7 @@ Where workflow languages have historically invented proprietary keywords, this p
 
 * **Mimetypes:** Instead of custom `mimetype` properties, developers must use the native `contentMediaType` keyword.
 
-* **Uniqueness:** Instead of custom `uniqueEntries` flags for arrays, developers must use the native `uniqueItems: true`.
+* **Uniqueness:** Where all items of an array must differ, developers must use the native `uniqueItems: true`. This is not the same as `nf-schema`'s `uniqueEntries`, which requires the *combination of the values of given keys* to be unique across the objects of an array (e.g., a unique `sample_id` per row of a sample sheet): with `uniqueItems`, two rows with the same `sample_id` but different other values both pass. The profile has no equivalent of `uniqueEntries` yet.
 
 ### Tabular data and cloud sovereignty
 
@@ -32,7 +32,7 @@ We propose the following initial set of custom annotations to support execution 
 
 * `x-ga4gh-ontology` *(string, uri)*: Maps an input or output to a formal ontology term (e.g., `http://edamontology.org/format_1929`), enabling semantic linking and automated reasoning.
 
-* `x-ga4gh-ui-widget` *(string)*: A hint for web portals to render a specific component. *Relation to nf-schema: Equivalent in intent to `nf-schema`'s UI rendering hints (e.g., `widget_type` as used in nf-core web interfaces), but this profile mandates referencing a standardized GA4GH vocabulary (e.g., `slider`, `genome-browser`) rather than ecosystem-specific strings.*
+* `x-ga4gh-ui-widget` *(string)*: A hint for web portals to render a specific component. *Relation to nf-schema: `nf-schema` has no widget keyword (see its [list of keys](https://nextflow-io.github.io/nf-schema/latest/nextflow_schema/nextflow_schema_specification/)); form controls in its ecosystem follow from a parameter's `type` and `format`. This profile adds an explicit hint from a GA4GH vocabulary (e.g., `slider`, `genome-browser`). Generic JSON Schema form libraries don't read it, so portals need an adapter (see [Portals and clients](../adoption/portals.md)).*
 
 * `x-ga4gh-tabular-schema` *(object)*: A nested JSON schema dictating the expected array/object structure of an opaque tabular file. *Relation to nf-schema: Functionally equivalent to `nf-schema`'s ability to apply a schema to a samplesheet. We explicitly namespace it as `x-ga4gh-tabular-schema` to prevent standard JSON Schema validators from confusing it with standard object `properties` or the `$schema` keyword.*
 
