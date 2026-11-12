@@ -7,6 +7,7 @@ This module provides core functions to load and validate workflow or tool
 IO schemas against the GA4GH IO Profile meta-schema.
 """
 
+import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -136,10 +137,15 @@ def validate_schema(
     try:
         validator.validate(target_schema)
     except Unresolvable as exc:
+        if meta_schema is None and exc.ref == target_schema["$schema"]:
+            hint = (
+                "name a meta-schema that the package ships (with its versioned "
+                "'$id') in '$schema', or pass --meta-schema"
+            )
+        else:
+            hint = "put the referenced schema in the directory of the meta-schema"
         raise jsonschema.exceptions.ValidationError(
-            f"Unknown meta-schema or reference '{exc.ref}': name a meta-schema that "
-            "the package ships (with its versioned '$id') in '$schema', or pass "
-            "--meta-schema."
+            f"Unknown meta-schema or reference '{exc.ref}': {hint}."
         ) from exc
 
 
@@ -156,7 +162,12 @@ def _format_checker(validator_cls: type[Validator]) -> jsonschema.FormatChecker:
     Returns:
         A format checker for every format of the class except ``regex``.
     """
-    formats = [
-        name for name in validator_cls.FORMAT_CHECKER.checkers if name != "regex"
-    ]
-    return jsonschema.FormatChecker(formats=formats)
+    # Copy the draft's own checker: FormatChecker(formats=...) would take the
+    # functions from the global registry, which holds other drafts' variants.
+    checker = copy.copy(validator_cls.FORMAT_CHECKER)
+    checker.checkers = {
+        name: check
+        for name, check in validator_cls.FORMAT_CHECKER.checkers.items()
+        if name != "regex"
+    }
+    return checker

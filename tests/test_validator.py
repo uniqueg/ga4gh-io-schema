@@ -115,3 +115,28 @@ def test_validate_schema_reports_unknown_meta_schema() -> None:
         jsonschema.exceptions.ValidationError, match="Unknown meta-schema"
     ):
         validate_schema(target_schema)
+
+
+def test_validate_schema_keeps_draft_format_checks() -> None:
+    """Test that the formats of the meta-schema's draft are used (e.g. ``time``)."""
+    meta_schema: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {"t": {"type": "string", "format": "time"}},
+    }
+
+    validate_schema({"t": "12:00:00Z"}, meta_schema)
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="is not a 'time'"):
+        validate_schema({"t": "12:00:00"}, meta_schema)
+
+
+def test_validate_schema_reports_unresolvable_reference_of_meta_schema() -> None:
+    """Test that a reference a custom meta-schema can't resolve is reported."""
+    meta_schema: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$ref": "https://example.org/schemas/missing",
+    }
+
+    with pytest.raises(
+        jsonschema.exceptions.ValidationError, match="directory of the meta-schema"
+    ):
+        validate_schema({}, meta_schema)
