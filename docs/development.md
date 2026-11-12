@@ -18,6 +18,9 @@ pytest
 valid examples and on one deliberately bad schema per rule of the
 meta-schema in `tests/data/invalid/`, and check the exit code and the error
 message of each; a new rule needs a new bad schema and its expected message.
+`tests/test_cli_framework.py` tests the shared conventions of all
+subcommands (standard input, `--output`, `--json`, exit codes) and the
+subcommand registry.
 
 `tests/test_wheel.py` builds the wheel, installs it into a fresh virtual
 environment and runs the command-line tool on the examples. It needs network
@@ -55,6 +58,26 @@ Keywords live in one vocabulary file per keyword group in
    in `docs/specification/meta-schema.md`.
 
 The wheel ships every file in `schemas/`, and the tests check that it does.
+
+## Adding subcommands
+
+Each subcommand of `ga4gh-io-schema` is a `Command` (see
+`src/ga4gh_io_schema/cli/base.py`) in a module of
+`src/ga4gh_io_schema/cli/commands/`; the dispatcher imports every module
+there, so a new subcommand needs no change elsewhere:
+
+1. Subclass `Command`: set `name` and `help`, add the arguments in
+   `configure()`, and return a `CommandResult` (text and JSON data) from
+   `run()`, or raise a `CliError` with an exit code of `ExitCode`. Read JSON
+   input with `read_json()`, which accepts `-` for standard input.
+2. Register it at the end of the module: `ROOT.register(MyCommand())`, or, in
+   a group, `ROOT.group("convert", help="...").register(MyCommand())`.
+3. Test it through `main()` of `ga4gh_io_schema.cli`, with 100% coverage.
+
+The [CLI reference](tools/cli.md#reference) is generated from the parser
+when the documentation is built (`docs_hooks/cli_reference.py`), so it
+needs no update; describe new conventions or exit codes in
+`docs/tools/cli.md`.
 
 ## Code quality (Ruff)
 

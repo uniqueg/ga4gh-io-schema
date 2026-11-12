@@ -31,6 +31,20 @@ The sources of the documentation are in [`docs/`](docs/).
 
 ---
 
+## Usage
+
+Install the package from a clone of the repository (Python 3.11 or later)
+and validate an IO schema against the profile:
+
+```bash
+pip install .
+ga4gh-io-schema validate path/to/your-schema.json
+```
+
+`ga4gh-io-schema --help` lists the subcommands; see the
+[command-line interface](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/cli/)
+for input from standard input, `--output`, `--json` and the exit codes.
+
 ## Contribute
 
 Contributions, issues, and feature requests are welcome! If you have suggestions for new UI widgets, ontology mappings, or tabular data validation strategies, please open an issue or submit a pull request. See [Development](https://ga4gh-io-schema.readthedocs.io/en/latest/development/) for the checks that changes must pass.

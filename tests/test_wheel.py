@@ -78,7 +78,7 @@ def installed_cli(wheel: Path, tmp_path_factory: pytest.TempPathFactory) -> Path
     venv.create(env_dir, with_pip=True)
     bin_dir = env_dir / ("Scripts" if os.name == "nt" else "bin")
     _run([bin_dir / "python", "-m", "pip", "install", wheel])
-    return bin_dir / "ga4gh-io-schema-validator"
+    return bin_dir / "ga4gh-io-schema"
 
 
 def test_wheel_ships_schemas(wheel: Path) -> None:
@@ -106,7 +106,7 @@ def test_installed_cli_validates_example(
         tmp_path: Pytest fixture providing a working directory outside the repo.
     """
     result = subprocess.run(
-        [installed_cli, example],
+        [installed_cli, "validate", example],
         cwd=tmp_path,
         capture_output=True,
         text=True,
@@ -130,7 +130,7 @@ def test_installed_cli_checks_formats(installed_cli: Path, tmp_path: Path) -> No
     path.write_text(json.dumps(schema), encoding="utf-8")
 
     result = subprocess.run(
-        [installed_cli, path],
+        [installed_cli, "validate", path],
         cwd=tmp_path,
         capture_output=True,
         text=True,
@@ -151,7 +151,11 @@ def test_installed_cli_checks_nested_vocabulary(
         tmp_path: Pytest fixture providing a working directory outside the repo.
     """
     result = subprocess.run(
-        [installed_cli, DATA_DIR / "invalid" / "tabular-schema-nested.schema.json"],
+        [
+            installed_cli,
+            "validate",
+            DATA_DIR / "invalid" / "tabular-schema-nested.schema.json",
+        ],
         cwd=tmp_path,
         capture_output=True,
         text=True,
