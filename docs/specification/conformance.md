@@ -10,7 +10,8 @@
 >   [Portals and clients](../adoption/portals.md)).
 >
 > Until then, the requirements are those stated in [Keywords](keywords.md),
-> [Output contract](outputs.md) and the [adoption guides](../adoption/index.md).
+> [Output contract](outputs.md), [Security considerations](../security.md)
+> and the [adoption guides](../adoption/index.md).
 
 ## Security requirements
 
@@ -19,9 +20,11 @@ conformance:
 
 - **IO schemas** MUST meet the requirements for schemas there (e.g., no
   inputs for secrets; bundled references).
-- **Servers** MUST meet the requirements for servers (sources of schemas,
-  regular expressions and size limits, URI schemes, access to data, error
-  messages and logs, validation of data files).
+- **Servers** that validate requests against IO schemas MUST meet the
+  requirements for servers (sources of schemas, regular expressions and size
+  limits, URI schemes, error messages and logs, validation of data files),
+  and their **execution side** the requirements for staging data (hosts of
+  file references, [access to data](../security.md#access-to-data)).
 - **Clients** MUST meet the requirements for clients, in particular the
   [rendering rules](../security.md#rendering-schemas-and-outputs), the URI
   scheme allow-list and the rules for [access to
