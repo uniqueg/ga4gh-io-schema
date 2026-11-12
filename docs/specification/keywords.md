@@ -20,7 +20,7 @@ Workflows heavily rely on tabular data (e.g., CSV sample sheets). Validating the
 
 Per the JSON Schema specification, standard client libraries ignore `x-` annotations because they are unrecognized extension keywords. To actively validate a CSV against this schema, a platform must implement a custom parser.
 
-Here, we must clearly delineate client-side versus server-side boundaries to preserve cloud data sovereignty. Forcing a generic web UI to download a massive, potentially sensitive patient sample sheet (e.g., fetched via a DRS URI) directly into the user's browser just to run client-side validation violates the data perimeter. Instead, UIs can use the `x-ga4gh-tabular-schema` as a *hint* to auto-generate an interactive spreadsheet grid for the user to fill out *before* saving it to the cloud. Meanwhile, the orchestrator or API gateway, sitting safely behind the firewall, can use a custom parser to securely validate the physical file prior to launching the compute.
+Here, we must clearly delineate client-side versus server-side boundaries to preserve cloud data sovereignty. Forcing a generic web UI to download a massive, potentially sensitive patient sample sheet (e.g., fetched via a DRS URI) directly into the user's browser just to run client-side validation violates the data perimeter. Instead, UIs can use the `x-ga4gh-tabular-schema` as a *hint* to auto-generate an interactive spreadsheet grid for the user to fill out *before* saving it to the cloud. Meanwhile, the execution side can validate the file before it starts the run. This is optional, and reading the file makes the server a data accessor, with the user's delegated credentials and within the data's access conditions (see [Validation of data files on the server](../security.md#validation-of-data-files-on-the-server)).
 
 See also [Security considerations](../security.md).
 
@@ -38,7 +38,7 @@ We propose the following initial set of custom annotations to support execution 
 
 * `x-ga4gh-fa-icon` *(string)*: FontAwesome icon class to display next to the parameter in dynamic UIs. *Relation to nf-schema: Equivalent to the `fa_icon` property.*
 
-* `x-ga4gh-description-format` *(string)*: Indicates the formatting of the standard `description` field (accepted values: `plain_text` (default), `markdown`, `rst`). *Relation to nf-schema: Equivalent in intent to the `help_text` property, but relies on formatting the standard JSON Schema `description` field rather than creating a secondary text property.*
+* `x-ga4gh-description-format` *(string)*: Indicates the formatting of the standard `description` field (accepted values: `plain_text` (default), `markdown`, `rst`; `rst` is removed in version 0.3, see [#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17), and clients show it as plain text, see [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)). *Relation to nf-schema: Equivalent in intent to the `help_text` property, but relies on formatting the standard JSON Schema `description` field rather than creating a secondary text property.*
 
 * `x-ga4gh-hidden` *(boolean)*: Signals UI generators to hide this parameter under "Advanced" toggles. *Relation to nf-schema: Equivalent to the `hidden` property.*
 
