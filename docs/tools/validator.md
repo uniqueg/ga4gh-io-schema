@@ -27,18 +27,28 @@ Once installed, the package exposes a command-line interface to validate your dr
 ga4gh-io-schema-validator path/to/your-schema.json
 ```
 
-Without further options, the meta-schema is the one that the schema names in
-its `$schema` property (see [Referencing the
-meta-schema](../specification/meta-schema.md#referencing-the-meta-schema)).
-To validate against another meta-schema file, pass it with `--meta-schema`
-(or `-m`):
+Without further options, the validator always checks the schema against the
+GA4GH IO Profile meta-schema that the package ships, whatever the schema's
+`$schema` says. The schema's `$schema` must name that meta-schema by its
+versioned `$id` (see [Referencing the
+meta-schema](../specification/meta-schema.md#referencing-the-meta-schema)); a
+missing `$schema`, or one that names another meta-schema (e.g., plain JSON
+Schema), is an error. To validate against another meta-schema file, pass it
+with `--meta-schema` (or `-m`); if that meta-schema has an `$id`, the schema's
+`$schema` must name it:
 
 ```bash
-ga4gh-io-schema-validator path/to/your-schema.json --meta-schema schemas/ga4gh-io-profile.schema.json
+ga4gh-io-schema-validator path/to/your-schema.json --meta-schema path/to/meta-schema.json
 ```
 
 The command exits with status 0 if the schema complies with the profile, and
-with status 1 and an error message otherwise.
+with status 1 and an error message on standard error otherwise. Validation
+errors name the location of the offending keyword as a JSON path, for
+example:
+
+```text
+Validation Error: 'banana' is not valid under any of the given schemas (at $.properties.inputs.properties.sample_id['x-ga4gh-ui-widget'])
+```
 
 ## Format checks
 
@@ -48,11 +58,6 @@ the `format-nongpl` extra of `jsonschema`, which avoids GPL-licensed
 dependencies. It doesn't check the `regex` format of `pattern` keywords,
 because patterns are ECMA-262 regular expressions, which Python can't always
 parse (e.g., `\p{L}`).
-
-A `$schema` that the package doesn't ship, for example the earlier
-unversioned URL with `main` in its path, is reported as an unknown
-meta-schema; use the versioned URL (see [Referencing the
-meta-schema](../specification/meta-schema.md#referencing-the-meta-schema)).
 
 These checks apply to the IO schema itself, not to the input values that a
 WES request sends later. If a client also checks those values against

@@ -4,7 +4,9 @@
 """Command-line interface for the GA4GH IO Schema validator."""
 
 import argparse
+import json
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import jsonschema
@@ -12,26 +14,34 @@ import jsonschema
 from ga4gh_io_schema.validator import load_json, validate_schema
 
 
-def main() -> None:
-    """Execute the CLI."""
+def main(argv: Sequence[str] | None = None) -> None:
+    """Execute the CLI.
+
+    Exits with status 0 if the schema complies with the meta-schema, and with
+    status 1 and an error message on standard error otherwise.
+
+    Args:
+        argv: Command-line arguments; defaults to those of the process.
+    """
     parser = argparse.ArgumentParser(
         description="Validate a workflow/tool IO schema against the GA4GH IO Profile meta-schema."
     )
-    # Changed to a required positional argument
     parser.add_argument(
         "schema",
         type=Path,
         help="Path to the tool or workflow IO schema to validate.",
     )
-    # Changed to an optional override flag
     parser.add_argument(
         "--meta-schema",
         "-m",
         type=Path,
-        help="Path to a custom meta-schema file. If omitted, uses the '$schema' property from the target schema.",
+        help=(
+            "Path to another meta-schema file to validate against. If omitted, "
+            "the GA4GH IO Profile meta-schema that the package ships is used."
+        ),
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     try:
         target_schema = load_json(args.schema)
@@ -50,13 +60,19 @@ def main() -> None:
     except FileNotFoundError as e:
         print(f"Error: File not found - {e}", file=sys.stderr)
         sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON - {e}", file=sys.stderr)
+        sys.exit(1)
     except jsonschema.exceptions.ValidationError as e:
-        print(f"Validation Error: {e.message}", file=sys.stderr)
+        print(f"Validation Error: {e.message} (at {e.json_path})", file=sys.stderr)
+        sys.exit(1)
+    except jsonschema.exceptions.SchemaError as e:
+        print(f"Meta-schema Error: {e.message}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
         sys.exit(1)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

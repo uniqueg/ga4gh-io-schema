@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/file.schema.json",
+  "title": "GA4GH IO Profile File Keywords",
+  "description": "Keywords that describe file parameters: DRS URIs and the structure of tabular files.",
+  "properties": {
+    "x-ga4gh-drs-uri": {
+      "type": "boolean",
+      "description": "Indicates if a string field is expected to be a valid DRS URI."
+    },
+    "x-ga4gh-tabular-schema": {
+      "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile-node",
+      "description": "A nested JSON schema to validate the internal row/column structure of a tabular file. Checked by the same rules as every other schema of the IO schema."
+    }
+  }
+}

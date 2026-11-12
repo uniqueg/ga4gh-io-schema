@@ -26,6 +26,8 @@ DATA_DIR = REPO_ROOT / "tests" / "data"
 EXAMPLES = sorted(DATA_DIR.glob("example_*.schema.json"))
 PACKAGED_SCHEMAS = [
     "ga4gh_io_schema/schemas/ga4gh-io-profile.schema.json",
+    "ga4gh_io_schema/schemas/vocabularies/annotations.schema.json",
+    "ga4gh_io_schema/schemas/vocabularies/file.schema.json",
     "ga4gh_io_schema/schemas/vocabularies/ui-widgets.schema.json",
 ]
 

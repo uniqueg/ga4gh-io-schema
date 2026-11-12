@@ -21,10 +21,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      # Newest Python version in its security phase (organisation policy)
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.13"
           cache: "pip"
 
       - name: Install dependencies
@@ -47,7 +48,7 @@ jobs:
       - name: Validate GA4GH Meta-Schema syntax
         run: |
           check-jsonschema --check-metaschema schemas/ga4gh-io-profile.schema.json
-          check-jsonschema --check-metaschema schemas/vocabularies/ui-widgets.schema.json
+          check-jsonschema --check-metaschema schemas/vocabularies/*.schema.json
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -84,9 +85,31 @@ jobs:
           ga4gh-io-schema-validator tests/data/example_workflow.schema.json
           ga4gh-io-schema-validator tests/data/example_tool.schema.json
 
+      # Each bad schema must fail with exit code 1 and its own message, not
+      # with any error (e.g. a missing file); tests/test_cli.py covers all.
       - name: E2E CLI Validation (Invalid Schemas)
         run: |
-          ! ga4gh-io-schema-validator tests/data/invalid.schema.json
+          expect_failure() {
+            set +e
+            output=$(ga4gh-io-schema-validator "$1" 2>&1)
+            status=$?
+            set -e
+            echo "$output"
+            if [ "$status" -ne 1 ]; then
+              echo "::error::expected exit code 1 for $1, got $status"
+              exit 1
+            fi
+            if ! grep -qF -- "$2" <<< "$output"; then
+              echo "::error::expected message for $1: $2"
+              exit 1
+            fi
+          }
+          expect_failure tests/data/invalid/missing-inputs.schema.json \
+            "Validation Error: 'inputs' is a required property (at \$.properties)"
+          expect_failure tests/data/invalid/ui-widget-unknown.schema.json \
+            "Validation Error: 'banana' is not valid under any of the given schemas"
+          expect_failure tests/data/invalid/foreign-schema.schema.json \
+            "not the GA4GH IO Profile meta-schema"
 
   docs:
     name: Docs

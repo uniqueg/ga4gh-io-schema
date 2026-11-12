@@ -13,6 +13,12 @@ Validate the core logic of the Python executable using `pytest`. The test suite 
 pytest
 ```
 
+`pytest` measures coverage of the package (with branches) and fails below
+100%. The CLI tests (`tests/test_cli.py`) run the command-line tool on the
+valid examples and on one deliberately bad schema per rule of the
+meta-schema in `tests/data/invalid/`, and check the exit code and the error
+message of each; a new rule needs a new bad schema and its expected message.
+
 `tests/test_wheel.py` builds the wheel, installs it into a fresh virtual
 environment and runs the command-line tool on the examples. It needs network
 access to install the build backend and the dependencies; deselect it with
@@ -45,7 +51,7 @@ The GA4GH meta-schemas themselves must strictly conform to the JSON Schema Draft
 
 ```bash
 check-jsonschema --check-metaschema schemas/ga4gh-io-profile.schema.json
-check-jsonschema --check-metaschema schemas/vocabularies/ui-widgets.schema.json
+check-jsonschema --check-metaschema schemas/vocabularies/*.schema.json
 ```
 
 ## License compliance (REUSE)

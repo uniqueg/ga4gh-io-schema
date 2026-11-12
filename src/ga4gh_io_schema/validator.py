@@ -17,11 +17,14 @@ from jsonschema.protocols import Validator
 from jsonschema.validators import validator_for
 from referencing import Registry, Resource
 from referencing.exceptions import Unresolvable
+from referencing.jsonschema import DRAFT202012
 
 #: Schemas shipped inside the installed package (see ``pyproject.toml``).
 _PACKAGE_SCHEMAS_DIR = Path(__file__).resolve().parent / "schemas"
 #: Schemas of a source checkout, used by editable installs.
 _CHECKOUT_SCHEMAS_DIR = Path(__file__).resolve().parents[2] / "schemas"
+#: File name of the GA4GH IO Profile meta-schema in the schemas directory.
+PROFILE_FILE = "ga4gh-io-profile.schema.json"
 
 
 def get_schemas_dir() -> Path:
@@ -61,6 +64,7 @@ def build_registry(search_dirs: list[Path]) -> Registry:
     """Discover JSON schemas in directories and register them by ``$id``.
 
     Files that can't be read or parsed, or that lack an ``$id``, are skipped.
+    Schemas without ``$schema`` are registered as JSON Schema Draft 2020-12.
 
     Args:
         search_dirs: Directories to search recursively for ``*.json`` files.
@@ -77,7 +81,9 @@ def build_registry(search_dirs: list[Path]) -> Registry:
                 with path.open("r", encoding="utf-8") as f:
                     data = json.load(f)
                 if isinstance(data, dict) and "$id" in data:
-                    resource = Resource.from_contents(data)
+                    resource = Resource.from_contents(
+                        data, default_specification=DRAFT202012
+                    )
                     registry = registry.with_resource(
                         uri=data["$id"], resource=resource
                     )
@@ -93,15 +99,20 @@ def validate_schema(
 ) -> None:
     """Validate a tool or workflow IO schema against a meta-schema.
 
-    If meta_schema is explicitly provided, it forces validation against it.
-    Otherwise, the meta-schema is inferred from the target schema's '$schema' property.
-    Local vocabulary and extension references are resolved automatically.
-    ``format`` keywords of the meta-schema (e.g. ``uri``) are enforced, except
-    ``regex``, because Python can't parse all ECMA-262 patterns.
+    By default, the schema is validated against the GA4GH IO Profile
+    meta-schema that the package ships, whatever its ``$schema`` names; a
+    missing ``$schema``, or one that names another meta-schema, is an error.
+    If ``meta_schema`` is given, the schema is validated against it instead,
+    and its ``$schema`` must name the ``$id`` of that meta-schema, if it has
+    one. References to the shipped schemas and to schemas in ``schema_dir``
+    are resolved locally. ``format`` keywords of the meta-schema (e.g.
+    ``uri``) are enforced, except ``regex``, because Python can't parse all
+    ECMA-262 patterns.
 
     Args:
         target_schema: The JSON schema of the workflow or tool to validate.
-        meta_schema: Optional overriding GA4GH IO Profile meta-schema dictionary.
+        meta_schema: Optional meta-schema to use instead of the GA4GH IO
+            Profile meta-schema.
         schema_dir: Optional directory to search for local schema references.
 
     Raises:
@@ -116,37 +127,64 @@ def validate_schema(
     registry = build_registry(search_dirs)
 
     if meta_schema is None:
-        if "$schema" not in target_schema:
-            raise jsonschema.exceptions.ValidationError(
-                "No --meta-schema was provided, and the target schema lacks a '$schema' property."
-            )
-
-        validator_cls = validator_for(target_schema)
-        # Create a proxy schema that resolves to the target's requested URI using our registry
-        meta_schema_instance = {"$ref": target_schema["$schema"]}
+        meta_schema = load_profile()
+        name = "the GA4GH IO Profile meta-schema"
     else:
-        validator_cls = validator_for(meta_schema)
-        validator_cls.check_schema(meta_schema)
-        meta_schema_instance = meta_schema
+        name = "the meta-schema"
 
+    if not isinstance(target_schema, dict):
+        raise jsonschema.exceptions.ValidationError("The schema must be a JSON object.")
+    if "$id" in meta_schema:
+        _check_schema_keyword(target_schema, meta_schema["$id"], name)
+
+    validator_cls = validator_for(meta_schema)
+    validator_cls.check_schema(meta_schema)
     validator = validator_cls(
-        meta_schema_instance,
+        meta_schema,
         registry=registry,
         format_checker=_format_checker(validator_cls),
     )
     try:
         validator.validate(target_schema)
     except Unresolvable as exc:
-        if meta_schema is None and exc.ref == target_schema["$schema"]:
-            hint = (
-                "name a meta-schema that the package ships (with its versioned "
-                "'$id') in '$schema', or pass --meta-schema"
-            )
-        else:
-            hint = "put the referenced schema in the directory of the meta-schema"
         raise jsonschema.exceptions.ValidationError(
-            f"Unknown meta-schema or reference '{exc.ref}': {hint}."
+            f"The meta-schema references '{exc.ref}', which can't be resolved "
+            "locally: put it in the directory of the meta-schema."
         ) from exc
+
+
+def load_profile() -> dict[str, Any]:
+    """Load the GA4GH IO Profile meta-schema that the package ships.
+
+    Returns:
+        The meta-schema.
+    """
+    return load_json(get_schemas_dir() / PROFILE_FILE)
+
+
+def _check_schema_keyword(
+    target_schema: dict[str, Any], expected: str, name: str
+) -> None:
+    """Check that a schema's ``$schema`` names the expected meta-schema.
+
+    Args:
+        target_schema: The JSON schema of the workflow or tool to validate.
+        expected: The ``$id`` of the meta-schema.
+        name: How to refer to the meta-schema in error messages.
+
+    Raises:
+        jsonschema.exceptions.ValidationError: If ``$schema`` is missing or
+            names another meta-schema.
+    """
+    if "$schema" not in target_schema:
+        raise jsonschema.exceptions.ValidationError(
+            f"The schema lacks a '$schema' property; set it to '{expected}'."
+        )
+    actual = target_schema["$schema"]
+    if actual != expected:
+        raise jsonschema.exceptions.ValidationError(
+            f"'$schema' is '{actual}', not {name} '{expected}'."
+        )
 
 
 def _format_checker(validator_cls: type[Validator]) -> jsonschema.FormatChecker:

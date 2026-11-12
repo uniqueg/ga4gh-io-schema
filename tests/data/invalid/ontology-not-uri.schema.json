@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/ontology-not-uri",
+  "title": "Invalid: ontology-not-uri",
+  "description": "x-ga4gh-ontology is a string, but not a URI.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string",
+          "x-ga4gh-ontology": "format_1929"
+        }
+      }
+    }
+  }
+}
