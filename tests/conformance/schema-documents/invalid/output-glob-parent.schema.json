@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/output-glob-parent",
+  "title": "Invalid: output-glob-parent",
+  "description": "An output glob leaves the output directory with a '..' segment.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object"
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          },
+          "x-ga4gh-output-glob": "../secrets/*.txt"
+        }
+      }
+    }
+  }
+}

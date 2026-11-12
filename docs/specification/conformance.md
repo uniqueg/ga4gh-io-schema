@@ -50,8 +50,8 @@ roles of [Security considerations](../security.md) map to the classes: its
 together with the workflow engine that it runs.
 
 Some parts of the profile are still being specified for version 0.3: the
-bindings of input values to the parameters of each workflow engine, and
-the model of outputs. The requirements below that depend on them are marked
+bindings of input values to the parameters of each workflow engine. The
+requirements below that depend on them are marked
 *(pending)*; they name the feature, and the feature's page of the
 specification states the requirements once it is added.
 
@@ -88,7 +88,11 @@ specification states the requirements once it is added.
    document published in a TRS SHOULD carry `trs_tool_id`,
    `trs_version_id`, `primary_descriptor_path` and at least one
    `checksum`.
-6. *(pending)* Requirements on outputs.
+6. A schema document MUST meet the requirements of [Outputs](outputs.md)
+   for its `outputs` ([The outputs schema](outputs.md#the-outputs-schema))
+   and for every `x-ga4gh-output-glob`. It SHOULD have `outputs` where the
+   workflow language declares outputs, and SHOULD NOT allow `null` in
+   outputs.
 
 ### Validator
 
@@ -138,6 +142,11 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    descriptor), and SHOULD add `x-ga4gh-parameter` where the name or type
    of an engine parameter isn't clear from the property (see
    [Identity and engine binding](identity.md)).
+5. A producer MUST convert the outputs that its source declares (see
+   [The outputs schema](outputs.md#the-outputs-schema)), and SHOULD follow
+   [Notes on engines and servers](outputs.md#notes-on-engines-and-servers)
+   (e.g., `x-ga4gh-output-glob` for outputs that the engine doesn't report
+   by name, never copied from CWL `outputBinding.glob`).
 
 ### Form renderer
 
@@ -184,15 +193,34 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
 
 ### Output normaliser
 
-1. An output normaliser MUST match the outputs of a run with the outputs of
-   the schema document as defined in the [Output contract](outputs.md).
+1. An output normaliser MUST build the
+   [normalised outputs object](outputs.md#the-normalised-outputs-object) of
+   a run, keyed by the outputs of the schema document, with values in the
+   shapes of [Values](outputs.md#values): absent, never `null`, for outputs
+   that the run didn't produce, and without outputs that the schema
+   document doesn't declare.
 2. An output normaliser MUST check the scheme of every output reference
    against the allow-list of the deployment before it shows the output as a
    link or loads it into a viewer, and MUST meet the rules of
    [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)
    for the outputs it shows.
-3. *(pending)* The normalised outputs object, outputs of engines without
-   named outputs, and the handling of outputs that it can't match.
+3. An output normaliser MUST find each output by name first and otherwise
+   by its `x-ga4gh-output-glob`, as defined in
+   [Finding outputs](outputs.md#finding-outputs), and MUST check the files
+   that the server lists before it matches globs against them.
+4. An output normaliser MUST validate the normalised outputs object of a
+   run that completed against `outputs`, and report a run whose object
+   isn't valid as non-conformant; it MUST NOT drop or change outputs to
+   make the object valid. It MUST report ambiguous matches (e.g., several
+   files for a one-file output), skipped listed files, and the outputs that
+   the engine reports but the schema document doesn't declare, instead of
+   dropping them silently. Optional outputs that it doesn't find are
+   absent, not errors.
+5. An output normaliser MUST show the outputs of a run that didn't
+   complete as partial, as defined in
+   [Runs that don't complete](outputs.md#runs-that-dont-complete), and the
+   outputs of a non-conformant run with the same warning, keeping all of
+   them.
 
 ### WES server
 

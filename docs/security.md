@@ -46,6 +46,7 @@ Schemas MUST mark every file input and output as a [file reference](specificatio
 The rules below apply to all of them.
 
 - Servers and clients MUST check the scheme of every file reference, in inputs and in outputs, against an allow-list before they use it: before staging an input, and before showing an output as a link or loading it into a viewer.
+- Normalisers of outputs MUST check the files that a server lists for a run before they match `x-ga4gh-output-glob` against them, and accept only paths and URIs inside the output directory of the run (see [`x-ga4gh-output-glob`](specification/outputs.md#x-ga4gh-output-glob)).
 - The allow-list is set by the deployment. It SHOULD contain only `drs` and `https`; the object-store schemes that the deployment supports (e.g., `s3`, `gs`); and `http`, only for internal networks.
 - `javascript`, `data` and other schemes that run code in a browser MUST NOT be on the allow-list, and clients MUST NOT show references with them as links.
 - `file` URIs and paths without a scheme refer to the file system of the execution side. Servers MUST NOT accept them in inputs, except: paths relative to the files attached to the run request (`workflow_attachment`), and, in deployments with a shared file system, paths in directories that the deployment explicitly allows. Servers MUST reject paths with `..` segments, and MUST check that the path, after normalising it and resolving symbolic links, lies inside the attachments or an allowed directory. Clients MUST NOT show such paths as links.
