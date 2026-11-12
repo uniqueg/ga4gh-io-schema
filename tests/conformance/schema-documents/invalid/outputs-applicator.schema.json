@@ -1,0 +1,28 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/outputs-applicator",
+  "title": "Invalid: outputs-applicator",
+  "description": "The outputs hide their properties behind a reference instead of listing them directly.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object"
+    },
+    "outputs": {
+      "$ref": "#/$defs/outputs"
+    }
+  },
+  "$defs": {
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        }
+      }
+    }
+  }
+}

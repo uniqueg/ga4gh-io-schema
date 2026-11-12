@@ -65,7 +65,9 @@
             "ontology": "http://edamontology.org/format_2572"
           }
         }
-      }
+      },
+      "required": ["alignment_bam"],
+      "additionalProperties": false
     }
   }
 }

@@ -35,7 +35,7 @@ does, or reads a conforming document differently. For example:
   accepted before (a valid case of the conformance suite that fails);
 - a new requirement (MUST or MUST NOT) for an existing class, or a SHOULD
   that becomes a MUST;
-- a change of the meaning of a keyword or of the output contract.
+- a change of the meaning of a keyword or of the outputs model.
 
 Other changes are **non-breaking**: new optional keywords, vocabulary values
 or conformance classes; requirements that become weaker; clarifications and

@@ -26,6 +26,17 @@ WES 1.1 has no structured error body (e.g., a list of errors, each with a pointe
 
 See also [Security considerations](../security.md).
 
+## Outputs of runs
+
+WES servers report the outputs of a run in `RunLog.outputs`, a free-form
+object whose shape depends on the engine and the server. Clients and
+gateways turn it into the *normalised outputs object* of the run, keyed by
+the outputs of the IO schema, as defined in
+[Outputs](../specification/outputs.md#the-normalised-outputs-object). For
+engines that don't report outputs by name, this needs the server to list the
+files of the run, relative to its output directory (see
+[`x-ga4gh-output-glob`](../specification/outputs.md#x-ga4gh-output-glob)).
+
 ## Guide for WES implementers
 
 > **To be written.** This section will describe, step by step, how a WES

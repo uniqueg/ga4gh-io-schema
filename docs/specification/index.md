@@ -15,8 +15,8 @@ described in [Notational conventions](conformance.md#notational-conventions).
 - [Identity and engine binding](identity.md): how a schema names the
   workflow version and engine it describes, how clients detect drift, and
   how parameters bind to the engine's parameters.
-- [Output contract](outputs.md): how clients match the outputs of a schema
-  with the outputs of a run.
+- [Outputs](outputs.md): the outputs schema, the shapes of output values,
+  and how clients find the outputs of a run in what a WES server returns.
 - [Meta-schema](meta-schema.md): the meta-schema and vocabularies that
   schemas are validated against, and where they are served.
 - [Conformance](conformance.md): the conformance classes (schema documents,
