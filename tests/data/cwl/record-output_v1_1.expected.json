@@ -1,0 +1,67 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "irec": {
+          "type": "object",
+          "properties": {
+            "ifoo": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            },
+            "ibar": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            }
+          },
+          "required": [
+            "ifoo",
+            "ibar"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "irec"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "orec": {
+          "type": "object",
+          "properties": {
+            "ofoo": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            },
+            "obar": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            }
+          },
+          "required": [
+            "ofoo",
+            "obar"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "orec"
+      ]
+    }
+  }
+}

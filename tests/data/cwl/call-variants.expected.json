@@ -1,0 +1,239 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "title": "Call variants",
+  "description": "Align reads to a reference genome and call variants.\nUsed to test the CWL converter.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "reference": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_1929",
+            "secondaryFiles": [
+              ".fai",
+              "^.dict"
+            ]
+          },
+          "title": "Reference genome",
+          "description": "FASTA file of the reference genome, indexed with samtools and BWA."
+        },
+        "samples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "title": "Sample ID"
+              },
+              "reads": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "x-ga4gh-file": {
+                    "kind": "file",
+                    "ontology": "http://edamontology.org/format_1930"
+                  }
+                }
+              },
+              "alignment": {
+                "type": "string",
+                "x-ga4gh-file": {
+                  "kind": "file",
+                  "secondaryFiles": [
+                    "^.bai"
+                  ]
+                }
+              },
+              "sex": {
+                "type": "string",
+                "enum": [
+                  "female",
+                  "male",
+                  "unknown"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "reads"
+            ],
+            "additionalProperties": false,
+            "title": "Sample",
+            "description": "Sequencing reads of one sample."
+          },
+          "title": "Samples"
+        },
+        "caller": {
+          "type": "string",
+          "enum": [
+            "gatk",
+            "bcftools",
+            "freebayes"
+          ],
+          "title": "Variant caller",
+          "default": "gatk"
+        },
+        "regions": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_3003"
+          },
+          "title": "Regions",
+          "description": "BED file of the regions to call variants in."
+        },
+        "known_sites": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_3016",
+            "secondaryFiles": [
+              ".tbi"
+            ]
+          },
+          "default": "https://data.example.org/known-sites.vcf.gz"
+        },
+        "blacklist": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        },
+        "annotation_dir": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "directory"
+          }
+        },
+        "min_quality": {
+          "type": "number",
+          "default": 20.5
+        },
+        "max_depth": {
+          "type": "integer"
+        },
+        "threads": {
+          "type": "integer",
+          "default": 4
+        },
+        "emit_all": {
+          "type": "boolean"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "variants",
+            "test"
+          ]
+        },
+        "ploidy": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "extra_config": {
+          "anyOf": [
+            {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "options": {},
+        "stdin_reads": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        }
+      },
+      "required": [
+        "reference",
+        "samples",
+        "ploidy",
+        "options",
+        "stdin_reads"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "log": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        },
+        "variants": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_3016",
+            "secondaryFiles": [
+              ".tbi"
+            ]
+          }
+        },
+        "alignments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          }
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "report": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file",
+                "ontology": "http://edamontology.org/format_2331"
+              }
+            },
+            "count": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "report"
+          ],
+          "additionalProperties": false,
+          "title": "Summary of the calls"
+        },
+        "coverage": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        }
+      },
+      "required": [
+        "log",
+        "variants",
+        "alignments",
+        "summary"
+      ]
+    }
+  }
+}

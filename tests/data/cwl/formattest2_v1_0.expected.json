@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "description": "Reverse each line using the `rev` command",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_2330"
+          }
+        }
+      },
+      "required": [
+        "input"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        }
+      },
+      "required": [
+        "output"
+      ]
+    }
+  }
+}
