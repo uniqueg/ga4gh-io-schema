@@ -14,7 +14,12 @@ from ga4gh_io_schema.cli import main
 from ga4gh_io_schema.cli.commands import validate as validate_command
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
-VALID = sorted(DATA_DIR.glob("*.schema.json"))
+#: Schema documents of the conformance suite (see ``tests/conformance/``).
+SUITE_DIR = Path(__file__).resolve().parent / "conformance" / "schema-documents"
+ANNOTATED = SUITE_DIR / "valid" / "annotated.schema.json"
+VALID = sorted(DATA_DIR.glob("*.schema.json")) + sorted(
+    (SUITE_DIR / "valid").glob("*.schema.json")
+)
 
 #: Expected error message (on stderr) for each deliberately bad schema.
 INVALID = {
@@ -23,6 +28,10 @@ INVALID = {
     "missing-schema": "Validation Error: The schema lacks a '$schema' property",
     "foreign-schema": (
         "Validation Error: '$schema' is 'http://json-schema.org/draft-07/schema#', "
+        "not the GA4GH IO Profile meta-schema"
+    ),
+    "plain-json-schema": (
+        "Validation Error: '$schema' is 'https://json-schema.org/draft/2020-12/schema', "
         "not the GA4GH IO Profile meta-schema"
     ),
     "not-object-type": "Validation Error: 'object' was expected (at $.type)",
@@ -277,7 +286,7 @@ def _write_variant(
     top_level: dict[str, Any] | None = None,
     sample_id: dict[str, Any] | None = None,
 ) -> Path:
-    """Write a copy of ``valid.schema.json`` with changed keywords.
+    """Write a copy of ``annotated.schema.json`` with changed keywords.
 
     Args:
         tmp_path: Directory to write the copy to.
@@ -287,30 +296,12 @@ def _write_variant(
     Returns:
         The path of the written schema.
     """
-    schema = json.loads((DATA_DIR / "valid.schema.json").read_text(encoding="utf-8"))
+    schema = json.loads(ANNOTATED.read_text(encoding="utf-8"))
     schema.update(top_level or {})
     schema["properties"]["inputs"]["properties"]["sample_id"].update(sample_id or {})
     path = tmp_path / "variant.schema.json"
     path.write_text(json.dumps(schema), encoding="utf-8")
     return path
-
-
-def test_cli_accepts_other_extension_keywords(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """Test that keywords outside the ``x-ga4gh-`` namespace stay allowed.
-
-    Args:
-        tmp_path: Pytest fixture providing a temporary directory.
-        capsys: Pytest fixture capturing standard output and error.
-    """
-    path = _write_variant(
-        tmp_path, sample_id={"x-my-platform-hint": {"any": "value"}, "x-ga4ghost": 1}
-    )
-
-    assert main(["validate", str(path)]) == 0
-
-    assert "complies" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize(
@@ -466,7 +457,7 @@ def _write_with_output_widget(tmp_path: Path, widget: str) -> Path:
     Returns:
         Path of the written schema.
     """
-    schema = json.loads((DATA_DIR / "valid.schema.json").read_text(encoding="utf-8"))
+    schema = json.loads(ANNOTATED.read_text(encoding="utf-8"))
     output_vcf = schema["properties"]["outputs"]["properties"]["output_vcf"]
     output_vcf["x-ga4gh-ui-widget"] = widget
     path = tmp_path / "widget.schema.json"
@@ -523,7 +514,7 @@ def test_cli_accepts_kept_description_format(
         tmp_path: Pytest fixture providing a temporary directory.
         capsys: Pytest fixture capturing standard output and error.
     """
-    schema = json.loads((DATA_DIR / "valid.schema.json").read_text(encoding="utf-8"))
+    schema = json.loads(ANNOTATED.read_text(encoding="utf-8"))
     sample_id = schema["properties"]["inputs"]["properties"]["sample_id"]
     sample_id["x-ga4gh-description-format"] = description_format
     path = tmp_path / "format.schema.json"
@@ -537,7 +528,8 @@ def test_cli_accepts_kept_description_format(
 def test_every_invalid_fixture_has_an_expected_message() -> None:
     """Test that the table of expected messages covers every bad schema."""
     names = {
-        path.name.removesuffix(".schema.json") for path in DATA_DIR.glob("invalid/*")
+        path.name.removesuffix(".schema.json")
+        for path in (SUITE_DIR / "invalid").glob("*")
     }
 
     assert names == set(INVALID)
@@ -567,30 +559,11 @@ def test_cli_rejects_invalid_schema(
     """Test that the CLI rejects each bad schema with status 1 and a clear message.
 
     Args:
-        name: Name of the bad schema in ``tests/data/invalid/``.
+        name: Name of the bad schema in ``tests/conformance/schema-documents/invalid/``.
         capsys: Pytest fixture capturing standard output and error.
     """
-    assert main(["validate", str(DATA_DIR / "invalid" / f"{name}.schema.json")]) == 1
+    assert main(["validate", str(SUITE_DIR / "invalid" / f"{name}.schema.json")]) == 1
     assert INVALID[name] in capsys.readouterr().err
-
-
-def test_cli_rejects_plain_json_schema(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """Test that a valid plain JSON Schema doesn't pass as an IO schema.
-
-    Args:
-        tmp_path: Pytest fixture providing a temporary directory.
-        capsys: Pytest fixture capturing standard output and error.
-    """
-    path = tmp_path / "plain.schema.json"
-    path.write_text(
-        json.dumps({"$schema": "https://json-schema.org/draft/2020-12/schema"}),
-        encoding="utf-8",
-    )
-
-    assert main(["validate", str(path)]) == 1
-    assert "not the GA4GH IO Profile meta-schema" in capsys.readouterr().err
 
 
 def test_cli_uses_custom_meta_schema(
@@ -661,10 +634,7 @@ def test_cli_reports_invalid_meta_schema(
     meta_schema = tmp_path / "meta.schema.json"
     meta_schema.write_text(json.dumps({"type": "no-such-type"}), encoding="utf-8")
 
-    assert (
-        main(["validate", str(DATA_DIR / "valid.schema.json"), "-m", str(meta_schema)])
-        == 3
-    )
+    assert main(["validate", str(ANNOTATED), "-m", str(meta_schema)]) == 3
     assert "Meta-schema Error:" in capsys.readouterr().err
 
 
@@ -691,7 +661,7 @@ def test_cli_reports_unexpected_error(
 
     monkeypatch.setattr(validate_command, "validate_schema", fail)
 
-    assert main(["validate", str(DATA_DIR / "valid.schema.json")]) == 4
+    assert main(["validate", str(ANNOTATED)]) == 4
     assert "An unexpected error occurred: boom" in capsys.readouterr().err
 
 
@@ -704,7 +674,7 @@ def test_cli_omits_location_of_top_level_errors(
         capsys: Pytest fixture capturing standard output and error.
     """
     assert (
-        main(["validate", str(DATA_DIR / "invalid" / "missing-schema.schema.json")])
+        main(["validate", str(SUITE_DIR / "invalid" / "missing-schema.schema.json")])
         == 1
     )
 
@@ -723,8 +693,5 @@ def test_cli_rejects_meta_schema_that_is_no_schema(
     meta_schema = tmp_path / "null.json"
     meta_schema.write_text("null", encoding="utf-8")
 
-    assert (
-        main(["validate", str(DATA_DIR / "valid.schema.json"), "-m", str(meta_schema)])
-        == 3
-    )
+    assert main(["validate", str(ANNOTATED), "-m", str(meta_schema)]) == 3
     assert "Meta-schema Error: The meta-schema must be" in capsys.readouterr().err

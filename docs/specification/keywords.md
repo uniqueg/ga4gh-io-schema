@@ -6,11 +6,11 @@ To maintain maximum compatibility with existing libraries (e.g., UI form generat
 
 ### Leveraging native JSON Schema (what we don't reinvent)
 
-Where workflow languages have historically invented proprietary keywords, this profile dictates the use of native JSON Schema features:
+Where workflow languages have historically invented proprietary keywords, schemas use native JSON Schema features:
 
 * **File Paths and References:** A file or directory is a string with the `x-ga4gh-file` annotation, not a proprietary type or object: `{"type": "string", "x-ga4gh-file": {"kind": "file"}}`. JSON Schema has no keyword for references to files: `format: uri` rejects relative paths and compact DRS identifiers, can't tell files from directories and carries no index files, and `contentMediaType` describes the string itself, not the file it refers to. See [File references](files.md).
 
-* **Uniqueness:** Where all items of an array must differ, developers must use the native `uniqueItems: true`. This is not the same as `nf-schema`'s `uniqueEntries`, which requires the *combination of the values of given keys* to be unique across the objects of an array (e.g., a unique `sample_id` per row of a sample sheet): with `uniqueItems`, two rows with the same `sample_id` but different other values both pass. The profile has no equivalent of `uniqueEntries` yet.
+* **Uniqueness:** Where all items of an array have to differ, schemas MUST use the native `uniqueItems: true`. This is not the same as `nf-schema`'s `uniqueEntries`, which requires the *combination of the values of given keys* to be unique across the objects of an array (e.g., a unique `sample_id` per row of a sample sheet): with `uniqueItems`, two rows with the same `sample_id` but different other values both pass. The profile has no equivalent of `uniqueEntries` yet.
 
 ### Tabular data and cloud sovereignty
 
@@ -18,7 +18,7 @@ Workflows heavily rely on tabular data (e.g., CSV sample sheets). The profile ha
 
 Per the JSON Schema specification, standard client libraries ignore `x-` annotations because they are unrecognized extension keywords. A platform that wants to check a file against the hint needs a parser of its own.
 
-Here, we must clearly delineate client-side versus server-side boundaries to preserve cloud data sovereignty. Forcing a generic web UI to download a massive, potentially sensitive patient sample sheet (e.g., fetched via a DRS URI) directly into the user's browser just to run client-side validation violates the data perimeter. Instead, UIs can use the `x-ga4gh-tabular-schema` as a *hint* to auto-generate an interactive spreadsheet grid for the user to fill out *before* saving it to the cloud. A server MAY check the file before it starts the run. This is optional, and reading the file makes the server a data accessor, with the user's delegated credentials and within the data's access conditions (see [Validation of data files on the server](../security.md#validation-of-data-files-on-the-server)).
+Here, the roles of the client side and the server side have to be kept apart to preserve cloud data sovereignty. Forcing a generic web UI to download a massive, potentially sensitive patient sample sheet (e.g., fetched via a DRS URI) directly into the user's browser just to run client-side validation violates the data perimeter. Instead, UIs can use the `x-ga4gh-tabular-schema` as a *hint* to auto-generate an interactive spreadsheet grid for the user to fill out *before* saving it to the cloud. A server MAY check the file before it starts the run. This is optional, and reading the file makes the server a data accessor, with the user's delegated credentials and within the data's access conditions (see [Validation of data files on the server](../security.md#validation-of-data-files-on-the-server)).
 
 See also [Security considerations](../security.md).
 
