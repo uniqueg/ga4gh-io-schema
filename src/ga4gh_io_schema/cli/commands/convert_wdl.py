@@ -7,6 +7,7 @@ from pathlib import Path
 
 from ga4gh_io_schema.cli.base import (
     ROOT,
+    STDIN,
     CliError,
     Command,
     CommandResult,
@@ -84,6 +85,10 @@ class WdlCommand(Command):
                 loaded or converted.
         """
         text = read_text(args.source)
+        # The checksum covers the bytes; reading text translates line endings
+        checksum = None
+        if args.source != STDIN:
+            checksum = wdl.descriptor_checksum(Path(args.source).read_bytes())
         try:
             conversion = wdl.convert(
                 args.source,
@@ -91,6 +96,7 @@ class WdlCommand(Command):
                 task=args.task,
                 nested_inputs=args.nested_inputs,
                 import_paths=args.import_path,
+                checksum=checksum,
             )
         except wdl.MissingDependencyError as exc:
             raise CliError(ErrorKind.IO, str(exc)) from exc

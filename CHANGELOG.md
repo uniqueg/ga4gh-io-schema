@@ -104,7 +104,8 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `ga4gh-io-schema convert wdl` converts the inputs and outputs of a WDL
   1.0, 1.1 or 1.2 workflow or task to an IO schema: WDL types (files as file
   references), literal defaults, common `parameter_meta` keys, nested
-  inputs of calls, and the engine binding (`x-ga4gh-workflow` with the
+  inputs of calls, outputs (as the outputs model requires: required unless
+  optional, never `null`), and the engine binding (`x-ga4gh-workflow` with the
   entry point and checksum, `x-ga4gh-parameter` with the WDL type). It
   needs the new `wdl` extra (miniwdl). (#22)
 - Conformance: BCP 14 (RFC 2119, RFC 8174) key words, used consistently in

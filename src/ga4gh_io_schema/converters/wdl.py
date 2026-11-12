@@ -15,6 +15,7 @@ schema, or that the author should check, as a :class:`Note`.
 """
 
 import hashlib
+import json
 import os
 import re
 from collections.abc import Sequence
@@ -44,8 +45,9 @@ META_KEYS = frozenset(
 #: Values of the ``category`` key of ``parameter_meta`` that hide a parameter.
 HIDDEN_CATEGORIES = frozenset({"advanced"})
 
-#: Start of an absolute URI (a scheme and a colon), as the profile defines it.
-_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+#: Start of a URI with an authority (e.g., ``https://``, ``s3://``, ``drs://``);
+#: other values with a colon (e.g., ``C:/data`` or ``sample:1.bam``) are paths.
+_URI = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]+://")
 #: Imports that name a remote document.
 _REMOTE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://")
 #: Names that a JSON path can use without brackets.
@@ -309,16 +311,18 @@ def _import_error(exc: BaseException) -> SourceError:
     return SourceError(f"{exc}: {cause}")
 
 
-def descriptor_checksum(text: str) -> str:
+def descriptor_checksum(content: str | bytes) -> str:
     """Compute the SHA-256 checksum of a WDL document, for drift detection.
 
     Args:
-        text: Content of the document.
+        content: The bytes of the document, as TRS serves them, or its text,
+            which is encoded in UTF-8.
 
     Returns:
-        The hex-encoded SHA-256 digest of the UTF-8 encoded text.
+        The hex-encoded SHA-256 digest.
     """
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    data = content.encode("utf-8") if isinstance(content, str) else content
+    return hashlib.sha256(data).hexdigest()
 
 
 def to_ga4gh(
@@ -357,6 +361,7 @@ def convert(
     task: str | None = None,
     nested_inputs: bool = False,
     import_paths: Sequence[str | Path] = (),
+    checksum: str | None = None,
 ) -> Conversion:
     """Load a WDL document and convert it to an IO schema.
 
@@ -369,6 +374,9 @@ def convert(
         task: See :func:`to_ga4gh`.
         nested_inputs: See :func:`to_ga4gh`.
         import_paths: See :func:`load_document`.
+        checksum: SHA-256 checksum of the bytes of the document; by default,
+            that of ``text`` in UTF-8, which differs from the bytes if
+            reading the file changed its line endings.
 
     Returns:
         The IO schema, and the notes of the conversion.
@@ -379,7 +387,9 @@ def convert(
         ConversionError: If the document can't be converted.
     """
     document = load_document(source, text, import_paths)
-    return to_ga4gh(document, task, nested_inputs, descriptor_checksum(text))
+    if checksum is None:
+        checksum = descriptor_checksum(text)
+    return to_ga4gh(document, task, nested_inputs, checksum)
 
 
 class _Converter:
@@ -389,6 +399,8 @@ class _Converter:
         wdl: The ``WDL`` package of miniwdl.
         document: The document.
         notes: Notes of the conversion so far.
+        null_values: Whether optional values inside the parameter being
+            converted may be ``null`` (inputs), or not (outputs).
     """
 
     def __init__(self, wdl: ModuleType, document: Any) -> None:
@@ -401,6 +413,7 @@ class _Converter:
         self.wdl = wdl
         self.document = document
         self.notes: list[Note] = []
+        self.null_values = True
 
     def note(self, message: str, pointer: Pointer) -> None:
         """Add a note.
@@ -457,17 +470,24 @@ class _Converter:
             The workflow or task (a ``WDL.Tree.Workflow`` or ``WDL.Tree.Task``).
 
         Raises:
-            ConversionError: If the task doesn't exist, or there's no single
-                workflow or task to convert.
+            ConversionError: If the task doesn't exist, a task is chosen in a
+                document with a workflow, or there's no single workflow or
+                task to convert.
         """
         tasks = self.document.tasks
+        workflow = self.document.workflow
+        if task is not None and workflow is not None:
+            raise ConversionError(
+                f"The document has a workflow ({workflow.name}), which is its "
+                "entry point: --task is only for documents without a workflow"
+            )
         if task is not None:
             for candidate in tasks:
                 if candidate.name == task:
                     return candidate
             raise ConversionError(f"The document has no task '{task}'")
-        if self.document.workflow is not None:
-            return self.document.workflow
+        if workflow is not None:
+            return workflow
         if len(tasks) == 1:
             return tasks[0]
         if not tasks:
@@ -522,11 +542,17 @@ class _Converter:
             else:
                 schema["x-ga4gh-hidden"] = True
             properties[binding.name] = schema
-        if nested and not self._allows_nested_inputs(entry):
+        if nested and self.document.wdl_version == "1.2":
+            self.note(
+                "The workflow has inputs of calls, which WDL 1.2 allows only if "
+                "the hints section sets allow_nested_inputs: true; the converter "
+                "can't check hints",
+                ("properties", "inputs"),
+            )
+        elif nested and not self._allows_nested_inputs(entry):
             self.note(
                 "The workflow has inputs of calls, but its meta section doesn't "
-                "set allowNestedInputs: engines that follow WDL 1.1 or later "
-                "reject them",
+                "set allowNestedInputs: engines that follow WDL 1.1 reject them",
                 ("properties", "inputs"),
             )
         inputs: dict[str, Any] = {"type": "object", "properties": properties}
@@ -559,12 +585,19 @@ class _Converter:
             The schema of ``outputs``.
         """
         properties: dict[str, Any] = {}
+        required: list[str] = []
         for decl in entry.outputs or []:
             pointer: Pointer = ("properties", "outputs", "properties", decl.name)
             properties[decl.name] = self._parameter(
                 decl, entry.parameter_meta, pointer, is_input=False
             )
-        return {"type": "object", "properties": properties}
+            if not decl.type.optional:
+                required.append(decl.name)
+        outputs: dict[str, Any] = {"type": "object", "properties": properties}
+        if required:
+            outputs["required"] = required
+        outputs["additionalProperties"] = False
+        return outputs
 
     def _parameter(
         self,
@@ -580,12 +613,14 @@ class _Converter:
             parameter_meta: The ``parameter_meta`` section that describes it.
             pointer: Location of its schema in the IO schema.
             is_input: Whether it is an input; outputs get no defaults, and
-                optional outputs may be ``null``.
+                their schemas never allow ``null``: normalisers leave out the
+                ``null`` values that engines report.
 
         Returns:
             The schema of the parameter.
         """
-        schema = self._type(decl.type, pointer, nullable=not is_input)
+        self.null_values = is_input
+        schema = self._type(decl.type, pointer, nullable=False)
         self._apply_meta(
             schema, parameter_meta.get(decl.name), decl.type, pointer, is_input
         )
@@ -600,10 +635,10 @@ class _Converter:
         Args:
             wdl_type: The type (a ``WDL.Type.Base``).
             pointer: Location of the schema in the IO schema.
-            nullable: Whether an optional type also accepts ``null``; values
-                in arrays, maps, pairs and structs, and outputs, may be
-                ``null`` if their type is optional, while optional inputs may
-                be left out instead.
+            nullable: Whether an optional type also accepts ``null``: values
+                in arrays, maps, pairs and structs of inputs may be ``null``
+                if their type is optional; optional inputs are left out
+                instead, and outputs never allow ``null``.
 
         Returns:
             The schema.
@@ -655,7 +690,7 @@ class _Converter:
                 f"The WDL type {wdl_type} has no equivalent in an IO schema",
                 json_path(pointer),
             )
-        if nullable and wdl_type.optional:
+        if nullable and self.null_values and wdl_type.optional:
             return _nullable(schema)
         return schema
 
@@ -859,7 +894,7 @@ class _Converter:
         value = literal.json
         types = self.wdl.Type
         if isinstance(decl.type, (types.File, types.Directory)):
-            if not _SCHEME.match(value):
+            if not _URI.match(value):
                 self.note(
                     f"The default '{value}' is a path, which the engine resolves "
                     "on the execution side; it is left out, and the input is "
@@ -871,6 +906,14 @@ class _Converter:
             self.note(
                 "The default contains file references, which aren't converted; "
                 "it is left out, and the input is optional",
+                pointer,
+            )
+            return
+        if not jsonschema.Draft202012Validator(schema).is_valid(value):
+            self.note(
+                f"The default {json.dumps(value)} isn't valid against the schema "
+                "of the input (WDL coerces it); it is left out, and the input is "
+                "optional",
                 pointer,
             )
             return

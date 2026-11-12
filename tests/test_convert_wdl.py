@@ -12,6 +12,7 @@ licence of the Leiden University Medical Center. ``types.wdl`` and
 ``tasks/count.wdl`` are written for these tests.
 """
 
+import hashlib
 import io
 import json
 import re
@@ -125,7 +126,14 @@ def test_biowdl_qc_converts_to_a_valid_schema() -> None:
     assert inputs["properties"]["contaminations"]["minItems"] == 1
     assert not any("." in name for name in inputs["properties"])
     outputs = schema["properties"]["outputs"]["properties"]
-    assert outputs["qcRead2"]["anyOf"][1] == {"type": "null"}
+    assert outputs["qcRead2"]["x-ga4gh-file"] == {"kind": "file"}
+    assert schema["properties"]["outputs"]["required"] == [
+        "qcRead1",
+        "read1htmlReport",
+        "read1reportZip",
+        "fastqcSummaries",
+        "reports",
+    ]
     assert outputs["reports"]["items"]["x-ga4gh-file"] == {"kind": "file"}
     assert {note.location for note in conversion.notes} == {
         "$.properties.inputs.properties.readgroupName",
@@ -296,11 +304,16 @@ def test_choices_must_fit_the_type(tmp_path: Path) -> None:
 
 
 def test_outputs() -> None:
-    """Test that outputs have no defaults and may be null if optional."""
+    """Test that outputs have no defaults, never null, and are required."""
     outputs = _convert(TYPES).schema["properties"]["outputs"]
 
-    assert "required" not in outputs
-    assert outputs["properties"]["maybe"]["x-ga4gh-parameter"] == {"type": "File?"}
+    assert outputs["required"] == ["report", "names"]
+    assert outputs["additionalProperties"] is False
+    assert outputs["properties"]["maybe"] == {
+        "type": "string",
+        "x-ga4gh-file": {"kind": "file"},
+        "x-ga4gh-parameter": {"type": "File?"},
+    }
     assert outputs["properties"]["names"] == {
         "type": "array",
         "items": {"type": "string"},
@@ -413,7 +426,117 @@ def test_single_task_document(tmp_path: Path) -> None:
 def test_unknown_task(tmp_path: Path) -> None:
     """Test that a task that doesn't exist is an error."""
     with pytest.raises(wdl.ConversionError, match="has no task 'nope'"):
-        _convert(QC, task="nope")
+        _convert(QC.parent / "tasks" / "fastqc.wdl", task="nope")
+
+
+def test_task_of_a_document_with_a_workflow(tmp_path: Path) -> None:
+    """Test that the workflow is the only entry point of its document."""
+    with pytest.raises(wdl.ConversionError, match=r"has a workflow \(QC\)"):
+        _convert(QC, task="Fastqc")
+
+
+def test_null_values_only_in_inputs(tmp_path: Path) -> None:
+    """Test that optional values inside outputs don't allow null."""
+    path = _write(
+        tmp_path,
+        "version 1.1\nstruct S {\n  File? f\n}\n"
+        "workflow w {\n  input { Array[File?] i  S si }\n"
+        "  output { Array[File?] o = i  S so = si }\n}\n",
+    )
+
+    schema = _convert(path).schema
+
+    validate_schema(schema)
+    assert "anyOf" in _inputs(_convert(path))["i"]["items"]
+    outputs = schema["properties"]["outputs"]["properties"]
+    assert outputs["o"]["items"] == {"type": "string", "x-ga4gh-file": {"kind": "file"}}
+    assert outputs["so"]["properties"]["f"] == {
+        "type": "string",
+        "x-ga4gh-file": {"kind": "file"},
+    }
+
+
+def test_defaults_must_fit_the_schema(tmp_path: Path) -> None:
+    """Test that defaults that WDL coerces are left out."""
+    path = _write(
+        tmp_path,
+        "version 1.0\nworkflow w {\n"
+        '  input { String s = 1  Array[String] a = [1, 2]  String c = "z" }\n'
+        '  parameter_meta { c: { choices: ["x", "y"] } }\n}\n',
+    )
+
+    conversion = _convert(path)
+    inputs = _inputs(conversion)
+
+    for name in ("s", "a", "c"):
+        assert "default" not in inputs[name]
+        assert (
+            "isn't valid"
+            in _messages(conversion)[f"$.properties.inputs.properties.{name}"]
+        )
+
+
+@pytest.mark.parametrize("value", ["C:/data/ref.fa", "sample:1.bam"])
+def test_paths_with_colons_are_paths(tmp_path: Path, value: str) -> None:
+    """Test that defaults with a colon but without ``//`` are paths."""
+    path = _write(
+        tmp_path, f'version 1.0\nworkflow w {{\n  input {{ File f = "{value}" }}\n}}\n'
+    )
+
+    assert "default" not in _inputs(_convert(path))["f"]
+
+
+def test_nested_inputs_in_wdl_1_2(tmp_path: Path) -> None:
+    """Test that WDL 1.2 nested inputs get a note on hints."""
+    _write(
+        tmp_path,
+        "version 1.2\ntask t {\n  input { Int n = 1 }\n  command <<< >>>\n}\n",
+        "t.wdl",
+    )
+    path = _write(
+        tmp_path,
+        'version 1.2\nimport "t.wdl" as t\nworkflow w {\n  call t.t\n}\n',
+    )
+
+    conversion = _convert(path, nested_inputs=True)
+
+    assert "allow_nested_inputs" in _messages(conversion)["$.properties.inputs"]
+
+
+@pytest.mark.parametrize("kind", ["file", "directory"])
+def test_symlinks_out_of_the_directory_are_rejected(tmp_path: Path, kind: str) -> None:
+    """Test that imports through symbolic links can't leave the directory."""
+    outside = tmp_path / "outside"
+    _write(outside, "version 1.0\ntask t {\n  command <<< >>>\n}\n", "t.wdl")
+    inside = tmp_path / "inside"
+    inside.mkdir()
+    if kind == "file":
+        (inside / "t.wdl").symlink_to(outside / "t.wdl")
+        uri = "t.wdl"
+    else:
+        (inside / "lib").symlink_to(outside, target_is_directory=True)
+        uri = "lib/t.wdl"
+    path = _write(
+        inside, f'version 1.0\nimport "{uri}"\nworkflow w {{\n  call t.t\n}}\n'
+    )
+
+    with pytest.raises(wdl.SourceError, match="outside the directory"):
+        _convert(path)
+
+
+def test_cli_checksum_covers_the_bytes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that the checksum is that of the file, also with CRLF line ends."""
+    data = b"version 1.0\r\nworkflow w {\r\n}\r\n"
+    path = tmp_path / "crlf.wdl"
+    path.write_bytes(data)
+
+    assert main(["convert", "wdl", str(path)]) == 0
+    checksum = json.loads(capsys.readouterr().out)["x-ga4gh-workflow"]["checksum"]
+    assert checksum == [
+        {"type": "sha-256", "checksum": hashlib.sha256(data).hexdigest()}
+    ]
 
 
 def test_several_tasks_need_a_choice() -> None:
@@ -699,7 +822,11 @@ def test_cli_standard_input(
             3,
             "Error: Failed to import missing/t.wdl: file not found",
         ),
-        (["--task", "nope", str(QC)], 1, "Validation Error: The document has no task"),
+        (
+            ["--task", "nope", str(QC.parent / "tasks" / "fastqc.wdl")],
+            1,
+            "Validation Error: The document has no task",
+        ),
     ],
 )
 def test_cli_errors(

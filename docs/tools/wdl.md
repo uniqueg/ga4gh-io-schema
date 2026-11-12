@@ -36,9 +36,11 @@ check; read them before publishing the schema.
 
 Options:
 
-- `--task NAME` (`-t`): convert this task instead of the workflow. A
-  document without a workflow and with a single task converts that task;
-  with several tasks, `--task` is required.
+- `--task NAME` (`-t`): convert this task of a document without a
+  workflow (e.g., a library of tasks). A document without a workflow and
+  with a single task converts that task; with several tasks, `--task` is
+  required. A document with a workflow converts the workflow, its [entry
+  point](../specification/identity.md#entry-points); `--task` fails there.
 - `--nested-inputs`: also include the optional inputs of calls that the
   workflow doesn't set, e.g., `align.threads` (see [Nested
   inputs](#nested-inputs)).
@@ -63,15 +65,17 @@ status](cli.md#exit-status)).
 | `Map[File, V]` | as `Map[String, V]`, with a note: object keys can't be file references |
 | `Pair[L, R]` | `object` with the required properties `left` and `right`, as engines read pairs from JSON |
 | struct | `object` with the members as properties, the members that aren't optional in `required`, `additionalProperties: false`; WDL 1.2 `meta` (`description`) and `parameter_meta` of the struct describe the object and its members |
-| `T?` (an optional input) | not in `required` |
-| `T?` (an output, or a value inside an array, map, pair or struct) | also accepts `null`: `"type": [T, "null"]`, or `anyOf` with `{"type": "null"}` for file references, whose type must be `string` |
+| `T?` (an optional input or output) | not in `required` |
+| `T?` (a value inside an array, map, pair or struct of an input) | also accepts `null`: `"type": [T, "null"]`, or `anyOf` with `{"type": "null"}` for file references, whose type must be `string` |
+| `T?` (a value inside an output) | as `T`: outputs never allow `null` (see [Outputs](#outputs)) |
 | input without default, not optional | in `required` |
 | literal default (e.g., `= 4`, `= ["a"]`, `= {"k": 1}`) | `default` |
+| literal default that isn't valid against the schema (e.g., `String s = 1`, which WDL coerces, or a value outside `choices`) | left out, with a note |
 | default that is an expression (e.g., `= name + ".bam"`) | left out, with a note; the input is optional |
-| default of a `File` or `Directory` that is a path (e.g., `= "data/ref.fa"`) | left out, with a note: the engine resolves the path on the execution side, while a path in an IO schema refers to a file attached to the run request; a default that is a URI (e.g., `https://…`) is kept |
+| default of a `File` or `Directory` that is a path (e.g., `= "data/ref.fa"`) | left out, with a note: the engine resolves the path on the execution side, while a path in an IO schema refers to a file attached to the run request; a default that is a URI with `//` after the scheme (e.g., `https://…`, `s3://…`, `drs://…`) is kept; other values with a colon (e.g., `C:/ref.fa`) are paths |
 | default of a compound type with files that contains strings | left out, with a note |
 | `meta` of the workflow or task: `description` | `description` of the IO schema; the name of the workflow or task is the `title` |
-| workflow or task name | `entry_point` of [`x-ga4gh-workflow`](../specification/identity.md#the-workflow-block), with `descriptor_type: WDL`, the WDL version as `descriptor_type_version`, and the SHA-256 checksum of the document |
+| workflow or task name | `entry_point` of [`x-ga4gh-workflow`](../specification/identity.md#the-workflow-block), with `descriptor_type: WDL`, the WDL version as `descriptor_type_version`, and the SHA-256 checksum of the bytes of the document |
 | declared type (e.g., `Array[File]+`) | `type` of [`x-ga4gh-parameter`](../specification/identity.md#parameter-bindings) |
 
 Inputs are named as in the input section of the workflow (e.g., `sample`),
@@ -103,8 +107,9 @@ are neither strings nor objects are dropped with a note.
 
 Engines let clients set the inputs of calls that a workflow doesn't set,
 named with the call (e.g., `align.threads` for the input `threads` of the
-call `align`); WDL 1.1 and later allow this only if the `meta` section of
-the workflow sets `allowNestedInputs: true`. The converter includes:
+call `align`); WDL 1.1 allows this only if the `meta` section of the
+workflow sets `allowNestedInputs: true`, and WDL 1.2 only if its `hints`
+section sets `allow_nested_inputs: true`. The converter includes:
 
 - the required inputs of calls that the workflow doesn't set, always: the
   workflow can't run without them; they are in `required`, with a note;
@@ -113,18 +118,29 @@ the workflow sets `allowNestedInputs: true`. The converter includes:
   the called task or workflow.
 
 The names of nested inputs are the property names (e.g.,
-`"align.threads"`), so `x-ga4gh-parameter` needs no `name`. For a WDL 1.1 or
-1.2 workflow without `allowNestedInputs: true`, the converter notes that
-engines reject nested inputs.
+`"align.threads"`), so `x-ga4gh-parameter` needs no `name`. For a WDL 1.1
+workflow without `allowNestedInputs: true`, the converter notes that engines
+reject nested inputs; for WDL 1.2, it notes that `hints` must allow them,
+as miniwdl doesn't expose the `hints` section to check it.
 
 ### Outputs
 
-Outputs become the properties of `outputs`, named as in the output section,
-with their types, descriptions and `x-ga4gh-parameter`; optional outputs
-also accept `null`. Outputs have no defaults and no `required` list: the
-[output contract](../specification/outputs.md) doesn't define yet how the
-outputs of a run are matched to the schema (e.g., engines report WDL
-outputs with names qualified by the workflow name, `variant_calling.vcf`).
+Every output of the output section becomes a property of `outputs`,
+named as in the output section, with its type, description and
+`x-ga4gh-parameter`, following [Outputs](../specification/outputs.md):
+
+- outputs that aren't optional are in `required`: every run that completes
+  produces them; `additionalProperties: false` says that a normalised
+  outputs object has no other keys;
+- outputs never allow `null`, also not inside arrays, maps or structs
+  (`Array[File?]` becomes an array of file references): normalisers leave
+  out the `null` values that engines report for optional outputs that a
+  run didn't produce, and the `null` items of lists;
+- `Map[String, File]` becomes files keyed by name, structs records;
+- outputs have no defaults, and no `x-ga4gh-output-glob`: engines report
+  WDL outputs by name, qualified with the workflow name (e.g.,
+  `variant_calling.vcf`), which is how normalisers find them (see [Notes on
+  engines and servers](../specification/outputs.md#notes-on-engines-and-servers)).
 
 ## Imports
 
@@ -161,11 +177,12 @@ directory of the document, not, e.g., in `/`.
   `primary_descriptor_path` of `x-ga4gh-workflow`; add them when the
   workflow is published (see [Identity and engine
   binding](../specification/identity.md)).
-- The checksum covers the converted document only, as the document's bytes
-  in UTF-8; changes of imported documents aren't detected (see
+- The checksum covers the bytes of the converted document only (for
+  standard input, its text in UTF-8); changes of imported documents aren't
+  detected (see
   [Drift](../specification/identity.md#drift)).
 - Translating input values to the `workflow_params` of a WES request, and
-  outputs of a run to the schema, isn't part of the converter.
+  normalising the outputs of a run, isn't part of the converter.
 
 ## Python API
 
