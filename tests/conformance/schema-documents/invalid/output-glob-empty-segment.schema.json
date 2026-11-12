@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/output-glob-empty-segment",
+  "title": "Invalid: output-glob-empty-segment",
+  "description": "An output glob has an empty segment.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object"
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          },
+          "x-ga4gh-output-glob": "results//report.html"
+        }
+      }
+    }
+  }
+}
