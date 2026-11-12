@@ -4,7 +4,7 @@
 
 Besides input forms, an IO schema helps developers of WES clients and AI agents: they can check run requests against one schema format instead of reading each workflow language.
 
-On the backend, WES implementations should adhere to a "trust but verify" security posture. If a WES gateway is aware of an IO Schema for a given workflow (either fetched from TRS or provided dynamically), the server *should* attempt to validate the incoming `workflow_params` JSON payload against it before passing the request to the underlying engine (e.g., Nextflow, Cromwell).
+On the backend, WES implementations should adhere to a "trust but verify" security posture. If a WES gateway has an IO Schema for a given workflow from a trusted source (the workflow's TRS entry or a schema bundled with the deployment; never one supplied in the run request, see [Sources of schemas](../security.md#sources-of-schemas)), the server *should* attempt to validate the incoming `workflow_params` JSON payload against it before passing the request to the underlying engine (e.g., Nextflow, Cromwell).
 
 An IO schema describes input *values* (the `inputs` part of the schema); WES receives `workflow_params`, whose shape depends on the engine (e.g., WDL names qualified with the workflow name, CWL `File` objects). A server therefore translates `workflow_params` back into input values with the engine's binding before it validates them, and reports errors in terms of `workflow_params`, which is what the client sent.
 

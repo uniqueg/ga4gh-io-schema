@@ -2,7 +2,9 @@
 
 ## Data Repository Service (DRS) interplay
 
-The `x-ga4gh-drs-uri` flag acts as a critical bridge between the UI and the data access layer. By tagging an input string with this annotation, a WES client is proactively signaled to spawn a DRS resolution or authorization widget *before* submitting the compute request, guaranteeing that the WES runner receives actionable data locators rather than unresolved, potentially inaccessible identifiers.
+The `x-ga4gh-drs-uri` flag tells a client that an input expects a Data Repository Service (DRS) identifier. The client can then offer a DRS browser or picker, and check that the user can see the object, *before* submitting the run.
+
+The client submits the `drs://` identifier itself in `workflow_params`, not a resolved access URL. The execution side resolves the identifier when it stages the data, with credentials delegated by the user. Signed URLs, access tokens and other credentials never go into `workflow_params`: WES returns them in the run log, they end up in engine logs and provenance records, and they can expire while the run is queued. See [Access to data](../security.md#access-to-data).
 
 See also [the `x-ga4gh-*` vocabulary](../specification/keywords.md#the-x-ga4gh-vocabulary)
 and the [output contract](../specification/outputs.md).
