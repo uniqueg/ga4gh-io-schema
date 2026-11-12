@@ -36,7 +36,7 @@ identifier of your own.
 
 ## Where the meta-schema is served
 
-As a schema standard, there is no active deployment of a service. The schemas and vocabularies are served statically via raw GitHub URLs. In the future, the goal is to integrate this schema format natively into **TRS (Tool Registry Service)** implementations as a new `IO_SCHEMA` file type (see [TRS](../adoption/trs.md)).
+As a schema standard, there is no active deployment of a service. The schemas and vocabularies are served statically via raw GitHub URLs. IO schemas of workflows are published in **TRS (Tool Registry Service)** implementations as files of the existing type `OTHER` (see [TRS](../adoption/trs.md)); a dedicated file type such as `IO_SCHEMA` is deferred (see [Roadmap](../roadmap.md#deferred)).
 
 ## Structure of the meta-schema
 
@@ -61,15 +61,14 @@ The rules combine one vocabulary file per keyword group:
 | ----- | ----- | ----- |
 | `x-ga4gh-ontology` | string, a URI | `annotations` |
 | `x-ga4gh-ui-widget` | a widget of the [vocabulary](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json), or `custom:<name>` (lowercase letters, digits and hyphens) | `annotations` |
-| `x-ga4gh-fa-icon` | string | `annotations` |
-| `x-ga4gh-description-format` | `plain_text`, `markdown` or `rst` | `annotations` |
+| `x-ga4gh-description-format` | `plain_text` or `markdown` | `annotations` |
 | `x-ga4gh-hidden` | boolean | `annotations` |
 | `x-ga4gh-error-message` | string | `annotations` |
 | `x-ga4gh-file` | an object with `kind` (`file` or `directory`) and optional `mediaType`, `ontology`, `compression`, `secondaryFiles` and `schemes` (see [File references](files.md)); the schema that carries it is a flat string schema (see [The annotation](files.md#the-annotation)) | `file` |
-| `x-ga4gh-tabular-schema` | a schema, checked by the same rules | `file` |
+| `x-ga4gh-tabular-schema` (experimental) | a schema, checked by the same rules | `file` |
 
-Other keywords that start with `x-ga4gh-` (e.g., misspelled ones) are
-rejected: no vocabulary evaluates them, and `$defs/node` doesn't allow
+Other keywords that start with `x-ga4gh-` (e.g., misspelled ones, or
+`x-ga4gh-fa-icon`, which version 0.3 removed) are rejected: no vocabulary evaluates them, and `$defs/node` doesn't allow
 unevaluated `x-ga4gh-*` keywords. Other extension keywords (e.g.,
 `x-my-platform-hint`) are allowed. A new keyword group goes into a new file
 in `schemas/vocabularies/`, referenced from `$defs/node`. The rule marks

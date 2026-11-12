@@ -33,6 +33,29 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The format of a file is named by `ontology` of the file reference;
   `x-ga4gh-ontology` names the data of a parameter (e.g., an EDAM data
   term), no longer also the format. (#10)
+- The profile is cut back to its core use (forms, run requests, outputs),
+  and the meta-schema rejects what was removed. The
+  [roadmap](docs/roadmap.md#scope-of-version-03) gives the reasons and lists
+  what is deferred. (#17)
+  - `x-ga4gh-fa-icon` is removed (cut); schemas that use it no longer
+    validate.
+  - The `rst` value of `x-ga4gh-description-format` is removed (cut); use
+    `markdown` or `plain_text`.
+  - The `password` widget is removed (cut): workflow parameters are not a
+    channel for secrets.
+  - The viewers `genome-browser`, `scatter-plot`, `pdf-viewer` and
+    `markdown-viewer` are removed from the vocabulary of UI widgets
+    (deferred); `table-viewer`, `html-viewer` and download remain.
+  - `x-ga4gh-tabular-schema` is experimental and only a hint for clients;
+    validation of tabular files is deferred.
+  - Servers no longer accept IO schemas supplied by clients in a run request
+    (cut); they use schemas from trusted sources only.
+  - The proposed TRS file type `IO_SCHEMA` is deferred; IO schemas are
+    published as TRS files of type `OTHER`.
+  - The proposal no longer covers chaining workflows by ontology terms
+    (deferred), drafting of IO schemas by AI agents (cut), or the claim that
+    the profile suits machine learning pipelines (cut; an open question on
+    the roadmap).
 
 ### Added
 

@@ -148,16 +148,30 @@ INVALID = {
         "(at $.properties.inputs.properties.sample_id['x-ga4gh-ontology'])"
     ),
     "description-format-unknown": (
-        "Validation Error: 'html' is not one of ['plain_text', 'markdown', 'rst'] "
+        "Validation Error: 'html' is not one of ['plain_text', 'markdown'] "
         "(at $.properties.inputs.properties.sample_id['x-ga4gh-description-format'])"
     ),
     "hidden-not-boolean": (
         "Validation Error: 'true' is not of type 'boolean' "
         "(at $.properties.inputs.properties.sample_id['x-ga4gh-hidden'])"
     ),
-    "fa-icon-not-string": (
-        "Validation Error: ['fas', 'fa-dna'] is not of type 'string' "
-        "(at $.properties.inputs.properties.sample_id['x-ga4gh-fa-icon'])"
+    # Keywords and values that version 0.3 removed (cut or deferred)
+    "fa-icon-removed": (
+        "Validation Error: Unevaluated properties are not allowed "
+        "('x-ga4gh-fa-icon' was unexpected) "
+        "(at $.properties.inputs.properties.sample_id)"
+    ),
+    "description-format-rst": (
+        "Validation Error: 'rst' is not one of ['plain_text', 'markdown'] "
+        "(at $.properties.inputs.properties.sample_id['x-ga4gh-description-format'])"
+    ),
+    "ui-widget-password": (
+        "Validation Error: 'password' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.sample_id['x-ga4gh-ui-widget'])"
+    ),
+    "ui-widget-deferred-viewer": (
+        "Validation Error: 'genome-browser' is not valid under any of the given "
+        "schemas (at $.properties.outputs.properties.alignment['x-ga4gh-ui-widget'])"
     ),
     "error-message-not-string": (
         "Validation Error: 404 is not of type 'string' "
@@ -194,6 +208,97 @@ def test_cli_accepts_other_extension_keywords(
     sample_id["x-my-platform-hint"] = {"any": "value"}
     sample_id["x-ga4ghost"] = 1
     path = tmp_path / "extended.schema.json"
+    path.write_text(json.dumps(schema), encoding="utf-8")
+
+    assert main(["validate", str(path)]) == 0
+
+    assert "complies" in capsys.readouterr().out
+
+
+#: Values of ``x-ga4gh-ui-widget`` that version 0.3 removed (cut or deferred).
+REMOVED_WIDGETS = [
+    "password",
+    "genome-browser",
+    "scatter-plot",
+    "pdf-viewer",
+    "markdown-viewer",
+]
+
+#: Viewers that version 0.3 keeps, and a platform-specific widget.
+KEPT_OUTPUT_WIDGETS = ["table-viewer", "html-viewer", "custom:igv-browser"]
+
+
+def _write_with_output_widget(tmp_path: Path, widget: str) -> Path:
+    """Write the valid example with a UI widget on its output.
+
+    Args:
+        tmp_path: Directory to write the schema to.
+        widget: Value of ``x-ga4gh-ui-widget`` for the output.
+
+    Returns:
+        Path of the written schema.
+    """
+    schema = json.loads((DATA_DIR / "valid.schema.json").read_text(encoding="utf-8"))
+    output_vcf = schema["properties"]["outputs"]["properties"]["output_vcf"]
+    output_vcf["x-ga4gh-ui-widget"] = widget
+    path = tmp_path / "widget.schema.json"
+    path.write_text(json.dumps(schema), encoding="utf-8")
+    return path
+
+
+@pytest.mark.parametrize("widget", REMOVED_WIDGETS)
+def test_cli_rejects_removed_widget(
+    widget: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that every widget removed in version 0.3 is rejected.
+
+    Args:
+        widget: Removed value of ``x-ga4gh-ui-widget``.
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    path = _write_with_output_widget(tmp_path, widget)
+
+    assert main(["validate", str(path)]) == 1
+
+    assert f"'{widget}' is not valid under any of the given schemas" in (
+        capsys.readouterr().err
+    )
+
+
+@pytest.mark.parametrize("widget", KEPT_OUTPUT_WIDGETS)
+def test_cli_accepts_kept_output_widget(
+    widget: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that the viewers kept in version 0.3 and custom widgets are accepted.
+
+    Args:
+        widget: Value of ``x-ga4gh-ui-widget`` that stays valid.
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    path = _write_with_output_widget(tmp_path, widget)
+
+    assert main(["validate", str(path)]) == 0
+
+    assert "complies" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("description_format", ["plain_text", "markdown"])
+def test_cli_accepts_kept_description_format(
+    description_format: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that the description formats kept in version 0.3 are accepted.
+
+    Args:
+        description_format: Value of ``x-ga4gh-description-format``.
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    schema = json.loads((DATA_DIR / "valid.schema.json").read_text(encoding="utf-8"))
+    sample_id = schema["properties"]["inputs"]["properties"]["sample_id"]
+    sample_id["x-ga4gh-description-format"] = description_format
+    path = tmp_path / "format.schema.json"
     path.write_text(json.dumps(schema), encoding="utf-8")
 
     assert main(["validate", str(path)]) == 0
