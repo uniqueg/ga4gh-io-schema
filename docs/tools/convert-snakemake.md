@@ -101,10 +101,16 @@ Draft 2020-12, with a note. Draft 3 schemas are rejected.
 | `exclusiveMaximum: true` and `maximum` (Draft 4), and the same for the minimum | `exclusiveMaximum` with the value of `maximum`; `false` is dropped; `true` without a bound is dropped, with a note |
 | `id` (Draft 4), and `$id` with only a fragment (Drafts 6 and 7) | `$anchor` for fragments (`#name`), `$id` otherwise |
 | `$recursiveRef`, `$recursiveAnchor` (Draft 2019-09) | kept, with a note: Draft 2020-12 ignores them; replace them with `$dynamicRef` and `$dynamicAnchor` |
+| Assertions next to `$ref` (Drafts 4 to 7, which ignore them) | dropped, with a note, so that they don't start to apply; annotations (e.g., `title`, `description`, `default`), identifiers, definitions and `x-` keywords stay |
 
 Schemas with their own identifier (`$id`, or `id` in Draft 4) inside the
-source are embedded resources: their references are relative to that
-identifier and are kept as they are.
+source are embedded resources: they keep their identifier, and their local
+references (`#/…`) are rewritten relative to their own root. `$dynamicRef`
+values that are JSON pointers are rewritten like `$ref`. After the
+conversion, the converter resolves every local reference of the IO schema
+and reports those that point to nothing (e.g., to a dropped
+`additionalItems`). An anchor that two sources define (e.g., the config
+schema and a sample-sheet schema) is an error: rename one.
 
 ## File references
 

@@ -121,6 +121,26 @@ _APPLICATORS = (
     "$ref",
     "$dynamicRef",
 )
+# Keywords that are kept next to "$ref" of drafts before 2019-09: the
+# reference, annotations, identifiers and definitions (targets of references).
+_NEXT_TO_REF = frozenset(
+    {
+        "$comment",
+        "$defs",
+        "$id",
+        "$ref",
+        "$schema",
+        "default",
+        "definitions",
+        "deprecated",
+        "description",
+        "examples",
+        "id",
+        "readOnly",
+        "title",
+        "writeOnly",
+    }
+)
 # Draft 4 bounds and their exclusive flags.
 _EXCLUSIVE = {"maximum": "exclusiveMaximum", "minimum": "exclusiveMinimum"}
 # Characters that references keep as they are in the segments of pointers
@@ -270,7 +290,8 @@ def load_schema(text: str, name: str) -> Any:
     """
     try:
         data = json.loads(text)
-    except json.JSONDecodeError:
+    # ValueError: also numbers that Python won't parse (too many digits)
+    except ValueError:
         data = _load_yaml(text, name)
     _check_json(data, name)
     return data
@@ -310,7 +331,8 @@ def _load_yaml(text: str, name: str) -> Any:
     loader = Loader(text)
     try:
         return loader.get_single_data()
-    except yaml.YAMLError as exc:
+    # ValueError: e.g., integers with too many digits for Python
+    except (yaml.YAMLError, ValueError) as exc:
         raise SourceError(f"Invalid YAML - {name}: {exc}") from exc
     finally:
         loader.dispose()
@@ -461,7 +483,6 @@ class _Converter:
         self.draft = 2020
         self.prefix: Pointer = ()
         self.defs_prefix: Pointer = ()
-        self.embedded = 0
 
     def note(self, message: str, pointer: Pointer) -> None:
         """Add a note.
@@ -506,12 +527,6 @@ class _Converter:
                 "schema or the sample-sheet schemas; only properties reached "
                 "through 'properties' from the root can be named."
             )
-        outputs_at: Pointer = ("properties", "outputs")
-        self.note(
-            "Snakemake config schemas don't describe outputs: 'outputs' is "
-            "left empty; add the outputs of the workflow by hand.",
-            outputs_at,
-        )
         schema: dict[str, Any] = {
             "$schema": load_profile()["$id"],
             # The engine binding; the TRS fields are known only once the
@@ -525,7 +540,75 @@ class _Converter:
         }
         if defs is not None:
             schema["$defs"] = defs
+        self._check_references(schema, schema, (), {})
+        self.note(
+            "Snakemake config schemas don't describe outputs: 'outputs' is "
+            "left empty; add the outputs of the workflow by hand.",
+            ("properties", "outputs"),
+        )
         return Conversion(schema=schema, notes=self.notes)
+
+    def _check_references(
+        self,
+        node: Any,
+        resource: Any,
+        pointer: Pointer,
+        anchors: dict[str, Pointer],
+    ) -> None:
+        """Report local references of the IO schema that point to nothing.
+
+        Also checks that no schema resource defines an anchor twice (e.g.,
+        the config schema and a sample-sheet schema).
+
+        Args:
+            node: A schema of the IO schema, or a part of one.
+            resource: Root of the schema resource that the node is in.
+            pointer: Location of the node.
+            anchors: Anchors of the resource, and where they are.
+
+        Raises:
+            ConversionError: If an anchor is defined twice in a resource.
+        """
+        if isinstance(node, list):
+            for index, item in enumerate(node):
+                self._check_references(item, resource, (*pointer, index), anchors)
+            return
+        if not isinstance(node, dict):
+            return
+        identifier = node.get("$id")
+        if pointer and isinstance(identifier, str) and not identifier.startswith("#"):
+            resource, anchors = node, {}
+        anchor = node.get("$anchor")
+        if isinstance(anchor, str):
+            if anchor in anchors:
+                raise ConversionError(
+                    f"The anchor '{anchor}' is defined twice (also at "
+                    f"{json_path(anchors[anchor])}), e.g. in the config schema "
+                    "and a sample-sheet schema; rename one.",
+                    json_path(pointer),
+                )
+            anchors[anchor] = pointer
+        for keyword in ("$ref", "$dynamicRef"):
+            ref = node.get(keyword)
+            if isinstance(ref, str) and ref.startswith("#/"):
+                target: Any = resource
+                for part in ref[2:].split("/"):
+                    part = urllib.parse.unquote(part)
+                    part = part.replace("~1", "/").replace("~0", "~")
+                    if isinstance(target, dict) and part in target:
+                        target = target[part]
+                    elif isinstance(target, list) and _is_index(part, target):
+                        target = target[int(part)]
+                    else:
+                        self.note(
+                            f"The reference '{ref}' points to nothing in the IO "
+                            "schema; fix it by hand.",
+                            pointer,
+                        )
+                        break
+        for key, value in node.items():
+            if key not in _DATA:
+                self._check_references(value, resource, (*pointer, key), anchors)
 
     def _sheet_properties(
         self, config: dict[str, Any], sheets: list[SampleSheet]
@@ -630,7 +713,6 @@ class _Converter:
         self.root = root
         self.prefix = prefix
         self.defs_prefix = defs_prefix
-        self.embedded = 0
         self.draft = 2020
         if not isinstance(root, dict):
             return
@@ -681,15 +763,16 @@ class _Converter:
         boundary = (
             not root and isinstance(identifier, str) and not identifier.startswith("#")
         )
-        if boundary:
-            # An embedded schema resource: its references are relative to
-            # its own identifier, so they are kept as they are.
-            self.embedded += 1
+        if not boundary:
+            return self._keywords(node, pointer, name, root)
+        # An embedded schema resource: its pointers are relative to its own
+        # root, which keeps its identifier, so they are mapped within it.
+        saved = (self.root, self.prefix, self.defs_prefix)
+        self.root, self.prefix, self.defs_prefix = node, (), ()
         try:
             return self._keywords(node, pointer, name, root)
         finally:
-            if boundary:
-                self.embedded -= 1
+            self.root, self.prefix, self.defs_prefix = saved
 
     def _keywords(
         self, node: dict[str, Any], pointer: Pointer, name: str | None, root: bool
@@ -707,6 +790,23 @@ class _Converter:
             The converted schema.
         """
         result: dict[str, Any] = {}
+        if self.draft < 2019 and "$ref" in node:
+            # Before Draft 2019-09, keywords next to "$ref" are ignored; in
+            # Draft 2020-12 they apply, so assertions among them are dropped.
+            ignored = [
+                key
+                for key in node
+                if key not in _NEXT_TO_REF and not key.startswith("x-")
+            ]
+            if ignored:
+                self.note(
+                    "Dropped "
+                    + ", ".join(f"'{key}'" for key in ignored)
+                    + " next to '$ref': drafts before 2019-09 ignore them, and "
+                    "Draft 2020-12 would apply them.",
+                    pointer,
+                )
+                node = {key: value for key, value in node.items() if key not in ignored}
         tuple_items = isinstance(node.get("items"), list)
         id_keyword = "id" if self.draft == 4 else "$id"
         for key, value in node.items():
@@ -723,7 +823,10 @@ class _Converter:
                     continue
             if key in _DATA:
                 result[key] = copy.deepcopy(value)
-            elif key == "$ref":
+            elif key == "$ref" or (
+                key == "$dynamicRef" and isinstance(value, str) and value[:2] == "#/"
+            ):
+                # A "$dynamicRef" with a JSON pointer works like "$ref"
                 result[key] = self._ref(value, pointer)
             elif key in ("definitions", "$defs") and isinstance(value, dict):
                 defs_at = (*self.defs_prefix, "$defs") if root else (*pointer, "$defs")
@@ -892,13 +995,14 @@ class _Converter:
         Returns:
             The rewritten reference.
         """
-        if not isinstance(value, str) or self.embedded:
+        if not isinstance(value, str):
             return copy.deepcopy(value)
         if not value.startswith("#"):
             self.note(
-                f"The reference '{value}' to another document is kept, but the "
-                "IO schema can't resolve it; include the referenced schema "
-                "in the source first.",
+                f"The reference '{value}' to another document is kept as it "
+                "is; unless it names a schema embedded in the source (by its "
+                "'$id'), the IO schema can't resolve it: include the "
+                "referenced schema in the source first.",
                 pointer,
             )
             return value

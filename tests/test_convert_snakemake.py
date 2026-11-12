@@ -491,6 +491,17 @@ def test_load_schema_rejects_cycles() -> None:
         load_schema("&a [*a]", "x")
 
 
+@pytest.mark.parametrize("text", ["[" + "1" * 5000 + "]", "a: " + "1" * 5000])
+def test_load_schema_rejects_huge_numbers(text: str) -> None:
+    """Test that numbers Python won't parse are source errors, not crashes.
+
+    Args:
+        text: JSON or YAML with an integer of 5000 digits.
+    """
+    with pytest.raises(SourceError, match="Invalid YAML - x"):
+        load_schema(text, "x")
+
+
 # --- Structure --------------------------------------------------------------
 
 
@@ -807,6 +818,120 @@ def test_external_references_are_reported() -> None:
     assert messages(conversion)[0].startswith(
         "The reference 'units.schema.yaml' to another document is kept"
     )
+
+
+def test_references_in_embedded_resources_follow_their_targets() -> None:
+    """Test pointers relative to an embedded resource, whose keywords move."""
+    source = {
+        "$schema": DRAFT_7,
+        "definitions": {
+            "sub": {
+                "$id": "https://example.org/sub.json",
+                "definitions": {"x": {"type": "string"}},
+                "properties": {"a": {"$ref": "#/definitions/x"}},
+            }
+        },
+        "properties": {"p": {"$ref": "#/definitions/sub"}},
+    }
+
+    conversion = to_ga4gh(source)
+
+    sub = conversion.schema["$defs"]["sub"]
+    assert sub["properties"]["a"] == {"$ref": "#/$defs/x"}
+    assert inputs(conversion)["properties"]["p"] == {"$ref": "#/$defs/sub"}
+    assert not any("points to nothing" in m for m in messages(conversion))
+
+
+def test_assertions_next_to_old_refs_are_dropped() -> None:
+    """Test that Draft 7 keywords next to ``$ref`` don't start to apply."""
+    source = {
+        "$schema": DRAFT_7,
+        "definitions": {"n": {"type": "integer"}},
+        "properties": {
+            "p": {
+                "$ref": "#/definitions/n",
+                "type": "string",
+                "description": "kept",
+                "x-mine": 1,
+            }
+        },
+    }
+
+    conversion = to_ga4gh(source)
+
+    assert inputs(conversion)["properties"]["p"] == {
+        "$ref": "#/$defs/n",
+        "description": "kept",
+        "x-mine": 1,
+    }
+    assert messages(conversion)[0] == (
+        "Dropped 'type' next to '$ref': drafts before 2019-09 ignore them, and "
+        "Draft 2020-12 would apply them."
+    )
+
+
+def test_assertions_next_to_new_refs_are_kept() -> None:
+    """Test that Draft 2020-12 keywords next to ``$ref`` stay."""
+    source = config({"p": {"$ref": "#/$defs/n", "type": "integer"}})
+
+    assert inputs(to_ga4gh(source))["properties"]["p"]["type"] == "integer"
+
+
+def test_dangling_references_are_reported() -> None:
+    """Test the note for references whose target is gone after the upgrade."""
+    source = config(
+        {
+            "l": {"items": True, "additionalItems": {"type": "integer"}},
+            "m": {"$ref": "#/properties/l/additionalItems"},
+        }
+    )
+
+    conversion = to_ga4gh(source)
+
+    note = conversion.notes[-2]
+    assert note.message == (
+        "The reference '#/properties/inputs/properties/l/additionalItems' points "
+        "to nothing in the IO schema; fix it by hand."
+    )
+    assert note.location == "$.properties.inputs.properties.m"
+
+
+def test_pointer_dynamic_references_are_rewritten() -> None:
+    """Test that ``$dynamicRef`` with a JSON pointer moves like ``$ref``."""
+    row = {
+        "$schema": DRAFT_2020,
+        "$defs": {"n": True},
+        "properties": {"c": {"$dynamicRef": "#/$defs/n"}, "d": {"$dynamicRef": "#m"}},
+    }
+
+    conversion = to_ga4gh(config({"samples": {"type": "string"}}), [SampleSheet(row)])
+
+    items = inputs(conversion)["properties"]["samples"]["x-ga4gh-tabular-schema"]
+    columns = items["items"]["properties"]
+    base = "#/properties/inputs/properties/samples/x-ga4gh-tabular-schema/items"
+    assert columns == {
+        "c": {"$dynamicRef": f"{base}/$defs/n"},
+        "d": {"$dynamicRef": "#m"},
+    }
+    assert not any("points to nothing" in m for m in messages(conversion))
+
+
+def test_anchors_must_be_unique_across_sources() -> None:
+    """Test that the config and a sheet can't both define an anchor."""
+    source = config({"samples": {"type": "string"}, "a": {"$anchor": "x"}})
+    row = {"$schema": DRAFT_2020, "properties": {"b": {"$anchor": "x"}}}
+
+    with pytest.raises(ConversionError, match="The anchor 'x' is defined twice"):
+        to_ga4gh(source, [SampleSheet(row)])
+
+
+def test_anchors_in_embedded_resources_are_separate() -> None:
+    """Test that the same anchor in another resource is no clash."""
+    source = config(
+        {"a": {"$anchor": "x"}, "b": {"$id": "https://example.org/b", "$anchor": "x"}}
+    )
+
+    assert inputs(to_ga4gh(source))["properties"]["b"]["$anchor"] == "x"
 
 
 # --- File references --------------------------------------------------------
