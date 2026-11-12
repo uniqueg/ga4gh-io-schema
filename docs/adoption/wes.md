@@ -1,5 +1,8 @@
 # WES
 
+Requirements on this page use the key words of BCP 14, as described in
+[Notational conventions](../specification/conformance.md#notational-conventions).
+
 ## Workflow Execution Service (WES) validation
 
 Besides input forms, an IO schema helps developers of WES clients and AI agents: they can check run requests against one schema format instead of reading each workflow language.

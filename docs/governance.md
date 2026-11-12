@@ -20,9 +20,14 @@ version covers the normative text (see
 meta-schema and vocabularies in `schemas/`, and the
 [conformance suite](specification/conformance.md#conformance-suite).
 
-A change is **breaking** if, after it, a document or implementation that
-conformed to a class no longer does, or reads a conforming document
-differently. For example:
+Each release has a meta-schema of its own, with the release in its `$id`,
+and a schema document names the release that it targets in `$schema`. To
+move a document to a new release, its author changes `$schema` (a
+[validator](specification/conformance.md#validator) checks a document
+only against the versions that it supports). Whether a change is breaking
+is judged on documents moved this way: a change is **breaking** if, after
+it, a document or implementation that conformed to a class no longer
+does, or reads a conforming document differently. For example:
 
 - removing or renaming a keyword, a value of a vocabulary (e.g., a UI
   widget) or a conformance class;
@@ -41,14 +46,15 @@ conformance suite for existing rules.
   features without breaking changes; **PATCH** versions only correct the
   text, the meta-schema or the suite, so that they say what the version
   already meant.
-- Before version 1.0.0, MINOR versions MAY contain breaking changes, as
+- Before version 1.0.0, MINOR versions may contain breaking changes, as
   semantic versioning allows. The [changelog](changelog.md) lists them under
   "Breaking changes", with what to change.
 - Each schema document names the version that it targets: `$schema` is the
   versioned `$id` of that version's meta-schema (see
   [Referencing the meta-schema](specification/meta-schema.md#referencing-the-meta-schema)).
   A new version of the profile doesn't change what an existing schema
-  document means.
+  document means; for a non-breaking version, changing `$schema` is all
+  that moving a document to it takes.
 
 ## Releases
 

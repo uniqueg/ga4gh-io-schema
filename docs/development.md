@@ -45,6 +45,18 @@ release tag of the profile (e.g., `v0.3.0`). For a new release, change the tag
 in all of them at once (the tests check that they agree), and push the tag so
 that the URLs resolve.
 
+## Changelog and conformance suite
+
+Every pull request that changes the profile or the package adds an entry to
+`CHANGELOG.md`, under "Unreleased", and says there whether the change is
+breaking (see [Versioning and governance](governance.md)). The
+[Changelog](changelog.md) page includes the file between the
+`--8<-- [start:changes]` and `--8<-- [end:changes]` markers; keep them.
+Each new rule of the meta-schema comes with a negative case in
+`tests/conformance/schema-documents/invalid/` (see below), and a new
+implementation of the profile with a row in the
+[table of implementations](specification/conformance.md#implementations).
+
 ## Adding keywords
 
 Keywords live in one vocabulary file per keyword group in

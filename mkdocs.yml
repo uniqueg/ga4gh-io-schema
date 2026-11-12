@@ -54,10 +54,10 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
-  # Sections of `README.md` (between `--8<-- [start:<name>]` and
-  # `--8<-- [end:<name>]`), `CHANGELOG.md` and the example schemas of
-# `tests/data/`, so that
-  # they are not written twice; fails if a file or section is missing
+  # Sections of `README.md` and `CHANGELOG.md` (between
+  # `--8<-- [start:<name>]` and `--8<-- [end:<name>]`) and the example
+  # schemas of `tests/data/`, so that they are not written twice; fails if
+  # a file or section is missing
   - pymdownx.snippets:
       check_paths: true
   - pymdownx.superfences

@@ -52,19 +52,22 @@ Draft of the proposal; not released (no tag).
   and TES.
 - **Scope reversal, outputs:** the text of version 0.1 required every
   schema to define both `inputs` and `outputs` (the "bi-directional
-  mandate"), although its meta-schema required only `inputs`. Version 0.2
-  drops the mandate: `outputs` is optional.
+  mandate"); its meta-schema didn't enforce that (it required a top-level
+  `inputs` property, not the `properties` wrapper of the examples).
+  Version 0.2 drops the mandate: `outputs` is optional.
 - **Scope reversal, WES:** version 0.1 listed changes to the WES API as out
   of scope, and said that WES servers *should* validate requests and
   *should* answer failures with `HTTP 400`. Version 0.2 says that WES APIs
-  *must* return `HTTP 400` with the path of the error when validation on
-  the server fails, and *should* return the schema's
-  `x-ga4gh-error-message`. Version 0.3 keeps validation optional for WES
+  *must* return `HTTP 400` when validation on the server fails, that the
+  error *should* name the path of the error, and that the schema's
+  `x-ga4gh-error-message` *should* be preferred to the message of the
+  validator. Version 0.3 keeps validation optional for WES
   servers, needs no change of the WES API, and states the requirements for
   servers that validate in the conformance class
   [WES server](https://ga4gh-io-schema.readthedocs.io/en/latest/specification/conformance/#wes-server).
-- `x-ga4gh-format`, the ontology term of a file's type, is replaced by
-  `x-ga4gh-ontology`, an ontology term of any input or output.
+- The meta-schema names the ontology term `x-ga4gh-ontology`, as the text
+  of version 0.1 did; the meta-schema of version 0.1 called it
+  `x-ga4gh-format`.
 
 ### Added
 
@@ -91,7 +94,8 @@ Initial draft of the proposal; not released (no tag).
 - Ecosystem survey of how workflow languages and platforms describe inputs
   and outputs, and the case for a JSON Schema profile.
 - The JSON Schema (Draft 2020-12) profile with an `inputs`/`outputs`
-  wrapper and the keywords `x-ga4gh-drs-uri`, `x-ga4gh-format`,
+  wrapper and the keywords `x-ga4gh-drs-uri`, `x-ga4gh-ontology` (called
+  `x-ga4gh-format` in the meta-schema),
   `x-ga4gh-ui-widget`, `x-ga4gh-tabular-schema`, `x-ga4gh-fa-icon`,
   `x-ga4gh-description-format`, `x-ga4gh-hidden` and
   `x-ga4gh-error-message`, with a vocabulary of UI widgets.

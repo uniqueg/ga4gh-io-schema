@@ -61,9 +61,15 @@ specification states the requirements once it is added.
 1. A schema document MUST be a JSON object that is valid against the
    [meta-schema](meta-schema.md) of the version of the profile that it
    targets, and MUST name that meta-schema in `$schema`, by its versioned
-   `$id`.
+   `$id`. Valid means valid with the `format` keywords of the meta-schema
+   treated as assertions (e.g., `uri` for `x-ga4gh-ontology`), except
+   `regex`; JSON Schema 2020-12 treats `format` as an annotation by
+   default.
 2. A schema document MUST use the `x-ga4gh-*` keywords only as defined in
-   [Keywords](keywords.md) and the [meta-schema](meta-schema.md).
+   [Keywords](keywords.md) and the [meta-schema](meta-schema.md), and MUST
+   meet the requirements of [Keywords](keywords.md) for native JSON Schema
+   keywords. Not all of them can be checked by the meta-schema (e.g., the
+   use of `uniqueItems` instead of a custom keyword).
 3. A schema document MUST meet the requirements for schemas of
    [Security considerations](../security.md): it is bundled (see
    [Sources of schemas](../security.md#sources-of-schemas)), it defines no
@@ -77,18 +83,22 @@ specification states the requirements once it is added.
 
 ### Validator
 
-1. A validator MUST accept every schema document that meets requirement 1
-   of [Schema document](#schema-document) and MUST reject every other
-   document. In particular, it MUST accept every case in `valid/` and MUST
-   reject every case in `invalid/` of the
-   [conformance suite](#conformance-suite).
+1. A validator supports one or more versions of the profile, and names
+   them in its conformance claim. For each of them, it MUST accept every
+   document that meets requirement 1 of [Schema document](#schema-document)
+   and MUST reject every other document that names that version. In
+   particular, it MUST accept every case in `valid/` and MUST reject every
+   case in `invalid/` of the [conformance suite](#conformance-suite) of
+   that version.
 2. A validator MUST check the `format` keywords that the meta-schema uses
    (e.g., `uri` for `x-ga4gh-ontology`). It MAY skip the `regex` format,
    which not every regular expression engine can check for the ECMA-262
    dialect.
 3. A validator MUST reject a document without `$schema`, or whose `$schema`
-   names another meta-schema, unless it was explicitly asked to validate
-   against that meta-schema.
+   names neither a version of the profile that it supports nor another
+   meta-schema that it was explicitly asked to use (e.g., a draft of a
+   new version); a document checked against another meta-schema is not
+   thereby a conforming schema document.
 4. A validator MUST load the meta-schema and its vocabularies from local
    copies and MUST NOT retrieve them, or any other reference, over the
    network (see [Sources of schemas](../security.md#sources-of-schemas)).
@@ -97,7 +107,8 @@ specification states the requirements once it is added.
 
 Requirements 2 and 3 are what some negative cases of the suite expect: a
 validator that doesn't check formats accepts `ontology-not-uri`, and one
-that ignores `$schema` accepts `foreign-schema` and `plain-json-schema`.
+that validates against whatever meta-schema `$schema` names (e.g.,
+draft-07) accepts `foreign-schema` and `plain-json-schema`.
 
 ### Producer
 
@@ -200,18 +211,22 @@ with a runner of its own.
 tests/conformance/
 └── schema-documents/
     ├── valid/      # *.schema.json: conforming schema documents
-    └── invalid/    # *.schema.json: one broken rule each
+    └── invalid/    # *.schema.json: non-conforming schema documents
 ```
 
 - **Schema documents** test the class [Validator](#validator): a validator
   MUST accept every `*.schema.json` file in `valid/` and MUST reject every
-  one in `invalid/`. Each negative case breaks one rule of the meta-schema;
-  its file name says which. The cases name the meta-schema by its versioned
-  `$id` and contain no other references, so a runner needs only the
+  one in `invalid/`. Each negative case breaks the rule that its file name
+  names (a few, such as `empty`, also break others). The valid cases, and
+  the negative cases other than those about `$schema`, name the
+  meta-schema by its versioned `$id`; no case has other references, so a
+  runner needs only the
   meta-schema and vocabularies of
   [`schemas/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/schemas),
-  loaded from local copies. Error messages differ between validators and
-  are not part of the suite.
+  loaded from local copies: a runner maps each `$id` of `schemas/` to its
+  file. Error messages differ between validators and are not part of the
+  suite. Files ending in `.license` hold licence information
+  ([REUSE](https://reuse.software/)) and are not cases.
 - Cases for the other classes (e.g., test vectors for the engine bindings
   and for the normalisation of outputs) are added to the suite with the
   features they test.
@@ -221,8 +236,11 @@ case against the [Python API](../tools/validator.md#python-api) of the
 validator:
 
 ```bash
-pytest tests/test_conformance.py
+pytest tests/test_conformance.py --no-cov
 ```
+
+(`--no-cov` turns off the coverage check of the whole test suite, which a
+run of one file doesn't meet.)
 
 The tests of the [command-line interface](../tools/cli.md) run the same cases
 through `ga4gh-io-schema validate` and also check the message of each

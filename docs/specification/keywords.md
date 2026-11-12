@@ -8,9 +8,9 @@ To maintain maximum compatibility with existing libraries (e.g., UI form generat
 
 Where workflow languages have historically invented proprietary keywords, schemas use native JSON Schema features:
 
-* **File Paths and References:** Instead of proprietary file types, schemas MUST use the native string formats: `{"type": "string", "format": "uri"}`.
+* **File Paths and References:** Instead of proprietary file types, developers use the native string formats: `{"type": "string", "format": "uri"}`.
 
-* **Mimetypes:** Instead of custom `mimetype` properties, schemas MUST use the native `contentMediaType` keyword.
+* **Mimetypes:** Instead of custom `mimetype` properties, developers use the native `contentMediaType` keyword.
 
 * **Uniqueness:** Where all items of an array have to differ, schemas MUST use the native `uniqueItems: true`. This is not the same as `nf-schema`'s `uniqueEntries`, which requires the *combination of the values of given keys* to be unique across the objects of an array (e.g., a unique `sample_id` per row of a sample sheet): with `uniqueItems`, two rows with the same `sample_id` but different other values both pass. The profile has no equivalent of `uniqueEntries` yet.
 
