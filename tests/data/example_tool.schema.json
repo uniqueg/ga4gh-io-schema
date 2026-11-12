@@ -63,8 +63,7 @@
           "x-ga4gh-file": {
             "kind": "file",
             "ontology": "http://edamontology.org/format_2572"
-          },
-          "x-ga4gh-ui-widget": "genome-browser"
+          }
         }
       }
     }

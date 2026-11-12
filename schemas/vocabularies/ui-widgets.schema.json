@@ -9,7 +9,6 @@
       "enum": [
         "text",
         "textarea",
-        "password",
         "number",
         "slider",
         "dropdown",
@@ -24,12 +23,8 @@
         "file-picker",
         "directory-picker",
         "tags",
-        "genome-browser",
-        "scatter-plot",
         "html-viewer",
-        "pdf-viewer",
-        "table-viewer",
-        "markdown-viewer"
+        "table-viewer"
       ]
     },
     {

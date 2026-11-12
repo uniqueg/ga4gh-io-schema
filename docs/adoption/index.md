@@ -19,7 +19,7 @@ With IO schemas served by TRS and used by clients and WES, a run goes through th
 
 4. **Execution (WES):** The client checks the input values against the schema, translates them into the `workflow_params` of the workflow's engine and submits the run. A WES server that knows the schema can check the request again and reject it with an error that names the failing parameter, using `x-ga4gh-error-message` where the schema provides one (see [WES](wes.md)).
 
-5. **Result Interpretation:** WES returns the locations of the outputs, and the client matches them with the schema's outputs to choose viewers and to read their ontology terms.
+5. **Result Interpretation:** WES returns the locations of the outputs, and the client matches them with the schema's outputs to choose viewers (tables, sandboxed HTML, or download) and to read their ontology terms.
 
 ## The adoption path (ecosystem independence)
 
@@ -28,7 +28,5 @@ The success of this profile does not rely on modifying the core CWL, WDL, or Nex
 * **Platform Auto-Generation:** Registries like Dockstore or WorkflowHub can implement server-side parsers that automatically extract and generate this JSON Schema from existing `Schema Salad` (CWL) or `nextflow_schema.json` files during workflow ingestion, publishing them as IO schemas (see [TRS](trs.md)) automatically.
 
 * **Sidecar Files:** For WDL workflows or legacy pipelines, authors can write the IO schema themselves and add it to their TRS submission as the file `ga4gh-io.schema.json` of type `OTHER` (see [TRS](trs.md)).
-
-* **Agent-Driven Authoring:** If a schema is missing, human users or AI agents can draft the JSON Schema themselves for a workflow they wish to run. While this represents a one-time upfront effort, the resulting schema provides a permanent, reusable contract for all future runs across all compliant orchestrators.
 
 See also [Converters](../tools/converters.md).
