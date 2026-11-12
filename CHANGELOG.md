@@ -14,6 +14,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Breaking changes
 
+- Widgets of `x-ga4gh-ui-widget` must fit their schema: the meta-schema
+  rejects, for example, a `slider` without a numeric type and both bounds, a
+  `date-picker` without `"format": "date"`, a `file-picker` without
+  `x-ga4gh-file`, `tags` on anything but an array of strings, and output
+  viewers on the parameters of `inputs` (and input widgets on `outputs`).
+  The keywords that a widget needs go into the schema that carries it. A new
+  page "UI widgets" defines the types, keywords and values of each widget.
+  (#38)
 - The command-line tools are subcommands of one command, `ga4gh-io-schema`:
   `ga4gh-io-schema validate` replaces `ga4gh-io-schema-validator`, which is
   removed without an alias. The exit status now tells failures apart (1: the
