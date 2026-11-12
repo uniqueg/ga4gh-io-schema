@@ -1,0 +1,81 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/variant-calling/wdl/1.2.0",
+  "title": "Germline Variant Calling",
+  "description": "Calls germline variants from aligned reads.",
+  "x-ga4gh-workflow": {
+    "trs_tool_id": "#workflow/example.org/variant-calling",
+    "trs_version_id": "1.2.0",
+    "descriptor_type": "WDL",
+    "descriptor_type_version": "1.1",
+    "primary_descriptor_path": "workflows/variant_calling.wdl",
+    "checksum": [
+      {
+        "type": "sha-256",
+        "checksum": "9c1e4a7f2b5d8e0a3c6f9b2e5d8a1c4f7b0e3a6d9c2f5b8e1a4d7c0f3b6e9a2d"
+      }
+    ],
+    "entry_point": "variant_calling"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "input_bam": {
+          "type": "string",
+          "title": "Aligned reads (BAM)",
+          "description": "Coordinate-sorted reads; the index lies next to it.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_2572",
+            "secondaryFiles": [".bai"]
+          },
+          "x-ga4gh-parameter": {
+            "type": "File"
+          }
+        },
+        "sample_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Sample names",
+          "x-ga4gh-parameter": {
+            "type": "Array[String]+"
+          }
+        },
+        "caller_threads": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4,
+          "title": "Threads of the variant caller",
+          "x-ga4gh-parameter": {
+            "name": "call_variants.threads",
+            "type": "Int"
+          }
+        }
+      },
+      "required": ["input_bam", "sample_names"],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "variants_vcf": {
+          "type": "string",
+          "title": "Variant calls (VCF)",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_3016"
+          },
+          "x-ga4gh-parameter": {
+            "name": "vcf",
+            "type": "File"
+          }
+        }
+      }
+    }
+  }
+}

@@ -6,7 +6,7 @@ To drive adoption and prove out the utility of the IO Schema Profile, we propose
 
 1. **Schema Translation Tooling:** Develop lightweight, open-source translation scripts to convert existing `nextflow_schema.json` and CWL `CommandLineTool` inputs into compliant GA4GH IO Profile schemas.
 
-2. **End-to-End Proof of Concept (PoC):** Construct a sandbox environment featuring a mock TRS registry hosting `.schema.json` files, a generic frontend (e.g., via `react-jsonschema-form`) rendering input forms and compiling WES requests, and a proxy WES gateway enforcing server-side validation against the schema prior to execution.
+2. **End-to-End Proof of Concept (PoC):** Construct a sandbox environment featuring a mock TRS registry hosting IO schemas (as `ga4gh-io.schema.json` files, see [TRS](adoption/trs.md)), a generic frontend (e.g., via `react-jsonschema-form`) rendering input forms and compiling WES requests, and a proxy WES gateway enforcing server-side validation against the schema prior to execution.
 
 3. **Formal Specification Submission:** Following the PoC, submit the IDL schema structure, the `x-ga4gh-*` vocabulary, and the proposed API modifications to the GA4GH [Federated Analysis Work Stream](https://www.ga4gh.org/work_stream/federated-analysis-work-stream-formerly-cloud-work-stream/) (formerly the Cloud Work Stream, which develops TRS, WES, DRS and TES) for formal standardization review.
 
@@ -38,7 +38,7 @@ of the repository lists each removal as a breaking change.
 | Chaining workflows by ontology terms (which outputs fit which inputs) | Needs matching rules (e.g., for more specific terms, genome builds, compression, format versions) that the profile doesn't define (see [APE and Workflomics](related-work.md#ape-and-workflomics)). | `x-ga4gh-ontology` annotates inputs and outputs; matching is up to clients. |
 | Viewers other than download, tables and sandboxed HTML: `genome-browser`, `scatter-plot`, `pdf-viewer`, `markdown-viewer` | Each viewer needs its own rendering and security rules (e.g., PDF and Markdown can carry active content or load external resources). | The vocabulary has `table-viewer` and `html-viewer`; outputs without a known viewer are offered for download. The rendering rules apply by content, so a `custom:` widget doesn't lift them (see [Rendering schemas and outputs](security.md#rendering-schemas-and-outputs)). |
 | Validation of tabular files (e.g., sample sheets) against `x-ga4gh-tabular-schema` | Needs the rules that [Frictionless Table Schema](related-work.md#frictionless-table-schema) and Table Dialect already define (typed cells, empty cells, dialects), and makes the server a data accessor (see [Validation of data files on the server](security.md#validation-of-data-files-on-the-server)). A later version may adopt Table Schema by reference. | `x-ga4gh-tabular-schema` is kept as an experimental form hint (e.g., for a spreadsheet editor), not a validation rule. |
-| A TRS file type `IO_SCHEMA` (and a field naming the schema standard of a file) | Needs a change to TRS. | IO schemas are published with the existing file type `OTHER` and a naming convention (see [#12](https://github.com/uniqueg/ga4gh-io-schema/issues/12) and [TRS](adoption/trs.md)). |
+| A TRS file type `IO_SCHEMA` (and a field naming the schema standard of a file) | Needs a change to TRS. | IO schemas are published with the existing file type `OTHER` and the path `ga4gh-io.schema.json` (see [TRS](adoption/trs.md#publishing-convention)). |
 
 ## Open questions
 

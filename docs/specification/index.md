@@ -9,6 +9,9 @@ workflow components with JSON Schema (Draft 2020-12), extended with a set of
 - [File references](files.md): how a string parameter refers to a file or
   a directory, its values, secondary files, and the mapping to the file types
   of CWL, WDL and nf-schema.
+- [Identity and engine binding](identity.md): how a schema names the
+  workflow version and engine it describes, how clients detect drift, and
+  how parameters bind to the engine's parameters.
 - [Output contract](outputs.md): how clients match the outputs of a schema
   with the outputs of a run.
 - [Meta-schema](meta-schema.md): the meta-schema and vocabularies that

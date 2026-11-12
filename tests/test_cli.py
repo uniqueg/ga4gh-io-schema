@@ -6,6 +6,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -191,7 +192,107 @@ INVALID = {
         "Validation Error: 3 is not of type 'string' "
         "(at $.properties.outputs.properties.report['x-ga4gh-ui-widget'])"
     ),
+    "workflow-not-object": (
+        "Validation Error: 'WDL' is not of type 'object' (at $['x-ga4gh-workflow'])"
+    ),
+    "workflow-misspelled": (
+        "Validation Error: Unevaluated properties are not allowed "
+        "('x-ga4gh-workflw' was unexpected)"
+    ),
+    "workflow-descriptor-type-missing": (
+        "Validation Error: 'descriptor_type' is a required property "
+        "(at $['x-ga4gh-workflow'])"
+    ),
+    "workflow-descriptor-type-unknown": (
+        "Validation Error: 'Nextflow' is not one of "
+        "['CWL', 'WDL', 'NFL', 'SMK', 'GALAXY'] "
+        "(at $['x-ga4gh-workflow'].descriptor_type)"
+    ),
+    "workflow-entry-point-missing": (
+        "Validation Error: 'entry_point' is a required property "
+        "(at $['x-ga4gh-workflow'])"
+    ),
+    "workflow-checksum-not-hex": (
+        "Validation Error: 'not-hex' does not match '^[0-9a-fA-F]+$' "
+        "(at $['x-ga4gh-workflow'].checksum[0].checksum)"
+    ),
+    "workflow-checksum-no-type": (
+        "Validation Error: 'type' is a required property "
+        "(at $['x-ga4gh-workflow'].checksum[0])"
+    ),
+    "workflow-unknown-field": (
+        "Validation Error: Additional properties are not allowed "
+        "('tool_id' was unexpected) (at $['x-ga4gh-workflow'])"
+    ),
+    "workflow-nested": (
+        "Validation Error: Unevaluated properties are not allowed "
+        "('x-ga4gh-workflow' was unexpected) "
+        "(at $.properties.inputs.properties.sample_id)"
+    ),
+    "parameter-not-object": (
+        "Validation Error: 'wf.sample_id' is not of type 'object' "
+        "(at $.properties.inputs.properties.sample_id['x-ga4gh-parameter'])"
+    ),
+    "parameter-unknown-field": (
+        "Validation Error: Additional properties are not allowed "
+        "('default' was unexpected) "
+        "(at $.properties.inputs.properties.sample_id['x-ga4gh-parameter'])"
+    ),
+    "parameter-empty": (
+        "Validation Error: {} should be non-empty "
+        "(at $.properties.inputs.properties.sample_id['x-ga4gh-parameter'])"
+    ),
+    "workflow-nested-tabular": (
+        "Validation Error: Unevaluated properties are not allowed "
+        "('x-ga4gh-workflow' was unexpected) "
+        "(at $.properties.inputs.properties.sample_id['x-ga4gh-tabular-schema'])"
+    ),
+    "workflow-nested-defs": (
+        "Validation Error: Unevaluated properties are not allowed "
+        "('x-ga4gh-workflow' was unexpected) (at $['$defs'].sample)"
+    ),
+    "workflow-checksum-empty": (
+        "Validation Error: [] should be non-empty (at $['x-ga4gh-workflow'].checksum)"
+    ),
+    "workflow-trs-tool-id-empty": (
+        "Validation Error: '' should be non-empty "
+        "(at $['x-ga4gh-workflow'].trs_tool_id)"
+    ),
+    "parameter-name-empty": (
+        "Validation Error: '' should be non-empty "
+        "(at $.properties.inputs.properties.sample_id['x-ga4gh-parameter'].name)"
+    ),
+    "id-relative": (
+        "Validation Error: 'schemas/my-workflow/v1' is not a 'uri' (at $['$id'])"
+    ),
+    "id-branch-url": (
+        "Validation Error: 'https://raw.githubusercontent.com/example/workflows/"
+        "refs/heads/dev/ga4gh-io.schema.json' should not be valid under"
+    ),
 }
+
+
+def _write_variant(
+    tmp_path: Path,
+    top_level: dict[str, Any] | None = None,
+    sample_id: dict[str, Any] | None = None,
+) -> Path:
+    """Write a copy of ``valid.schema.json`` with changed keywords.
+
+    Args:
+        tmp_path: Directory to write the copy to.
+        top_level: Keywords to set at the top level of the schema.
+        sample_id: Keywords to set in the schema of the input ``sample_id``.
+
+    Returns:
+        The path of the written schema.
+    """
+    schema = json.loads((DATA_DIR / "valid.schema.json").read_text(encoding="utf-8"))
+    schema.update(top_level or {})
+    schema["properties"]["inputs"]["properties"]["sample_id"].update(sample_id or {})
+    path = tmp_path / "variant.schema.json"
+    path.write_text(json.dumps(schema), encoding="utf-8")
+    return path
 
 
 def test_cli_accepts_other_extension_keywords(
@@ -203,16 +304,143 @@ def test_cli_accepts_other_extension_keywords(
         tmp_path: Pytest fixture providing a temporary directory.
         capsys: Pytest fixture capturing standard output and error.
     """
-    schema = json.loads((DATA_DIR / "valid.schema.json").read_text(encoding="utf-8"))
-    sample_id = schema["properties"]["inputs"]["properties"]["sample_id"]
-    sample_id["x-my-platform-hint"] = {"any": "value"}
-    sample_id["x-ga4ghost"] = 1
-    path = tmp_path / "extended.schema.json"
-    path.write_text(json.dumps(schema), encoding="utf-8")
+    path = _write_variant(
+        tmp_path, sample_id={"x-my-platform-hint": {"any": "value"}, "x-ga4ghost": 1}
+    )
 
     assert main(["validate", str(path)]) == 0
 
     assert "complies" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "schema_id",
+    [
+        "https://raw.githubusercontent.com/example/workflows/v1.0.0/io.schema.json",
+        "https://raw.githubusercontent.com/example/workflows/maintenance/io.json",
+        "https://github.com/example/workflows/blob/0123abcd/ga4gh-io.schema.json",
+        "https://gitlab.com/example/group/workflows/-/raw/v2/ga4gh-io.schema.json",
+        "https://gitlab.com/example/workflows/-/raw/v1/docs/-/raw/main/io.json",
+        "https://example.org/schemas/main/v1",
+        "urn:uuid:9f2c6f1e-8a1b-4c7d-9e3f-2b5a6c7d8e9f",
+    ],
+)
+def test_cli_accepts_versioned_ids(
+    schema_id: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that absolute ``$id``s of tags, commits and other hosts pass.
+
+    Only URLs of branches at GitHub and GitLab are rejected: a branch named
+    like a default branch (``maintenance``), a path segment ``main`` on
+    another host, or ``/-/raw/main/`` inside the path of a GitLab tag are not
+    branch URLs.
+
+    Args:
+        schema_id: The ``$id`` to test.
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    path = _write_variant(tmp_path, top_level={"$id": schema_id})
+
+    assert main(["validate", str(path)]) == 0, capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "schema_id",
+    [
+        "https://raw.githubusercontent.com/example/workflows/master/io.schema.json",
+        "https://github.com/example/workflows/blob/dev/ga4gh-io.schema.json",
+        "https://www.github.com/example/workflows/raw/refs/heads/x/io.schema.json",
+        "https://gitlab.com/example/group/workflows/-/blob/develop/io.schema.json",
+        "http://raw.githubusercontent.com/example/workflows/HEAD/io.schema.json",
+        "https://raw.githubusercontent.com:443/example/workflows/main/io.json",
+        "https://user@github.com/example/workflows/tree/main/io.schema.json",
+    ],
+)
+def test_cli_rejects_branch_ids(
+    schema_id: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that ``$id``s that are URLs of branches are rejected.
+
+    Args:
+        schema_id: The ``$id`` to test.
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    path = _write_variant(tmp_path, top_level={"$id": schema_id})
+
+    assert main(["validate", str(path)]) == 1
+    assert f"'{schema_id}' should not be valid under" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "workflow",
+    [
+        {"descriptor_type": "NFL"},
+        {"descriptor_type": "SMK", "descriptor_type_version": "8"},
+        {"descriptor_type": "CWL", "entry_point": "#main"},
+        {
+            "trs_tool_id": "#workflow/example.org/variant-calling",
+            "trs_version_id": "1.2.0",
+            "descriptor_type": "WDL",
+            "descriptor_type_version": "1.1",
+            "primary_descriptor_path": "workflows/main.wdl",
+            "checksum": [{"type": "SHA-256", "checksum": "AB12cd"}],
+            "entry_point": "variant_calling",
+        },
+    ],
+    ids=lambda workflow: workflow["descriptor_type"],
+)
+def test_cli_accepts_workflow_block(
+    workflow: dict[str, Any], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that ``x-ga4gh-workflow`` needs only the descriptor type, except for WDL.
+
+    Args:
+        workflow: The value of ``x-ga4gh-workflow``.
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    path = _write_variant(tmp_path, top_level={"x-ga4gh-workflow": workflow})
+
+    assert main(["validate", str(path)]) == 0, capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "parameter",
+    [{"name": "wf.sample"}, {"type": "String"}, {"name": "sample", "type": "String"}],
+    ids=["name", "type", "both"],
+)
+def test_cli_accepts_parameter_binding(
+    parameter: dict[str, Any], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that ``x-ga4gh-parameter`` takes ``name``, ``type`` or both.
+
+    Args:
+        parameter: The value of ``x-ga4gh-parameter``.
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    path = _write_variant(tmp_path, sample_id={"x-ga4gh-parameter": parameter})
+
+    assert main(["validate", str(path)]) == 0, capsys.readouterr().err
+
+
+def test_cli_checks_annotations_at_the_top_level(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that the keywords of every schema are still checked at the top level.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    path = _write_variant(tmp_path, top_level={"x-ga4gh-hidden": "yes"})
+
+    assert main(["validate", str(path)]) == 1
+    assert "'yes' is not of type 'boolean' (at $['x-ga4gh-hidden'])" in (
+        capsys.readouterr().err
+    )
 
 
 #: Values of ``x-ga4gh-ui-widget`` that version 0.3 removed (cut or deferred).
