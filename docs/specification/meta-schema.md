@@ -91,18 +91,23 @@ other keywords as evaluated with the pattern `^(?!x-ga4gh-)`, a negative
 lookahead: valid ECMA-262, and supported by the common validators of Python
 and JavaScript, but not by validators built on RE2 (e.g., Go's `regexp`).
 
-The rules reach nested schemas through the `$dynamicAnchor` mechanism of
-Draft 2020-12: `$defs/node` declares `"$dynamicAnchor": "meta"`, so the
-applicators of the Draft 2020-12 meta-schema apply it, not plain JSON
-Schema, to every subschema. The top-level rules don't declare the anchor, so
-they apply only to the top level. The top level uses the keywords of
-`$defs/node` (`$defs/node/$defs/keywords`) without its check of unevaluated
-keywords, adds the top-level keywords, and rejects other `x-ga4gh-*`
-keywords with its own check: a check of unevaluated keywords only sees the
-keywords evaluated in its own schema and the subschemas it applies, so the
-check of `$defs/node` would reject the top-level keywords. The keywords
-are kept inside the resource of `$defs/node` (not at the top level) so that
-the dynamic scope always contains the anchor of `$defs/node`. The `$ref`s
-between the schemas use the versioned `$id`s; the validator resolves them
-from the copies that the package ships and never fetches them from the
-network.
+The rules reach nested schemas through explicit `$ref`s:
+`$defs/node/$defs/subschemas` applies `$defs/node` to the value of every
+keyword whose value is a schema or holds schemas (the applicators of Draft
+2020-12, e.g., `properties`, `items`, `allOf` and `$defs`, the deprecated
+`definitions` and `dependencies`, and `x-ga4gh-tabular-schema`). The
+Draft 2020-12 meta-schema, which `$defs/node/$defs/keywords` also applies,
+still checks every subschema against plain JSON Schema. The meta-schema
+uses no `$dynamicRef` or `$dynamicAnchor`, because some validators (e.g.,
+Ajv) support them only at the root of a schema and would skip the rules for
+nested schemas without an error (see [JavaScript
+validators](../tools/javascript.md)).
+
+The top level uses the keywords of `$defs/node` (`$defs/node/$defs/keywords`)
+without its check of unevaluated keywords, adds the top-level keywords, and
+rejects other `x-ga4gh-*` keywords with its own check: a check of
+unevaluated keywords only sees the keywords evaluated in its own schema and
+the subschemas it applies, so the check of `$defs/node` would reject the
+top-level keywords. The `$ref`s between the schemas use the versioned
+`$id`s; the validator resolves them from the copies that the package ships
+and never fetches them from the network.
