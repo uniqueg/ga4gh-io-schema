@@ -15,6 +15,7 @@ edit_uri: edit/main/docs/
 # Files included in pages (see `pymdownx.snippets`) and documented code
 watch:
   - docs_hooks
+  - CHANGELOG.md
   - README.md
   - schemas
   - src
@@ -53,9 +54,10 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
-  # Sections of `README.md` (between `--8<-- [start:<name>]` and
-  # `--8<-- [end:<name>]`) and the example schemas of `tests/data/`, so that
-  # they are not written twice; fails if a file or section is missing
+  # Sections of `README.md` and `CHANGELOG.md` (between
+  # `--8<-- [start:<name>]` and `--8<-- [end:<name>]`) and the example
+  # schemas of `tests/data/`, so that they are not written twice; fails if
+  # a file or section is missing
   - pymdownx.snippets:
       check_paths: true
   - pymdownx.superfences
@@ -98,6 +100,7 @@ nav:
       - specification/index.md
       - Keywords: specification/keywords.md
       - File references: specification/files.md
+      - Identity and engine binding: specification/identity.md
       - Outputs: specification/outputs.md
       - Meta-schema: specification/meta-schema.md
       - Conformance: specification/conformance.md
@@ -116,4 +119,6 @@ nav:
       - WES: adoption/wes.md
       - Portals and clients: adoption/portals.md
   - Roadmap: roadmap.md
+  - Changelog: changelog.md
+  - Versioning and governance: governance.md
   - Development: development.md

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/parameter-not-object",
+  "title": "Invalid: parameter-not-object",
+  "description": "x-ga4gh-parameter is a string, not an object.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string",
+          "x-ga4gh-parameter": "wf.sample_id"
+        }
+      }
+    }
+  }
+}

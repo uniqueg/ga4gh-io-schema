@@ -7,7 +7,10 @@ To install the package with all development dependencies, see
 
 ## Unit tests (pytest)
 
-Validate the core logic of the Python executable using `pytest`. The test suite uses mock schemas located in `tests/data/`.
+Validate the core logic of the Python executable using `pytest`. The tests
+use the example schemas in `tests/data/` and the schema documents of the
+[conformance suite](specification/conformance.md#conformance-suite) in
+`tests/conformance/`.
 
 ```bash
 pytest
@@ -15,9 +18,13 @@ pytest
 
 `pytest` measures coverage of the package (with branches) and fails below
 100%. The CLI tests (`tests/test_cli.py`) run the command-line tool on the
-valid examples and on one deliberately bad schema per rule of the
-meta-schema in `tests/data/invalid/`, and check the exit code and the error
-message of each; a new rule needs a new bad schema and its expected message.
+examples and the valid cases of the suite, and on one deliberately bad
+schema per rule of the meta-schema in
+`tests/conformance/schema-documents/invalid/`, and check the exit code and
+the error message of each; a new rule needs a new bad schema and its
+expected message. `tests/test_conformance.py` is the runner of the
+conformance suite for this package: it checks every case against the
+Python API, without error messages, as other implementations do.
 `tests/test_cli_framework.py` tests the shared conventions of all
 subcommands (standard input, `--output`, `--json`, exit codes) and the
 subcommand registry.
@@ -34,10 +41,23 @@ them together.
 ## Schema versions
 
 The `$id`s of the schemas in `schemas/`, and the `$schema` of the examples in
-`tests/data/` and of the snippet in the meta-schema documentation, name the
-release tag of the profile (e.g., `v0.3.0`). For a new release, change the tag
-in all of them at once (the tests check that they agree), and push the tag so
-that the URLs resolve.
+`tests/data/`, of the cases in `tests/conformance/` and of the snippet in the
+meta-schema documentation, name the release tag of the profile (e.g.,
+`v0.3.0`). For a new release, change the tag in all of them at once (the
+tests check that they agree), and push the tag so that the URLs resolve.
+
+## Changelog and conformance suite
+
+Every pull request that changes the profile or the package adds an entry to
+`CHANGELOG.md`, under "Unreleased", and says there whether the change is
+breaking (see [Versioning and governance](governance.md)). The
+[Changelog](changelog.md) page includes the file between the
+`--8<-- [start:changes]` and `--8<-- [end:changes]` markers; keep them.
+Each new rule of the meta-schema comes with a negative case in
+`tests/conformance/schema-documents/invalid/` (see
+[Adding keywords](#adding-keywords)), and a new
+implementation of the profile with a row in the
+[table of implementations](specification/conformance.md#implementations).
 
 ## Adding keywords
 
@@ -46,13 +66,18 @@ Keywords live in one vocabulary file per keyword group in
 
 1. Add the keyword to the `properties` of its vocabulary file, or create a new
    file (with a versioned `$id`, like the others) and add a `$ref` to it to the
-   `allOf` of `$defs/node` in `schemas/ga4gh-io-profile.schema.json`.
+   `allOf` of `$defs/node/$defs/keywords` in
+   `schemas/ga4gh-io-profile.schema.json`. A keyword that is allowed only at
+   the top level (like `x-ga4gh-workflow`) goes into
+   `vocabularies/workflow.schema.json`, which the `allOf` of the top level
+   references.
    A keyword whose value is a schema (like `x-ga4gh-tabular-schema`) uses
    `"$dynamicRef": "#meta"`, and its vocabulary file declares
    `"$dynamicAnchor": "meta"` at its root, so that the nested schema is
    checked by all rules of the profile (see `vocabularies/file.schema.json`).
-2. Add one bad schema per new rule to `tests/data/invalid/` and its expected
-   message to `INVALID` in `tests/test_cli.py`; for a schema-valued keyword,
+2. Add one bad schema per new rule to
+   `tests/conformance/schema-documents/invalid/` and its expected message
+   to `INVALID` in `tests/test_cli.py`; for a schema-valued keyword,
    include a bad schema nested in it.
 3. Document the keyword in `docs/specification/keywords.md` and in the table
    in `docs/specification/meta-schema.md`.

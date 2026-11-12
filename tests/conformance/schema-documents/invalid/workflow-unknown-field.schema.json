@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/workflow-unknown-field",
+  "title": "Invalid: workflow-unknown-field",
+  "description": "tool_id is not a field of x-ga4gh-workflow (trs_tool_id is).",
+  "type": "object",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "WDL",
+    "entry_point": "align",
+    "tool_id": "my-tool"
+  },
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
