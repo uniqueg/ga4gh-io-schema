@@ -39,10 +39,30 @@
               "type": "integer"
             },
             "plot": {
-              "type": "string",
-              "x-ga4gh-file": {
-                "kind": "file"
-              }
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-ga4gh-file": {
+                    "kind": "file"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "coverage": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "x-ga4gh-file": {
+                    "kind": "file"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [

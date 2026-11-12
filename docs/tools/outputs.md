@@ -79,7 +79,7 @@ The shape of `RunLog.outputs` is detected:
 
 | Shape | Reported by | How outputs are found |
 | --- | --- | --- |
-| An object keyed by output name | cwltool and Toil (the CWL output object); Cromwell, miniwdl and Conquest for WDL (names qualified with the workflow name, e.g., `rnaseq.qc_report`) | By name. The name of an output is `name` of its `x-ga4gh-parameter` or its property name, qualified with `entry_point` of `x-ga4gh-workflow` for WDL. CWL `File` and `Directory` objects give their `location` (or `path`); `null` values, also items of arrays and fields of objects, are absent. |
+| An object keyed by output name | cwltool and Toil (the CWL output object); Cromwell, miniwdl and Conquest for WDL (names qualified with the workflow name, e.g., `rnaseq.qc_report`) | By name. The name of an output is `name` of its `x-ga4gh-parameter` or its property name, qualified with `entry_point` of `x-ga4gh-workflow` for WDL. CWL `File` and `Directory` objects give their `location` (or `path`). |
 | An array of files | Sapporo: objects with `file_name`, relative to the output directory (`{base_url}/runs/{run_id}/outputs`), and `file_url`; or strings, paths or URIs | By glob, from the listing; `file_url` isn't used. |
 | An object with only `filesystem` (and `S3`) | WESkit: `filesystem` lists the files of the working directory of the run, relative to it; `S3` the same files as presigned URLs | By glob, from `filesystem`. The presigned URLs of `S3` carry credentials and are ignored; they never reach the report. If the schema declares an output named `filesystem` or `S3`, the object is taken as outputs by name. |
 | Absent, `null` or `{}` | Nextflow and Snakemake on most WES servers | By glob, if `--files` lists the files of the run; otherwise nothing is found. |
@@ -91,10 +91,15 @@ Rules for values found by name:
   host or `localhost`) under `--local-dir`, and relative paths, become URIs
   under `--output-dir`, built as for listed files (each segment
   percent-encoded); others are reported as `unconverted`.
-- Arrays, objects with `properties` (records) and objects with a file
-  reference as `additionalProperties` (files keyed by name) are converted
-  item by item, following local `$ref`s. Other values (also tuples with
-  `prefixItems`) are kept as they are, for validation to report.
+- Arrays, objects with `properties` (records), objects with a file
+  reference as `additionalProperties` (files keyed by name), and `anyOf` or
+  `oneOf` with a single branch besides `{"type": "null"}` (e.g., an optional
+  file in a WDL struct, as the [WDL converter](convert-wdl.md) writes it) are
+  converted item by item, following local `$ref`s. Other values (also tuples
+  with `prefixItems`) are kept as they are, for validation to report.
+- `null` outputs are absent, and `null` items of arrays are left out (e.g.,
+  WDL `Array[File?]`). `null` values inside objects (e.g., an optional member
+  of a struct or record) are kept: the schema says whether they are allowed.
 - Values that don't fit their schema (e.g., a single file for a list) are
   kept as they are: the normaliser never changes outputs to make them valid.
 

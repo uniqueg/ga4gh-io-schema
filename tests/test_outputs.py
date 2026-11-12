@@ -319,7 +319,7 @@ def test_follow_stops_at_cycles_and_unresolvable_references(
     schema = {"$id": "https://example.org/s", "$defs": defs}
     resolver = outputs_module._resolver(schema)
 
-    assert outputs_module._follow({"$ref": "#/$defs/a"}, resolver, 0)[0] is True
+    assert outputs_module._follow({"$ref": "#/$defs/a"}, resolver)[0] is True
 
 
 def test_tuples_and_boolean_schemas_keep_values() -> None:
@@ -336,6 +336,28 @@ def test_tuples_and_boolean_schemas_keep_values() -> None:
     result = normalise_outputs(schema, log)
 
     assert result.outputs == {"pair": ["a", None], "anything": {"x": None}}
+
+
+def test_applicators_with_one_branch_besides_null_are_converted() -> None:
+    """Test values of ``anyOf`` and ``oneOf``: converted by a single branch.
+
+    Values of an ``anyOf`` or ``oneOf`` with one branch besides
+    ``{"type": "null"}`` are converted by that branch; others are kept.
+    """
+    reference = {"type": "string", "x-ga4gh-file": {"kind": "file"}}
+    schema = copy.deepcopy(WORKFLOW)
+    outputs = schema["properties"]["outputs"]["properties"]
+    outputs["maybe"] = {"oneOf": [{"type": "null"}, reference]}
+    outputs["either"] = {"anyOf": [reference, {"type": "integer"}]}
+    log = {
+        "state": "EXECUTOR_ERROR",
+        "outputs": {"maybe": "out/a.txt", "either": "out/b.txt"},
+    }
+
+    result = normalise_outputs(schema, log, output_dir=BASE)
+
+    assert result.outputs == {"maybe": f"{BASE}/out/a.txt"}
+    assert result.removed == {"either": "out/b.txt"}
 
 
 def test_names_with_special_characters() -> None:

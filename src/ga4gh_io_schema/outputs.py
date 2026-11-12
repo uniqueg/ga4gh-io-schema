@@ -54,6 +54,8 @@ _BAD_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")
 _DOCUMENT_URI = "urn:ga4gh-io-schema:document"
 # Most references followed in a row, against reference cycles
 _MAX_REFS = 32
+# Keywords that give a schema a shape that values are converted by
+_SHAPE = frozenset({"x-ga4gh-file", "items", "properties", "additionalProperties"})
 
 
 class NormalisationError(ValueError):
@@ -284,13 +286,6 @@ class _Context:
 
 class _Unconvertible(Exception):
     """A reported value can't be given as a URI."""
-
-
-class _Absent:
-    """Marker of a value that is absent (e.g., a reported ``null``)."""
-
-
-_ABSENT = _Absent()
 
 
 def _final_state(run_log: Mapping[str, Any]) -> str:
@@ -614,79 +609,101 @@ def _take_named(
         context: Options for turning paths into URIs.
         result: The result to add to.
     """
+    if value is None:
+        return
     try:
-        converted = _convert(value, prop, resolver, context, 0)
+        result.outputs[name] = _convert(value, prop, resolver, context)
     except _Unconvertible as exc:
         result.unconverted.append(
             UnconvertedOutput(output=name, value=value, reason=str(exc))
         )
-        return
-    if converted is not _ABSENT:
-        result.outputs[name] = converted
 
 
-def _convert(
-    value: Any, schema: Any, resolver: Any, context: _Context, depth: int
-) -> Any:
+def _convert(value: Any, schema: Any, resolver: Any, context: _Context) -> Any:
     """Convert a reported value into the shape of its schema.
 
-    ``null`` becomes absent, also in arrays and objects; file references
-    become URIs (the ``location`` of CWL ``File`` and ``Directory``
-    objects, paths under the output directory as URIs); arrays, records and
-    objects of files are converted item by item. Other values are kept as
-    they are, also if they don't fit the schema, for validation to report.
+    File references become URIs (the ``location`` of CWL ``File`` and
+    ``Directory`` objects, paths under the output directory as URIs);
+    arrays, records, objects of files, and ``anyOf`` or ``oneOf`` with one
+    branch besides ``{"type": "null"}`` are converted item by item. ``null``
+    items of arrays are left out; ``null`` values in objects are kept (they
+    are allowed where the schema says so, e.g., an optional member of a WDL
+    struct). Other values are kept as they are, also if they don't fit the
+    schema, for validation to report.
 
     Args:
-        value: The reported value.
+        value: The reported value, not ``null``.
         schema: Its schema.
         resolver: Resolver of the references of the IO schema.
         context: Options for turning paths into URIs.
-        depth: Number of references followed to reach the schema.
 
     Returns:
-        The converted value, or ``_ABSENT``.
+        The converted value.
 
     Raises:
         _Unconvertible: If a file reference can't be given as a URI.
     """
-    if value is None:
-        return _ABSENT
-    schema, resolver = _follow(schema, resolver, depth)
+    schema, resolver = _follow(schema, resolver)
     if not isinstance(schema, dict):
         return value
     if "x-ga4gh-file" in schema:
         return _convert_file(value, context)
+    branch = _single_branch(schema)
+    if branch is not None:
+        return _convert(value, branch, resolver, context)
     if isinstance(value, list) and "prefixItems" not in schema:
         items = schema.get("items", True)
-        converted = (_convert(item, items, resolver, context, 0) for item in value)
-        return [item for item in converted if item is not _ABSENT]
+        return [
+            _convert(item, items, resolver, context)
+            for item in value
+            if item is not None
+        ]
     if isinstance(value, dict):
         properties = schema.get("properties", {})
         additional = schema.get("additionalProperties", True)
-        result = {}
-        for key, item in value.items():
-            subschema = properties.get(key, additional)
-            converted = _convert(item, subschema, resolver, context, 0)
-            if converted is not _ABSENT:
-                result[key] = converted
-        return result
+        return {
+            key: None
+            if item is None
+            else _convert(item, properties.get(key, additional), resolver, context)
+            for key, item in value.items()
+        }
     return value
 
 
-def _follow(schema: Any, resolver: Any, depth: int) -> tuple[Any, Any]:
+def _single_branch(schema: dict[str, Any]) -> Any:
+    """Return the only branch of ``anyOf`` or ``oneOf`` that isn't ``null``.
+
+    Args:
+        schema: A schema without a shape of its own (no file reference).
+
+    Returns:
+        The branch, or ``None`` if the schema has a shape of its own, or no
+        such single branch.
+    """
+    if _SHAPE & set(schema):
+        return None
+    for keyword in ("anyOf", "oneOf"):
+        branches = schema.get(keyword)
+        if isinstance(branches, list):
+            others = [b for b in branches if b != {"type": "null"}]
+            if len(others) == 1:
+                return others[0]
+    return None
+
+
+def _follow(schema: Any, resolver: Any) -> tuple[Any, Any]:
     """Follow the ``$ref`` of a schema that has no shape of its own.
 
     Args:
         schema: The schema.
         resolver: Resolver for its references.
-        depth: Number of references followed so far.
 
     Returns:
         The schema that describes the shape (``True`` if a reference can't be
         resolved, so that the value is kept as it is), and its resolver.
     """
-    shape = {"x-ga4gh-file", "items", "properties", "additionalProperties"}
-    while isinstance(schema, dict) and "$ref" in schema and not shape & set(schema):
+    depth = 0
+    while isinstance(schema, dict) and "$ref" in schema and not _SHAPE & set(schema):
         if depth >= _MAX_REFS:
             return True, resolver
         try:

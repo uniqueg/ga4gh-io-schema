@@ -25,7 +25,11 @@
         "location": "s3://example-bucket/toil/run-2/summary.txt"
       },
       "contigs": 42,
-      "plot": null
+      "plot": null,
+      "coverage": {
+        "class": "File",
+        "location": "s3://example-bucket/toil/run-2/coverage.tsv"
+      }
     },
     "chunks": [
       {
