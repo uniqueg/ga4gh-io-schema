@@ -1,0 +1,93 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/vectors/cwl/1.0.0",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "CWL",
+    "descriptor_type_version": "v1.2"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "paired",
+            "single"
+          ]
+        },
+        "reads": {
+          "type": "string"
+        },
+        "mates": {
+          "type": "string"
+        },
+        "extra": {
+          "type": "object",
+          "properties": {
+            "note": {
+              "type": "string"
+            }
+          },
+          "unevaluatedProperties": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          }
+        },
+        "inputs_list": {
+          "type": "array",
+          "contains": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          }
+        }
+      },
+      "required": [
+        "mode",
+        "reads"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "paired"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reads": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "reads": {
+            "type": "string"
+          }
+        }
+      },
+      "dependentSchemas": {
+        "mates": {
+          "properties": {
+            "mates": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
