@@ -1,0 +1,113 @@
+"""The ``convert wdl`` subcommand: convert a WDL workflow or task."""
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from ga4gh_io_schema.cli.base import (
+    ROOT,
+    CliError,
+    Command,
+    CommandResult,
+    ErrorKind,
+    read_text,
+)
+from ga4gh_io_schema.converters import wdl
+
+#: Group of the converters; each converter module adds its command to it.
+CONVERT = ROOT.group(
+    "convert",
+    help="Convert the parameter descriptions of workflow languages to IO schemas.",
+)
+
+
+class WdlCommand(Command):
+    """Convert the inputs and outputs of a WDL workflow or task."""
+
+    name = "wdl"
+    help = "Convert the inputs and outputs of a WDL workflow or task to an IO schema."
+
+    def configure(self, parser: argparse.ArgumentParser) -> None:
+        """Add the arguments of the command to its parser.
+
+        Args:
+            parser: Parser of the command.
+        """
+        parser.add_argument(
+            "source",
+            help="Path to the WDL document, or '-' for standard input.",
+        )
+        parser.add_argument(
+            "--task",
+            "-t",
+            help=(
+                "Convert this task instead of the workflow (needed for a "
+                "document without a workflow and with several tasks)."
+            ),
+        )
+        parser.add_argument(
+            "--nested-inputs",
+            action="store_true",
+            help=(
+                "Include the optional inputs of calls that the workflow doesn't "
+                "set (e.g., 'align.threads'), as hidden parameters."
+            ),
+        )
+        parser.add_argument(
+            "--import-path",
+            "-p",
+            action="append",
+            default=[],
+            type=Path,
+            metavar="DIR",
+            help=(
+                "Directory to search imports in and read them from, besides "
+                "the directory of the document; can be repeated."
+            ),
+        )
+
+    def run(self, args: argparse.Namespace) -> CommandResult:
+        """Convert the document.
+
+        Notes of the conversion go to standard error, or, with ``--json``,
+        into the result.
+
+        Args:
+            args: Parsed arguments.
+
+        Returns:
+            The IO schema.
+
+        Raises:
+            CliError: If miniwdl isn't installed, the document can't be read,
+                loaded or converted.
+        """
+        text = read_text(args.source)
+        try:
+            conversion = wdl.convert(
+                args.source,
+                text,
+                task=args.task,
+                nested_inputs=args.nested_inputs,
+                import_paths=args.import_path,
+            )
+        except wdl.MissingDependencyError as exc:
+            raise CliError(ErrorKind.IO, str(exc)) from exc
+        except wdl.SourceError as exc:
+            raise CliError(ErrorKind.VALIDATION, exc.message) from exc
+        except wdl.ConversionError as exc:
+            raise CliError(ErrorKind.VALIDATION, exc.message, exc.location) from exc
+        if not args.json:
+            for note in conversion.notes:
+                print(note.to_text(), file=sys.stderr)
+        return CommandResult(
+            text=json.dumps(conversion.schema, indent=2),
+            data={
+                "schema": conversion.schema,
+                "notes": [note.to_dict() for note in conversion.notes],
+            },
+        )
+
+
+CONVERT.register(WdlCommand())
