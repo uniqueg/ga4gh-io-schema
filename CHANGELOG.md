@@ -59,14 +59,33 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     (deferred), drafting of IO schemas by AI agents (cut), or the claim that
     the profile suits machine learning pipelines (cut; an open question on
     the roadmap).
+- `outputs` must be an object schema (not a boolean schema), with
+  `"type": "object"` if it sets `type`, and without references or
+  applicators (`$ref`, `$dynamicRef`, `allOf`, `anyOf`, `oneOf`, `not`,
+  `if`, `then`, `else`, `dependentSchemas`) on `outputs` itself: the
+  outputs are its direct `properties`. Schemas that keep their outputs
+  behind a `$ref` inline the referenced schema. `x-ga4gh-output-glob`
+  needs a list's `items` written in place, not as a `$ref`. `outputs`
+  stays optional, as since version 0.1; without it, a schema now
+  explicitly describes no outputs. (#11)
 
 ### Added
 
 - `ga4gh-io-schema convert snakemake`: converts a Snakemake config schema
   (YAML or JSON, Draft 4 to 2020-12) and sample-sheet schemas to an IO
   schema, with file references from documented, overridable heuristics, the
-  sample sheets as tabular hints, and notes on every decision to check;
-  YAML needs the new `snakemake` extra. (#20)
+  sample sheets as tabular hints, file outputs found by glob
+  (`--out-file`, `--out-files`, `--out-dir`), the engine binding
+  (`descriptor_type` `SMK`), and notes on every decision to check; YAML
+  needs the new `snakemake` extra. (#20)
+- An outputs model: the shapes of output values (files, lists, files keyed
+  by sample, records, scalars; absent, never `null`, if not produced), the
+  normalised outputs object that clients consume, how outputs are found in
+  what WES servers report (by name, else by glob), partial outputs of
+  failed runs, and notes on CWL, WDL, Nextflow and Snakemake. The new
+  keyword `x-ga4gh-output-glob` finds an output among the files of a run,
+  relative to its output directory, for engines that don't report outputs
+  by name. The examples have more outputs. (#11)
 - File references (`x-ga4gh-file`): kind (`file` or `directory`), media
   type, format term, compression, required secondary files as CWL-style
   suffix patterns, and allowed URI schemes; a defined value syntax (absolute

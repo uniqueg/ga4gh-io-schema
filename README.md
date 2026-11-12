@@ -19,7 +19,7 @@ This repository incubates a proposed **GA4GH JSON Schema Profile** (and accompan
 The documentation is on [Read the Docs](https://ga4gh-io-schema.readthedocs.io/):
 
 - [Motivation](https://ga4gh-io-schema.readthedocs.io/en/latest/motivation/): the usability gap, goals and non-goals
-- [Specification](https://ga4gh-io-schema.readthedocs.io/en/latest/specification/): keywords, output contract, meta-schema, conformance and examples
+- [Specification](https://ga4gh-io-schema.readthedocs.io/en/latest/specification/): keywords, outputs model, meta-schema, conformance and examples
 - [Rationale](https://ga4gh-io-schema.readthedocs.io/en/latest/rationale/): ecosystem survey and design decisions
 - [Related work](https://ga4gh-io-schema.readthedocs.io/en/latest/related-work/): overlapping standards and tools, and how the profile relates to them
 - [Security considerations](https://ga4gh-io-schema.readthedocs.io/en/latest/security/)
