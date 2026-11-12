@@ -167,3 +167,46 @@ def test_installed_cli_checks_nested_vocabulary(
 
     assert result.returncode == 1
     assert "'no' is not of type 'boolean'" in result.stderr
+
+
+def test_installed_cli_converts_snakemake_json(
+    installed_cli: Path, tmp_path: Path
+) -> None:
+    """Test ``convert snakemake`` without the extra: JSON works, YAML says why not.
+
+    Args:
+        installed_cli: Path to the installed command-line entry point.
+        tmp_path: Pytest fixture providing a working directory outside the repo.
+    """
+    config = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "properties": {"genome_fasta": {"type": "string"}},
+    }
+    path = tmp_path / "config.schema.json"
+    path.write_text(json.dumps(config), encoding="utf-8")
+
+    result = subprocess.run(
+        [installed_cli, "convert", "snakemake", path],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    yaml_result = subprocess.run(
+        [
+            installed_cli,
+            "convert",
+            "snakemake",
+            DATA_DIR / "snakemake" / "rna-seq-star-deseq2" / "config.schema.yaml",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    inputs = json.loads(result.stdout)["properties"]["inputs"]
+    assert inputs["properties"]["genome_fasta"]["x-ga4gh-file"] == {"kind": "file"}
+    assert yaml_result.returncode == 3
+    assert "install 'ga4gh-io-schema[snakemake]'" in yaml_result.stderr
