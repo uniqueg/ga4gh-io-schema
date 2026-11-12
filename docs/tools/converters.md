@@ -1,8 +1,8 @@
 # Converters
 
-> **To be written.** Converters are planned (see
+> Converters are added one by one (see
 > [Roadmap](../roadmap.md#next-steps), "Schema Translation Tooling"). This
-> page will document each of them as it becomes available.
+> page lists each of them; the available ones link to their pages.
 
 ## From workflow languages to IO schemas
 
@@ -17,7 +17,8 @@
   [Snakemake converter](convert-snakemake.md).
 - **CWL:** from the inputs and outputs of a `Workflow` or `CommandLineTool`;
   see [CWL converter](cwl.md).
-- **WDL:** from `input`, `output` and `parameter_meta` blocks; planned.
+- **WDL:** from `input`, `output` and `parameter_meta` blocks:
+  `ga4gh-io-schema convert wdl` (see [WDL converter](convert-wdl.md)).
 
 Converters emit only keywords and values of the profile version that they
 target: output with removed ones (e.g., `x-ga4gh-fa-icon`, the `rst`
@@ -26,4 +27,5 @@ description format, the `password` widget) fails validation.
 ## From IO schemas to WES
 
 - **WES `workflow_params`:** build the `workflow_params` of a WES run request
-  from values that are valid against an IO schema; planned.
+  from values that are valid against an IO schema; available as
+  [`wes-params`](wes-params.md).

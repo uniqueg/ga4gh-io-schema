@@ -1310,11 +1310,10 @@ def test_child_escapes_keys() -> None:
 
 
 def test_dev_extra_installs_the_cwl_extra() -> None:
-    """Test that the ``dev`` extra pins ``cwl-utils`` like the ``cwl`` extra."""
+    """Test that the ``dev`` extra installs the ``cwl`` extra, which CI needs."""
     pyproject = tomllib.loads(
         (CWL_DIR.parents[2] / "pyproject.toml").read_text("utf-8")
     )
     extras = pyproject["project"]["optional-dependencies"]
 
-    cwl_requirements = [r for r in extras["dev"] if r.startswith("cwl-utils")]
-    assert cwl_requirements == extras["cwl"]
+    assert "ga4gh-io-schema[cwl]" in extras["dev"]

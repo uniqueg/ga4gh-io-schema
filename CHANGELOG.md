@@ -78,6 +78,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`--out-file`, `--out-files`, `--out-dir`), the engine binding
   (`descriptor_type` `SMK`), and notes on every decision to check; YAML
   needs the new `snakemake` extra. (#20)
+- `ga4gh-io-schema convert wdl` converts the inputs and outputs of a WDL
+  1.0, 1.1 or 1.2 workflow or task to an IO schema: WDL types (files as file
+  references), literal defaults, common `parameter_meta` keys, nested
+  inputs of calls, outputs (as the outputs model requires: required unless
+  optional, no `null` outputs or list items), and the engine binding
+  (`x-ga4gh-workflow` with the entry point and checksum,
+  `x-ga4gh-parameter` with the WDL type); it needs the new `wdl` extra
+  (miniwdl). (#22)
 - An outputs model: the shapes of output values (files, lists, files keyed
   by sample, records, scalars; absent, never `null`, if not produced), the
   normalised outputs object that clients consume, how outputs are found in
@@ -125,8 +133,26 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A language-neutral conformance suite in `tests/conformance/` (the
   positive and negative schema documents of the tests, moved from
   `tests/data/`), with a runner for this package. (#14)
+- Markdown descriptions (`"x-ga4gh-description-format": "markdown"`) are
+  CommonMark 0.31.2, with raw HTML shown as text, images shown as their alt
+  text and not loaded, and links only with allowed schemes; of the GitHub
+  Flavored Markdown extensions, only tables, strikethrough and autolinks are
+  allowed. (#41)
 - Versioning policy and governance note, and this changelog in the
   documentation, with the history of versions 0.1 and 0.2. (#14)
+- Engine bindings: how input values become the `workflow_params` of a WES
+  run request for `NFL`, `SMK`, `WDL` and `CWL` (names from
+  `x-ga4gh-parameter`, WDL names qualified with the entry point, CWL `File`
+  and `Directory` objects, no defaults inserted), which `RunRequest` fields
+  come from TRS, and how servers translate `workflow_params` back; requirements
+  for request builders and WES servers on the conformance page; a guide for
+  WES clients and servers. (#18)
+- The subcommand `ga4gh-io-schema wes-params` and the module
+  `ga4gh_io_schema.wes`: validate input values against `inputs`, check file
+  reference values against the rules and the deployment's allow-list, and
+  write `workflow_params` or, with `--request`, a WES `RunRequest`. (#18)
+- Language-neutral test vectors in `tests/vectors/` for the translation
+  (`wes-params/`) and for file reference values (`file-values/`). (#18)
 
 ## v0.2 (2026-10-13)
 

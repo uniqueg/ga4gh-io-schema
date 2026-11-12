@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCHEMAS_DIR = REPO_ROOT / "schemas"
 DATA_DIR = REPO_ROOT / "tests" / "data"
 SUITE_DIR = REPO_ROOT / "tests" / "conformance"
+VECTORS_DIR = REPO_ROOT / "tests" / "vectors"
 PROFILE_PATH = SCHEMAS_DIR / "ga4gh-io-profile.schema.json"
 # Docs that show CLI usage; mkdocs build --strict checks the links of docs/.
 USAGE_DOCS = [
@@ -69,6 +70,7 @@ def test_schema_ids_share_one_release_tag() -> None:
         *SCHEMAS_DIR.rglob("*.json"),
         *DATA_DIR.rglob("*.json"),
         *SUITE_DIR.rglob("*.json"),
+        *VECTORS_DIR.rglob("*.json"),
     ]:
         text = path.read_text(encoding="utf-8")
         assert "/main/" not in text, path

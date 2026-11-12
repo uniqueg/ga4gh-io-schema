@@ -1,0 +1,12 @@
+{
+  "mode": "paired",
+  "reads": "https://data.example.org/r1.fq",
+  "mates": "https://data.example.org/r2.fq",
+  "extra": {
+    "note": "x",
+    "panel": "https://data.example.org/panel.bed"
+  },
+  "inputs_list": [
+    "https://data.example.org/a.txt"
+  ]
+}
