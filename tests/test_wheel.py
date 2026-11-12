@@ -24,10 +24,12 @@ pytestmark = pytest.mark.wheel
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "tests" / "data"
 EXAMPLES = sorted(DATA_DIR.glob("example_*.schema.json"))
-PACKAGED_SCHEMAS = [
-    "ga4gh_io_schema/schemas/ga4gh-io-profile.schema.json",
-    "ga4gh_io_schema/schemas/vocabularies/ui-widgets.schema.json",
-]
+SCHEMAS_DIR = REPO_ROOT / "schemas"
+#: Every schema of the repository, as the wheel must ship it.
+PACKAGED_SCHEMAS = sorted(
+    f"ga4gh_io_schema/schemas/{path.relative_to(SCHEMAS_DIR).as_posix()}"
+    for path in SCHEMAS_DIR.rglob("*.json")
+)
 
 
 def _run(command: list[str | Path], **kwargs: object) -> None:
@@ -137,3 +139,24 @@ def test_installed_cli_checks_formats(installed_cli: Path, tmp_path: Path) -> No
 
     assert result.returncode == 1
     assert "is not a 'uri-reference'" in result.stderr
+
+
+def test_installed_cli_checks_nested_vocabulary(
+    installed_cli: Path, tmp_path: Path
+) -> None:
+    """Test that the installed CLI applies the vocabularies to nested schemas.
+
+    Args:
+        installed_cli: Path to the installed command-line entry point.
+        tmp_path: Pytest fixture providing a working directory outside the repo.
+    """
+    result = subprocess.run(
+        [installed_cli, DATA_DIR / "invalid" / "tabular-schema-nested.schema.json"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert "'no' is not of type 'boolean'" in result.stderr

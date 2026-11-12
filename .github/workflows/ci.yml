@@ -21,10 +21,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      # Newest Python version in its security phase (organisation policy)
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.13"
           cache: "pip"
 
       - name: Install dependencies
@@ -47,7 +48,7 @@ jobs:
       - name: Validate GA4GH Meta-Schema syntax
         run: |
           check-jsonschema --check-metaschema schemas/ga4gh-io-profile.schema.json
-          check-jsonschema --check-metaschema schemas/vocabularies/ui-widgets.schema.json
+          check-jsonschema --check-metaschema schemas/vocabularies/*.schema.json
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -84,9 +85,26 @@ jobs:
           ga4gh-io-schema-validator tests/data/example_workflow.schema.json
           ga4gh-io-schema-validator tests/data/example_tool.schema.json
 
+      # Each bad schema must fail with exit code 1 and a validation error, not
+      # with any error (e.g. a missing file); tests/test_cli.py checks the
+      # exact message of each.
       - name: E2E CLI Validation (Invalid Schemas)
         run: |
-          ! ga4gh-io-schema-validator tests/data/invalid.schema.json
+          for schema in tests/data/invalid/*.schema.json; do
+            set +e
+            output=$(ga4gh-io-schema-validator "$schema" 2>&1)
+            status=$?
+            set -e
+            echo "$schema: $output"
+            if [ "$status" -ne 1 ]; then
+              echo "::error::expected exit code 1 for $schema, got $status"
+              exit 1
+            fi
+            if [[ "$output" != "Validation Error: "* ]]; then
+              echo "::error::expected a validation error for $schema"
+              exit 1
+            fi
+          done
 
   docs:
     name: Docs
