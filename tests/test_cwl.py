@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
@@ -536,7 +537,7 @@ def test_unknown_type_object_fails() -> None:
     converter = empty_converter()
 
     with pytest.raises(cwl.CwlConversionError, match="Unknown CWL type"):
-        converter.type_schema(object(), "$", {}, [False], True, ())
+        converter.type_schema(object(), "$", cwl._Files({}, is_input=True), ())
 
 
 # Formats
@@ -919,7 +920,10 @@ def test_cli_without_cwl_utils(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Test that the command explains how to install the optional dependency."""
-    monkeypatch.setitem(sys.modules, "ga4gh_io_schema.cwl", None)
+    # Importing the converter again finds no cwl-utils
+    for name in [name for name in sys.modules if name.split(".")[0] == "cwl_utils"]:
+        monkeypatch.setitem(sys.modules, name, None)
+    monkeypatch.delitem(sys.modules, "ga4gh_io_schema.cwl")
     monkeypatch.delattr(ga4gh_io_schema, "cwl")
 
     assert main(["convert", "cwl", str(CWL_DIR / "bwa-mem-tool.cwl")]) == 3
@@ -928,6 +932,18 @@ def test_cli_without_cwl_utils(
         "Error: The CWL converter needs the optional dependency cwl-utils; "
         "install it with: pip install 'ga4gh-io-schema[cwl]'\n"
     )
+
+
+def test_cli_other_import_errors_are_internal(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that an import error of another module gets no install hint."""
+    monkeypatch.setitem(sys.modules, "ga4gh_io_schema.cwl", None)
+    monkeypatch.delattr(ga4gh_io_schema, "cwl")
+
+    assert main(["convert", "cwl", str(CWL_DIR / "bwa-mem-tool.cwl")]) == 4
+
+    assert capsys.readouterr().err.startswith("An unexpected error occurred: ")
 
 
 def test_cli_rejects_output_that_does_not_comply(
@@ -961,3 +977,14 @@ def test_child_escapes_keys() -> None:
     """Test that keys of JSON paths are written like those of jsonschema."""
     assert cwl._child("$", "a", "b_1") == "$.a.b_1"
     assert cwl._child("$", "_a", "it's", "a\\b") == "$['_a']['it\\'s']['a\\\\b']"
+
+
+def test_dev_extra_installs_the_cwl_extra() -> None:
+    """Test that the ``dev`` extra pins ``cwl-utils`` like the ``cwl`` extra."""
+    pyproject = tomllib.loads(
+        (CWL_DIR.parents[2] / "pyproject.toml").read_text("utf-8")
+    )
+    extras = pyproject["project"]["optional-dependencies"]
+
+    cwl_requirements = [r for r in extras["dev"] if r.startswith("cwl-utils")]
+    assert cwl_requirements == extras["cwl"]

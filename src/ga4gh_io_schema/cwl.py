@@ -65,6 +65,10 @@ FILE_TYPES = frozenset({"File", "stdin", "stdout", "stderr"})
 #: check that converted schemas comply with the meta-schema).
 SECONDARY_FILE_PATTERN = re.compile(r"\^*[.]*[A-Za-z0-9_+-][A-Za-z0-9_.+-]*")
 
+# Ontology terms that the profile accepts
+_HTTP_IRI = re.compile(r"https?://")
+# Absolute URIs, as defined for the values of file references
+_URI_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
 # Keys of JSON paths that need no brackets, as in the paths of jsonschema
 _PLAIN_KEY = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 
@@ -313,8 +317,6 @@ class _Converter:
             optional, schema = self.field(
                 parameter, _child(location, "properties", name), is_input
             )
-            if is_input and parameter.default is not None:
-                optional = True
             schema["x-ga4gh-parameter"] = {"type": _type_name(parameter.type_)}
             properties[name] = schema
             if not optional:
@@ -343,14 +345,13 @@ class _Converter:
             names: Named types that contain the field, to detect recursion.
 
         Returns:
-            Whether the parameter is optional (its type allows ``null``), and
-            its schema.
+            Whether the parameter is optional (its type allows ``null``, or it
+            is an input with a default), and its schema.
         """
         optional, type_ = _without_null(parameter.type_)
-        annotation = self.file_annotation(parameter, location, is_input)
-        used = [False]
-        schema = self.type_schema(type_, location, annotation, used, is_input, names)
-        if annotation and not used[0]:
+        files = _Files(self.file_annotation(parameter, location, is_input), is_input)
+        schema = self.type_schema(type_, location, files, names)
+        if files.annotation and not files.applied:
             self.note(
                 location,
                 "'format' and 'secondaryFiles' apply only to files; the type "
@@ -359,6 +360,7 @@ class _Converter:
         _add_text(schema, parameter)
         default = getattr(parameter, "default", None)
         if is_input and default is not None:
+            optional = True
             converted, value = self.default(default, location)
             if converted:
                 schema["default"] = value
@@ -419,7 +421,7 @@ class _Converter:
                 "evaluated; it is left out.",
             )
             return None
-        if not re.match(r"https?://", format_):
+        if not _HTTP_IRI.match(format_):
             self.note(
                 location,
                 f"'format' {format_!r} is not an http(s) IRI (is its namespace "
@@ -497,9 +499,7 @@ class _Converter:
         self,
         type_: Any,
         location: str,
-        annotation: dict[str, Any],
-        used: list[bool],
-        is_input: bool,
+        files: "_Files",
         names: tuple[str, ...],
     ) -> dict[str, Any]:
         """Convert a CWL type to a schema.
@@ -508,11 +508,8 @@ class _Converter:
             type_: The type: a name, a union (list) or an array, enum or
                 record schema.
             location: JSON path of the converted schema.
-            annotation: Keys of ``x-ga4gh-file`` for the files of the
-                parameter; they apply to files in the type, its arrays and
-                unions, but not in records.
-            used: Set to ``[True]`` if ``annotation`` was applied.
-            is_input: Whether the type is that of an input.
+            files: The file annotation of the parameter, and whether the
+                type is that of an input.
             names: Named types that contain this one, to detect recursion.
 
         Returns:
@@ -522,15 +519,15 @@ class _Converter:
             CwlConversionError: If the type is unknown or recursive.
         """
         if isinstance(type_, list):
-            return self.union(type_, location, annotation, used, is_input, names)
+            return self.union(type_, location, files, names)
         if isinstance(type_, str):
-            return self.named_type(type_, location, annotation, used, is_input, names)
+            return self.named_type(type_, location, files, names)
         kind = getattr(type_, "type_", None)
         if kind == "array":
             return {
                 "type": "array",
                 "items": self.type_schema(
-                    type_.items, f"{location}.items", annotation, used, is_input, names
+                    type_.items, f"{location}.items", files, names
                 ),
             }
         if kind == "enum":
@@ -541,16 +538,14 @@ class _Converter:
             _add_text(schema, type_)
             return schema
         if kind == "record":
-            return self.record(type_, location, is_input, names)
+            return self.record(type_, location, files.is_input, names)
         raise CwlConversionError(f"Unknown CWL type: {type_!r}", location)
 
     def union(
         self,
         types: list[Any],
         location: str,
-        annotation: dict[str, Any],
-        used: list[bool],
-        is_input: bool,
+        files: "_Files",
         names: tuple[str, ...],
     ) -> dict[str, Any]:
         """Convert a union of CWL types to ``anyOf``.
@@ -558,26 +553,21 @@ class _Converter:
         Args:
             types: Types of the union.
             location: JSON path of the converted schema.
-            annotation: Keys of ``x-ga4gh-file`` for the files of the union.
-            used: Set to ``[True]`` if ``annotation`` was applied.
-            is_input: Whether the union is the type of an input.
+            files: The file annotation of the parameter, and whether the
+                type is that of an input.
             names: Named types that contain this one.
 
         Returns:
             The schema of the only type, or ``anyOf`` with one branch per type.
         """
         if len(types) == 1:
-            return self.type_schema(
-                types[0], location, annotation, used, is_input, names
-            )
+            return self.type_schema(types[0], location, files, names)
         return {
             "anyOf": [
                 self.type_schema(
                     member,
                     f"{location}.anyOf[{number}]",
-                    annotation,
-                    used,
-                    is_input,
+                    files,
                     names,
                 )
                 for number, member in enumerate(types)
@@ -588,9 +578,7 @@ class _Converter:
         self,
         name: str,
         location: str,
-        annotation: dict[str, Any],
-        used: list[bool],
-        is_input: bool,
+        files: "_Files",
         names: tuple[str, ...],
     ) -> dict[str, Any]:
         """Convert a primitive, file or named CWL type.
@@ -599,9 +587,8 @@ class _Converter:
             name: Name of the type (e.g., ``int``, ``File`` or the ID of a
                 type of a ``SchemaDefRequirement``).
             location: JSON path of the converted schema.
-            annotation: Keys of ``x-ga4gh-file`` if the type is a file.
-            used: Set to ``[True]`` if ``annotation`` was applied.
-            is_input: Whether the type is that of an input.
+            files: The file annotation of the parameter, and whether the
+                type is that of an input.
             names: Named types that contain this one.
 
         Returns:
@@ -613,8 +600,11 @@ class _Converter:
         if name in PRIMITIVE_TYPES:
             return {"type": PRIMITIVE_TYPES[name]}
         if name in FILE_TYPES:
-            used[0] = used[0] or bool(annotation)
-            return {"type": "string", "x-ga4gh-file": {"kind": "file", **annotation}}
+            files.applied = True
+            return {
+                "type": "string",
+                "x-ga4gh-file": {"kind": "file", **files.annotation},
+            }
         if name == "Directory":
             return {"type": "string", "x-ga4gh-file": {"kind": "directory"}}
         if name == "Any":
@@ -635,9 +625,7 @@ class _Converter:
             raise CwlConversionError(
                 f"Unknown CWL type: {get_value_from_uri(name) or name!r}", location
             )
-        return self.type_schema(
-            target, location, annotation, used, is_input, (*names, name)
-        )
+        return self.type_schema(target, location, files, (*names, name))
 
     def record(
         self, record: Any, location: str, is_input: bool, names: tuple[str, ...]
@@ -719,6 +707,23 @@ class _Converter:
         return value
 
 
+@dataclass
+class _Files:
+    """The file annotation of a parameter, while its type is converted.
+
+    Attributes:
+        annotation: Keys of ``x-ga4gh-file`` (e.g., ``ontology``) for the
+            files of the parameter; they apply to files in its type, arrays
+            and unions, but not in records.
+        is_input: Whether the parameter is an input.
+        applied: Whether a file of the type got the annotation.
+    """
+
+    annotation: dict[str, Any]
+    is_input: bool
+    applied: bool = False
+
+
 class _UnconvertibleDefault(Exception):
     """A default value refers to a file that an IO schema can't refer to."""
 
@@ -738,9 +743,7 @@ def _file_location(class_: str, location: Any) -> str:
         _UnconvertibleDefault: If the location is missing (e.g., a file
             literal), relative, or a local file.
     """
-    if not isinstance(location, str) or not re.match(
-        r"[A-Za-z][A-Za-z0-9+.-]*:", location
-    ):
+    if not isinstance(location, str) or not _URI_SCHEME.match(location):
         raise _UnconvertibleDefault(f"a {class_} without an absolute location")
     if location.lower().startswith("file:"):
         raise _UnconvertibleDefault(

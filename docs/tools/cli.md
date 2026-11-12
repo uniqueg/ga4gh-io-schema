@@ -8,8 +8,8 @@ tool:
 | `validate` | Check an IO schema against the GA4GH IO Profile (see [Validator](validator.md)). |
 | `convert cwl` | Convert the inputs and outputs of a CWL document to an IO schema (see [CWL converter](cwl.md)). |
 
-Converters and the WES tools will be added as further subcommands (e.g.,
-`ga4gh-io-schema convert nextflow`). `ga4gh-io-schema --help` lists the
+Further converters (e.g., `ga4gh-io-schema convert nextflow`) and the WES
+tools will be added as further subcommands. `ga4gh-io-schema --help` lists the
 subcommands, and `ga4gh-io-schema <subcommand> --help` their options.
 
 !!! note "Renamed in v0.3.0"
@@ -37,9 +37,14 @@ All subcommands share these conventions; the shared options (`--output`,
     Validation Error: 'inputs' is a required property (at $.properties)
     ```
 
+- **Warnings:** converters report what they can't convert, and still
+  succeed. Each warning goes to standard error as one line,
+  `Warning: <message> (at <location>)`, where the location is the JSON path
+  of the affected schema in the result; with `--json`, the result has
+  `"warnings"` instead, a list of objects with `message` and `location`.
 - **JSON:** with `--json`, the result and the errors are JSON objects on one
   line. A command whose result is text (e.g., a converted file) writes
-  `{"output": "<text>"}`. An error has a `kind` (`validation`, `io`, `meta-schema` or
+  `{"output": "<text>"}`; a converter adds `"warnings"` (see below). An error has a `kind` (`validation`, `io`, `meta-schema` or
   `internal`), a `message`, the JSON path of the offending value as
   `location` (or `null`), and the `exitCode`:
 
