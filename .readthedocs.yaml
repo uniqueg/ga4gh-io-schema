@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    # The Python version of CI (`.github/workflows/ci.yml`)
+    python: "3.14"
+
+mkdocs:
+  configuration: mkdocs.yml
+  # Fail on all warnings to avoid broken links and references
+  fail_on_warning: true
+
+# The package (for the generated reference of its Python API) with the
+# `docs` extra of `pyproject.toml`
+python:
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
