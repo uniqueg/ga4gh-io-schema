@@ -81,6 +81,21 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A specification page "UI widgets": for each widget of the vocabulary, the
   types and keywords that it needs and the value that it produces; input
   widgets and output viewers kept apart. (#38)
+- `ga4gh-io-schema convert snakemake`: converts a Snakemake config schema
+  (YAML or JSON, Draft 4 to 2020-12) and sample-sheet schemas to an IO
+  schema, with file references from documented, overridable heuristics, the
+  sample sheets as tabular hints, file outputs found by glob
+  (`--out-file`, `--out-files`, `--out-dir`), the engine binding
+  (`descriptor_type` `SMK`), and notes on every decision to check; YAML
+  needs the new `snakemake` extra. (#20)
+- `ga4gh-io-schema convert wdl` converts the inputs and outputs of a WDL
+  1.0, 1.1 or 1.2 workflow or task to an IO schema: WDL types (files as file
+  references), literal defaults, common `parameter_meta` keys, nested
+  inputs of calls, outputs (as the outputs model requires: required unless
+  optional, no `null` outputs or list items), and the engine binding
+  (`x-ga4gh-workflow` with the entry point and checksum,
+  `x-ga4gh-parameter` with the WDL type); it needs the new `wdl` extra
+  (miniwdl). (#22)
 - An outputs model: the shapes of output values (files, lists, files keyed
   by sample, records, scalars; absent, never `null`, if not produced), the
   normalised outputs object that clients consume, how outputs are found in
