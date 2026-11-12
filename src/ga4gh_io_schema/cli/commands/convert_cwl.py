@@ -79,11 +79,12 @@ class ConvertCwlCommand(Command):
                 "install it with: pip install 'ga4gh-io-schema[cwl]'",
             ) from exc
 
-        text = read_text(args.document)
         if args.document == STDIN:
+            text = read_text(STDIN)
             # Relative references resolve against the working directory
             uri = (Path.cwd() / "stdin.cwl").as_uri()
         else:
+            text = _read_file(Path(args.document))
             uri = Path(args.document).resolve().as_uri()
         parser = cwl.CwlParser(process=args.process)
         try:
@@ -105,6 +106,32 @@ class ConvertCwlCommand(Command):
                 )
         output = json.dumps(schema, indent=2)
         return CommandResult(text=output, data={"output": output, "warnings": warnings})
+
+
+def _read_file(path: Path) -> str:
+    """Read a CWL document without translating its line ends.
+
+    :func:`~ga4gh_io_schema.cli.base.read_text` translates them, which would
+    change the checksum of the document in ``x-ga4gh-workflow``.
+
+    Args:
+        path: Path of the document.
+
+    Returns:
+        The text of the document.
+
+    Raises:
+        CliError: If the file can't be read or isn't UTF-8, with the messages
+            of :func:`~ga4gh_io_schema.cli.base.read_text`.
+    """
+    try:
+        return path.read_bytes().decode("utf-8")
+    except FileNotFoundError as exc:
+        raise CliError(ErrorKind.IO, f"File not found - {exc}") from exc
+    except UnicodeDecodeError as exc:
+        raise CliError(ErrorKind.IO, f"Not UTF-8 text - {path}: {exc}") from exc
+    except OSError as exc:
+        raise CliError(ErrorKind.IO, f"Can't read - {exc}") from exc
 
 
 def _check(schema: dict[str, Any]) -> None:

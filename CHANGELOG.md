@@ -87,7 +87,9 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A CWL converter, `ga4gh-io-schema convert cwl`: the inputs and outputs of
   CWL v1.0 to v1.2 documents (also packed) become an IO schema, with file
   references for files and directories, `format` as ontology term and
-  required secondary files; what it can't convert (e.g., expressions) is
+  required secondary files, `x-ga4gh-workflow` (descriptor type and
+  version, checksum, entry point) and the CWL type of each parameter in
+  `x-ga4gh-parameter`; what it can't convert (e.g., expressions) is
   reported as warnings. It needs the optional dependency `cwl-utils`
   (`ga4gh-io-schema[cwl]`). (#21)
 - Conformance: BCP 14 (RFC 2119, RFC 8174) key words, used consistently in

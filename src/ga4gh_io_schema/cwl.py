@@ -23,6 +23,7 @@ a document refers to exist; it reads local files that the document imports
 (``$import``, ``$include``), as every CWL loader does.
 """
 
+import hashlib
 import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -117,6 +118,11 @@ class CwlParser:
             ``$graph`` (e.g., ``main``); by default, ``main``, or the only
             process of the graph.
         notes: What the last call of :meth:`to_ga4gh` couldn't convert.
+        workflow: ``x-ga4gh-workflow`` of the document that the parser read
+            last: the descriptor type and version, the SHA-256 checksum of
+            the document and, for a document with a ``$graph``, the entry
+            point (e.g., ``#main``). The TRS identifiers and the path of
+            the primary descriptor aren't known to the converter.
     """
 
     def __init__(self, process: str | None = None) -> None:
@@ -128,6 +134,7 @@ class CwlParser:
         """
         self.process = process.lstrip("#") if process else None
         self.notes: list[ConversionNote] = []
+        self.workflow: dict[str, Any] | None = None
 
     def parse(self, path: Path | str) -> Any:
         """Read a CWL document from a file.
@@ -144,8 +151,10 @@ class CwlParser:
             CwlConversionError: If the document isn't a valid CWL process.
         """
         resolved = Path(path).resolve()
+        # Decoded from the bytes, without translating line ends, so that the
+        # checksum is that of the file
         return self.parse_string(
-            resolved.read_text(encoding="utf-8"), resolved.as_uri()
+            resolved.read_bytes().decode("utf-8"), resolved.as_uri()
         )
 
     def parse_string(self, text: str, uri: str) -> Any:
@@ -157,12 +166,15 @@ class CwlParser:
                 relative references (e.g., ``$import``).
 
         Returns:
-            The process, as an object of the parser of ``cwl-utils``.
+            The process, as an object of the parser of ``cwl-utils``. The
+            parser keeps what :meth:`to_ga4gh` needs for ``x-ga4gh-workflow``
+            in :attr:`workflow`.
 
         Raises:
             CwlConversionError: If the document isn't valid YAML or JSON, or
                 isn't a valid CWL process.
         """
+        self.workflow = None
         try:
             document = yaml_no_ts().load(text)
         except YAMLError as exc:
@@ -204,6 +216,20 @@ class CwlParser:
                 "The document is not a CWL process; expected one of "
                 f"{', '.join(sorted(PROCESS_CLASSES))}."
             )
+        workflow: dict[str, Any] = {
+            "descriptor_type": "CWL",
+            # The parser of cwl-utils accepts only known versions (e.g., v1.2)
+            "descriptor_type_version": str(document["cwlVersion"]),
+        }
+        workflow["checksum"] = [
+            {
+                "type": "sha-256",
+                "checksum": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            }
+        ]
+        if "$graph" in document:
+            workflow["entry_point"] = f"#{process_id or 'main'}"
+        self.workflow = workflow
         return process
 
     def to_ga4gh(self, source: Any) -> dict[str, Any]:
@@ -225,6 +251,7 @@ class CwlParser:
         converter = _Converter(source.loadingOptions, self.notes)
         schema: dict[str, Any] = {"$schema": load_profile()["$id"]}
         _add_text(schema, source)
+        schema["x-ga4gh-workflow"] = dict(self.workflow or {"descriptor_type": "CWL"})
         schema["type"] = "object"
         schema["properties"] = {
             "inputs": converter.parameters(
@@ -288,6 +315,7 @@ class _Converter:
             )
             if is_input and parameter.default is not None:
                 optional = True
+            schema["x-ga4gh-parameter"] = {"type": _type_name(parameter.type_)}
             properties[name] = schema
             if not optional:
                 required.append(name)
@@ -719,6 +747,33 @@ def _file_location(class_: str, location: Any) -> str:
             f"a {class_} next to the CWL document, {Path(location).name!r}"
         )
     return location
+
+
+def _type_name(type_: Any) -> str:
+    """Write a CWL type as in a CWL document, for ``x-ga4gh-parameter``.
+
+    Args:
+        type_: The type, as loaded by the parser of ``cwl-utils``.
+
+    Returns:
+        The type in the short notation of CWL, e.g., ``File[]?``; named
+        types by their name, anonymous records and enums as ``record`` and
+        ``enum``.
+    """
+    if isinstance(type_, list):
+        rest = [member for member in type_ if member != "null"]
+        if len(rest) == 1 and len(type_) == 2:
+            return f"{_type_name(rest[0])}?"
+        return f"[{', '.join(_type_name(member) for member in type_)}]"
+    if isinstance(type_, str):
+        return get_value_from_uri(type_) or type_
+    kind = getattr(type_, "type_", None)
+    if kind == "array":
+        return f"{_type_name(type_.items)}[]"
+    name = getattr(type_, "name", None)
+    if isinstance(name, str) and not name.startswith("_:"):
+        return get_value_from_uri(name) or name
+    return str(kind)
 
 
 def _without_null(type_: Any) -> tuple[bool, Any]:

@@ -60,7 +60,39 @@ with exit status 3 (see [Exit status](cli.md#exit-status)).
 
 The process becomes the IO schema: its `label` the `title` and its `doc` the
 `description`. Its inputs become the properties of `inputs`, and its outputs
-the properties of `outputs`, with the IDs of the parameters as names:
+the properties of `outputs`, with the IDs of the parameters as names.
+
+The IO schema gets an [`x-ga4gh-workflow`](../specification/identity.md#the-workflow-block)
+block with what the converter knows about the document:
+
+```json
+"x-ga4gh-workflow": {
+  "descriptor_type": "CWL",
+  "descriptor_type_version": "v1.2",
+  "checksum": [{"type": "sha-256", "checksum": "407436f4…"}],
+  "entry_point": "#main"
+}
+```
+
+- `descriptor_type_version` is the `cwlVersion` of the document.
+- `checksum` is the SHA-256 digest of the bytes of the document, as read
+  (line ends are not translated), so that clients can detect
+  [drift](../specification/identity.md#drift) if the document is the primary
+  descriptor of the tool version.
+- `entry_point` is the ID of the converted process, for documents with a
+  `$graph` only (e.g., `#main`, or the ID given with `--process`).
+- The TRS identifiers (`trs_tool_id`, `trs_version_id`) and
+  `primary_descriptor_path` are not known to the converter; add them when
+  you publish the IO schema in a TRS (see [TRS](../adoption/trs.md)).
+
+Each property of `inputs` and `outputs` gets
+[`x-ga4gh-parameter`](../specification/identity.md#parameter-bindings) with
+its CWL type in the short notation of CWL (e.g., `File[]?`, `long`, `stdin`,
+`[int, string]`, or the name of a named type), since the JSON Schema type
+leaves a choice (e.g., `integer` for `int` and `long`). The names of the
+properties are the names of the CWL parameters, so `name` isn't needed.
+
+The types map as follows:
 
 | CWL | IO schema |
 | ----- | ----- |

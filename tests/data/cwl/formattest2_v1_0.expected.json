@@ -1,6 +1,16 @@
 {
   "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
   "description": "Reverse each line using the `rev` command",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "CWL",
+    "descriptor_type_version": "v1.0",
+    "checksum": [
+      {
+        "type": "sha-256",
+        "checksum": "4d26cca4633c24228452cc2622adf180da81465de3d8e9243ec12d30be69424b"
+      }
+    ]
+  },
   "type": "object",
   "properties": {
     "inputs": {
@@ -11,6 +21,9 @@
           "x-ga4gh-file": {
             "kind": "file",
             "ontology": "http://edamontology.org/format_2330"
+          },
+          "x-ga4gh-parameter": {
+            "type": "File"
           }
         }
       },
@@ -26,6 +39,9 @@
           "type": "string",
           "x-ga4gh-file": {
             "kind": "file"
+          },
+          "x-ga4gh-parameter": {
+            "type": "File"
           }
         }
       },

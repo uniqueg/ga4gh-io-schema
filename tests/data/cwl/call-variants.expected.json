@@ -2,6 +2,16 @@
   "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
   "title": "Call variants",
   "description": "Align reads to a reference genome and call variants.\nUsed to test the CWL converter.",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "CWL",
+    "descriptor_type_version": "v1.2",
+    "checksum": [
+      {
+        "type": "sha-256",
+        "checksum": "0408481d48607ca226a3bb787479770b329139bc5caf32f2b744381d50c3b03f"
+      }
+    ]
+  },
   "type": "object",
   "properties": {
     "inputs": {
@@ -18,7 +28,10 @@
             ]
           },
           "title": "Reference genome",
-          "description": "FASTA file of the reference genome, indexed with samtools and BWA."
+          "description": "FASTA file of the reference genome, indexed with samtools and BWA.",
+          "x-ga4gh-parameter": {
+            "type": "File"
+          }
         },
         "samples": {
           "type": "array",
@@ -65,7 +78,10 @@
             "title": "Sample",
             "description": "Sequencing reads of one sample."
           },
-          "title": "Samples"
+          "title": "Samples",
+          "x-ga4gh-parameter": {
+            "type": "Sample[]"
+          }
         },
         "caller": {
           "type": "string",
@@ -75,7 +91,10 @@
             "freebayes"
           ],
           "title": "Variant caller",
-          "default": "gatk"
+          "default": "gatk",
+          "x-ga4gh-parameter": {
+            "type": "Caller"
+          }
         },
         "regions": {
           "type": "string",
@@ -84,7 +103,10 @@
             "ontology": "http://edamontology.org/format_3003"
           },
           "title": "Regions",
-          "description": "BED file of the regions to call variants in."
+          "description": "BED file of the regions to call variants in.",
+          "x-ga4gh-parameter": {
+            "type": "File?"
+          }
         },
         "known_sites": {
           "type": "string",
@@ -95,33 +117,54 @@
               ".tbi"
             ]
           },
-          "default": "https://data.example.org/known-sites.vcf.gz"
+          "default": "https://data.example.org/known-sites.vcf.gz",
+          "x-ga4gh-parameter": {
+            "type": "File"
+          }
         },
         "blacklist": {
           "type": "string",
           "x-ga4gh-file": {
             "kind": "file"
+          },
+          "x-ga4gh-parameter": {
+            "type": "File"
           }
         },
         "annotation_dir": {
           "type": "string",
           "x-ga4gh-file": {
             "kind": "directory"
+          },
+          "x-ga4gh-parameter": {
+            "type": "Directory?"
           }
         },
         "min_quality": {
           "type": "number",
-          "default": 20.5
+          "default": 20.5,
+          "x-ga4gh-parameter": {
+            "type": "double"
+          }
         },
         "max_depth": {
-          "type": "integer"
+          "type": "integer",
+          "x-ga4gh-parameter": {
+            "type": "long?"
+          }
         },
         "threads": {
           "type": "integer",
-          "default": 4
+          "default": 4,
+          "x-ga4gh-parameter": {
+            "type": "int"
+          }
         },
         "emit_all": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-ga4gh-parameter": {
+            "type": "boolean?"
+          }
         },
         "tags": {
           "type": "array",
@@ -131,7 +174,10 @@
           "default": [
             "variants",
             "test"
-          ]
+          ],
+          "x-ga4gh-parameter": {
+            "type": "string[]"
+          }
         },
         "ploidy": {
           "anyOf": [
@@ -141,7 +187,10 @@
             {
               "type": "string"
             }
-          ]
+          ],
+          "x-ga4gh-parameter": {
+            "type": "[int, string]"
+          }
         },
         "extra_config": {
           "anyOf": [
@@ -154,13 +203,23 @@
             {
               "type": "string"
             }
-          ]
+          ],
+          "x-ga4gh-parameter": {
+            "type": "[null, File, string]"
+          }
         },
-        "options": {},
+        "options": {
+          "x-ga4gh-parameter": {
+            "type": "Any"
+          }
+        },
         "stdin_reads": {
           "type": "string",
           "x-ga4gh-file": {
             "kind": "file"
+          },
+          "x-ga4gh-parameter": {
+            "type": "stdin"
           }
         }
       },
@@ -180,6 +239,9 @@
           "type": "string",
           "x-ga4gh-file": {
             "kind": "file"
+          },
+          "x-ga4gh-parameter": {
+            "type": "stdout"
           }
         },
         "variants": {
@@ -190,6 +252,9 @@
             "secondaryFiles": [
               ".tbi"
             ]
+          },
+          "x-ga4gh-parameter": {
+            "type": "File"
           }
         },
         "alignments": {
@@ -199,6 +264,9 @@
             "x-ga4gh-file": {
               "kind": "file"
             }
+          },
+          "x-ga4gh-parameter": {
+            "type": "File[]"
           }
         },
         "summary": {
@@ -219,12 +287,18 @@
             "report"
           ],
           "additionalProperties": false,
-          "title": "Summary of the calls"
+          "title": "Summary of the calls",
+          "x-ga4gh-parameter": {
+            "type": "Summary"
+          }
         },
         "coverage": {
           "type": "string",
           "x-ga4gh-file": {
             "kind": "file"
+          },
+          "x-ga4gh-parameter": {
+            "type": "File?"
           }
         }
       },

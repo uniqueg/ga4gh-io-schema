@@ -1,5 +1,6 @@
 """Tests of the CWL converter (``ga4gh-io-schema convert cwl``)."""
 
+import hashlib
 import io
 import json
 import sys
@@ -69,18 +70,52 @@ class Converted:
 
     @property
     def inputs(self) -> dict[str, Any]:
-        """The schema of the inputs."""
-        return self.schema["properties"]["inputs"]
+        """The schema of the inputs, without ``x-ga4gh-parameter``."""
+        return _without_parameters(self.schema["properties"]["inputs"])
 
     @property
     def outputs(self) -> dict[str, Any]:
-        """The schema of the outputs."""
-        return self.schema["properties"]["outputs"]
+        """The schema of the outputs, without ``x-ga4gh-parameter``."""
+        return _without_parameters(self.schema["properties"]["outputs"])
+
+    def parameter_types(self, group: str) -> dict[str, str]:
+        """List the CWL types of ``x-ga4gh-parameter`` of inputs or outputs.
+
+        Args:
+            group: ``inputs`` or ``outputs``.
+
+        Returns:
+            The type of each property, by name.
+        """
+        properties = self.schema["properties"][group]["properties"]
+        return {
+            name: schema["x-ga4gh-parameter"]["type"]
+            for name, schema in properties.items()
+        }
 
     @property
     def messages(self) -> list[str]:
         """The messages of the notes, in order."""
         return [note.message for note in self.notes]
+
+
+def _without_parameters(group: dict[str, Any]) -> dict[str, Any]:
+    """Remove ``x-ga4gh-parameter`` from the properties of inputs or outputs.
+
+    Args:
+        group: Schema of the inputs or outputs.
+
+    Returns:
+        A copy without the keyword, which tests of types don't need.
+    """
+    result = dict(group)
+    result["properties"] = {
+        name: {
+            key: value for key, value in schema.items() if key != "x-ga4gh-parameter"
+        }
+        for name, schema in group["properties"].items()
+    }
+    return result
 
 
 def convert(text: str, tmp_path: Path, process: str | None = None) -> Converted:
@@ -170,7 +205,9 @@ def test_main_process_of_a_graph_is_the_default(
         "type": "boolean",
         "description": "If true, reverse (descending) sort",
         "default": True,
+        "x-ga4gh-parameter": {"type": "boolean"},
     }
+    assert schema["x-ga4gh-workflow"]["entry_point"] == "#main"
 
 
 @pytest.mark.parametrize("process", ["sorttool.cwl", "#sorttool.cwl"])
@@ -183,6 +220,7 @@ def test_process_selects_a_process_of_a_graph(
 
     schema = json.loads(capsys.readouterr().out)
     assert schema["description"] == "Sort lines using the `sort` command"
+    assert schema["x-ga4gh-workflow"]["entry_point"] == "#sorttool.cwl"
     assert set(schema["properties"]["inputs"]["properties"]) == {"reverse", "input"}
 
 
@@ -202,6 +240,76 @@ def test_only_process_of_a_graph_needs_no_id(tmp_path: Path) -> None:
     result = convert(json.dumps(document), tmp_path)
 
     assert list(result.inputs["properties"]) == ["reads"]
+    assert result.schema["x-ga4gh-workflow"]["entry_point"] == "#align"
+
+
+# Workflow block and parameters
+
+
+def test_workflow_block_of_a_single_process(tmp_path: Path) -> None:
+    """Test ``x-ga4gh-workflow`` of a document without ``$graph``."""
+    text = tool("{a: int}").replace("\n", "\r\n")
+    result = convert(text, tmp_path)
+
+    # The checksum is that of the bytes of the file, with its line ends
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    assert (tmp_path / "tool.cwl").read_bytes() == text.encode("utf-8")
+    assert result.schema["x-ga4gh-workflow"] == {
+        "descriptor_type": "CWL",
+        "descriptor_type_version": "v1.2",
+        "checksum": [{"type": "sha-256", "checksum": digest}],
+    }
+
+
+def test_cli_checksum_keeps_line_ends(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that the command reads the document without translating line ends."""
+    data = tool("{a: int}").replace("\n", "\r\n").encode("utf-8")
+    path = tmp_path / "tool.cwl"
+    path.write_bytes(data)
+
+    assert main(["convert", "cwl", str(path)]) == 0
+
+    workflow = json.loads(capsys.readouterr().out)["x-ga4gh-workflow"]
+    assert workflow["checksum"][0]["checksum"] == hashlib.sha256(data).hexdigest()
+
+
+def test_workflow_block_without_parse() -> None:
+    """Test that a process not read by the parser gets the descriptor type."""
+    source = cwl.CwlParser().parse(CWL_DIR / "bwa-mem-tool.cwl")
+    parser = cwl.CwlParser()
+
+    assert parser.to_ga4gh(source)["x-ga4gh-workflow"] == {"descriptor_type": "CWL"}
+
+
+def test_parameter_types(tmp_path: Path) -> None:
+    """Test that ``x-ga4gh-parameter`` has the CWL type of each parameter."""
+    result = convert(
+        tool(
+            "{a: 'File[]?', b: [int, string], c: ['null', int, string], "
+            "d: {type: {type: enum, symbols: [x]}}, "
+            "e: {type: {type: record, fields: {f: int}}}, "
+            "g: '#R', h: {type: {type: array, items: {type: array, items: File}}}}",
+            "{o: stdout}",
+            header=(
+                "requirements: {SchemaDefRequirement: {types: "
+                "[{name: R, type: record, fields: {f: int}}]}}\n"
+            ),
+        ),
+        tmp_path,
+    )
+
+    assert result.parameter_types("inputs") == {
+        "a": "File[]?",
+        "b": "[int, string]",
+        "c": "[null, int, string]",
+        "d": "enum",
+        "e": "record",
+        "g": "R",
+        "h": "File[][]",
+    }
+    assert result.parameter_types("outputs") == {"o": "stdout"}
 
 
 def test_stdin_and_json_output(
@@ -784,6 +892,27 @@ def test_cli_missing_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) ->
     assert main(["convert", "cwl", str(tmp_path / "missing.cwl")]) == 3
 
     assert capsys.readouterr().err.startswith("Error: File not found - ")
+
+
+def test_cli_document_not_utf8(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a document that isn't UTF-8 exits with status 3."""
+    path = tmp_path / "tool.cwl"
+    path.write_bytes(b"\xff\xfe")
+
+    assert main(["convert", "cwl", str(path)]) == 3
+
+    assert capsys.readouterr().err.startswith(f"Error: Not UTF-8 text - {path}: ")
+
+
+def test_cli_document_unreadable(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a document that can't be read (a directory) exits with 3."""
+    assert main(["convert", "cwl", str(tmp_path)]) == 3
+
+    assert capsys.readouterr().err.startswith("Error: Can't read - ")
 
 
 def test_cli_without_cwl_utils(

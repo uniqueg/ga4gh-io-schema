@@ -1,6 +1,17 @@
 {
   "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
   "description": "Reverse the lines in a document, then sort those lines.",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "CWL",
+    "descriptor_type_version": "v1.2",
+    "checksum": [
+      {
+        "type": "sha-256",
+        "checksum": "407436f462f869a5a96808d31d99b6084682f567dbe75541f2a9825c59d3eb43"
+      }
+    ],
+    "entry_point": "#main"
+  },
   "type": "object",
   "properties": {
     "inputs": {
@@ -11,12 +22,18 @@
           "x-ga4gh-file": {
             "kind": "file"
           },
-          "description": "The input file to be processed."
+          "description": "The input file to be processed.",
+          "x-ga4gh-parameter": {
+            "type": "File"
+          }
         },
         "reverse_sort": {
           "type": "boolean",
           "description": "If true, reverse (descending) sort",
-          "default": true
+          "default": true,
+          "x-ga4gh-parameter": {
+            "type": "boolean"
+          }
         }
       },
       "required": [
@@ -32,7 +49,10 @@
           "x-ga4gh-file": {
             "kind": "file"
           },
-          "description": "The output with the lines reversed and sorted."
+          "description": "The output with the lines reversed and sorted.",
+          "x-ga4gh-parameter": {
+            "type": "File"
+          }
         }
       },
       "required": [
