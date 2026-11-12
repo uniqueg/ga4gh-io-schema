@@ -71,7 +71,10 @@ Other keywords that start with `x-ga4gh-` (e.g., misspelled ones) are
 rejected: no vocabulary evaluates them, and `$defs/node` doesn't allow
 unevaluated `x-ga4gh-*` keywords. Other extension keywords (e.g.,
 `x-my-platform-hint`) are allowed. A new keyword group goes into a new file
-in `schemas/vocabularies/`, referenced from `$defs/node`.
+in `schemas/vocabularies/`, referenced from `$defs/node`. The rule marks
+other keywords as evaluated with the pattern `^(?!x-ga4gh-)`, a negative
+lookahead: valid ECMA-262, and supported by the common validators of Python
+and JavaScript, but not by validators built on RE2 (e.g., Go's `regexp`).
 
 The rules reach nested schemas through the `$dynamicAnchor` mechanism of
 Draft 2020-12: `$defs/node` declares `"$dynamicAnchor": "meta"`, so the

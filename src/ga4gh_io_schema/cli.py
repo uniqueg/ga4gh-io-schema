@@ -56,7 +56,11 @@ def main(argv: Sequence[str] | None = None) -> None:
         validate_schema(
             target_schema=target_schema, meta_schema=meta_schema, schema_dir=schema_dir
         )
-        print(f"Success: '{args.schema}' complies with the GA4GH IO Profile.")
+        if args.meta_schema:
+            target = f"the meta-schema '{args.meta_schema}'"
+        else:
+            target = "the GA4GH IO Profile"
+        print(f"Success: '{args.schema}' complies with {target}.")
     except FileNotFoundError as e:
         print(f"Error: File not found - {e}", file=sys.stderr)
         sys.exit(1)
@@ -64,7 +68,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"Error: Invalid JSON - {e}", file=sys.stderr)
         sys.exit(1)
     except jsonschema.exceptions.ValidationError as e:
-        print(f"Validation Error: {e.message} (at {e.json_path})", file=sys.stderr)
+        location = "" if e.json_path == "$" else f" (at {e.json_path})"
+        print(f"Validation Error: {e.message}{location}", file=sys.stderr)
         sys.exit(1)
     except jsonschema.exceptions.SchemaError as e:
         print(f"Meta-schema Error: {e.message}", file=sys.stderr)

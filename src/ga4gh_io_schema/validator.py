@@ -134,7 +134,7 @@ def validate_schema(
 
     if not isinstance(target_schema, dict):
         raise jsonschema.exceptions.ValidationError("The schema must be a JSON object.")
-    if "$id" in meta_schema:
+    if isinstance(meta_schema, dict) and "$id" in meta_schema:
         _check_schema_keyword(target_schema, meta_schema["$id"], name)
 
     validator_cls = validator_for(meta_schema)
@@ -166,6 +166,10 @@ def _check_schema_keyword(
     target_schema: dict[str, Any], expected: str, name: str
 ) -> None:
     """Check that a schema's ``$schema`` names the expected meta-schema.
+
+    The profile's meta-schema checks the same (``const`` of ``$schema``);
+    this check runs first so that a missing or foreign ``$schema`` gets a
+    clear message, and it also applies to custom meta-schemas.
 
     Args:
         target_schema: The JSON schema of the workflow or tool to validate.

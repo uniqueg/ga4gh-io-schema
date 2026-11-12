@@ -85,31 +85,26 @@ jobs:
           ga4gh-io-schema-validator tests/data/example_workflow.schema.json
           ga4gh-io-schema-validator tests/data/example_tool.schema.json
 
-      # Each bad schema must fail with exit code 1 and its own message, not
-      # with any error (e.g. a missing file); tests/test_cli.py covers all.
+      # Each bad schema must fail with exit code 1 and a validation error, not
+      # with any error (e.g. a missing file); tests/test_cli.py checks the
+      # exact message of each.
       - name: E2E CLI Validation (Invalid Schemas)
         run: |
-          expect_failure() {
+          for schema in tests/data/invalid/*.schema.json; do
             set +e
-            output=$(ga4gh-io-schema-validator "$1" 2>&1)
+            output=$(ga4gh-io-schema-validator "$schema" 2>&1)
             status=$?
             set -e
-            echo "$output"
+            echo "$schema: $output"
             if [ "$status" -ne 1 ]; then
-              echo "::error::expected exit code 1 for $1, got $status"
+              echo "::error::expected exit code 1 for $schema, got $status"
               exit 1
             fi
-            if ! grep -qF -- "$2" <<< "$output"; then
-              echo "::error::expected message for $1: $2"
+            if [[ "$output" != "Validation Error: "* ]]; then
+              echo "::error::expected a validation error for $schema"
               exit 1
             fi
-          }
-          expect_failure tests/data/invalid/missing-inputs.schema.json \
-            "Validation Error: 'inputs' is a required property (at \$.properties)"
-          expect_failure tests/data/invalid/ui-widget-unknown.schema.json \
-            "Validation Error: 'banana' is not valid under any of the given schemas"
-          expect_failure tests/data/invalid/foreign-schema.schema.json \
-            "not the GA4GH IO Profile meta-schema"
+          done
 
   docs:
     name: Docs

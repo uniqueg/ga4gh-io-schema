@@ -36,6 +36,21 @@ release tag of the profile (e.g., `v0.3.0`). For a new release, change the tag
 in all of them at once (the tests check that they agree), and push the tag so
 that the URLs resolve.
 
+## Adding keywords
+
+Keywords live in one vocabulary file per keyword group in
+`schemas/vocabularies/`. To add a keyword or a group:
+
+1. Add the keyword to the `properties` of its vocabulary file, or create a new
+   file (with a versioned `$id`, like the others) and add a `$ref` to it to the
+   `allOf` of `$defs/node` in `schemas/ga4gh-io-profile.schema.json`.
+2. Add one bad schema per new rule to `tests/data/invalid/` and its expected
+   message to `INVALID` in `tests/test_cli.py`.
+3. Document the keyword in `docs/specification/keywords.md` and in the table
+   in `docs/specification/meta-schema.md`.
+
+The wheel ships every file in `schemas/`, and the tests check that it does.
+
 ## Code quality (Ruff)
 
 The codebase uses `Ruff` to enforce strict formatting, linting, and Google-style docstrings.

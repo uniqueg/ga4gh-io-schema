@@ -14,10 +14,6 @@ from ga4gh_io_schema.cli import main
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 VALID = sorted(DATA_DIR.glob("*.schema.json"))
-PROFILE = (
-    "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/"
-    "ga4gh-io-profile.schema.json"
-)
 
 #: Expected error message (on stderr) for each deliberately bad schema.
 INVALID = {
@@ -29,6 +25,11 @@ INVALID = {
         "not the GA4GH IO Profile meta-schema"
     ),
     "not-object-type": "Validation Error: 'object' was expected (at $.type)",
+    "ui-widget-custom-newline": (
+        "Validation Error: 'custom:my-widget\\n' is not valid under any of the "
+        "given schemas "
+        "(at $.properties.inputs.properties.sample_id['x-ga4gh-ui-widget'])"
+    ),
     "ui-widget-unknown": (
         "Validation Error: 'banana' is not valid under any of the given schemas "
         "(at $.properties.inputs.properties.sample_id['x-ga4gh-ui-widget'])"
@@ -142,7 +143,7 @@ def test_cli_rejects_invalid_schema(
     assert INVALID[name] in capsys.readouterr().err
 
 
-def test_cli_ignores_profile_named_by_foreign_meta_schema(
+def test_cli_rejects_plain_json_schema(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Test that a valid plain JSON Schema doesn't pass as an IO schema.
@@ -188,7 +189,10 @@ def test_cli_uses_custom_meta_schema(
 
     main([str(schema), "--meta-schema", str(meta_schema)])
 
-    assert "complies" in capsys.readouterr().out
+    assert (
+        f"Success: '{schema}' complies with the meta-schema '{meta_schema}'."
+        in capsys.readouterr().out
+    )
 
 
 def test_cli_reports_missing_file(capsys: pytest.CaptureFixture[str]) -> None:
@@ -270,3 +274,17 @@ def test_cli_reports_unexpected_error(
 
     assert exc_info.value.code == 1
     assert "An unexpected error occurred: boom" in capsys.readouterr().err
+
+
+def test_cli_omits_location_of_top_level_errors(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Test that errors about the whole schema don't name the location ``$``.
+
+    Args:
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    with pytest.raises(SystemExit):
+        main([str(DATA_DIR / "invalid" / "missing-schema.schema.json")])
+
+    assert "(at $)" not in capsys.readouterr().err

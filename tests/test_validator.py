@@ -202,3 +202,8 @@ def test_build_registry_skips_unusable_files(tmp_path: Path) -> None:
     registry = build_registry([tmp_path / "missing", tmp_path])
 
     assert list(registry) == ["https://example.org/schemas/ok"]
+
+
+def test_validate_schema_accepts_boolean_meta_schema() -> None:
+    """Test that a boolean meta-schema (valid JSON Schema) is supported."""
+    validate_schema({}, True)  # type: ignore[arg-type]
