@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Tests of input values against the inputs of the example schemas.
+"""Tests of values against the inputs and outputs of the example schemas.
 
 The meta-schema checks the schemas; these tests check that the examples
-constrain the values a client sends (e.g., in WES ``workflow_params``).
+constrain the values a client sends (e.g., in WES ``workflow_params``) and
+the normalised outputs of a run that clients receive.
 JSON Schema checks only that a file reference is a string; the value rules of
 file references (schemes, paths) are not JSON Schema keywords.
 """
@@ -35,6 +36,25 @@ TOOL_VALUES: dict[str, Any] = {
 WORKFLOW_VALUES: dict[str, Any] = {
     "sample_manifest": "drs://drs.example.org/314159",
     "genome_index": "s3://example-bucket/refs/GRCh38-index/",
+}
+
+#: Normalised outputs of a completed run of the tool example.
+TOOL_OUTPUTS: dict[str, Any] = {
+    "alignment_bam": "s3://example-bucket/runs/42/out/aligned.bam",
+}
+
+#: Normalised outputs of a completed run of the workflow example.
+WORKFLOW_OUTPUTS: dict[str, Any] = {
+    "qc_report": "s3://example-bucket/runs/7/multiqc/multiqc_report.html",
+    "alignments": [
+        "s3://example-bucket/runs/7/alignments/s1.bam",
+        "s3://example-bucket/runs/7/alignments/s2.bam",
+    ],
+    "gene_counts": {
+        "s1": "s3://example-bucket/runs/7/counts/s1.tsv",
+        "s2": "s3://example-bucket/runs/7/counts/s2.tsv",
+    },
+    "samples_passed_qc": 2,
 }
 
 
@@ -177,3 +197,79 @@ def test_example_workflow_checks_file_column_of_sample_sheet() -> None:
 
     validator.validate([row])
     assert not validator.is_valid([{**row, "fastq_1": 1}])
+
+
+def failing_output_keywords(path: Path, outputs: dict[str, Any]) -> set[str]:
+    """Return the keywords that a normalised outputs object violates.
+
+    Args:
+        path: The example IO schema.
+        outputs: The normalised outputs object of a run.
+
+    Returns:
+        The keywords (e.g., ``type``) of all errors.
+    """
+    validator = jsonschema.Draft202012Validator(load(path)["properties"]["outputs"])
+    return {str(error.validator) for error in validator.iter_errors(outputs)}
+
+
+@pytest.mark.parametrize(
+    ("path", "outputs"),
+    [(TOOL, TOOL_OUTPUTS), (WORKFLOW, WORKFLOW_OUTPUTS)],
+    ids=["tool", "workflow"],
+)
+def test_example_outputs_accept_normalised_outputs(
+    path: Path, outputs: dict[str, Any]
+) -> None:
+    """Test that the outputs of each example accept a normalised outputs object.
+
+    Args:
+        path: The example IO schema.
+        outputs: A normalised outputs object of a completed run.
+    """
+    assert failing_output_keywords(path, outputs) == set()
+
+
+def test_example_workflow_outputs_allow_absent_optional_outputs() -> None:
+    """Test that outputs that a run didn't produce may be absent."""
+    outputs = {key: WORKFLOW_OUTPUTS[key] for key in ("qc_report", "alignments")}
+
+    assert failing_output_keywords(WORKFLOW, outputs) == set()
+
+
+@pytest.mark.parametrize(
+    ("change", "keyword"),
+    [
+        ({"gene_counts": None}, "type"),
+        ({"samples_passed_qc": None}, "type"),
+        ({"alignments": "s3://example-bucket/runs/7/alignments/s1.bam"}, "type"),
+        ({"gene_counts": {"s1": {"class": "File", "location": "s3://b/k"}}}, "type"),
+        ({"workflow.qc_report": "s3://example-bucket/r.html"}, "additionalProperties"),
+    ],
+    ids=["null-file", "null-scalar", "file-for-list", "cwl-file-object", "qualified"],
+)
+def test_example_workflow_outputs_reject_unnormalised_values(
+    change: dict[str, Any], keyword: str
+) -> None:
+    """Test that values not in the shape of the schema fail.
+
+    Normalised outputs leave out what a run didn't produce instead of using
+    ``null``, give file references as URIs instead of engine objects, and use
+    the names of the schema's outputs as keys.
+
+    Args:
+        change: Values that replace or add to valid outputs.
+        keyword: The keyword that fails.
+    """
+    assert failing_output_keywords(WORKFLOW, {**WORKFLOW_OUTPUTS, **change}) == {
+        keyword
+    }
+
+
+def test_example_workflow_outputs_require_declared_outputs() -> None:
+    """Test that a completed run without a required output fails."""
+    outputs = {
+        key: value for key, value in WORKFLOW_OUTPUTS.items() if key != "alignments"
+    }
+
+    assert failing_output_keywords(WORKFLOW, outputs) == {"required"}

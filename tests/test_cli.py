@@ -15,6 +15,13 @@ from ga4gh_io_schema.cli.commands import validate as validate_command
 DATA_DIR = Path(__file__).resolve().parent / "data"
 VALID = sorted(DATA_DIR.glob("*.schema.json"))
 
+#: Patterns of ``x-ga4gh-output-glob`` as error messages show them (as their
+#: repr, with backslashes doubled).
+OUTPUT_GLOB_PATTERN = (
+    r"^[^/\\\\\\[\\]{}\\u0000-\\u001f]+(/[^/\\\\\\[\\]{}\\u0000-\\u001f]+)*$"
+)
+OUTPUT_GLOB_NOT_PATTERN = "(^|/)[.][.]?(/|$)|[^/][*][*]|[*][*][^/]"
+
 #: Expected error message (on stderr) for each deliberately bad schema.
 INVALID = {
     "missing-inputs": "Validation Error: 'inputs' is a required property (at $.properties)",
@@ -190,6 +197,53 @@ INVALID = {
     "outputs-nested": (
         "Validation Error: 3 is not of type 'string' "
         "(at $.properties.outputs.properties.report['x-ga4gh-ui-widget'])"
+    ),
+    # The outputs model
+    "outputs-boolean": (
+        "Validation Error: True is not of type 'object' (at $.properties.outputs)"
+    ),
+    "outputs-not-object-type": (
+        "Validation Error: 'object' was expected (at $.properties.outputs.type)"
+    ),
+    "output-glob-not-string": (
+        "Validation Error: 3 is not of type 'string' "
+        "(at $.properties.outputs.properties.report['x-ga4gh-output-glob'])"
+    ),
+    **{
+        name: (
+            f"Validation Error: '{glob}' does not match '{OUTPUT_GLOB_PATTERN}' "
+            "(at $.properties.outputs.properties.report['x-ga4gh-output-glob'])"
+        )
+        for name, glob in [
+            ("output-glob-absolute", "/results/*.html"),
+            # The message shows the value's repr, with the backslash doubled
+            ("output-glob-backslash", r"results\\*.html"),
+            ("output-glob-braces", "results/*.{html,htm}"),
+            ("output-glob-empty-segment", "results//report.html"),
+        ]
+    },
+    **{
+        name: (
+            f"Validation Error: '{glob}' should not be valid under "
+            f"{{'pattern': '{OUTPUT_GLOB_NOT_PATTERN}'}} "
+            "(at $.properties.outputs.properties.report['x-ga4gh-output-glob'])"
+        )
+        for name, glob in [
+            ("output-glob-parent", "../secrets/*.txt"),
+            ("output-glob-double-star", "results/**.html"),
+        ]
+    },
+    "output-glob-on-scalar": (
+        "Validation Error: 'integer' is not one of ['string', 'array'] "
+        "(at $.properties.outputs.properties.report.type)"
+    ),
+    "output-glob-not-file": (
+        "Validation Error: 'x-ga4gh-file' is a required property "
+        "(at $.properties.outputs.properties.report)"
+    ),
+    "output-glob-items-not-file": (
+        "Validation Error: 'x-ga4gh-file' is a required property "
+        "(at $.properties.outputs.properties.report.items)"
     ),
 }
 

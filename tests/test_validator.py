@@ -296,3 +296,109 @@ def test_validate_schema_rejects_applicator_on_file_reference(
 def test_validate_schema_accepts_file_schemes() -> None:
     """Test that common schemes of file references pass."""
     validate_schema(_schema_with_schemes(["drs", "https", "s3", "gs", "ftp"]))
+
+
+def _schema_with_output(output: dict[str, Any]) -> dict[str, Any]:
+    """Return an IO schema with one output.
+
+    Args:
+        output: The schema of the output ``result``.
+
+    Returns:
+        The IO schema.
+    """
+    return {
+        "$schema": load_profile()["$id"],
+        "properties": {
+            "inputs": {"type": "object"},
+            "outputs": {"type": "object", "properties": {"result": output}},
+        },
+    }
+
+
+#: Schema of an output that is one file.
+FILE_OUTPUT: dict[str, Any] = {"type": "string", "x-ga4gh-file": {"kind": "file"}}
+
+
+@pytest.mark.parametrize(
+    "glob",
+    [
+        "multiqc_report.html",
+        "*",
+        "**",
+        "alignments/*.bam",
+        "**/*.vcf.gz",
+        "results/**/sample_?.txt",
+        ".nextflow/report.html",
+        "a..b/c.d",
+        "names with spaces/*.txt",
+    ],
+)
+def test_validate_schema_accepts_output_glob(glob: str) -> None:
+    """Test that relative globs of the profile's syntax pass.
+
+    Args:
+        glob: A valid value of ``x-ga4gh-output-glob``.
+    """
+    validate_schema(_schema_with_output({**FILE_OUTPUT, "x-ga4gh-output-glob": glob}))
+
+
+@pytest.mark.parametrize(
+    "glob",
+    ["./report.html", "results/.", "a/../b", "**/", "a/***/b", "x**", "[ab].txt"],
+)
+def test_validate_schema_rejects_output_glob(glob: str) -> None:
+    """Test that globs outside the profile's syntax fail.
+
+    Args:
+        glob: An invalid value of ``x-ga4gh-output-glob``.
+    """
+    schema = _schema_with_output({**FILE_OUTPUT, "x-ga4gh-output-glob": glob})
+
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        validate_schema(schema)
+
+
+@pytest.mark.parametrize("kind", ["file", "directory"])
+def test_validate_schema_accepts_output_glob_on_list(kind: str) -> None:
+    """Test that a glob may find a list of files or of directories.
+
+    Args:
+        kind: The kind of the file references in the list.
+    """
+    output = {
+        "type": "array",
+        "items": {"type": "string", "x-ga4gh-file": {"kind": kind}},
+        "x-ga4gh-output-glob": "per_sample/*",
+    }
+
+    validate_schema(_schema_with_output(output))
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        {"type": "array", "x-ga4gh-output-glob": "*.bam"},
+        {"type": "array", "items": True, "x-ga4gh-output-glob": "*.bam"},
+        {"type": ["string", "null"], "x-ga4gh-output-glob": "*.bam"},
+    ],
+    ids=["no-items", "boolean-items", "nullable"],
+)
+def test_validate_schema_rejects_output_glob_without_file_reference(
+    output: dict[str, Any],
+) -> None:
+    """Test that a glob needs a file reference or a list of file references.
+
+    Args:
+        output: The schema of an output with a glob.
+    """
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        validate_schema(_schema_with_output(output))
+
+
+def test_validate_schema_accepts_empty_outputs() -> None:
+    """Test that a schema may declare that a workflow has no outputs."""
+    schema = _schema_with_output(FILE_OUTPUT)
+    schema["properties"]["outputs"] = {"type": "object", "properties": {}}
+
+    validate_schema(schema)

@@ -24,7 +24,13 @@
           "description": "JSON Schema block defining the expected input parameters for the workflow or tool."
         },
         "outputs": {
-          "description": "JSON Schema block defining the expected output structure from the workflow or tool."
+          "description": "JSON Schema block defining the outputs of the workflow or tool: an object schema whose properties are the outputs. Optional; without it, the schema describes no outputs.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "object"
+            }
+          }
         }
       },
       "required": [
@@ -47,6 +53,9 @@
         },
         {
           "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/file.schema.json"
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/outputs.schema.json"
         }
       ],
       "$comment": "Every keyword that doesn't start with x-ga4gh- counts as evaluated; the vocabularies evaluate the x-ga4gh-* keywords they define; any other x-ga4gh-* keyword is unevaluated and rejected.",
