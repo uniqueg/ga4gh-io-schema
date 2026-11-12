@@ -16,10 +16,10 @@ runs it on every pull request.
 
 | Validator | Options | Valid documents accepted | Invalid documents rejected |
 | ----- | ----- | ----- | ----- |
-| [Ajv](https://ajv.js.org/) 8.20.0 (`ajv/dist/2020`) with [ajv-formats](https://github.com/ajv-validator/ajv-formats) 3.0.1 | `strict: false` | 6/6 | 63/63 |
-| Ajv 8.20.0 with ajv-formats 3.0.1 | `strict: false, allErrors: true` | 6/6 | 63/63 |
-| Ajv 8.20.0 with ajv-formats 3.0.1 | `strict: true, strictTypes: false, strictRequired: false` | 6/6 | 63/63 |
-| [@hyperjump/json-schema](https://github.com/hyperjump-io/json-schema) 1.18.0 | format assertion on | 6/6 | 63/63 |
+| [Ajv](https://ajv.js.org/) 8.20.0 (`ajv/dist/2020`) with [ajv-formats](https://github.com/ajv-validator/ajv-formats) 3.0.1 | `strict: false` | All | All |
+| Ajv 8.20.0 with ajv-formats 3.0.1 | `strict: false, allErrors: true` | All | All |
+| Ajv 8.20.0 with ajv-formats 3.0.1 | `strict: true, strictTypes: false, strictRequired: false` | All | All |
+| [@hyperjump/json-schema](https://github.com/hyperjump-io/json-schema) 1.18.0 | format assertion on | All | All |
 
 These are the results of the Python validator, too. Without format
 assertion (Ajv without ajv-formats, or hyperjump with its default), both
@@ -29,11 +29,12 @@ accept `ontology-not-uri`, whose `x-ga4gh-ontology` isn't a URI: a
 check the `regex` format of `pattern`, with the regular expressions of
 JavaScript (ECMA-262).
 
-Before version 0.3, the meta-schema applied the rules for nested schemas
-through `$dynamicAnchor`, which Ajv supports only at the root of a schema:
-Ajv rejected only 18 of the 63 invalid documents, without an error, because
-it skipped every rule for nested schemas (e.g., unknown widgets, bad file
-references). The meta-schema now applies them with explicit `$ref`s (see
+Earlier drafts of version 0.3 applied the rules for nested schemas through
+`$dynamicAnchor`, which Ajv supports only at the root of a schema: Ajv
+rejected only 18 of the 63 invalid documents of the suite at the time,
+without an error, because it skipped every rule for nested schemas (e.g.,
+unknown widgets, bad file references). The meta-schema now applies them
+with explicit `$ref`s (see
 [Structure of the meta-schema](../specification/meta-schema.md#structure-of-the-meta-schema)).
 
 Other validators aren't tested. A validator conforms if it accepts every
