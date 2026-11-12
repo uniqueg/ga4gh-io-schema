@@ -96,7 +96,8 @@ nav:
       - Meta-schema: specification/meta-schema.md
       - Conformance: specification/conformance.md
       - Examples: specification/examples.md
-  - Rationale and related work: rationale.md
+  - Rationale: rationale.md
+  - Related work: related-work.md
   - Security considerations: security.md
   - Tools:
       - tools/index.md

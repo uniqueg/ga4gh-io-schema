@@ -16,8 +16,10 @@ The profile is designed for the GA4GH APIs for federated analysis (TRS, WES, DRS
   concept of an interface description above workflow languages.
 - [Specification](specification/index.md): the keywords, the output contract,
   the meta-schema, conformance and examples.
-- [Rationale and related work](rationale.md): the ecosystem survey, why no
-  existing solution is adopted, and RO-Crate profiles.
+- [Rationale](rationale.md): the ecosystem survey and why no existing
+  solution is adopted.
+- [Related work](related-work.md): how the profile relates to overlapping
+  standards and tools (WES, Nextflow, RO-Crate, MCP, OGC and others).
 - [Security considerations](security.md): what validation with the profile
   does and doesn't protect against.
 - [Tools](tools/index.md): the validator (CLI and Python API) and converters.
