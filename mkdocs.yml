@@ -14,6 +14,7 @@ edit_uri: edit/main/docs/
 
 # Files included in pages (see `pymdownx.snippets`) and documented code
 watch:
+  - docs_hooks
   - README.md
   - schemas
   - src
@@ -64,6 +65,10 @@ markdown_extensions:
   - toc:
       permalink: true
 
+# Inserts the CLI reference, generated from the parser, into tools/cli.md
+hooks:
+  - docs_hooks/cli_reference.py
+
 plugins:
   - search
   - mkdocstrings:
@@ -96,10 +101,12 @@ nav:
       - Meta-schema: specification/meta-schema.md
       - Conformance: specification/conformance.md
       - Examples: specification/examples.md
-  - Rationale and related work: rationale.md
+  - Rationale: rationale.md
+  - Related work: related-work.md
   - Security considerations: security.md
   - Tools:
       - tools/index.md
+      - Command-line interface: tools/cli.md
       - Validator: tools/validator.md
       - Converters: tools/converters.md
   - Adoption:

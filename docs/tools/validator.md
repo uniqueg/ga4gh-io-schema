@@ -21,10 +21,12 @@ repository.
 
 ## Command-line interface
 
-Once installed, the package exposes a command-line interface to validate your drafted tool or workflow IO schemas against the GA4GH meta-schema:
+Once installed, the `validate` subcommand of the
+[command-line interface](cli.md) checks your drafted tool or workflow IO
+schemas against the GA4GH meta-schema:
 
 ```bash
-ga4gh-io-schema-validator path/to/your-schema.json
+ga4gh-io-schema validate path/to/your-schema.json
 ```
 
 Without further options, the validator always checks the schema against the
@@ -38,17 +40,20 @@ with `--meta-schema` (or `-m`); if that meta-schema has an `$id`, the schema's
 `$schema` must name it:
 
 ```bash
-ga4gh-io-schema-validator path/to/your-schema.json --meta-schema path/to/meta-schema.json
+ga4gh-io-schema validate path/to/your-schema.json --meta-schema path/to/meta-schema.json
 ```
 
 The command exits with status 0 if the schema complies with the profile, and
-with status 1 and an error message on standard error otherwise. Validation
-errors name the location of the offending keyword as a JSON path, for
-example:
+with status 1 and an error message on standard error if it doesn't (see
+[Exit status](cli.md#exit-status) for the other cases). Validation errors
+name the location of the offending keyword as a JSON path, for example:
 
 ```text
 Validation Error: 'banana' is not valid under any of the given schemas (at $.properties.inputs.properties.sample_id['x-ga4gh-ui-widget'])
 ```
+
+The schema can also come from standard input (`-`), and `--json` reports
+the result and errors as JSON objects (see [Conventions](cli.md#conventions)).
 
 ## Format checks
 
@@ -72,4 +77,6 @@ Reference of the Python API, generated from its docstrings.
 
 ::: ga4gh_io_schema.validator
 
-::: ga4gh_io_schema.cli
+::: ga4gh_io_schema.cli.base
+
+::: ga4gh_io_schema.cli.app
