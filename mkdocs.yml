@@ -101,6 +101,7 @@ nav:
       - Keywords: specification/keywords.md
       - File references: specification/files.md
       - Identity and engine binding: specification/identity.md
+      - Engine bindings: specification/engine-bindings.md
       - Outputs: specification/outputs.md
       - Meta-schema: specification/meta-schema.md
       - Conformance: specification/conformance.md
@@ -115,6 +116,7 @@ nav:
       - Converters: tools/converters.md
       - Snakemake converter: tools/convert-snakemake.md
       - WDL converter: tools/convert-wdl.md
+      - WES parameters: tools/wes-params.md
       - Output normaliser: tools/outputs.md
   - Adoption:
       - adoption/index.md

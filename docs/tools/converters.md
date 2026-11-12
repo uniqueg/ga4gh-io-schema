@@ -27,4 +27,5 @@ description format, the `password` widget) fails validation.
 ## From IO schemas to WES
 
 - **WES `workflow_params`:** build the `workflow_params` of a WES run request
-  from values that are valid against an IO schema; planned.
+  from values that are valid against an IO schema; available as
+  [`wes-params`](wes-params.md).

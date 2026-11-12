@@ -142,8 +142,8 @@ informative: translators and converters use it where the JSON Schema type
 leaves a choice (e.g., a WDL `Pair` and a struct with the members `left` and
 `right` are both JSON objects), and to check that the schema still matches
 the descriptor. The rules that turn input values into WES `workflow_params`
-for each descriptor type, using these fields, are part of the engine
-bindings ([#18](https://github.com/uniqueg/ga4gh-io-schema/issues/18)).
+for each descriptor type, using these fields, are defined in [Engine
+bindings](engine-bindings.md).
 
 For example, the input `caller_threads` of [Example
 3](examples.md#example-3-workflow-bound-to-an-engine) is the input `threads`
