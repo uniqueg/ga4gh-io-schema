@@ -81,8 +81,11 @@ jobs:
 
       - name: E2E CLI Validation (Valid Schemas)
         run: |
-          ga4gh-io-schema validate tests/data/valid.schema.json
+          for schema in tests/conformance/schema-documents/valid/*.schema.json; do
+            ga4gh-io-schema validate "$schema"
+          done
           ga4gh-io-schema validate tests/data/example_workflow.schema.json
+          ga4gh-io-schema validate tests/data/example_wdl.schema.json
           ga4gh-io-schema validate - < tests/data/example_tool.schema.json
 
       - name: E2E CLI Conversion (CWL)
@@ -95,7 +98,7 @@ jobs:
       # exact message of each.
       - name: E2E CLI Validation (Invalid Schemas)
         run: |
-          for schema in tests/data/invalid/*.schema.json; do
+          for schema in tests/conformance/schema-documents/invalid/*.schema.json; do
             set +e
             output=$(ga4gh-io-schema validate "$schema" 2>&1)
             status=$?
