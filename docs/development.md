@@ -7,7 +7,9 @@ To install the package with all development dependencies, see
 
 ## Unit tests (pytest)
 
-Validate the core logic of the Python executable using `pytest`. The test suite uses mock schemas located in `tests/data/`.
+Validate the core logic of the Python executable using `pytest`. The tests use the example schemas in `tests/data/` and the schema
+documents of the [conformance suite](specification/conformance.md#conformance-suite)
+in `tests/conformance/`.
 
 ```bash
 pytest
@@ -15,9 +17,13 @@ pytest
 
 `pytest` measures coverage of the package (with branches) and fails below
 100%. The CLI tests (`tests/test_cli.py`) run the command-line tool on the
-valid examples and on one deliberately bad schema per rule of the
-meta-schema in `tests/data/invalid/`, and check the exit code and the error
-message of each; a new rule needs a new bad schema and its expected message.
+examples and the valid cases of the suite, and on one deliberately bad
+schema per rule of the meta-schema in
+`tests/conformance/schema-documents/invalid/`, and check the exit code and
+the error message of each; a new rule needs a new bad schema and its
+expected message. `tests/test_conformance.py` is the runner of the
+conformance suite for this package: it checks every case against the
+Python API, without error messages, as other implementations do.
 `tests/test_cli_framework.py` tests the shared conventions of all
 subcommands (standard input, `--output`, `--json`, exit codes) and the
 subcommand registry.
@@ -34,7 +40,7 @@ them together.
 ## Schema versions
 
 The `$id`s of the schemas in `schemas/`, and the `$schema` of the examples in
-`tests/data/` and of the snippet in the meta-schema documentation, name the
+`tests/data/`, of the cases in `tests/conformance/` and of the snippet in the meta-schema documentation, name the
 release tag of the profile (e.g., `v0.3.0`). For a new release, change the tag
 in all of them at once (the tests check that they agree), and push the tag so
 that the URLs resolve.
@@ -51,8 +57,9 @@ Keywords live in one vocabulary file per keyword group in
    `"$dynamicRef": "#meta"`, and its vocabulary file declares
    `"$dynamicAnchor": "meta"` at its root, so that the nested schema is
    checked by all rules of the profile (see `vocabularies/file.schema.json`).
-2. Add one bad schema per new rule to `tests/data/invalid/` and its expected
-   message to `INVALID` in `tests/test_cli.py`; for a schema-valued keyword,
+2. Add one bad schema per new rule to
+   `tests/conformance/schema-documents/invalid/` and its expected message
+   to `INVALID` in `tests/test_cli.py`; for a schema-valued keyword,
    include a bad schema nested in it.
 3. Document the keyword in `docs/specification/keywords.md` and in the table
    in `docs/specification/meta-schema.md`.

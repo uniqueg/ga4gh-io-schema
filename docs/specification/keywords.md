@@ -6,21 +6,21 @@ To maintain maximum compatibility with existing libraries (e.g., UI form generat
 
 ### Leveraging native JSON Schema (what we don't reinvent)
 
-Where workflow languages have historically invented proprietary keywords, this profile dictates the use of native JSON Schema features:
+Where workflow languages have historically invented proprietary keywords, schemas use native JSON Schema features:
 
-* **File Paths and References:** Instead of proprietary file types, developers must use the native string formats: `{"type": "string", "format": "uri"}`.
+* **File Paths and References:** Instead of proprietary file types, schemas MUST use the native string formats: `{"type": "string", "format": "uri"}`.
 
-* **Mimetypes:** Instead of custom `mimetype` properties, developers must use the native `contentMediaType` keyword.
+* **Mimetypes:** Instead of custom `mimetype` properties, schemas MUST use the native `contentMediaType` keyword.
 
-* **Uniqueness:** Where all items of an array must differ, developers must use the native `uniqueItems: true`. This is not the same as `nf-schema`'s `uniqueEntries`, which requires the *combination of the values of given keys* to be unique across the objects of an array (e.g., a unique `sample_id` per row of a sample sheet): with `uniqueItems`, two rows with the same `sample_id` but different other values both pass. The profile has no equivalent of `uniqueEntries` yet.
+* **Uniqueness:** Where all items of an array have to differ, schemas MUST use the native `uniqueItems: true`. This is not the same as `nf-schema`'s `uniqueEntries`, which requires the *combination of the values of given keys* to be unique across the objects of an array (e.g., a unique `sample_id` per row of a sample sheet): with `uniqueItems`, two rows with the same `sample_id` but different other values both pass. The profile has no equivalent of `uniqueEntries` yet.
 
 ### Tabular data and cloud sovereignty
 
 Workflows heavily rely on tabular data (e.g., CSV sample sheets). Validating these files before a run prevents time-wasting and potentially expensive pipeline failures. To facilitate this, the profile introduces `x-ga4gh-tabular-schema`—a nested JSON array definition that describes the internal row/column structure of a CSV/TSV file.
 
-Per the JSON Schema specification, standard client libraries ignore `x-` annotations because they are unrecognized extension keywords. To actively validate a CSV against this schema, a platform must implement a custom parser.
+Per the JSON Schema specification, standard client libraries ignore `x-` annotations because they are unrecognized extension keywords. To actively validate a CSV against this schema, a platform needs a custom parser.
 
-Here, we must clearly delineate client-side versus server-side boundaries to preserve cloud data sovereignty. Forcing a generic web UI to download a massive, potentially sensitive patient sample sheet (e.g., fetched via a DRS URI) directly into the user's browser just to run client-side validation violates the data perimeter. Instead, UIs can use the `x-ga4gh-tabular-schema` as a *hint* to auto-generate an interactive spreadsheet grid for the user to fill out *before* saving it to the cloud. Meanwhile, the execution side can validate the file before it starts the run. This is optional, and reading the file makes the server a data accessor, with the user's delegated credentials and within the data's access conditions (see [Validation of data files on the server](../security.md#validation-of-data-files-on-the-server)).
+Here, the roles of the client side and the server side have to be kept apart to preserve cloud data sovereignty. Forcing a generic web UI to download a massive, potentially sensitive patient sample sheet (e.g., fetched via a DRS URI) directly into the user's browser just to run client-side validation violates the data perimeter. Instead, UIs can use the `x-ga4gh-tabular-schema` as a *hint* to auto-generate an interactive spreadsheet grid for the user to fill out *before* saving it to the cloud. Meanwhile, the execution side can validate the file before it starts the run. This is optional, and reading the file makes the server a data accessor, with the user's delegated credentials and within the data's access conditions (see [Validation of data files on the server](../security.md#validation-of-data-files-on-the-server)).
 
 See also [Security considerations](../security.md).
 

@@ -4,7 +4,7 @@
 
 The `x-ga4gh-drs-uri` flag tells a client that an input expects a Data Repository Service (DRS) identifier. The client can then offer a DRS browser or picker, and check that the user can see the object, *before* submitting the run.
 
-The client should submit the `drs://` identifier itself in `workflow_params`, not a resolved access URL, and must not submit credentials; the execution side resolves the identifier with credentials delegated by the user. See [Access to data](../security.md#access-to-data) for the requirements and the reasons.
+The client submits the `drs://` identifier itself in `workflow_params`, not a resolved access URL, and no credentials; the execution side resolves the identifier with credentials delegated by the user. See [Access to data](../security.md#access-to-data) for the requirements and the reasons.
 
 See also [the `x-ga4gh-*` vocabulary](../specification/keywords.md#the-x-ga4gh-vocabulary)
 and the [output contract](../specification/outputs.md).

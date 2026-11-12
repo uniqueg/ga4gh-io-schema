@@ -1,6 +1,6 @@
 # Security considerations
 
-This page states what schemas, servers and clients that use the profile must do to handle schemas, requests, data and outputs safely. The key words "MUST", "MUST NOT", "SHOULD", "SHOULD NOT" and "MAY" are to be interpreted as described in [BCP 14](https://www.rfc-editor.org/info/bcp14) ([RFC 2119](https://www.rfc-editor.org/rfc/rfc2119), [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174)) when, and only when, they appear in all capitals.
+This page states the requirements for schemas, servers and clients that use the profile, so that they handle schemas, requests, data and outputs safely. The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [BCP 14](https://www.rfc-editor.org/info/bcp14) ([RFC 2119](https://www.rfc-editor.org/rfc/rfc2119), [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174)) when, and only when, they appear in all capitals, as shown here.
 
 Roles, as used on this page:
 
@@ -8,7 +8,7 @@ Roles, as used on this page:
 - **Client:** a portal, other user interface, or AI agent that renders forms from IO schemas, builds run requests, or shows the outputs of runs.
 - **Execution side:** the server and the workflow engine it runs, including the components that stage data for a run.
 
-The requirements on this page are part of the [conformance](specification/conformance.md) requirements for servers and clients. Validating requests against IO schemas is optional for a WES server (see [WES](adoption/wes.md)); the requirements for servers apply to every server that does.
+The requirements on this page are part of the [conformance classes](specification/conformance.md#conformance-classes) (see there for how the roles map to the classes). Validating requests against IO schemas is optional for a WES server (see [WES](adoption/wes.md)); the requirements for servers apply to every server that does.
 
 ## Validation is not a security boundary
 
@@ -16,7 +16,7 @@ Validation in the client catches mistakes before a run starts, which saves time 
 
 ## Sources of schemas
 
-A schema decides what a server accepts and which addresses a validator may look up, so it must come from a source that the deployment trusts.
+A schema decides what a server accepts and which addresses a validator may look up, so it has to come from a source that the deployment trusts.
 
 - Servers MUST use only IO schemas from trusted sources: the TRS entry of the workflow (see [TRS](adoption/trs.md)) in a registry that the deployment trusts, or a schema bundled with the deployment.
 - Servers MUST NOT accept IO schemas supplied by clients in a run request. Earlier versions of this proposal let servers use schemas that came with the request; version 0.3 removes that (see [#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17)).

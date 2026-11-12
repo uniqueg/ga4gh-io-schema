@@ -52,8 +52,9 @@ that
 
 **Every schema, at any depth** (`$defs/node` of `ga4gh-io-profile.schema.json`):
 the top level and every nested schema (e.g., in `properties`, `items`,
-`$defs`, and `x-ga4gh-tabular-schema`) must be valid JSON Schema Draft
-2020-12 and use the `x-ga4gh-*` keywords as defined in [Keywords](keywords.md).
+`$defs`, and `x-ga4gh-tabular-schema`) MUST be valid JSON Schema Draft
+2020-12 and MUST use the `x-ga4gh-*` keywords as defined in
+[Keywords](keywords.md).
 The rules combine one vocabulary file per keyword group:
 
 | Keyword | Value | Vocabulary |
