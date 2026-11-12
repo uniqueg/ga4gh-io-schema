@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/workflow-checksum-no-type",
+  "title": "Invalid: workflow-checksum-no-type",
+  "description": "A checksum lacks its algorithm.",
+  "type": "object",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "WDL",
+    "entry_point": "align",
+    "checksum": [
+      {
+        "checksum": "ab12"
+      }
+    ]
+  },
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
