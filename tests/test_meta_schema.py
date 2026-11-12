@@ -91,3 +91,24 @@ def test_schemas_have_no_dynamic_references(path: Path) -> None:
     for node in _walk(load_json(path)):
         assert not isinstance(node.get("$dynamicRef"), str)
         assert not isinstance(node.get("$dynamicAnchor"), str)
+
+
+def test_profile_declares_a_dialect() -> None:
+    """Test that the meta-schema declares its vocabularies (``$vocabulary``).
+
+    Validators that treat ``$schema`` as a dialect (e.g.,
+    @hyperjump/json-schema) then accept IO schemas, which name the profile
+    in ``$schema``, for the validation of values. The vocabularies of Draft
+    2020-12 are required, as in its meta-schema; the profile's own
+    vocabulary is optional, so that validators that don't know it still
+    process IO schemas (its keywords are annotations of values).
+    """
+    profile = load_profile()
+    vocabulary = profile["$vocabulary"]
+    standard = REGISTRY.contents(f"{DRAFT_2020_12}schema")["$vocabulary"]
+    own = {uri: required for uri, required in vocabulary.items() if uri not in standard}
+
+    assert {uri: vocabulary.get(uri) for uri in standard} == standard
+    assert list(own.values()) == [False]
+    base = profile["$id"].rsplit("/", 1)[0]
+    assert next(iter(own)).startswith(f"{base}/vocabularies/")
