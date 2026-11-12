@@ -67,16 +67,20 @@ status](cli.md#exit-status)).
 | struct | `object` with the members as properties, the members that aren't optional in `required`, `additionalProperties: false`; WDL 1.2 `meta` (`description`) and `parameter_meta` of the struct describe the object and its members |
 | `T?` (an optional input or output) | not in `required` |
 | `T?` (a value inside an array, map, pair or struct of an input) | also accepts `null`: `"type": [T, "null"]`, or `anyOf` with `{"type": "null"}` for file references, whose type must be `string` |
-| `T?` (a value inside an output) | as `T`: outputs never allow `null` (see [Outputs](#outputs)) |
+| `T?` (an item of a list of an output) | as `T`: normalisers drop the `null` items of lists (see [Outputs](#outputs)) |
+| `T?` (a value inside a map, pair or struct of an output) | also accepts `null`, as for inputs |
 | input without default, not optional | in `required` |
 | literal default (e.g., `= 4`, `= ["a"]`, `= {"k": 1}`) | `default` |
 | literal default that isn't valid against the schema (e.g., `String s = 1`, which WDL coerces, or a value outside `choices`) | left out, with a note |
 | default that is an expression (e.g., `= name + ".bam"`) | left out, with a note; the input is optional |
 | default of a `File` or `Directory` that is a path (e.g., `= "data/ref.fa"`) | left out, with a note: the engine resolves the path on the execution side, while a path in an IO schema refers to a file attached to the run request; a default that is a URI with `//` after the scheme (e.g., `https://…`, `s3://…`, `drs://…`) is kept; other values with a colon (e.g., `C:/ref.fa`) are paths |
-| default of a compound type with files that contains strings | left out, with a note |
+| default of a compound type that has strings in places of files (e.g., `Array[File] = ["a.txt"]`, or the keys of `Map[File, Int] = {"a.txt": 1}`) | left out, with a note |
 | `meta` of the workflow or task: `description` | `description` of the IO schema; the name of the workflow or task is the `title` |
 | workflow or task name | `entry_point` of [`x-ga4gh-workflow`](../specification/identity.md#the-workflow-block), with `descriptor_type: WDL`, the WDL version as `descriptor_type_version`, and the SHA-256 checksum of the bytes of the document |
 | declared type (e.g., `Array[File]+`) | `type` of [`x-ga4gh-parameter`](../specification/identity.md#parameter-bindings) |
+
+A workflow or task without an input section (allowed by engines for WDL
+1.0) has as inputs its declarations that clients may set, with a note.
 
 Inputs are named as in the input section of the workflow (e.g., `sample`),
 not qualified with the workflow name (`variant_calling.sample`): the entry
@@ -132,10 +136,11 @@ named as in the output section, with its type, description and
 - outputs that aren't optional are in `required`: every run that completes
   produces them; `additionalProperties: false` says that a normalised
   outputs object has no other keys;
-- outputs never allow `null`, also not inside arrays, maps or structs
+- outputs, and the items of their lists, don't allow `null`
   (`Array[File?]` becomes an array of file references): normalisers leave
   out the `null` values that engines report for optional outputs that a
-  run didn't produce, and the `null` items of lists;
+  run didn't produce, and the `null` items of lists; optional values inside
+  maps, pairs and structs still accept `null`, as normalisers keep them;
 - `Map[String, File]` becomes files keyed by name, structs records;
 - outputs have no defaults, and no `x-ga4gh-output-glob`: engines report
   WDL outputs by name, qualified with the workflow name (e.g.,
@@ -178,7 +183,7 @@ directory of the document, not, e.g., in `/`.
   workflow is published (see [Identity and engine
   binding](../specification/identity.md)).
 - The checksum covers the bytes of the converted document only (for
-  standard input, its text in UTF-8); changes of imported documents aren't
+  standard input and other pipes, its text in UTF-8); changes of imported documents aren't
   detected (see
   [Drift](../specification/identity.md#drift)).
 - Translating input values to the `workflow_params` of a WES request, and

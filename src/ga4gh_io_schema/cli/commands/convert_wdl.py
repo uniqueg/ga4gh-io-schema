@@ -86,9 +86,13 @@ class WdlCommand(Command):
         """
         text = read_text(args.source)
         # The checksum covers the bytes; reading text translates line endings
+        # Pipes can't be read twice: their checksum is that of the text
         checksum = None
-        if args.source != STDIN:
-            checksum = wdl.descriptor_checksum(Path(args.source).read_bytes())
+        if args.source != STDIN and Path(args.source).is_file():
+            try:
+                checksum = wdl.descriptor_checksum(Path(args.source).read_bytes())
+            except OSError as exc:
+                raise CliError(ErrorKind.IO, f"Can't read - {exc}") from exc
         try:
             conversion = wdl.convert(
                 args.source,

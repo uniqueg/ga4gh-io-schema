@@ -48,7 +48,8 @@ HIDDEN_CATEGORIES = frozenset({"advanced"})
 #: Start of a URI with an authority (e.g., ``https://``, ``s3://``, ``drs://``);
 #: other values with a colon (e.g., ``C:/data`` or ``sample:1.bam``) are paths.
 _URI = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]+://")
-#: Imports that name a remote document.
+#: Imports that name a remote document: any scheme followed by ``//``, also
+#: of one letter, so unlike :data:`_URI`, which needs two (``C://`` is a path).
 _REMOTE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://")
 #: Names that a JSON path can use without brackets.
 _JSON_PATH_NAME = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
@@ -305,6 +306,8 @@ def _import_error(exc: BaseException) -> SourceError:
         return cause
     if isinstance(cause, FileNotFoundError):
         return ImportReadError(f"{exc}: file not found")
+    if isinstance(cause, OSError):
+        return ImportReadError(f"{exc}: {cause.strerror or cause}")
     if isinstance(cause, UnicodeDecodeError):
         return ImportReadError(f"{exc}: not UTF-8 text")
     # A syntax or type error of the imported document
@@ -399,8 +402,9 @@ class _Converter:
         wdl: The ``WDL`` package of miniwdl.
         document: The document.
         notes: Notes of the conversion so far.
-        null_values: Whether optional values inside the parameter being
-            converted may be ``null`` (inputs), or not (outputs).
+        null_values: Whether optional items of lists of the parameter being
+            converted may be ``null`` (inputs), or not (outputs, whose
+            normalisers drop them).
     """
 
     def __init__(self, wdl: ModuleType, document: Any) -> None:
@@ -510,7 +514,7 @@ class _Converter:
         """
         properties: dict[str, Any] = {}
         required: list[str] = []
-        for decl in entry.inputs or []:
+        for decl in self._declared_inputs(entry):
             pointer: Pointer = ("properties", "inputs", "properties", decl.name)
             properties[decl.name] = self._parameter(
                 decl, entry.parameter_meta, pointer, is_input=True
@@ -560,6 +564,34 @@ class _Converter:
             inputs["required"] = required
         inputs["additionalProperties"] = False
         return inputs
+
+    def _declared_inputs(self, entry: Any) -> list[Any]:
+        """Return the inputs of the workflow or task itself.
+
+        Without an input section, the declarations of a workflow or task
+        that the engine lets clients set are its inputs (miniwdl accepts
+        such documents, as engines do).
+
+        Args:
+            entry: The workflow or task.
+
+        Returns:
+            The declarations of the inputs (``WDL.Tree.Decl``), in order.
+        """
+        if entry.inputs is not None:
+            return list(entry.inputs)
+        decls = [
+            binding.value
+            for binding in entry.available_inputs
+            if "." not in binding.name and not binding.name.startswith("_")
+        ]
+        if decls:
+            self.note(
+                "The workflow or task has no input section; its declarations "
+                "that clients may set are its inputs",
+                ("properties", "inputs"),
+            )
+        return decls
 
     def _allows_nested_inputs(self, entry: Any) -> bool:
         """Check whether a workflow may receive inputs of its calls.
@@ -613,8 +645,9 @@ class _Converter:
             parameter_meta: The ``parameter_meta`` section that describes it.
             pointer: Location of its schema in the IO schema.
             is_input: Whether it is an input; outputs get no defaults, and
-                their schemas never allow ``null``: normalisers leave out the
-                ``null`` values that engines report.
+                neither they nor the items of their lists allow ``null``:
+                normalisers leave out the ``null`` values that engines report
+                there.
 
         Returns:
             The schema of the parameter.
@@ -636,9 +669,10 @@ class _Converter:
             wdl_type: The type (a ``WDL.Type.Base``).
             pointer: Location of the schema in the IO schema.
             nullable: Whether an optional type also accepts ``null``: values
-                in arrays, maps, pairs and structs of inputs may be ``null``
-                if their type is optional; optional inputs are left out
-                instead, and outputs never allow ``null``.
+                in maps, pairs and structs may be ``null`` if their type is
+                optional, and so may items of lists of inputs; optional
+                inputs and outputs are left out instead, and normalisers
+                drop the ``null`` items of lists of outputs.
 
         Returns:
             The schema.
@@ -663,7 +697,9 @@ class _Converter:
         elif isinstance(wdl_type, types.Array):
             schema = {
                 "type": "array",
-                "items": self._type(wdl_type.item_type, (*pointer, "items"), True),
+                "items": self._type(
+                    wdl_type.item_type, (*pointer, "items"), self.null_values
+                ),
             }
             if wdl_type.nonempty:
                 schema["minItems"] = 1
@@ -690,7 +726,7 @@ class _Converter:
                 f"The WDL type {wdl_type} has no equivalent in an IO schema",
                 json_path(pointer),
             )
-        if nullable and self.null_values and wdl_type.optional:
+        if nullable and wdl_type.optional:
             return _nullable(schema)
         return schema
 
@@ -902,7 +938,7 @@ class _Converter:
                     pointer,
                 )
                 return
-        elif _has_files(decl.type, types) and _has_strings(value):
+        elif _has_file_values(decl.type, value, types):
             self.note(
                 "The default contains file references, which aren't converted; "
                 "it is left out, and the input is optional",
@@ -920,46 +956,38 @@ class _Converter:
         schema["default"] = value
 
 
-def _has_files(wdl_type: Any, types: ModuleType) -> bool:
-    """Check whether a type is, or contains, ``File`` or ``Directory``.
+def _has_file_values(wdl_type: Any, value: Any, types: ModuleType) -> bool:
+    """Check whether a value holds strings in places of files or directories.
 
     Args:
-        wdl_type: The type.
+        wdl_type: The WDL type of the value.
+        value: The value, as JSON data.
         types: The ``WDL.Type`` module of miniwdl.
 
     Returns:
-        Whether the type refers to files or directories.
+        Whether the value, or an item, key, side or member of it, is a string
+        where the type has ``File`` or ``Directory``.
     """
     if isinstance(wdl_type, (types.File, types.Directory)):
-        return True
-    if isinstance(wdl_type, types.Array):
-        return _has_files(wdl_type.item_type, types)
-    if isinstance(wdl_type, types.Map):
-        return any(_has_files(item, types) for item in wdl_type.item_type)
-    if isinstance(wdl_type, types.Pair):
-        return _has_files(wdl_type.left_type, types) or _has_files(
-            wdl_type.right_type, types
+        return isinstance(value, str)
+    if isinstance(wdl_type, types.Array) and isinstance(value, list):
+        return any(_has_file_values(wdl_type.item_type, item, types) for item in value)
+    if isinstance(wdl_type, types.Map) and isinstance(value, dict):
+        key_type, value_type = wdl_type.item_type
+        return any(
+            _has_file_values(key_type, key, types)
+            or _has_file_values(value_type, item, types)
+            for key, item in value.items()
         )
-    if isinstance(wdl_type, types.StructInstance):
-        return any(_has_files(item, types) for item in wdl_type.members.values())
-    return False
-
-
-def _has_strings(value: Any) -> bool:
-    """Check whether a JSON value is, or contains, a string.
-
-    Args:
-        value: The value.
-
-    Returns:
-        Whether the value, or one of its items or object values, is a string.
-    """
-    if isinstance(value, str):
-        return True
-    if isinstance(value, list):
-        return any(_has_strings(item) for item in value)
-    if isinstance(value, dict):
-        return any(_has_strings(item) for item in value.values())
+    if isinstance(wdl_type, types.Pair) and isinstance(value, dict):
+        return _has_file_values(
+            wdl_type.left_type, value.get("left"), types
+        ) or _has_file_values(wdl_type.right_type, value.get("right"), types)
+    if isinstance(wdl_type, types.StructInstance) and isinstance(value, dict):
+        return any(
+            _has_file_values(member_type, value.get(name), types)
+            for name, member_type in wdl_type.members.items()
+        )
     return False
 
 

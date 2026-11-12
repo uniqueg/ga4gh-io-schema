@@ -1,8 +1,8 @@
 # Converters
 
-> **To be written.** Converters are planned (see
+> Converters are added one by one (see
 > [Roadmap](../roadmap.md#next-steps), "Schema Translation Tooling"). This
-> page will document each of them as it becomes available.
+> page lists each of them; the available ones link to their pages.
 
 ## From workflow languages to IO schemas
 

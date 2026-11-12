@@ -15,8 +15,10 @@ licence of the Leiden University Medical Center. ``types.wdl`` and
 import hashlib
 import io
 import json
+import os
 import re
 import sys
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -436,7 +438,7 @@ def test_task_of_a_document_with_a_workflow(tmp_path: Path) -> None:
 
 
 def test_null_values_only_in_inputs(tmp_path: Path) -> None:
-    """Test that optional values inside outputs don't allow null."""
+    """Test that outputs and their list items don't allow null."""
     path = _write(
         tmp_path,
         "version 1.1\nstruct S {\n  File? f\n}\n"
@@ -450,10 +452,7 @@ def test_null_values_only_in_inputs(tmp_path: Path) -> None:
     assert "anyOf" in _inputs(_convert(path))["i"]["items"]
     outputs = schema["properties"]["outputs"]["properties"]
     assert outputs["o"]["items"] == {"type": "string", "x-ga4gh-file": {"kind": "file"}}
-    assert outputs["so"]["properties"]["f"] == {
-        "type": "string",
-        "x-ga4gh-file": {"kind": "file"},
-    }
+    assert outputs["so"]["properties"]["f"]["anyOf"][1] == {"type": "null"}
 
 
 def test_defaults_must_fit_the_schema(tmp_path: Path) -> None:
@@ -652,6 +651,69 @@ def test_failed_imports(tmp_path: Path, imported: bytes | None, message: str) ->
     assert exc_info.value.message.startswith(message)
 
 
+def test_unreadable_import_is_an_io_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that an import without read permission exits with status 3."""
+    imported = _write(
+        tmp_path, "version 1.0\ntask t {\n  command <<< >>>\n}\n", "t.wdl"
+    )
+    imported.chmod(0)
+    path = _write(tmp_path, 'version 1.0\nimport "t.wdl"\nworkflow w {\n}\n')
+    try:
+        if os.access(imported, os.R_OK):  # e.g., as root
+            pytest.skip("the file stays readable")
+        with pytest.raises(wdl.ImportReadError, match="Permission denied"):
+            _convert(path)
+        assert main(["convert", "wdl", str(path)]) == 3
+        assert capsys.readouterr().err.startswith("Error: Failed to import t.wdl")
+    finally:
+        imported.chmod(0o644)
+
+
+def test_cli_checksum_read_error(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a file that can't be read for the checksum is an IO error."""
+
+    def fail(self: Path) -> bytes:
+        """Fail like a file that went away.
+
+        Args:
+            self: The path.
+
+        Raises:
+            OSError: Always.
+        """
+        raise OSError("gone")
+
+    monkeypatch.setattr(Path, "read_bytes", fail)
+
+    assert main(["convert", "wdl", str(QC)]) == 3
+    assert capsys.readouterr().err == "Error: Can't read - gone\n"
+
+
+def test_cli_pipe_checksum(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Test that a pipe is read once, and its checksum is that of its text."""
+    text = "version 1.0\nworkflow w {\n}\n"
+    fifo = tmp_path / "pipe.wdl"
+    os.mkfifo(fifo)
+
+    def feed() -> None:
+        """Write the document into the pipe."""
+        with open(fifo, "w", encoding="utf-8") as pipe:
+            pipe.write(text)
+
+    writer = threading.Thread(target=feed)
+    writer.start()
+    try:
+        assert main(["convert", "wdl", str(fifo)]) == 0
+    finally:
+        writer.join()
+    workflow = json.loads(capsys.readouterr().out)["x-ga4gh-workflow"]
+    assert workflow["checksum"][0]["checksum"] == wdl.descriptor_checksum(text)
+
+
 def test_syntax_error(tmp_path: Path) -> None:
     """Test that a syntax error names the position."""
     path = _write(tmp_path, "version 1.0\nworkflow {\n")
@@ -723,16 +785,27 @@ def test_types_without_equivalent() -> None:
         )
 
 
-def test_has_files_in_compound_types() -> None:
-    """Test that files are found in maps, pairs and structs."""
-    types = wdl.miniwdl().Type
-    struct = types.StructInstance("S")
-    struct.members = {"f": types.File()}
+def test_file_values_in_compound_defaults(tmp_path: Path) -> None:
+    """Test that defaults with paths in places of files are left out."""
+    path = _write(
+        tmp_path,
+        "version 1.1\nstruct S {\n  String name\n  File? f\n}\n"
+        "workflow w {\n  input {\n"
+        '    Map[File, Int] keys = {"a.txt": 1}\n'
+        '    Map[String, File] values = {"a": "a.txt"}\n'
+        '    Pair[Int, File] pair = (1, "a.txt")\n'
+        '    S with_file = S { name: "x", f: "a.txt" }\n'
+        '    S without_file = S { name: "x" }\n'
+        '    Map[String, Int] plain = {"a": 1}\n'
+        "  }\n}\n",
+    )
 
-    assert wdl._has_files(types.Map((types.String(), types.File())), types)
-    assert wdl._has_files(types.Pair(types.Int(), types.File()), types)
-    assert wdl._has_files(struct, types)
-    assert not wdl._has_files(types.Pair(types.Int(), types.Int()), types)
+    inputs = _inputs(_convert(path))
+
+    for name in ("keys", "values", "pair", "with_file"):
+        assert "default" not in inputs[name], name
+    assert inputs["without_file"]["default"] == {"name": "x", "f": None}
+    assert inputs["plain"]["default"] == {"a": 1}
 
 
 def test_json_path_escapes_names() -> None:
@@ -902,6 +975,40 @@ def test_docs_use_existing_options() -> None:
     listed = re.findall(r"^- `(--?[a-z][a-z-]*)", page.read_text("utf-8"), re.M)
     assert set(listed) == {"--task", "--nested-inputs", "--import-path"}
     assert set(listed) <= defined
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "workflow w {\n  File f\n  Int? k\n  Int d = 1\n  call t { input: f = f }\n}\n",
+        "workflow w {\n  call t\n}\n",
+    ],
+)
+def test_inputs_without_input_section(tmp_path: Path, body: str) -> None:
+    """Test that unbound declarations are the inputs without input section."""
+    task = "task t {\n  File? f\n  command <<< >>>\n}\n"
+    path = _write(tmp_path, f"version 1.0\n{task}{body}")
+
+    conversion = _convert(path)
+    inputs = conversion.schema["properties"]["inputs"]
+
+    validate_schema(conversion.schema)
+    if "File f" in body:
+        assert list(inputs["properties"]) == ["f", "k", "d"]
+        assert inputs["required"] == ["f"]
+        assert "no input section" in _messages(conversion)["$.properties.inputs"]
+    else:
+        assert inputs["properties"] == {}
+        assert "$.properties.inputs" not in _messages(conversion)
+
+
+def test_task_without_input_section(tmp_path: Path) -> None:
+    """Test that a task without input section has its declarations as inputs."""
+    path = _write(
+        tmp_path, "version 1.0\ntask t {\n  String who\n  command <<< >>>\n}\n"
+    )
+
+    assert _convert(path).schema["properties"]["inputs"]["required"] == ["who"]
 
 
 def test_struct_without_required_members(tmp_path: Path) -> None:
