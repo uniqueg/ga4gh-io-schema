@@ -2,6 +2,7 @@
 
 import copy
 import json
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -416,7 +417,7 @@ def test_listing_strings_and_unknown_entries() -> None:
 
     assert result.outputs == {"qc_report": f"{BASE}/multiqc/multiqc_report.html"}
     assert [(s.entry, s.reason) for s in result.skipped_files] == [
-        ({"x": 1}, "not a path or URI")
+        ({"type": "object"}, "not a path or URI")
     ]
 
 
@@ -555,6 +556,9 @@ def test_globs_match_in_polynomial_time() -> None:
         ("*.txt", ".x.txt", True),
         ("a*", "a", True),
         ("a*a", "a", False),
+        ("*", "*x", True),
+        ("*.bam", "*x.bam", True),
+        ("?*", "**", True),
     ],
 )
 def test_segment_wildcards(glob: str, path: str, matches: bool) -> None:
@@ -597,6 +601,10 @@ def test_skipped_entries_hide_queries_and_sapporo_urls() -> None:
         "outputs": [
             f"{BASE}/a.bam?X-Amz-Signature=S#frag",
             {"file_name": 3, "file_url": "https://x/?token=S"},
+            {"file_url": "https://x/?token=S"},
+            ["https://x/?token=S"],
+            "https://user:secret@example.org/a.bam",
+            "https://user:secret@example.org",
         ],
     }
 
@@ -604,7 +612,11 @@ def test_skipped_entries_hide_queries_and_sapporo_urls() -> None:
 
     assert [s.entry for s in result.skipped_files] == [
         f"{BASE}/a.bam",
-        {"file_name": 3},
+        {"type": "object"},
+        {"type": "object"},
+        {"type": "array"},
+        "https://example.org/a.bam",
+        "https://example.org",
     ]
 
 
@@ -654,3 +666,34 @@ def test_states_that_arent_strings(state: Any) -> None:
     """
     with pytest.raises(NormalisationError, match="not in a final state"):
         normalise_outputs(WORKFLOW, {"state": state})
+
+
+def test_segment_wildcards_agree_with_regular_expressions() -> None:
+    """Test ``*`` and ``?`` against their regular expressions, exhaustively."""
+    alphabet = "ab*?"
+    words = [""]
+    for _ in range(4):
+        words += [w + c for w in words if len(w) == len(words[-1]) for c in alphabet]
+    words = sorted(set(words))
+    for glob in words:
+        pattern = re.compile(
+            "".join(
+                ".*" if c == "*" else "." if c == "?" else re.escape(c) for c in glob
+            ),
+            re.DOTALL,
+        )
+        for name in words:
+            expected = pattern.fullmatch(name) is not None
+            assert outputs_module._match_segment(glob, name) is expected, (glob, name)
+
+
+def test_filesystem_with_other_keys_is_by_name() -> None:
+    """Test that an object with ``filesystem`` and other keys isn't a listing."""
+    log = {
+        "state": "COMPLETE",
+        "outputs": {"filesystem": ["a"], "S3": ["https://x/?sig=S"], "x": 1},
+    }
+
+    result = normalise_outputs(WORKFLOW, log)
+
+    assert result.undeclared == {"filesystem": ["a"], "x": 1}

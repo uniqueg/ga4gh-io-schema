@@ -34,12 +34,15 @@ Each directory is one case:
     schema doesn't declare, sorted;
   - `unmatchedFiles`: array of the URIs of listed files that no output
     found, sorted by code point;
-  - `skippedFiles`: array of the listed entries that failed the checks, as
-    they were listed (strings or other JSON values), in the order of the
-    listing.
+  - `skippedFiles`: array of the listed entries that failed the checks, in
+    the order of the listing, as they are reported: URIs without user
+    information, query and fragment, objects and arrays as
+    `{"type": "object"}` or `{"type": "array"}`, other values as
+    listed.
 
-Compare JSON values, not their text. Only the names of reported outputs
-are compared, not their values; a normaliser's own report may carry more
+Compare JSON values, not their text. In `removed`, `unconverted` and
+`undeclared`, only the names of reported outputs are compared, not their
+values (`ambiguous` compares the URIs too); a normaliser's own report may carry more
 (e.g., the values and reasons). Validation errors, their messages and the
 reasons of reports are not part of the vectors.
 

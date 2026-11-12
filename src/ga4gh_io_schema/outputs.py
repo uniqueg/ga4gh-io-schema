@@ -16,17 +16,20 @@ that the server lists, and the options that the deployment gives.
 import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, unquote, urlsplit
 
 import jsonschema
 from jsonschema.protocols import Validator
 from referencing import Registry, Resource
-from referencing._core import Resolver
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
 from ga4gh_io_schema.validator import validate_schema
+
+if TYPE_CHECKING:  # pragma: no cover
+    # Private module: referencing exports no public name for the type
+    from referencing._core import Resolver
 
 #: Final states of a WES 1.1 run; outputs are normalised only for these.
 FINAL_STATES = frozenset(
@@ -46,6 +49,8 @@ _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 # (Outputs, x-ga4gh-output-glob); the input checks of wes.py follow other
 # rules (File references, Values), so the expressions aren't shared.
 _CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+# The user information of a URI with an authority (e.g., user:password@)
+_USERINFO = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*://)[^/]*@")
 # A Windows path, whose drive letter would look like a scheme
 _WINDOWS_PATH = re.compile(r"^[A-Za-z]:[\\/]")
 # A percent sign that doesn't start a valid percent-encoded octet
@@ -393,10 +398,12 @@ def _split_run_log(
     if "S3" not in names:
         # WESkit's presigned URLs: credentials, never copied into a report
         named.pop("S3", None)
-    if "filesystem" not in names and isinstance(named.get("filesystem"), list):
-        return {k: v for k, v in named.items() if k != "filesystem"}, list(
-            named["filesystem"]
-        )
+    if (
+        "filesystem" not in names
+        and isinstance(named.get("filesystem"), list)
+        and set(named) == {"filesystem"}
+    ):
+        return {}, list(named["filesystem"])
     return named, []
 
 
@@ -410,10 +417,8 @@ def _sapporo_entry(entry: Any) -> Any:
     Returns:
         The ``file_name`` of a Sapporo object, or the entry.
     """
-    if isinstance(entry, dict) and "file_name" in entry:
-        name = entry["file_name"]
-        # Without file_url, which may carry credentials (e.g., a token)
-        return name if isinstance(name, str) else {"file_name": name}
+    if isinstance(entry, dict) and isinstance(entry.get("file_name"), str):
+        return entry["file_name"]
     return entry
 
 
@@ -478,7 +483,7 @@ def _registry(schema: dict[str, Any]) -> tuple[str, Registry]:
     return base, Registry().with_resource(base, resource).crawl()
 
 
-def _resolver(schema: dict[str, Any]) -> Resolver[Any]:
+def _resolver(schema: dict[str, Any]) -> "Resolver[Any]":
     """Return a resolver of the references of an IO schema.
 
     Args:
@@ -526,18 +531,22 @@ def _check_listing(
 
 
 def _redact(entry: Any) -> Any:
-    """Remove the query and fragment of a listed URI, before reporting it.
+    """Remove what may carry credentials from a listed entry, to report it.
 
-    Queries of listed URIs (e.g., of presigned URLs) may carry credentials.
+    URIs lose their user information, query and fragment (e.g., of presigned
+    URLs); objects and arrays are reported by their type only.
 
     Args:
         entry: The listed entry.
 
     Returns:
-        The entry, without query and fragment if it is a URI.
+        The entry as it can be reported.
     """
+    if isinstance(entry, (dict, list)):
+        return {"type": "object" if isinstance(entry, dict) else "array"}
     if isinstance(entry, str) and _SCHEME.match(entry):
-        return re.split(r"[?#]", entry, maxsplit=1)[0]
+        entry = re.split(r"[?#]", entry, maxsplit=1)[0]
+        entry = _USERINFO.sub(r"\1", entry)
     return entry
 
 
@@ -618,7 +627,7 @@ def _take_named(
     name: str,
     prop: Any,
     value: Any,
-    resolver: Resolver[Any],
+    resolver: "Resolver[Any]",
     context: _Context,
     result: NormalisedOutputs,
 ) -> None:
@@ -643,7 +652,7 @@ def _take_named(
 
 
 def _convert(
-    value: Any, schema: Any, resolver: Resolver[Any], context: _Context
+    value: Any, schema: Any, resolver: "Resolver[Any]", context: _Context
 ) -> Any:
     """Convert a reported value into the shape of its schema.
 
@@ -716,7 +725,7 @@ def _single_branch(schema: dict[str, Any]) -> Any:
     return None
 
 
-def _follow(schema: Any, resolver: Resolver[Any]) -> tuple[Any, Resolver[Any]]:
+def _follow(schema: Any, resolver: "Resolver[Any]") -> tuple[Any, "Resolver[Any]"]:
     """Follow the ``$ref`` of a schema that has no shape of its own.
 
     Args:
@@ -893,12 +902,12 @@ def _match_segment(glob: str, name: str) -> bool:
     g = n = 0
     star, mark = -1, 0
     while n < len(name):
-        if g < len(glob) and glob[g] in ("?", name[n]):
-            g += 1
-            n += 1
-        elif g < len(glob) and glob[g] == "*":
+        if g < len(glob) and glob[g] == "*":
             star, mark = g, n
             g += 1
+        elif g < len(glob) and glob[g] in ("?", name[n]):
+            g += 1
+            n += 1
         elif star >= 0:
             g = star + 1
             mark += 1
