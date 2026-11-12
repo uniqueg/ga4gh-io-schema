@@ -16,7 +16,7 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The command-line tools are subcommands of one command, `ga4gh-io-schema`:
   `ga4gh-io-schema validate` replaces `ga4gh-io-schema-validator`, which is
   removed without an alias. The exit status now tells failures apart (1: the
-  schema doesn't comply, 2: wrong arguments, 3: a file can't be read or isn't
+  schema doesn't comply, 2: wrong arguments, 3: a file can't be read, isn't
   valid JSON, or the meta-schema is malformed, 4: unexpected errors); before,
   all failures exited with 1. (#9)
 

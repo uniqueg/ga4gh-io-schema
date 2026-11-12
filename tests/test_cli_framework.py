@@ -15,16 +15,22 @@ import pytest
 
 from ga4gh_io_schema.cli import app, main
 from ga4gh_io_schema.cli.base import (
+    ERROR_KINDS,
+    EXIT_STATUS,
     ROOT,
     CliError,
     Command,
     CommandGroup,
     CommandResult,
+    ErrorKind,
     ExitCode,
     read_json,
 )
+from ga4gh_io_schema.cli.commands import validate as validate_command
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = REPO_ROOT / "tests" / "data"
+CLI_PAGE = REPO_ROOT / "docs" / "tools" / "cli.md"
 VALID = DATA_DIR / "valid.schema.json"
 INVALID = DATA_DIR / "invalid" / "missing-inputs.schema.json"
 
@@ -70,17 +76,21 @@ class BareCommand(Command):
         Returns:
             An empty result.
         """
-        return CommandResult(text="", data={})
+        return CommandResult(text="done")
 
 
 def _stdin(monkeypatch: pytest.MonkeyPatch, text: str) -> None:
     """Replace standard input.
 
+    Standard input is decoded as ASCII, to check that the CLI reads it as
+    UTF-8 whatever the locale.
+
     Args:
         monkeypatch: Pytest fixture for patching module attributes.
         text: Content of standard input.
     """
-    monkeypatch.setattr(sys, "stdin", io.StringIO(text))
+    stdin = io.TextIOWrapper(io.BytesIO(text.encode("utf-8")), encoding="ascii")
+    monkeypatch.setattr(sys, "stdin", stdin)
 
 
 def test_validate_reads_standard_input(
@@ -251,12 +261,12 @@ def test_missing_command_is_a_usage_error(
     assert "COMMAND" in capsys.readouterr().err
 
 
-def test_old_command_name_is_gone(capsys: pytest.CaptureFixture[str]) -> None:
-    """Test that a schema path without ``validate`` is a usage error.
+def test_old_command_name_is_gone() -> None:
+    """Test that the old command is gone and a bare path is a usage error."""
+    pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'ga4gh-io-schema = "ga4gh_io_schema.cli:main"' in pyproject
+    assert "ga4gh-io-schema-validator" not in pyproject
 
-    Args:
-        capsys: Pytest fixture capturing standard output and error.
-    """
     with pytest.raises(SystemExit) as exc_info:
         main([str(VALID)])
 
@@ -324,16 +334,15 @@ def test_nested_group_dispatch(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["convert", "echo", "hello"], root=root) == 0
     assert capsys.readouterr().out == "hello\n"
     assert main(["bare", "--json"], root=root) == 0
-    assert capsys.readouterr().out == "{}\n"
+    assert json.loads(capsys.readouterr().out) == {"output": "done"}
 
 
 def test_cli_error_text_without_location() -> None:
     """Test that errors without a location don't name one."""
-    error = CliError(
-        kind="io", label="Error", message="boom", exit_code=ExitCode.IO_ERROR
-    )
+    error = CliError(ErrorKind.IO, "boom")
 
     assert error.to_text() == "Error: boom"
+    assert error.exit_code == ExitCode.IO_ERROR
 
 
 def test_read_json_reads_file() -> None:
@@ -348,7 +357,7 @@ def test_reference_documents_every_command() -> None:
     assert "## `ga4gh-io-schema`\n" in reference
     assert "## `ga4gh-io-schema validate`\n" in reference
     assert "--meta-schema" in reference
-    assert "Exit status: 0 on success" in reference
+    assert reference.count("Exit status: 0: success;") == 1
     assert "\x1b[" not in reference
 
 
@@ -373,3 +382,181 @@ def test_help_wraps_at_given_width() -> None:
     ]
 
     assert max(len(line) for line in lines) <= 60
+
+
+def test_output_dash_means_stdout(capsys: pytest.CaptureFixture[str]) -> None:
+    """Test that ``--output -`` writes to standard output.
+
+    Args:
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    assert main(["validate", str(VALID), "-o", "-"]) == 0
+    assert "complies" in capsys.readouterr().out
+
+
+def test_json_with_output_file(tmp_path: Path) -> None:
+    """Test that ``--json`` and ``--output`` write the JSON result to the file.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+    """
+    output = tmp_path / "result.json"
+
+    assert main(["validate", str(VALID), "--json", "-o", str(output)]) == 0
+    assert json.loads(output.read_text(encoding="utf-8"))["valid"] is True
+
+
+def test_json_internal_error(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that ``--json`` reports unexpected errors with exit status 4.
+
+    Args:
+        monkeypatch: Pytest fixture for patching module attributes.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+
+    def fail(**_: object) -> None:
+        """Raise an unexpected error.
+
+        Args:
+            **_: Ignored keyword arguments.
+
+        Raises:
+            RuntimeError: Always.
+        """
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(validate_command, "validate_schema", fail)
+
+    assert main(["validate", "--json", str(VALID)]) == ExitCode.INTERNAL
+    assert json.loads(capsys.readouterr().err) == {
+        "error": {"kind": "internal", "message": "boom", "location": None},
+        "exitCode": 4,
+    }
+
+
+def test_non_utf8_input_is_an_io_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that an input that isn't UTF-8 exits with status 3.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    path = tmp_path / "latin1.schema.json"
+    path.write_bytes(b'{"title": "\xe9"}')
+
+    assert main(["validate", str(path)]) == ExitCode.IO_ERROR
+    assert "Error: Not UTF-8 text - " in capsys.readouterr().err
+
+
+def test_register_requires_name_and_help() -> None:
+    """Test that a command without ``name`` or ``help`` can't be registered."""
+
+    class Nameless(Command):
+        """Command without a name."""
+
+        help = "No name."
+
+        def run(self, args: argparse.Namespace) -> CommandResult:
+            """Do nothing.
+
+            Args:
+                args: Parsed arguments.
+
+            Returns:
+                An empty result.
+            """
+            return CommandResult(text="")
+
+    group = CommandGroup(name="root", help="Root.")
+
+    with pytest.raises(TypeError, match="Nameless must set the class attribute 'name'"):
+        group.register(Nameless())
+
+
+def test_every_error_kind_has_a_label() -> None:
+    """Test that every kind of error has a label and an exit status."""
+    assert set(ERROR_KINDS) == set(ErrorKind)
+
+
+def test_docs_list_every_error_kind_and_exit_status() -> None:
+    """Test that the CLI page documents every error kind and exit status."""
+    page = CLI_PAGE.read_text(encoding="utf-8")
+
+    for kind in ErrorKind:
+        assert f"`{kind}`" in page, kind
+    assert set(EXIT_STATUS) == set(ExitCode)
+    for code in ExitCode:
+        assert f"\n| {int(code)} | " in page, code
+
+
+def test_validate_reads_utf8_from_standard_input(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that non-ASCII schemas on standard input are read as UTF-8.
+
+    Args:
+        monkeypatch: Pytest fixture for patching module attributes.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    schema = json.loads(VALID.read_text(encoding="utf-8"))
+    schema["title"] = "Séquences"
+    _stdin(monkeypatch, json.dumps(schema, ensure_ascii=False))
+
+    assert main(["validate", "-"]) == 0
+    assert "complies" in capsys.readouterr().out
+
+
+def test_meta_schema_dash_is_a_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that ``--meta-schema -`` names a file, not standard input.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        monkeypatch: Pytest fixture for patching module attributes.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    (tmp_path / "-").write_text("true", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    _stdin(monkeypatch, "not read")
+
+    assert main(["validate", str(VALID), "-m", "-"]) == 0
+    assert "complies with the meta-schema '-'" in capsys.readouterr().out
+
+
+def test_deeply_nested_json_is_an_io_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that JSON nested too deeply to parse exits with status 3.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    path = tmp_path / "deep.json"
+    path.write_text('{"a":' * 1_000_000 + "1" + "}" * 1_000_000, encoding="utf-8")
+
+    assert main(["validate", str(path)]) == ExitCode.IO_ERROR
+    assert "Error: Invalid JSON - " in capsys.readouterr().err
+
+
+def test_unresolvable_meta_schema_reference_is_a_meta_schema_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a meta-schema with a reference that can't be resolved exits 3.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    meta_schema = tmp_path / "meta.schema.json"
+    meta_schema.write_text(
+        json.dumps({"$ref": "https://nowhere.example.org/x.json"}), encoding="utf-8"
+    )
+
+    assert main(["validate", str(VALID), "-m", str(meta_schema)]) == ExitCode.IO_ERROR
+    assert "Meta-schema Error: The meta-schema references" in capsys.readouterr().err

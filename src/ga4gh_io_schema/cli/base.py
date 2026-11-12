@@ -12,25 +12,18 @@ import json
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from pathlib import Path
 from typing import Any, ClassVar
 
 #: Input argument that stands for standard input.
 STDIN = "-"
+#: Value of ``--output`` that stands for standard output (the default).
+STDOUT = "-"
 
 
 class ExitCode(IntEnum):
-    """Exit status of the command-line interface.
-
-    Attributes:
-        SUCCESS: The command succeeded (e.g., the schema is valid).
-        INVALID: The input doesn't comply (e.g., a validation error).
-        USAGE: The arguments are wrong (reported by ``argparse``).
-        IO_ERROR: A file can't be read or written, or isn't valid JSON, or the
-            meta-schema given instead of the profile is malformed.
-        INTERNAL: An unexpected error, i.e. a bug.
-    """
+    """Exit status of the command-line interface (see :data:`EXIT_STATUS`)."""
 
     SUCCESS = 0
     INVALID = 1
@@ -39,49 +32,78 @@ class ExitCode(IntEnum):
     INTERNAL = 4
 
 
+#: Meaning of each exit status, for the help and the documentation.
+EXIT_STATUS: dict[ExitCode, str] = {
+    ExitCode.SUCCESS: "success",
+    ExitCode.INVALID: "the input doesn't comply (e.g., a validation error)",
+    ExitCode.USAGE: "wrong arguments, or no subcommand",
+    ExitCode.IO_ERROR: (
+        "a file can't be read or written, or can't be used (e.g., invalid JSON "
+        "or a malformed meta-schema)"
+    ),
+    ExitCode.INTERNAL: "an unexpected error",
+}
+
+
+class ErrorKind(StrEnum):
+    """Machine-readable kind of a :class:`CliError`.
+
+    The kind sets the label of the error in text mode and the exit status
+    (see :data:`ERROR_KINDS`).
+    """
+
+    VALIDATION = "validation"
+    IO = "io"
+    META_SCHEMA = "meta-schema"
+    INTERNAL = "internal"
+
+
+#: Label in text mode and exit status of each kind of error.
+ERROR_KINDS: dict[ErrorKind, tuple[str, ExitCode]] = {
+    ErrorKind.VALIDATION: ("Validation Error", ExitCode.INVALID),
+    ErrorKind.IO: ("Error", ExitCode.IO_ERROR),
+    ErrorKind.META_SCHEMA: ("Meta-schema Error", ExitCode.IO_ERROR),
+    ErrorKind.INTERNAL: ("An unexpected error occurred", ExitCode.INTERNAL),
+}
+
+
 class CliError(Exception):
     """Failure of a command, reported on standard error.
 
     Attributes:
-        kind: Machine-readable kind of the error (e.g., ``validation``).
-        label: Prefix of the error message in text mode.
+        kind: Kind of the error.
         message: Description of the error.
         location: JSON path of the offending value, if any.
-        exit_code: Exit status of the command.
     """
 
     def __init__(
-        self,
-        kind: str,
-        label: str,
-        message: str,
-        exit_code: ExitCode,
-        location: str | None = None,
+        self, kind: ErrorKind, message: str, location: str | None = None
     ) -> None:
         """Initialise the error.
 
         Args:
-            kind: Machine-readable kind of the error (e.g., ``validation``).
-            label: Prefix of the error message in text mode.
+            kind: Kind of the error.
             message: Description of the error.
-            exit_code: Exit status of the command.
             location: JSON path of the offending value, if any.
         """
         super().__init__(message)
         self.kind = kind
-        self.label = label
         self.message = message
-        self.exit_code = exit_code
         self.location = location
+
+    @property
+    def exit_code(self) -> ExitCode:
+        """Exit status of the command, set by the kind of the error."""
+        return ERROR_KINDS[self.kind][1]
 
     def to_text(self) -> str:
         """Render the error as a line of text.
 
         Returns:
-            The label, the message and, if known, the location.
+            The label of the kind, the message and, if known, the location.
         """
         location = f" (at {self.location})" if self.location else ""
-        return f"{self.label}: {self.message}{location}"
+        return f"{ERROR_KINDS[self.kind][0]}: {self.message}{location}"
 
     def to_json(self) -> str:
         """Render the error as a JSON object on one line.
@@ -92,7 +114,7 @@ class CliError(Exception):
         return json.dumps(
             {
                 "error": {
-                    "kind": self.kind,
+                    "kind": str(self.kind),
                     "message": self.message,
                     "location": self.location,
                 },
@@ -106,12 +128,21 @@ class CommandResult:
     """Result of a successful command, written to the output.
 
     Attributes:
-        text: The result in text mode.
-        data: The result with ``--json``, serialised as a JSON object.
+        text: The result in text mode (e.g., a message or a converted file).
+        data: The result with ``--json``; if omitted, ``--json`` writes
+            ``{"output": text}``.
     """
 
     text: str
-    data: dict[str, Any]
+    data: dict[str, Any] | None = None
+
+    def to_json(self) -> str:
+        """Render the result as a JSON object on one line.
+
+        Returns:
+            ``data``, or ``{"output": text}`` if there's no ``data``.
+        """
+        return json.dumps(self.data if self.data is not None else {"output": self.text})
 
 
 class Command(ABC):
@@ -175,9 +206,16 @@ class CommandGroup:
             The command, so that the call can be used as an expression.
 
         Raises:
+            TypeError: If the command lacks a ``name`` or ``help``.
             ValueError: If the group already has a command or group of that
                 name.
         """
+        for attribute in ("name", "help"):
+            if not isinstance(getattr(command, attribute, None), str):
+                raise TypeError(
+                    f"{type(command).__name__} must set the class attribute "
+                    f"'{attribute}'."
+                )
         self._check_free(command.name)
         self.commands[command.name] = command
         return command
@@ -216,30 +254,59 @@ class CommandGroup:
             raise ValueError(f"'{self.name} {name}' is already registered.")
 
 
-#: Top-level group: the subcommands of ``ga4gh-io-schema``.
+#: Top-level group: the subcommands of ``ga4gh-io-schema``. Modules add to it
+#: only when they're imported; tests build their own groups.
 ROOT = CommandGroup(
     name="ga4gh-io-schema",
     help="Tools for the GA4GH IO Profile of JSON Schema.",
 )
 
 
-def input_name(source: str) -> str:
+def input_name(source: str | Path) -> str:
     """Name an input in messages.
 
     Args:
-        source: Path of the input, or ``-`` for standard input.
+        source: Path of the input, or the string ``-`` for standard input.
 
     Returns:
         The path, or ``<stdin>``.
     """
-    return "<stdin>" if source == STDIN else source
+    return "<stdin>" if source == STDIN else str(source)
 
 
-def read_json(source: str) -> Any:
+def read_text(source: str | Path) -> str:
+    """Read text from a file or from standard input.
+
+    Args:
+        source: Path of the file, or the string ``-`` for standard input (a
+            ``Path("-")`` is a file named ``-``).
+
+    Returns:
+        The text.
+
+    Raises:
+        CliError: If the input can't be read or isn't UTF-8.
+    """
+    try:
+        if isinstance(source, str) and source == STDIN:
+            # As UTF-8, like files, whatever the locale
+            return sys.stdin.buffer.read().decode("utf-8")
+        return Path(source).read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise CliError(ErrorKind.IO, f"File not found - {exc}") from exc
+    except UnicodeDecodeError as exc:
+        raise CliError(
+            ErrorKind.IO, f"Not UTF-8 text - {input_name(source)}: {exc}"
+        ) from exc
+    except OSError as exc:
+        raise CliError(ErrorKind.IO, f"Can't read - {exc}") from exc
+
+
+def read_json(source: str | Path) -> Any:
     """Read a JSON document from a file or from standard input.
 
     Args:
-        source: Path of the file, or ``-`` for standard input.
+        source: Path of the file, or the string ``-`` for standard input.
 
     Returns:
         The parsed document.
@@ -247,28 +314,11 @@ def read_json(source: str) -> Any:
     Raises:
         CliError: If the input can't be read or isn't valid JSON.
     """
+    text = read_text(source)
     try:
-        if source == STDIN:
-            return json.load(sys.stdin)
-        with Path(source).open(encoding="utf-8") as file:
-            return json.load(file)
-    except FileNotFoundError as exc:
-        raise io_error(f"File not found - {exc}") from exc
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise io_error(f"Invalid JSON - {input_name(source)}: {exc}") from exc
-    except OSError as exc:
-        raise io_error(f"Can't read - {exc}") from exc
-
-
-def io_error(message: str) -> CliError:
-    """Create the error for a file that can't be read or written.
-
-    Args:
-        message: Description of the error.
-
-    Returns:
-        The error.
-    """
-    return CliError(
-        kind="io", label="Error", message=message, exit_code=ExitCode.IO_ERROR
-    )
+        return json.loads(text)
+    # RecursionError: too deeply nested
+    except (json.JSONDecodeError, RecursionError) as exc:
+        raise CliError(
+            ErrorKind.IO, f"Invalid JSON - {input_name(source)}: {exc}"
+        ) from exc

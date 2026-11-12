@@ -3,7 +3,6 @@
 import argparse
 import functools
 import importlib
-import json
 import pkgutil
 import re
 import sys
@@ -11,23 +10,24 @@ from collections.abc import Sequence
 
 from ga4gh_io_schema.cli import commands
 from ga4gh_io_schema.cli.base import (
+    EXIT_STATUS,
     ROOT,
-    STDIN,
+    STDOUT,
     CliError,
     Command,
     CommandGroup,
     CommandResult,
+    ErrorKind,
     ExitCode,
-    io_error,
 )
 
 #: Name of the command, also in the help of the subcommands.
 PROG = "ga4gh-io-schema"
 
 _EPILOG = (
-    "Exit status: 0 on success, 1 if the input doesn't comply, 2 for wrong "
-    "arguments, 3 if a file can't be read or written or isn't valid JSON (or "
-    "the meta-schema is malformed), 4 for unexpected errors."
+    "Exit status: "
+    + "; ".join(f"{int(code)}: {meaning}" for code, meaning in EXIT_STATUS.items())
+    + "."
 )
 
 # ANSI escape sequences, which argparse adds to the help on some terminals
@@ -66,8 +66,8 @@ def build_parser(
     shared.add_argument(
         "--output",
         "-o",
-        default=STDIN,
-        help="Write the result to this file instead of standard output.",
+        default=STDOUT,
+        help="Write the result to this file instead of standard output ('-').",
     )
     shared.add_argument(
         "--json",
@@ -115,7 +115,6 @@ def _add_subcommands(
                 name,
                 help=command.help,
                 description=command.help,
-                epilog=_EPILOG,
                 parents=[shared],
                 formatter_class=formatter,
             )
@@ -160,12 +159,7 @@ def main(argv: Sequence[str] | None = None, root: CommandGroup | None = None) ->
     except CliError as exc:
         error = exc
     except Exception as exc:
-        error = CliError(
-            kind="internal",
-            label="An unexpected error occurred",
-            message=str(exc),
-            exit_code=ExitCode.INTERNAL,
-        )
+        error = CliError(ErrorKind.INTERNAL, str(exc))
     else:
         return int(ExitCode.SUCCESS)
     print(error.to_json() if args.json else error.to_text(), file=sys.stderr)
@@ -182,15 +176,15 @@ def _write(result: CommandResult, args: argparse.Namespace) -> None:
     Raises:
         CliError: If the output file can't be written.
     """
-    text = json.dumps(result.data) if args.json else result.text
-    if args.output == STDIN:
+    text = result.to_json() if args.json else result.text
+    if args.output == STDOUT:
         print(text)
         return
     try:
         with open(args.output, "w", encoding="utf-8") as file:
             file.write(f"{text}\n")
     except OSError as exc:
-        raise io_error(f"Can't write - {exc}") from exc
+        raise CliError(ErrorKind.IO, f"Can't write - {exc}") from exc
 
 
 def render_reference(

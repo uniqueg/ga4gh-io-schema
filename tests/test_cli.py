@@ -269,7 +269,10 @@ def test_cli_omits_location_of_top_level_errors(
     Args:
         capsys: Pytest fixture capturing standard output and error.
     """
-    main(["validate", str(DATA_DIR / "invalid" / "missing-schema.schema.json")])
+    assert (
+        main(["validate", str(DATA_DIR / "invalid" / "missing-schema.schema.json")])
+        == 1
+    )
 
     assert "(at $)" not in capsys.readouterr().err
 
