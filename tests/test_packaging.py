@@ -16,6 +16,7 @@ from ga4gh_io_schema.validator import get_schemas_dir, load_json
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCHEMAS_DIR = REPO_ROOT / "schemas"
 DATA_DIR = REPO_ROOT / "tests" / "data"
+SUITE_DIR = REPO_ROOT / "tests" / "conformance"
 PROFILE_PATH = SCHEMAS_DIR / "ga4gh-io-profile.schema.json"
 # Docs that show CLI usage; mkdocs build --strict checks the links of docs/.
 USAGE_DOCS = [REPO_ROOT / "README.md", REPO_ROOT / "docs" / "tools" / "validator.md"]
@@ -60,7 +61,11 @@ def test_schema_ids_share_one_release_tag() -> None:
     """
     tags = set()
     meta_schema_doc = REPO_ROOT / "docs" / "specification" / "meta-schema.md"
-    for path in [*SCHEMAS_DIR.rglob("*.json"), *DATA_DIR.rglob("*.json")]:
+    for path in [
+        *SCHEMAS_DIR.rglob("*.json"),
+        *DATA_DIR.rglob("*.json"),
+        *SUITE_DIR.rglob("*.json"),
+    ]:
         text = path.read_text(encoding="utf-8")
         assert "/main/" not in text, path
         tags.update(re.findall(r"/ga4gh-io-schema/([^/]+)/schemas/", text))
@@ -75,7 +80,8 @@ def test_schema_ids_share_one_release_tag() -> None:
 def test_examples_reference_the_meta_schema() -> None:
     """Test that the examples name the meta-schema and use placeholder ``$id``s."""
     profile_id = load_json(PROFILE_PATH)["$id"]
-    for path in DATA_DIR.glob("*.schema.json"):
+    valid = SUITE_DIR / "schema-documents" / "valid"
+    for path in [*DATA_DIR.glob("*.schema.json"), *valid.glob("*.schema.json")]:
         schema = load_json(path)
         assert schema["$schema"] == profile_id, path
         assert schema["$id"].startswith("https://example.org/"), path
