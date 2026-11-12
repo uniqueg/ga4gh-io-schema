@@ -602,11 +602,14 @@
                 "properties": {
                   "items": {
                     "type": "object",
-                    "allOf": [
-                      {
-                        "$ref": "#/$defs/type/$defs/string"
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "string"
                       }
-                    ]
+                    }
                   }
                 }
               }

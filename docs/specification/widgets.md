@@ -27,16 +27,18 @@ are for `inputs`, viewers for `outputs`.
 | `checkbox` | `boolean` | | `true` or `false` |
 | `switch` | `boolean` | | `true` or `false` |
 | `date-picker` | `string` | `"format": "date"` | An RFC 3339 `full-date`, e.g., `2026-11-12` |
-| `time-picker` | `string` | `"format": "time"` | An RFC 3339 `full-time`, with offset, e.g., `14:30:00Z` |
+| `time-picker` | `string` | `"format": "time"` | An RFC 3339 `full-time`, with offset, e.g., `14:30:00Z`; the offset is that of the time zone that the widget shows to the user (by default, the user's local one), so the value names the same moment for every client |
 | `datetime-picker` | `string` | `"format": "date-time"` | An RFC 3339 `date-time`, e.g., `2026-11-12T14:30:00Z` |
-| `color-picker` | `string` | | A colour as `#rrggbb`, six lowercase hexadecimal digits (the value of an HTML `<input type="color">`, e.g., `#1f77b4`); schemas SHOULD add `"pattern": "^#[0-9A-Fa-f]{6}$"` |
+| `color-picker` | `string` | | A colour as `#rrggbb`, six lowercase hexadecimal digits (the value of an HTML `<input type="color">`, e.g., `#1f77b4`); schemas SHOULD add `"pattern": "^#[0-9a-f]{6}$"` |
 | `file-picker` | `string` | `x-ga4gh-file` with `"kind": "file"` | A file reference to a file (see [Values](files.md#values)) |
 | `directory-picker` | `string` | `x-ga4gh-file` with `"kind": "directory"` | A file reference to a directory (see [Values](files.md#values)) |
 | `tags` | `array` | `items` with `"type": "string"` | An array of strings, one per tag, never a delimited string. With `items.enum`, only its values; otherwise any strings |
 
 `type` may also be an array of the type and `"null"` (e.g.,
-`["string", "null"]`), except for file references, which are strings; the
-widget then also lets users clear the value, which gives `null`. Labels of
+`["string", "null"]`), except for file references, which are strings, and
+the items of `tags`; the widget then also lets users clear the value, which
+gives `null`, but only where `null` passes the schema (e.g., with `enum`,
+only if `null` is one of its values). Labels of
 the values of `enum` (e.g., with `oneOf` and `const`) are not part of
 version 0.3: clients show the values themselves.
 
@@ -67,11 +69,13 @@ offered for download. Version 0.3 defers other viewers (see
 * **What the meta-schema checks:** for every schema, at any depth, the
   `type`, `format`, bounds, `enum` or `examples`, `x-ga4gh-file` and
   `items` that the tables require. For the parameters directly under
-  `inputs` and `outputs`, it also rejects viewers on inputs and input
-  widgets on outputs. It doesn't check whether the values of `enum` have
+  `inputs` and `outputs` (not deeper, and not in `$defs`), it also rejects
+  viewers on inputs and input widgets on outputs. It doesn't check whether the values of `enum` have
   the type of the schema, whether a colour has a `pattern`, the group of
   widgets in nested schemas and definitions (e.g., a viewer on a property of
-  an object input), or custom widgets.
+  an object input), or custom widgets. Validators report a misfit at the
+  keyword that doesn't fit (e.g., `type`, with "not valid under any of the
+  given schemas"), not at the widget: the widget is what asks for it.
 * **Widgets that don't fit:** a client that gets a widget that doesn't fit
   its schema (e.g., a viewer in a nested input, or a schema that wasn't
   validated) MUST render the input as it renders inputs of the same type

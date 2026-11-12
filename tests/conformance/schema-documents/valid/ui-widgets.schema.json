@@ -20,7 +20,10 @@
           "x-ga4gh-ui-widget": "textarea"
         },
         "threads": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 1,
           "x-ga4gh-ui-widget": "number"
         },
@@ -75,7 +78,10 @@
           "x-ga4gh-ui-widget": "radio"
         },
         "paired": {
-          "type": "boolean",
+          "type": [
+            "boolean",
+            "null"
+          ],
           "x-ga4gh-ui-widget": "checkbox"
         },
         "verbose": {
@@ -100,7 +106,7 @@
         },
         "colour": {
           "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "pattern": "^#[0-9a-f]{6}$",
           "x-ga4gh-ui-widget": "color-picker"
         },
         "reads": {
@@ -118,7 +124,10 @@
           "x-ga4gh-ui-widget": "directory-picker"
         },
         "labels": {
-          "type": "array",
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
             "type": "string"
           },
