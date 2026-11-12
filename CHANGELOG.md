@@ -36,6 +36,11 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `ga4gh-io-schema convert snakemake`: converts a Snakemake config schema
+  (YAML or JSON, Draft 4 to 2020-12) and sample-sheet schemas to an IO
+  schema, with file references from documented, overridable heuristics, the
+  sample sheets as tabular hints, and notes on every decision to check;
+  YAML needs the new `snakemake` extra. (#20)
 - File references (`x-ga4gh-file`): kind (`file` or `directory`), media
   type, format term, compression, required secondary files as CWL-style
   suffix patterns, and allowed URI schemes; a defined value syntax (absolute
