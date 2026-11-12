@@ -2,9 +2,9 @@
 
 ## Tool Registry Service (TRS) integration
 
-To allow clients to discover these schemas natively, we recommend extending the TRS specification to formally recognize schemas as primary artifacts.
+IO schemas are published as files of a workflow's TRS entry, with the existing `ToolFile` `file_type` `OTHER` and a naming convention (see [#12](https://github.com/uniqueg/ga4gh-io-schema/issues/12)), so that clients can fetch the lightweight JSON contract without downloading the engine-specific source code. This works with TRS as it is.
 
-Specifically, TRS should introduce a new enum value for the `ToolFile` `file_type`, such as `IO_SCHEMA`. To ensure TRS remains agnostic and does not artificially lock out other ecosystem schemas, this file type should be accompanied by metadata or an annotation pointing to a standardized vocabulary of schema types (e.g., `ga4gh-io-schema`, `nf-schema`). This distinct file type allows generic clients (or AI agents) to pull the lightweight JSON contract independently from downloading the heavier, engine-specific source code.
+Earlier versions of this proposal asked TRS for a new file type, such as `IO_SCHEMA`, with metadata naming the schema standard of the file (e.g., `ga4gh-io-schema`, `nf-schema`). That change to TRS is deferred to a later proposal (see [Roadmap](../roadmap.md#deferred)).
 
 ## Guide for TRS implementers
 

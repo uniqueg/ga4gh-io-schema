@@ -106,7 +106,7 @@ Since [galaxyproject/galaxy#23105](https://github.com/galaxyproject/galaxy/pull/
 [APE](https://github.com/Workflomics/ape) synthesises candidate workflows from tool annotations in the bio.tools format and an ontology such as EDAM; [Workflomics](https://workflomics.readthedocs.io) uses it to generate and benchmark workflows.
 
 - **Overlap:** Chaining tools by the EDAM types and formats of their inputs and outputs.
-- **Relation: differ (deferred).** Chaining workflows by ontology terms is deferred in version 0.3; it needs matching rules (e.g., for more specific terms) that the profile doesn't define. Tools like APE work on tool-level annotations and don't need the profile for that.
+- **Relation: differ (deferred).** Chaining workflows by ontology terms is deferred in version 0.3 (see [Roadmap](roadmap.md#deferred)); it needs matching rules (e.g., for more specific terms) that the profile doesn't define. Tools like APE work on tool-level annotations and don't need the profile for that.
 
 ## WorkflowHub
 
@@ -119,7 +119,7 @@ Since [galaxyproject/galaxy#23105](https://github.com/galaxyproject/galaxy/pull/
 [Table Schema](https://datapackage.org/standard/table-schema/) (Data Package v2) describes the columns of tabular data, with field types (e.g., `integer`, `date`, `boolean`) and constraints (e.g., `required`, `unique`, `minimum`, `pattern`, `enum`), and [Table Dialect](https://datapackage.org/standard/table-dialect/) describes delimiters, headers and quoting.
 
 - **Overlap:** The profile's `x-ga4gh-tabular-schema` describes the rows of sample sheets.
-- **Relation: adopt by reference (deferred).** Validating tabular files needs the rules that Table Schema and Table Dialect already define (how text cells become typed values, empty cells, dialects). Version 0.3 keeps `x-ga4gh-tabular-schema` as an experimental hint for forms and defers validation of tabular files; if it is added, it should reference Table Schema rather than reinvent it.
+- **Relation: adopt by reference (deferred).** Validating tabular files needs the rules that Table Schema and Table Dialect already define (how text cells become typed values, empty cells, dialects). Version 0.3 keeps `x-ga4gh-tabular-schema` as an experimental hint for forms and defers validation of tabular files (see [Roadmap](roadmap.md#deferred)); if it is added, it should reference Table Schema rather than reinvent it.
 
 ## Croissant
 

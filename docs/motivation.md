@@ -22,7 +22,7 @@ To keep this standard small and focused on interface description, we set the fol
 
 * **Requests from agents and other programs:** Give AI agents and other programs a schema from which they can build run requests and check them before submitting. A schema checks the *shape* of a request, not whether the values make sense for the analysis.
 
-* **Semantic output typing:** Standardise the annotation of outputs with viewer hints (e.g., `genome-browser`) and ontology terms, so that portals and data catalogues can interpret the results of a run.
+* **Semantic output typing:** Standardise the annotation of outputs with viewer hints (e.g., `table-viewer`) and ontology terms, so that portals and data catalogues can interpret the results of a run.
 
 ### Non-goals and out of scope (the defenses)
 
