@@ -121,13 +121,15 @@ _APPLICATORS = (
     "$ref",
     "$dynamicRef",
 )
+# Keywords of Draft 2020-12 whose value maps names to schemas.
+_NAME_MAPS = frozenset({"$defs", "dependentSchemas", "patternProperties", "properties"})
 # Keywords that are kept next to "$ref" of drafts before 2019-09: the
-# reference, annotations, identifiers and definitions (targets of references).
+# reference, annotations and definitions (targets of references). Identifiers
+# are dropped: those drafts ignore them next to "$ref".
 _NEXT_TO_REF = frozenset(
     {
         "$comment",
         "$defs",
-        "$id",
         "$ref",
         "$schema",
         "default",
@@ -135,7 +137,6 @@ _NEXT_TO_REF = frozenset(
         "deprecated",
         "description",
         "examples",
-        "id",
         "readOnly",
         "title",
         "writeOnly",
@@ -554,8 +555,9 @@ class _Converter:
         resource: Any,
         pointer: Pointer,
         anchors: dict[str, Pointer],
+        names: bool = False,
     ) -> None:
-        """Report local references of the IO schema that point to nothing.
+        """Report JSON-pointer references of the IO schema that point to nothing.
 
         Also checks that no schema resource defines an anchor twice (e.g.,
         the config schema and a sample-sheet schema).
@@ -565,6 +567,8 @@ class _Converter:
             resource: Root of the schema resource that the node is in.
             pointer: Location of the node.
             anchors: Anchors of the resource, and where they are.
+            names: Whether the node maps names to schemas (e.g., the value
+                of ``properties``), so that its keys aren't keywords.
 
         Raises:
             ConversionError: If an anchor is defined twice in a resource.
@@ -574,6 +578,10 @@ class _Converter:
                 self._check_references(item, resource, (*pointer, index), anchors)
             return
         if not isinstance(node, dict):
+            return
+        if names:
+            for key, value in node.items():
+                self._check_references(value, resource, (*pointer, key), anchors)
             return
         identifier = node.get("$id")
         if pointer and isinstance(identifier, str) and not identifier.startswith("#"):
@@ -608,7 +616,13 @@ class _Converter:
                         break
         for key, value in node.items():
             if key not in _DATA:
-                self._check_references(value, resource, (*pointer, key), anchors)
+                self._check_references(
+                    value,
+                    resource,
+                    (*pointer, key),
+                    anchors,
+                    names=key in _NAME_MAPS,
+                )
 
     def _sheet_properties(
         self, config: dict[str, Any], sheets: list[SampleSheet]
@@ -761,7 +775,11 @@ class _Converter:
             )
         identifier = node.get("id" if self.draft == 4 else "$id")
         boundary = (
-            not root and isinstance(identifier, str) and not identifier.startswith("#")
+            not root
+            and isinstance(identifier, str)
+            and not identifier.startswith("#")
+            # Drafts before 2019-09 ignore identifiers next to "$ref"
+            and not (self.draft < 2019 and "$ref" in node)
         )
         if not boundary:
             return self._keywords(node, pointer, name, root)
@@ -1219,7 +1237,12 @@ def _is_index(segment: str, value: list[Any]) -> bool:
     Returns:
         Whether the segment is a decimal index within the list.
     """
-    return segment.isdecimal() and int(segment) < len(value)
+    # The length check first: Python won't convert strings of too many digits
+    return (
+        segment.isdecimal()
+        and len(segment) <= len(str(len(value)))
+        and int(segment) < len(value)
+    )
 
 
 def _words(name: str) -> list[str]:

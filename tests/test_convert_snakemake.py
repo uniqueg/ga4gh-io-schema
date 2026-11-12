@@ -934,6 +934,44 @@ def test_anchors_in_embedded_resources_are_separate() -> None:
     assert inputs(to_ga4gh(source))["properties"]["b"]["$anchor"] == "x"
 
 
+def test_identifiers_next_to_old_refs_are_dropped() -> None:
+    """Test that a Draft 7 ``$id`` next to ``$ref`` makes no resource."""
+    source = {
+        "$schema": DRAFT_7,
+        "definitions": {
+            "a": {"type": "string"},
+            "b": {"$id": "http://example.org/b", "$ref": "#/definitions/a"},
+        },
+        "properties": {"x": {"$ref": "#/definitions/b"}},
+    }
+
+    conversion = to_ga4gh(source)
+
+    assert conversion.schema["$defs"]["b"] == {"$ref": "#/$defs/a"}
+    assert "Dropped '$id' next to '$ref'" in messages(conversion)[0]
+    assert not any("points to nothing" in m for m in messages(conversion))
+
+
+def test_huge_indexes_in_references_are_dangling() -> None:
+    """Test that an index Python won't convert is no internal error."""
+    huge = "1" * 5000
+    source = config({"x": {"$ref": f"#/allOf/{huge}"}}, allOf=[True])
+
+    conversion = to_ga4gh(source)
+
+    assert any("points to nothing" in m for m in messages(conversion))
+
+
+def test_schemas_named_like_data_keywords_are_checked() -> None:
+    """Test that a property named ``default`` is checked like any other."""
+    source = config({"default": {"$ref": "#/definitions/missing"}})
+
+    conversion = to_ga4gh(source)
+
+    assert conversion.notes[-2].location == "$.properties.inputs.properties.default"
+    assert "points to nothing" in conversion.notes[-2].message
+
+
 # --- File references --------------------------------------------------------
 
 
