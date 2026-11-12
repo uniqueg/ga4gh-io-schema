@@ -345,7 +345,21 @@ def test_validate_schema_accepts_output_glob(glob: str) -> None:
 
 @pytest.mark.parametrize(
     "glob",
-    ["./report.html", "results/.", "a/../b", "**/", "a/***/b", "x**", "[ab].txt"],
+    [
+        "./report.html",
+        "results/.",
+        "a/../b",
+        "**/",
+        "a/***/b",
+        "x**",
+        "[ab].txt",
+        # Python's ``$`` matches before a final newline; ECMA-262's doesn't
+        "alignments/*.bam\n",
+        "..\n",
+        "a\u007fb",
+        "a\u0085b",
+        "a b",
+    ],
 )
 def test_validate_schema_rejects_output_glob(glob: str) -> None:
     """Test that globs outside the profile's syntax fail.
@@ -381,8 +395,19 @@ def test_validate_schema_accepts_output_glob_on_list(kind: str) -> None:
         {"type": "array", "x-ga4gh-output-glob": "*.bam"},
         {"type": "array", "items": True, "x-ga4gh-output-glob": "*.bam"},
         {"type": ["string", "null"], "x-ga4gh-output-glob": "*.bam"},
+        {"x-ga4gh-output-glob": "*.bam"},
+        {
+            "type": "array",
+            "prefixItems": [FILE_OUTPUT],
+            "x-ga4gh-output-glob": "*.bam",
+        },
+        {
+            "type": "object",
+            "additionalProperties": FILE_OUTPUT,
+            "x-ga4gh-output-glob": "*.bam",
+        },
     ],
-    ids=["no-items", "boolean-items", "nullable"],
+    ids=["no-items", "boolean-items", "nullable", "no-type", "tuple", "object"],
 )
 def test_validate_schema_rejects_output_glob_without_file_reference(
     output: dict[str, Any],
@@ -400,5 +425,28 @@ def test_validate_schema_accepts_empty_outputs() -> None:
     """Test that a schema may declare that a workflow has no outputs."""
     schema = _schema_with_output(FILE_OUTPUT)
     schema["properties"]["outputs"] = {"type": "object", "properties": {}}
+
+    validate_schema(schema)
+
+
+def test_validate_schema_accepts_outputs_without_type() -> None:
+    """Test that ``outputs`` may leave out ``type``, as ``inputs`` may."""
+    schema = _schema_with_output(FILE_OUTPUT)
+    del schema["properties"]["outputs"]["type"]
+
+    validate_schema(schema)
+
+
+def test_validate_schema_accepts_output_glob_outside_outputs() -> None:
+    """Test that a glob elsewhere (e.g., in ``inputs``) passes and is ignored.
+
+    The meta-schema checks the keyword at any depth, like the other keywords,
+    but doesn't enforce where it has a meaning; clients ignore it there.
+    """
+    schema = _schema_with_output(FILE_OUTPUT)
+    schema["properties"]["inputs"] = {
+        "type": "object",
+        "properties": {"reads": {**FILE_OUTPUT, "x-ga4gh-output-glob": "*.bam"}},
+    }
 
     validate_schema(schema)

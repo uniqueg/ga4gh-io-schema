@@ -273,3 +273,35 @@ def test_example_workflow_outputs_require_declared_outputs() -> None:
     }
 
     assert failing_output_keywords(WORKFLOW, outputs) == {"required"}
+
+
+def partial_output_errors(path: Path, outputs: dict[str, Any]) -> set[str]:
+    """Return the outputs of a run that didn't complete that are invalid.
+
+    Partial outputs are checked property by property, without ``required``.
+
+    Args:
+        path: The example IO schema.
+        outputs: The normalised outputs object of a run that didn't complete.
+
+    Returns:
+        The names of the outputs whose values are invalid or undeclared.
+    """
+    properties = load(path)["properties"]["outputs"]["properties"]
+    return {
+        name
+        for name, value in outputs.items()
+        if name not in properties
+        or not jsonschema.Draft202012Validator(properties[name]).is_valid(value)
+    }
+
+
+def test_example_workflow_partial_outputs_are_checked_per_output() -> None:
+    """Test that partial outputs lack required outputs but keep their shapes."""
+    partial = {"qc_report": WORKFLOW_OUTPUTS["qc_report"]}
+
+    assert failing_output_keywords(WORKFLOW, partial) == {"required"}
+    assert partial_output_errors(WORKFLOW, partial) == set()
+    assert partial_output_errors(WORKFLOW, {**partial, "alignments": "s3://b/k"}) == {
+        "alignments"
+    }

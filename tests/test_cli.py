@@ -15,12 +15,16 @@ from ga4gh_io_schema.cli.commands import validate as validate_command
 DATA_DIR = Path(__file__).resolve().parent / "data"
 VALID = sorted(DATA_DIR.glob("*.schema.json"))
 
+#: Definition of ``x-ga4gh-output-glob`` in its vocabulary.
+_OUTPUT_GLOB = json.loads(
+    (
+        DATA_DIR.parents[1] / "schemas" / "vocabularies" / "outputs.schema.json"
+    ).read_text(encoding="utf-8")
+)["$defs"]["outputGlob"]
 #: Patterns of ``x-ga4gh-output-glob`` as error messages show them (as their
-#: repr, with backslashes doubled).
-OUTPUT_GLOB_PATTERN = (
-    r"^[^/\\\\\\[\\]{}\\u0000-\\u001f]+(/[^/\\\\\\[\\]{}\\u0000-\\u001f]+)*$"
-)
-OUTPUT_GLOB_NOT_PATTERN = "(^|/)[.][.]?(/|$)|[^/][*][*]|[*][*][^/]"
+#: repr without the quotes, with backslashes doubled).
+OUTPUT_GLOB_PATTERN = repr(_OUTPUT_GLOB["pattern"])[1:-1]
+OUTPUT_GLOB_NOT_PATTERN = repr(_OUTPUT_GLOB["not"]["pattern"])[1:-1]
 
 #: Expected error message (on stderr) for each deliberately bad schema.
 INVALID = {
@@ -204,6 +208,14 @@ INVALID = {
     ),
     "outputs-not-object-type": (
         "Validation Error: 'object' was expected (at $.properties.outputs.type)"
+    ),
+    "outputs-applicator": (
+        "Validation Error: False schema does not allow '#/$defs/outputs' "
+        "(at $.properties.outputs)"
+    ),
+    "output-glob-tuple": (
+        "Validation Error: False schema does not allow [{'type': 'integer'}] "
+        "(at $.properties.outputs.properties.report)"
     ),
     "output-glob-not-string": (
         "Validation Error: 3 is not of type 'string' "

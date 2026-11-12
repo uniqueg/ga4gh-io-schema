@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/output-glob-tuple",
+  "title": "Invalid: output-glob-tuple",
+  "description": "An output glob is on a tuple (prefixItems), whose slots a list of found files can't fill.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object"
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "integer"
+            }
+          ],
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          },
+          "x-ga4gh-output-glob": "*.bam"
+        }
+      }
+    }
+  }
+}

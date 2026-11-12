@@ -22,8 +22,10 @@ they appear in all capitals.
   a description.
 - **With `outputs`**, it is an object schema whose `properties` are the
   outputs, each named by its property. The meta-schema rejects a boolean
-  schema and a `type` other than `object`. `"properties": {}` says that the
-  workflow has no named outputs.
+  schema, a `type` other than `object`, and references and applicators
+  (`$ref`, `allOf`, `if` and the like) on `outputs` itself: the outputs are
+  its direct `properties`, so that normalisers find them without resolving
+  anything. `"properties": {}` says that the workflow has no named outputs.
 
 Schemas SHOULD have `outputs` where the workflow language declares outputs,
 and converters MUST convert the outputs that it declares. Outputs listed in
@@ -60,7 +62,8 @@ records, each with a file). Rules for values:
   files](files.md#secondary-files)), and clients find them there.
 - **Outputs that a run didn't produce** are absent, never `null`. Schemas
   SHOULD NOT allow `null` in outputs; normalisers leave out the `null`
-  values that engines report for optional outputs (e.g., WDL `File?`).
+  values that engines report for optional outputs (e.g., WDL `File?`), and
+  the `null` items of lists (e.g., WDL `Array[File?]`).
 - **Outputs known only at run time:** the number of files in a list, and
   the keys of files keyed by sample, are known only when the run has
   finished; the schema describes their shape, not their number. Outputs that
@@ -80,7 +83,13 @@ The normalised outputs object of a run is a JSON object:
 It is what clients and viewers consume: the keywords of an output's schema
 (`x-ga4gh-ui-widget`, `x-ga4gh-ontology`, `x-ga4gh-file` and the others)
 apply to the value under its key. For a run that completed (WES state
-`COMPLETE`), the object MUST be valid against `outputs`. For the workflow
+`COMPLETE`), the object MUST be valid against `outputs`: the run *conforms*
+to the schema. A normaliser validates the object. If it isn't valid (e.g., a
+required output is missing, or a list has fewer files than `minItems`), the
+normaliser reports the outputs of the run as non-conformant, with the
+errors, and still returns the object; it never drops or changes outputs to
+make the object valid. Clients show non-conformant outputs like partial ones
+(see [Runs that don't complete](#runs-that-dont-complete)). For the workflow
 example ([Example 1](examples.md#example-1-full-workflow-with-a-sample-sheet)):
 
 ```json
@@ -117,8 +126,10 @@ each output of `outputs.properties` in this order:
    `File` object). The name of an output in the engine is the name of its
    property, qualified as the workflow language requires (e.g., with the
    name of the WDL workflow), unless the engine binding of the output names
-   another one ([#12](https://github.com/uniqueg/ga4gh-io-schema/issues/12)).
-   `x-ga4gh-output-glob` is then ignored.
+   another one (`name` of `x-ga4gh-parameter`, see [Parameter
+   bindings](identity.md#parameter-bindings)). `x-ga4gh-output-glob` is then
+   ignored, also if the reported value is `null` (the output is then
+   absent).
 2. **By glob.** Otherwise, if the output has `x-ga4gh-output-glob`, the
    normaliser matches the glob against the files of the run (see below).
 3. Otherwise, the output is absent.
@@ -143,9 +154,21 @@ The glob is relative to the **output directory of the run**: the directory,
 or URI prefix, under which the server keeps the files of the run (e.g.,
 Nextflow's output directory, Snakemake's working directory). It is matched
 against the paths of the run's files relative to that directory, as the
-server lists them. The value of a match is the URI of the matched file: the
-one that the server lists, or else the URI of the output directory joined
-with the matched path.
+server lists them.
+
+The listing comes from the run, so a normaliser MUST check it before it
+matches:
+
+- It MUST skip listed paths that are absolute, have empty, `.` or `..`
+  segments, contain backslashes or control characters, or whose first
+  segment contains a colon, and report them.
+- It builds the URI of a match by percent-encoding each segment of the path
+  (so that `?`, `#` and `%` in names stay part of the name) and appending
+  the segments to the URI of the output directory, not by resolving the path
+  as a URI reference.
+- Where the server lists URIs instead of paths, a normaliser MUST accept a
+  listed URI only if it starts with the URI of the output directory,
+  followed by `/`; it derives the relative path from the rest.
 
 Syntax:
 
@@ -156,10 +179,14 @@ Syntax:
   leading `.`.
 - Not allowed (the meta-schema rejects them): absolute paths, empty segments
   (so also a trailing `/`), `.` and `..` segments, `**` within a segment
-  (e.g., `**.bam`), backslashes, control characters, and brackets and braces
-  (`[`, `]`, `{`, `}`), whose meaning differs between glob dialects.
+  (e.g., `**.bam`), backslashes, control characters (C0, DEL and C1), line
+  and paragraph separators, and brackets and braces (`[`, `]`, `{`, `}`),
+  whose meaning differs between glob dialects.
+- A glob always matches at least one segment: `**` alone matches every
+  listed path, never the output directory itself.
 
-What a glob finds depends on the schema of the output:
+What a glob finds depends on the schema of the output, counted after
+secondary files have been removed from the matches (see below):
 
 | Schema of the output | No match | One match | Several matches |
 | ----- | ----- | ----- | ----- |
@@ -167,32 +194,50 @@ What a glob finds depends on the schema of the output:
 | Array of file references | absent | an array with its URI | an array of their URIs, sorted by path (by Unicode code points) |
 
 - For `kind: file`, a glob matches the paths of files; for `kind:
-  directory`, the paths of directories that contain listed files.
+  directory`, the paths of directories that contain listed files, directly
+  or at any depth.
 - A match that is a secondary file of another match (by the
   `secondaryFiles` patterns of the output) is not a value of its own: the
   glob `alignments/*` finds `s1.bam`, not `s1.bam.bai` next to it.
 - The meta-schema allows the keyword only on a file reference and on an
-  array whose `items` is a file reference, not on other types. It has a
-  meaning only on the schema of a property of `outputs`; elsewhere (e.g., in
-  `inputs`), clients ignore it.
+  array whose `items` is a file reference written in place (not a `$ref`),
+  without `prefixItems`, not on other types. It has a meaning only on the
+  schema of a direct property of `outputs`; elsewhere (e.g., in a field of a
+  record, or in `inputs`), clients ignore it. The meta-schema deliberately
+  doesn't enforce this, as for the other keywords that it checks at any
+  depth.
 - A normaliser matches globs only against the files that the server lists
-  for the run. It doesn't browse storage on its own, and the syntax keeps
-  matches inside the output directory.
+  for the run. It doesn't browse storage on its own. The syntax of the glob
+  and the checks of the listing above keep matches inside the output
+  directory, as far as the listing goes: files that a run links to from
+  elsewhere (e.g., symbolic links) are the server's to exclude.
+- A value found by glob can still be invalid against the schema of its
+  output (e.g., fewer files than `minItems`, or a URI scheme outside
+  `schemes`); the rules of [the normalised outputs
+  object](#the-normalised-outputs-object) apply.
 
 ## Runs that don't complete
 
 A run that ended in another state than `COMPLETE` (e.g., `EXECUTOR_ERROR`,
 `SYSTEM_ERROR` or `CANCELED`) can have produced some of its outputs. Its
-normalised outputs object has the outputs that were found, each valid
-against the schema of its property; `required` doesn't apply. Clients MUST
-show such outputs as partial (e.g., "the run failed; these outputs were
+normalised outputs object has the outputs that were found. It is checked
+property by property, not against the whole `outputs` schema: each value
+MUST be valid against the schema of its property, and `required` doesn't
+apply. A normaliser leaves out outputs whose values aren't, and reports
+them. Clients MUST show such outputs as partial (e.g., "the run failed; these outputs were
 produced"), and SHOULD warn that they may be incomplete (e.g., a truncated
 file). Normalisers build the object only for runs in a final state.
 
 ## Notes on engines and servers
 
 How the workflow languages declare outputs, how engines and WES servers
-report them, and how a schema finds them:
+report them, and how a schema finds them. The behaviour of engines and
+servers is informative: it was surveyed in November 2026 for
+[#11](https://github.com/uniqueg/ga4gh-io-schema/issues/11), with the WES
+servers Sapporo, WESkit and Conquest (a WES server that runs workflows from
+Git repositories), and may change with new versions. The test vectors of
+the normaliser ([#19](https://github.com/uniqueg/ga4gh-io-schema/issues/19))
+are to record the shapes that it supports.
 
 | Language | Declared outputs | Reported by | How a schema finds them |
 | ----- | ----- | ----- | ----- |
@@ -213,8 +258,9 @@ Output values come from the run, which may have processed files supplied by
 users. Clients MUST check the scheme of every output URI against their
 allow-list before they show it as a link or load it into a viewer, and
 follow the rules of [Rendering schemas and
-outputs](../security.md#rendering-schemas-and-outputs). The syntax of
-`x-ga4gh-output-glob` keeps matches inside the output directory of the run.
+outputs](../security.md#rendering-schemas-and-outputs). Normalisers check
+the files that a server lists before they match globs against them (see
+[`x-ga4gh-output-glob`](#x-ga4gh-output-glob)).
 
 ## Chaining workflows (deferred)
 
