@@ -7,8 +7,8 @@ workflow (drift), and what a translator needs to turn input values into the
 parameters of the engine. How schemas are published in a Tool Registry
 Service (TRS) is described in [TRS](../adoption/trs.md).
 
-The key words MUST, MUST NOT, SHOULD and MAY are used as described in
-[RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
+Requirements on this page use the key words of BCP 14 (RFC 2119, RFC 8174),
+as described in [Notational conventions](conformance.md#notational-conventions).
 
 ## Identifiers and versions
 

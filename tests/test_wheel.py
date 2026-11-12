@@ -23,6 +23,7 @@ pytestmark = pytest.mark.wheel
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "tests" / "data"
+SUITE_DIR = REPO_ROOT / "tests" / "conformance" / "schema-documents"
 EXAMPLES = sorted(DATA_DIR.glob("example_*.schema.json"))
 SCHEMAS_DIR = REPO_ROOT / "schemas"
 #: Every schema of the repository, as the wheel must ship it.
@@ -124,7 +125,9 @@ def test_installed_cli_checks_formats(installed_cli: Path, tmp_path: Path) -> No
         installed_cli: Path to the installed command-line entry point.
         tmp_path: Pytest fixture providing a working directory outside the repo.
     """
-    schema = json.loads((DATA_DIR / "valid.schema.json").read_text(encoding="utf-8"))
+    schema = json.loads(
+        (SUITE_DIR / "valid" / "annotated.schema.json").read_text(encoding="utf-8")
+    )
     schema["$id"] = "http://[invalid"
     path = tmp_path / "bad-id.schema.json"
     path.write_text(json.dumps(schema), encoding="utf-8")
@@ -154,7 +157,7 @@ def test_installed_cli_checks_nested_vocabulary(
         [
             installed_cli,
             "validate",
-            DATA_DIR / "invalid" / "tabular-schema-nested.schema.json",
+            SUITE_DIR / "invalid" / "tabular-schema-nested.schema.json",
         ],
         cwd=tmp_path,
         capture_output=True,

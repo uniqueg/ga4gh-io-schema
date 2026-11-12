@@ -30,9 +30,10 @@ from ga4gh_io_schema.cli.commands import validate as validate_command
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "tests" / "data"
+SUITE_DIR = REPO_ROOT / "tests" / "conformance" / "schema-documents"
 CLI_PAGE = REPO_ROOT / "docs" / "tools" / "cli.md"
-VALID = DATA_DIR / "valid.schema.json"
-INVALID = DATA_DIR / "invalid" / "missing-inputs.schema.json"
+VALID = SUITE_DIR / "valid" / "annotated.schema.json"
+INVALID = SUITE_DIR / "invalid" / "missing-inputs.schema.json"
 
 
 class EchoCommand(Command):
