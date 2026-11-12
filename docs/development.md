@@ -13,6 +13,12 @@ Validate the core logic of the Python executable using `pytest`. The test suite 
 pytest
 ```
 
+`pytest` measures coverage of the package (with branches) and fails below
+100%. The CLI tests (`tests/test_cli.py`) run the command-line tool on the
+valid examples and on one deliberately bad schema per rule of the
+meta-schema in `tests/data/invalid/`, and check the exit code and the error
+message of each; a new rule needs a new bad schema and its expected message.
+
 `tests/test_wheel.py` builds the wheel, installs it into a fresh virtual
 environment and runs the command-line tool on the examples. It needs network
 access to install the build backend and the dependencies; deselect it with
@@ -30,6 +36,26 @@ release tag of the profile (e.g., `v0.3.0`). For a new release, change the tag
 in all of them at once (the tests check that they agree), and push the tag so
 that the URLs resolve.
 
+## Adding keywords
+
+Keywords live in one vocabulary file per keyword group in
+`schemas/vocabularies/`. To add a keyword or a group:
+
+1. Add the keyword to the `properties` of its vocabulary file, or create a new
+   file (with a versioned `$id`, like the others) and add a `$ref` to it to the
+   `allOf` of `$defs/node` in `schemas/ga4gh-io-profile.schema.json`.
+   A keyword whose value is a schema (like `x-ga4gh-tabular-schema`) uses
+   `"$dynamicRef": "#meta"`, and its vocabulary file declares
+   `"$dynamicAnchor": "meta"` at its root, so that the nested schema is
+   checked by all rules of the profile (see `vocabularies/file.schema.json`).
+2. Add one bad schema per new rule to `tests/data/invalid/` and its expected
+   message to `INVALID` in `tests/test_cli.py`; for a schema-valued keyword,
+   include a bad schema nested in it.
+3. Document the keyword in `docs/specification/keywords.md` and in the table
+   in `docs/specification/meta-schema.md`.
+
+The wheel ships every file in `schemas/`, and the tests check that it does.
+
 ## Code quality (Ruff)
 
 The codebase uses `Ruff` to enforce strict formatting, linting, and Google-style docstrings.
@@ -45,7 +71,7 @@ The GA4GH meta-schemas themselves must strictly conform to the JSON Schema Draft
 
 ```bash
 check-jsonschema --check-metaschema schemas/ga4gh-io-profile.schema.json
-check-jsonschema --check-metaschema schemas/vocabularies/ui-widgets.schema.json
+check-jsonschema --check-metaschema schemas/vocabularies/*.schema.json
 ```
 
 ## License compliance (REUSE)

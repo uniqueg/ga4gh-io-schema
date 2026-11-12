@@ -11,7 +11,12 @@ from typing import Any
 import jsonschema
 import pytest
 
-from ga4gh_io_schema.validator import load_json, validate_schema
+from ga4gh_io_schema.validator import (
+    build_registry,
+    load_json,
+    load_profile,
+    validate_schema,
+)
 
 
 def test_load_json_success(tmp_path: Path) -> None:
@@ -105,14 +110,15 @@ def test_validate_schema_accepts_ecma_regex_patterns() -> None:
     validate_schema({"pattern": "^\\p{L}+$"}, meta_schema)
 
 
-def test_validate_schema_reports_unknown_meta_schema() -> None:
-    """Test that an unknown ``$schema`` URL gives a clear validation error."""
+def test_validate_schema_reports_foreign_meta_schema() -> None:
+    """Test that a ``$schema`` naming another meta-schema is reported."""
     target_schema: dict[str, Any] = {
         "$schema": "https://example.org/schemas/unknown-meta-schema.json"
     }
 
     with pytest.raises(
-        jsonschema.exceptions.ValidationError, match="Unknown meta-schema"
+        jsonschema.exceptions.ValidationError,
+        match="not the GA4GH IO Profile meta-schema",
     ):
         validate_schema(target_schema)
 
@@ -129,6 +135,41 @@ def test_validate_schema_keeps_draft_format_checks() -> None:
         validate_schema({"t": "12:00:00"}, meta_schema)
 
 
+def test_validate_schema_uses_profile_whatever_schema_says() -> None:
+    """Test that the profile applies even if ``$schema`` names it correctly.
+
+    A schema that names the profile in ``$schema`` but lacks ``inputs`` must
+    fail, which shows that validation doesn't stop at the ``$schema`` check.
+    """
+    target_schema: dict[str, Any] = {
+        "$schema": load_profile()["$id"],
+        "properties": {"outputs": {}},
+    }
+
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="'inputs'"):
+        validate_schema(target_schema)
+
+
+def test_validate_schema_rejects_non_object() -> None:
+    """Test that a JSON document that isn't an object is reported."""
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="JSON object"):
+        validate_schema([])  # type: ignore[arg-type]
+
+
+def test_validate_schema_checks_schema_of_custom_meta_schema() -> None:
+    """Test that ``$schema`` must name a custom meta-schema that has an ``$id``."""
+    meta_schema: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://example.org/schemas/meta",
+    }
+
+    validate_schema({"$schema": "https://example.org/schemas/meta"}, meta_schema)
+    with pytest.raises(
+        jsonschema.exceptions.ValidationError, match="not the meta-schema"
+    ):
+        validate_schema({"$schema": "https://example.org/schemas/other"}, meta_schema)
+
+
 def test_validate_schema_reports_unresolvable_reference_of_meta_schema() -> None:
     """Test that a reference a custom meta-schema can't resolve is reported."""
     meta_schema: dict[str, Any] = {
@@ -140,3 +181,30 @@ def test_validate_schema_reports_unresolvable_reference_of_meta_schema() -> None
         jsonschema.exceptions.ValidationError, match="directory of the meta-schema"
     ):
         validate_schema({}, meta_schema)
+
+
+def test_build_registry_skips_unusable_files(tmp_path: Path) -> None:
+    """Test that missing directories and unusable files are skipped.
+
+    Schemas without ``$schema`` are registered as Draft 2020-12.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+    """
+    (tmp_path / "broken.json").write_text("{not json", encoding="utf-8")
+    (tmp_path / "no-id.json").write_text('{"type": "string"}', encoding="utf-8")
+    (tmp_path / "list.json").write_text("[]", encoding="utf-8")
+    (tmp_path / "int-id.json").write_text('{"$id": 5}', encoding="utf-8")
+    (tmp_path / "ok.json").write_text(
+        '{"$id": "https://example.org/schemas/ok", "type": "string"}',
+        encoding="utf-8",
+    )
+
+    registry = build_registry([tmp_path / "missing", tmp_path])
+
+    assert list(registry) == ["https://example.org/schemas/ok"]
+
+
+def test_validate_schema_accepts_boolean_meta_schema() -> None:
+    """Test that a boolean meta-schema (valid JSON Schema) is supported."""
+    validate_schema({}, True)

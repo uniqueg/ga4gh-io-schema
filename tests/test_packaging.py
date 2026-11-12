@@ -61,7 +61,7 @@ def test_schema_ids_share_one_release_tag() -> None:
     """
     tags = set()
     meta_schema_doc = REPO_ROOT / "docs" / "specification" / "meta-schema.md"
-    for path in [*SCHEMAS_DIR.rglob("*.json"), *DATA_DIR.glob("*.json")]:
+    for path in [*SCHEMAS_DIR.rglob("*.json"), *DATA_DIR.rglob("*.json")]:
         text = path.read_text(encoding="utf-8")
         assert "/main/" not in text, path
         tags.update(re.findall(r"/ga4gh-io-schema/([^/]+)/schemas/", text))

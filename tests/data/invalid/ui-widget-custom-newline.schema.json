@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/ui-widget-custom-newline",
+  "title": "Invalid: ui-widget-custom-newline",
+  "description": "x-ga4gh-ui-widget names a custom widget with a trailing newline, which Python's '$' would otherwise accept.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string",
+          "x-ga4gh-ui-widget": "custom:my-widget\n"
+        }
+      }
+    }
+  }
+}

@@ -35,6 +35,9 @@
     {
       "type": "string",
       "pattern": "^custom:[a-z0-9-]+$",
+      "not": {
+        "pattern": "\\n"
+      },
       "description": "Custom widget fallback allowing platform-specific experimental UI components (e.g., custom:my-widget)."
     }
   ]
