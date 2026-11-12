@@ -86,7 +86,7 @@ This replaces the flow of earlier versions, in which the client resolved DRS ide
 
 Validation errors and logs reach people and systems that may not be allowed to see the data of a run.
 
-- Error messages of servers MUST name the location of the error (a JSON Pointer relative to `workflow_params`, see [WES](adoption/wes.md)) and the rule that failed (or the schema's `x-ga4gh-error-message`). They SHOULD NOT repeat the value that failed.
+- Error messages of servers MUST name the location of the error (a JSON Pointer relative to `workflow_params`, see [WES](adoption/wes.md)) and the rule that failed, or the `x-ga4gh-error-message` that covers the failure (see [Error messages](specification/keywords.md#error-messages)). They SHOULD NOT repeat the value that failed.
 - Servers MUST NOT include contents of data files (e.g., cells of a sample sheet) in error messages or logs.
 - Servers SHOULD log validation failures with the same redaction as error messages.
 

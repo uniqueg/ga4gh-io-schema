@@ -93,6 +93,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `tests/data/`), with a runner for this package. (#14)
 - Versioning policy and governance note, and this changelog in the
   documentation, with the history of versions 0.1 and 0.2. (#14)
+- Rules for `x-ga4gh-hidden` and `x-ga4gh-error-message`: form renderers
+  show hidden inputs that users must set (required, no default) and hidden
+  inputs whose values fail; an error message covers the failures at the
+  location of the value that its schema describes, not those of nested
+  values, replaces the validator's message, and the outermost message wins
+  where several apply. (#40)
 
 ## v0.2 (2026-10-13)
 
