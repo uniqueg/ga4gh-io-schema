@@ -152,7 +152,9 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    know as it renders inputs of the same type without a widget hint.
 4. A form renderer MUST meet the rules of
    [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)
-   for the text of a schema document. It SHOULD show the schema's
+   for the text of a schema document, and MUST render Markdown descriptions
+   as defined in [Markdown descriptions](keywords.md#markdown-descriptions)
+   (or show them as plain text). It SHOULD show the schema's
    `x-ga4gh-error-message`, where there is one, when a value fails
    validation.
 5. A form renderer SHOULD NOT download data files into a browser to
