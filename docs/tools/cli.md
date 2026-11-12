@@ -6,6 +6,7 @@ tool:
 | Subcommand | Purpose |
 | --- | --- |
 | `validate` | Check an IO schema against the GA4GH IO Profile (see [Validator](validator.md)). |
+| `convert snakemake` | Convert a Snakemake config schema and sample-sheet schemas to an IO schema (see [Snakemake converter](convert-snakemake.md)). |
 | `wes-params` | Validate input values against an IO schema and translate them into WES `workflow_params` or a `RunRequest` (see [WES parameters](wes-params.md)). |
 
 Converters will be added as further subcommands (e.g.,

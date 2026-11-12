@@ -71,6 +71,13 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `ga4gh-io-schema convert snakemake`: converts a Snakemake config schema
+  (YAML or JSON, Draft 4 to 2020-12) and sample-sheet schemas to an IO
+  schema, with file references from documented, overridable heuristics, the
+  sample sheets as tabular hints, file outputs found by glob
+  (`--out-file`, `--out-files`, `--out-dir`), the engine binding
+  (`descriptor_type` `SMK`), and notes on every decision to check; YAML
+  needs the new `snakemake` extra. (#20)
 - An outputs model: the shapes of output values (files, lists, files keyed
   by sample, records, scalars; absent, never `null`, if not produced), the
   normalised outputs object that clients consume, how outputs are found in

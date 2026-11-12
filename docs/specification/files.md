@@ -211,6 +211,8 @@ the file types of workflow languages:
 | nf-schema | `schema` (sample sheet) | `x-ga4gh-tabular-schema` (see [Keywords](keywords.md#tabular-data-and-cloud-sovereignty)) |
 | nf-schema | `pattern` | `pattern`, unchanged (it constrains the value) |
 | nf-schema | `exists` | dropped: Nextflow checks it on the execution side, and skips it for object-store paths |
+| Snakemake | a string that holds a path (configurations have no file type) | `"x-ga4gh-file": {"kind": "file"}` or `{"kind": "directory"}`, by documented heuristics that options override; the converter reports each guess (see [Snakemake converter](../tools/convert-snakemake.md#file-references)) |
+| Snakemake | the property of a sample sheet, with the schema of its rows | `"x-ga4gh-file": {"kind": "file"}` and `x-ga4gh-tabular-schema` (an array of rows) |
 
 The *values* of file references become the file objects or paths of each
 engine (e.g., CWL `{"class": "File", "location": …}`) when a client builds the

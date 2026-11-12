@@ -114,6 +114,7 @@ nav:
       - Command-line interface: tools/cli.md
       - Validator: tools/validator.md
       - Converters: tools/converters.md
+      - Snakemake converter: tools/convert-snakemake.md
       - WES parameters: tools/wes-params.md
   - Adoption:
       - adoption/index.md

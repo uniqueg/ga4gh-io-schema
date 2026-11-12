@@ -13,7 +13,8 @@
   the experimental `x-ga4gh-tabular-schema` hint, and not to map
   `uniqueEntries` to `uniqueItems`, which means something else (see
   [Keywords](../specification/keywords.md#leveraging-native-json-schema-what-we-dont-reinvent)).
-- **Snakemake:** from JSON Schema and PEP configuration; planned.
+- **Snakemake:** from the config schema and the sample-sheet schemas; see
+  [Snakemake converter](convert-snakemake.md).
 - **CWL:** from the inputs and outputs of a `Workflow` or `CommandLineTool`;
   planned.
 - **WDL:** from `input`, `output` and `parameter_meta` blocks; planned.
