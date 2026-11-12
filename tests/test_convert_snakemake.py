@@ -19,6 +19,7 @@ from ga4gh_io_schema.converters.snakemake import (
     Conversion,
     ConversionError,
     Note,
+    Output,
     SampleSheet,
     SourceError,
     json_path,
@@ -265,7 +266,12 @@ def test_standard_input_and_output_file(
         ("a: .nan", "Error: Not JSON data - {path}: nan isn't a finite number"),
         ("a: !!binary aGk=", "Error: Not JSON data - {path}: a value of type 'bytes'"),
         ("a: !!timestamp 2024-01-01", "Error: Not JSON data - {path}: a value of type"),
-        ("[" * 100_000 + "]" * 100_000, "Error: Too deeply nested to convert"),
+        # Nested schemas: too deep for the parser (Python < 3.14) or for the
+        # conversion (Python 3.14 parses deep JSON)
+        (
+            '{"properties": {"a": ' * 5_000 + "{}" + "}}" * 5_000,
+            "Error: Too deeply nested to convert",
+        ),
     ],
 )
 def test_unreadable_sources_exit_with_3(
@@ -534,9 +540,98 @@ def test_structure_of_the_io_schema() -> None:
     }
     assert conversion.notes[-1] == Note(
         "Snakemake config schemas don't describe outputs: 'outputs' is left "
-        "empty; add the outputs of the workflow by hand.",
+        "empty; name the file outputs of the workflow with --out-file, "
+        "--out-files or --out-dir.",
         "$.properties.outputs",
     )
+
+
+def test_file_outputs_are_found_by_glob() -> None:
+    """Test the outputs given as globs, in their order, without a note."""
+    outputs = [
+        Output("report", "results/report.html"),
+        Output("counts", "results/counts/*.tsv", many=True),
+        Output("qc", "results/qc", kind="directory"),
+    ]
+
+    conversion = to_ga4gh(config({}), outputs=outputs)
+
+    validate_schema(conversion.schema)
+    file = {"type": "string", "x-ga4gh-file": {"kind": "file"}}
+    assert conversion.schema["properties"]["outputs"] == {
+        "type": "object",
+        "properties": {
+            "report": {**file, "x-ga4gh-output-glob": "results/report.html"},
+            "counts": {
+                "type": "array",
+                "items": file,
+                "x-ga4gh-output-glob": "results/counts/*.tsv",
+            },
+            "qc": {
+                "type": "string",
+                "x-ga4gh-file": {"kind": "directory"},
+                "x-ga4gh-output-glob": "results/qc",
+            },
+        },
+    }
+    assert conversion.notes == []
+
+
+def test_outputs_need_unique_names() -> None:
+    """Test that two outputs can't have the same name."""
+    with pytest.raises(ConversionError, match="Two outputs named 'a'"):
+        to_ga4gh(config({}), outputs=[Output("a", "x"), Output("a", "y")])
+
+
+def test_output_options(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Test the output options of the CLI, and the check of the globs.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing the output.
+    """
+    path = tmp_path / "config.schema.json"
+    path.write_text(json.dumps(config({})))
+    command = ["convert", "snakemake", str(path)]
+
+    status, out, err = run(
+        [
+            *command,
+            "--out-files",
+            "counts=results/*.tsv",
+            "--out-file",
+            "report=report.html",
+            "--out-dir",
+            "qc=qc",
+        ],
+        capsys,
+    )
+    bad_status, _, bad_err = run([*command, "--out-file", "x=/abs"], capsys)
+
+    assert status == 0, err
+    outputs = json.loads(out)["properties"]["outputs"]["properties"]
+    assert list(outputs) == ["counts", "report", "qc"]
+    assert outputs["counts"]["type"] == "array"
+    assert outputs["qc"]["x-ga4gh-file"] == {"kind": "directory"}
+    assert bad_status == 1
+    assert "x-ga4gh-output-glob" in bad_err
+
+
+@pytest.mark.parametrize("value", ["report", "=x", "report="])
+def test_output_options_need_name_and_glob(
+    value: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that output options take NAME=GLOB.
+
+    Args:
+        value: Value of the option.
+        capsys: Pytest fixture capturing the output.
+    """
+    with pytest.raises(SystemExit) as exc_info:
+        main(["convert", "snakemake", "config.yaml", "--out-file", value])
+
+    assert exc_info.value.code == 2
+    assert "isn't NAME=GLOB" in capsys.readouterr().err
 
 
 def test_inputs_get_type_object() -> None:

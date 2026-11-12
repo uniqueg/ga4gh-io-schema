@@ -25,6 +25,8 @@ JSON schemas need no extra. The `dev` extra includes PyYAML.
 ga4gh-io-schema convert snakemake workflow/schemas/config.schema.yaml \
   --sample-sheet workflow/schemas/samples.schema.yaml \
   --sample-sheet units=workflow/schemas/units.schema.yaml \
+  --out-files 'counts=results/counts/*.tsv' \
+  --out-file report=results/report.html \
   --output workflow.io-schema.json
 ```
 
@@ -45,6 +47,11 @@ ga4gh-io-schema convert snakemake workflow/schemas/config.schema.yaml \
   `units.fq1`). Each option is repeatable.
 - `--no-guess` turns the heuristics off: only the properties named with
   `--file`, `--directory` and `--sample-sheet` become file references.
+- `--out-file NAME=GLOB`, `--out-files NAME=GLOB` and `--out-dir NAME=GLOB`
+  add the output `NAME`: a file, a list of files or a directory, found by
+  `x-ga4gh-output-glob` among the files of the run, relative to Snakemake's
+  working directory (see [Outputs](#outputs)). Each option is repeatable;
+  the outputs keep the order of the options. Quote globs in the shell.
 
 The command checks the result against the profile before it writes it, and
 fails (exit status 1) if the result doesn't comply, e.g., because the source
@@ -82,7 +89,7 @@ With `--json`, the output is one object with the IO schema and the notes:
 | Strings that look like paths (see [File references](#file-references)) | file references: `"x-ga4gh-file": {"kind": "file"}` or `{"kind": "directory"}`; `mediaType` `text/csv` or `text/tab-separated-values` if the default ends with `.csv` or `.tsv` |
 | `format`, `contentMediaType`, `contentEncoding` and `contentSchema` of a file reference | dropped, with a note: file references can't have them (see [File references](../specification/files.md#the-annotation)) |
 | A sample-sheet schema (one row) | `"x-ga4gh-tabular-schema": {"type": "array", "items": <row schema>}` of the property of the sheet, which becomes a file reference; this hint is experimental. Its columns get file references by the same rules; its local references point into the hint |
-| Outputs | `"outputs": {"type": "object", "properties": {}}`, with a note: Snakemake schemas don't describe outputs; add them by hand |
+| Outputs | the outputs named with `--out-file`, `--out-files` and `--out-dir` (see [Outputs](#outputs)); without them, `"outputs": {"type": "object", "properties": {}}`, with a note |
 | The workflow | `"x-ga4gh-workflow": {"descriptor_type": "SMK"}` (see [Identity and engine binding](../specification/identity.md#the-workflow-block)); add an `$id`, and the TRS ids, the path and the checksum of the Snakefile when the workflow is published. Parameters keep their names, so no `x-ga4gh-parameter` is needed |
 | `x-ga4gh-*` keywords of the source | kept; the check of the result rejects wrong ones |
 
@@ -143,11 +150,33 @@ marked by the same rules, and the note says to edit the result if the guess
 is wrong. The converter doesn't guess `compression`, `ontology`,
 `secondaryFiles` or `schemes`; add them by hand where they help clients.
 
+## Outputs
+
+Snakemake schemas describe the configuration only, and Snakemake has no named
+outputs of a workflow: its outputs are the `output` files of rules, relative
+to the working directory, usually the targets of the first rule (e.g., `rule
+all`). WES servers don't report them by name, so clients find them by glob
+among the files of the run (see [Notes on engines and
+servers](../specification/outputs.md#notes-on-engines-and-servers)). The
+output options name them:
+
+| Option | Output schema |
+| ----- | ----- |
+| `--out-file NAME=GLOB` | `{"type": "string", "x-ga4gh-file": {"kind": "file"}, "x-ga4gh-output-glob": GLOB}` |
+| `--out-files NAME=GLOB` | `{"type": "array", "items": {"type": "string", "x-ga4gh-file": {"kind": "file"}}, "x-ga4gh-output-glob": GLOB}` |
+| `--out-dir NAME=GLOB` | `{"type": "string", "x-ga4gh-file": {"kind": "directory"}, "x-ga4gh-output-glob": GLOB}` |
+
+The glob is relative to the working directory of the run, with the syntax of
+[`x-ga4gh-output-glob`](../specification/outputs.md#x-ga4gh-output-glob)
+(e.g., no absolute paths, `..` or braces); the check of the result rejects
+other globs. Globs find only files, so scalar outputs (e.g., a count) can't
+be described this way. Add other details by hand (e.g., `title`, `mediaType`
+or `secondaryFiles`).
+
 ## Limits
 
-- **Outputs:** Snakemake schemas describe the configuration only. The
-  outputs of the workflow (e.g., from its `rule all`, or its report) must be
-  added by hand.
+- **Outputs:** the converter doesn't read the Snakefile; outputs are only
+  those named with the output options.
 - **Names:** the options name properties by dotted paths, reached through
   `properties` from the root of a schema; names that contain dots can't be
   told apart from nested properties.

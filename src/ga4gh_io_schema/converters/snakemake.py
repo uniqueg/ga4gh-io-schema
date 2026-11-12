@@ -236,6 +236,37 @@ class SampleSheet:
 
 
 @dataclass(frozen=True)
+class Output:
+    """File output of the workflow, found by glob among the files of a run.
+
+    Attributes:
+        name: Name of the output (a property of ``outputs``).
+        glob: ``x-ga4gh-output-glob``: the glob, relative to the working
+            directory of the run (e.g., ``results/*.bam``).
+        kind: ``file`` or ``directory``.
+        many: Whether the output is an array of file references, so that
+            the glob may find several files.
+    """
+
+    name: str
+    glob: str
+    kind: str = "file"
+    many: bool = False
+
+    def to_schema(self) -> dict[str, Any]:
+        """Render the schema of the output.
+
+        Returns:
+            A file reference, or an array of them, with the glob.
+        """
+        reference = {"type": "string", "x-ga4gh-file": {"kind": self.kind}}
+        schema: dict[str, Any] = (
+            {"type": "array", "items": reference} if self.many else reference
+        )
+        return {**schema, "x-ga4gh-output-glob": self.glob}
+
+
+@dataclass(frozen=True)
 class Conversion:
     """Result of a conversion.
 
@@ -408,6 +439,7 @@ def to_ga4gh(
     directories: Iterable[str] = (),
     plain: Iterable[str] = (),
     guess: bool = True,
+    outputs: Sequence[Output] = (),
 ) -> Conversion:
     """Convert a Snakemake configuration schema to an IO schema.
 
@@ -425,17 +457,21 @@ def to_ga4gh(
         plain: Properties to keep as they are, whatever the heuristics say.
         guess: Whether to mark other strings that look like paths as file
             references (see the converter documentation for the rules).
+        outputs: File outputs of the workflow, found by glob (Snakemake
+            schemas don't describe outputs).
 
     Returns:
         The IO schema, valid against the GA4GH IO Profile unless the source
-        uses ``x-ga4gh-*`` keywords wrongly, and the notes of the conversion.
+        uses ``x-ga4gh-*`` keywords wrongly, or an output's glob is invalid,
+        and the notes of the conversion.
 
     Raises:
-        ConversionError: If a schema can't be converted, or the options name
-            properties that don't exist or can't be file references.
+        ConversionError: If a schema can't be converted, the options name
+            properties that don't exist or can't be file references, or two
+            outputs have the same name.
     """
     return _Converter(files, directories, plain, guess).convert(
-        config_schema, list(sample_sheets)
+        config_schema, list(sample_sheets), list(outputs)
     )
 
 
@@ -494,12 +530,15 @@ class _Converter:
         """
         self.notes.append(Note(message, json_path(pointer)))
 
-    def convert(self, config: Any, sheets: list[SampleSheet]) -> Conversion:
+    def convert(
+        self, config: Any, sheets: list[SampleSheet], outputs: list[Output]
+    ) -> Conversion:
         """Convert the configuration schema and the sample-sheet schemas.
 
         Args:
             config: The configuration schema.
             sheets: The sample-sheet schemas.
+            outputs: The file outputs of the workflow.
 
         Returns:
             The IO schema and the notes.
@@ -536,18 +575,39 @@ class _Converter:
             "type": "object",
             "properties": {
                 "inputs": inputs,
-                "outputs": {"type": "object", "properties": {}},
+                "outputs": self._outputs(outputs),
             },
         }
         if defs is not None:
             schema["$defs"] = defs
         self._check_references(schema, schema, (), {})
-        self.note(
-            "Snakemake config schemas don't describe outputs: 'outputs' is "
-            "left empty; add the outputs of the workflow by hand.",
-            ("properties", "outputs"),
-        )
+        if not outputs:
+            self.note(
+                "Snakemake config schemas don't describe outputs: 'outputs' is "
+                "left empty; name the file outputs of the workflow with "
+                "--out-file, --out-files or --out-dir.",
+                ("properties", "outputs"),
+            )
         return Conversion(schema=schema, notes=self.notes)
+
+    def _outputs(self, outputs: list[Output]) -> dict[str, Any]:
+        """Build the schema of the outputs.
+
+        Args:
+            outputs: The file outputs.
+
+        Returns:
+            An object schema with one property per output.
+
+        Raises:
+            ConversionError: If two outputs have the same name.
+        """
+        properties: dict[str, Any] = {}
+        for output in outputs:
+            if output.name in properties:
+                raise ConversionError(f"Two outputs named '{output.name}'.")
+            properties[output.name] = output.to_schema()
+        return {"type": "object", "properties": properties}
 
     def _check_references(
         self,

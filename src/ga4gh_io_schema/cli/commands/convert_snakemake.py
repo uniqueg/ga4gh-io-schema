@@ -1,6 +1,7 @@
 """The ``convert snakemake`` subcommand: convert a Snakemake config schema."""
 
 import argparse
+import functools
 import json
 import sys
 
@@ -18,6 +19,7 @@ from ga4gh_io_schema.cli.base import (
 )
 from ga4gh_io_schema.converters.snakemake import (
     ConversionError,
+    Output,
     SampleSheet,
     SourceError,
     load_schema,
@@ -51,6 +53,34 @@ def sample_sheet_argument(value: str) -> tuple[str | None, str]:
             f"'{value}' names no file (standard input is for the config schema)"
         )
     return name or None, path
+
+
+def _output(value: str, kind: str, many: bool) -> Output:
+    """Parse the value of an output option: ``NAME=GLOB``.
+
+    Args:
+        value: The value.
+        kind: ``file`` or ``directory``.
+        many: Whether the output is a list of files.
+
+    Returns:
+        The output.
+
+    Raises:
+        argparse.ArgumentTypeError: If the name or the glob is empty.
+    """
+    name, _, glob = value.partition("=")
+    if not name or not glob:
+        raise argparse.ArgumentTypeError(f"'{value}' isn't NAME=GLOB")
+    return Output(name=name, glob=glob, kind=kind, many=many)
+
+
+#: Output options: the option, and the kind and arity of its outputs.
+OUTPUT_OPTIONS = {
+    "out-file": ("file", False, "a file"),
+    "out-files": ("file", True, "a list of files"),
+    "out-dir": ("directory", False, "a directory"),
+}
 
 
 class SnakemakeCommand(Command):
@@ -116,6 +146,20 @@ class SnakemakeCommand(Command):
                 "--sample-sheet, not those that look like paths."
             ),
         )
+        for option, (kind, many, what) in OUTPUT_OPTIONS.items():
+            parser.add_argument(
+                f"--{option}",
+                metavar="OUT",
+                dest="outputs",
+                action="append",
+                default=[],
+                type=functools.partial(_output, kind=kind, many=many),
+                help=(
+                    f"Add an output, OUT is NAME=GLOB: {what} found by GLOB, relative to the "
+                    "working directory of the run (e.g., results/*.bam). "
+                    "Repeatable."
+                ),
+            )
 
     def run(self, args: argparse.Namespace) -> CommandResult:
         """Convert the schema, and check the result against the profile.
@@ -145,6 +189,7 @@ class SnakemakeCommand(Command):
                 directories=args.directory,
                 plain=args.plain,
                 guess=not args.no_guess,
+                outputs=args.outputs,
             )
             validate_schema(conversion.schema)
         except SourceError as exc:
