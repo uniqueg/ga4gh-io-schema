@@ -111,6 +111,15 @@ deployment's allow-list, or are paths. A value passes only if its scheme is on
 both lists: `schemes` narrows the allow-list of the deployment and never
 extends it. A directory URI may end with `/`.
 
+Values MUST NOT contain control characters (U+0000 to U+001F and U+007F) and
+MUST NOT start or end with whitespace: URL parsers strip or drop them, which
+would hide a scheme (e.g., `" file:///etc/passwd"`). Paths MUST NOT have `..`
+segments, also not percent-encoded (`%2e%2e`), because a path can end up in a
+URI reference (e.g., the `location` of a CWL `File`); MUST NOT start with
+`~`, which engines and shells expand to a home directory; and MUST NOT start
+with two slashes or backslashes (`//host/…`, `\\host\…`), which name a host
+(a network-path reference or a UNC path), not a path.
+
 A value is checked as a file reference if a file reference schema applies at
 its location, also as one branch of `anyOf` or `oneOf`: a string that would
 pass through a plain `{"type": "string"}` branch next to it is still checked
@@ -121,9 +130,11 @@ servers that validate requests MUST check them (see [Security
 considerations](../security.md#uris-and-file-references)). JSON Schema
 validators don't, because the rules are not expressed in JSON Schema keywords;
 they check only that the value is a string and the other keywords of the
-schema (e.g., `pattern`). The `ga4gh-io-schema` package doesn't check values
-yet; checking and translating input values is planned separately
-([#18](https://github.com/uniqueg/ga4gh-io-schema/issues/18)).
+schema (e.g., `pattern`). The [`wes-params`](../tools/wes-params.md) tool
+of the `ga4gh-io-schema` package checks the values of inputs by these rules
+before it translates them, and the [test
+vectors](engine-bindings.md#test-vectors) of file reference values let other
+implementations check theirs.
 
 ### File references in tabular files
 
@@ -200,10 +211,13 @@ the file types of workflow languages:
 | nf-schema | `schema` (sample sheet) | `x-ga4gh-tabular-schema` (see [Keywords](keywords.md#tabular-data-and-cloud-sovereignty)) |
 | nf-schema | `pattern` | `pattern`, unchanged (it constrains the value) |
 | nf-schema | `exists` | dropped: Nextflow checks it on the execution side, and skips it for object-store paths |
+| Snakemake | a string that holds a path (configurations have no file type) | `"x-ga4gh-file": {"kind": "file"}` or `{"kind": "directory"}`, by documented heuristics that options override; the converter reports each guess (see [Snakemake converter](../tools/convert-snakemake.md#file-references)) |
+| Snakemake | the property of a sample sheet, with the schema of its rows | `"x-ga4gh-file": {"kind": "file"}` and `x-ga4gh-tabular-schema` (an array of rows) |
 
 The *values* of file references become the file objects or paths of each
 engine (e.g., CWL `{"class": "File", "location": …}`) when a client builds the
-`workflow_params` of a WES request; that translation is defined separately.
+`workflow_params` of a WES request, as defined in [Engine
+bindings](engine-bindings.md).
 
 ## Clients
 

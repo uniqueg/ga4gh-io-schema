@@ -1,0 +1,53 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/vectors/nfl/1.0.0",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "NFL",
+    "descriptor_type_version": "DSL2"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "reads": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "schemes": [
+              "drs",
+              "https"
+            ]
+          }
+        },
+        "genome_index": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "directory"
+          }
+        },
+        "sample_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "min_quality": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 20
+        },
+        "skip_qc": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reads",
+        "genome_index",
+        "sample_names"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
