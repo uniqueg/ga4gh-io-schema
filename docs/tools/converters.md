@@ -16,7 +16,7 @@
 - **Snakemake:** from the config schema and the sample-sheet schemas; see
   [Snakemake converter](convert-snakemake.md).
 - **CWL:** from the inputs and outputs of a `Workflow` or `CommandLineTool`;
-  planned.
+  see [CWL converter](cwl.md).
 - **WDL:** from `input`, `output` and `parameter_meta` blocks:
   `ga4gh-io-schema convert wdl` (see [WDL converter](convert-wdl.md)).
 

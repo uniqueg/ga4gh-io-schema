@@ -7,6 +7,7 @@ tool:
 | --- | --- |
 | `validate` | Check an IO schema against the GA4GH IO Profile (see [Validator](validator.md)). |
 | `convert snakemake` | Convert a Snakemake config schema and sample-sheet schemas to an IO schema (see [Snakemake converter](convert-snakemake.md)). |
+| `convert cwl` | Convert the inputs and outputs of a CWL document to an IO schema (see [CWL converter](cwl.md)). |
 | `convert wdl` | Convert the inputs and outputs of a WDL workflow or task to an IO schema (see [WDL converter](convert-wdl.md)). |
 | `wes-params` | Validate input values against an IO schema and translate them into WES `workflow_params` or a `RunRequest` (see [WES parameters](wes-params.md)). |
 | `outputs` | Normalise the outputs of a WES run (see [Output normaliser](outputs.md)). |
@@ -40,9 +41,15 @@ All subcommands share these conventions; the shared options (`--output`,
     Validation Error: 'inputs' is a required property (at $.properties)
     ```
 
+- **Warnings:** a converter that reports what it can't convert (e.g.,
+  `convert cwl`) still succeeds. Each warning goes to standard error as one line,
+  `Warning: <message> (at <location>)`, where the location is the JSON path
+  of the affected schema in the result; with `--json`, the result has
+  `"warnings"` instead, a list of objects with `message` and `location`.
 - **JSON:** with `--json`, the result and the errors are JSON objects on one
   line. A command whose result is text (e.g., a converted file) writes
-  `{"output": "<text>"}`. An error has a `kind` (`validation`, `io`, `meta-schema` or
+  `{"output": "<text>"}`, plus `"warnings"` for a converter that reports
+  them (see above). An error has a `kind` (`validation`, `io`, `meta-schema` or
   `internal`), a `message`, the JSON path of the offending value as
   `location` (or `null`), and the `exitCode`:
 

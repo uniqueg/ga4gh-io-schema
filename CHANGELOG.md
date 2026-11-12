@@ -14,6 +14,13 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Breaking changes
 
+- Widgets of `x-ga4gh-ui-widget` must fit their schema: the meta-schema
+  rejects, for example, a `slider` without a numeric type and both bounds, a
+  `date-picker` without `"format": "date"`, a `file-picker` without
+  `x-ga4gh-file`, `tags` on anything but an array of strings, and output
+  viewers on the parameters of `inputs` (and input widgets on `outputs`).
+  To migrate, add the `type` and keywords that the widget needs next to it
+  (not only behind a `$ref`), or remove the widget. (#38)
 - The command-line tools are subcommands of one command, `ga4gh-io-schema`:
   `ga4gh-io-schema validate` replaces `ga4gh-io-schema-validator`, which is
   removed without an alias. The exit status now tells failures apart (1: the
@@ -71,6 +78,9 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A specification page "UI widgets": for each widget of the vocabulary, the
+  types and keywords that it needs and the value that it produces; input
+  widgets and output viewers kept apart. (#38)
 - `ga4gh-io-schema convert snakemake`: converts a Snakemake config schema
   (YAML or JSON, Draft 4 to 2020-12) and sample-sheet schemas to an IO
   schema, with file references from documented, overridable heuristics, the
@@ -116,6 +126,16 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   input), `--output` for the result, `--json` for results and errors as JSON
   objects. (#9)
 - A CLI reference in the documentation, generated from the parser. (#9)
+- A CWL converter, `ga4gh-io-schema convert cwl`: the inputs and outputs of
+  CWL v1.0 to v1.2 documents (also packed) become an IO schema, with file
+  references for files and directories, `format` as ontology term and
+  required secondary files, `x-ga4gh-workflow` (descriptor type and
+  version, checksum, entry point) and the CWL type of each parameter in
+  `x-ga4gh-parameter`; what it can't convert (e.g., expressions) is
+  reported as warnings. It reads only local files under the directory of
+  the document (`--root` names another one) and rejects documents that
+  would expand to very large schemas. It needs the optional dependency
+  `cwl-utils` (`ga4gh-io-schema[cwl]`). (#21)
 - Conformance: BCP 14 (RFC 2119, RFC 8174) key words, used consistently in
   the normative text; conformance classes (Schema document, Validator,
   Producer, Form renderer, Request builder, Output normaliser, WES server)
@@ -123,8 +143,19 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A language-neutral conformance suite in `tests/conformance/` (the
   positive and negative schema documents of the tests, moved from
   `tests/data/`), with a runner for this package. (#14)
+- Markdown descriptions (`"x-ga4gh-description-format": "markdown"`) are
+  CommonMark 0.31.2, with raw HTML shown as text, images shown as their alt
+  text and not loaded, and links only with allowed schemes; of the GitHub
+  Flavored Markdown extensions, only tables, strikethrough and autolinks are
+  allowed. (#41)
 - Versioning policy and governance note, and this changelog in the
   documentation, with the history of versions 0.1 and 0.2. (#14)
+- Rules for `x-ga4gh-hidden` and `x-ga4gh-error-message`: form renderers
+  show hidden inputs that users must set (required, no default) and hidden
+  inputs whose values fail; an error message covers the failures at the
+  location of the value that its schema describes, not those of nested
+  values, replaces the validator's message, and the outermost message wins
+  where several apply. (#40)
 - Engine bindings: how input values become the `workflow_params` of a WES
   run request for `NFL`, `SMK`, `WDL` and `CWL` (names from
   `x-ga4gh-parameter`, WDL names qualified with the entry point, CWL `File`
