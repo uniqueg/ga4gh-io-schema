@@ -183,6 +183,20 @@
     "valid": false
   },
   {
+    "name": "network-path-reference",
+    "annotation": { "kind": "file" },
+    "value": "//evil.example/x",
+    "allowAbsolutePaths": true,
+    "valid": false
+  },
+  {
+    "name": "unc-path",
+    "annotation": { "kind": "file" },
+    "value": "\\\\host\\share\\x",
+    "allowAbsolutePaths": true,
+    "valid": false
+  },
+  {
     "name": "space-inside-path",
     "annotation": { "kind": "file" },
     "value": "inputs/my reads.fastq.gz",

@@ -386,7 +386,48 @@ def test_windows_absolute_path_and_backslash_segments() -> None:
     with pytest.raises(TranslationError, match="'..' segments"):
         to_workflow_params(schema, {"reads": "data\\..\\secret"})
     with pytest.raises(TranslationError, match="Absolute paths"):
-        to_workflow_params(schema, {"reads": "\\\\server\\share"})
+        to_workflow_params(schema, {"reads": "\\data\\reads.fq"})
+
+
+def test_cwl_file_objects_are_not_values() -> None:
+    """Test that CWL file objects can't bypass the checks of file references."""
+    schema = make_schema({"rec": {"type": "object"}}, {"descriptor_type": "CWL"})
+    smuggled = {"class": "File", "location": "file:///etc/passwd"}
+
+    with pytest.raises(TranslationError, match="aren't input values") as info:
+        to_workflow_params(schema, {"rec": {"inner": smuggled}})
+    assert info.value.pointer == "/rec/inner"
+    # Other engines take such objects as plain objects
+    nfl = make_schema({"rec": {"type": "object"}}, NFL)
+    assert to_workflow_params(nfl, {"rec": smuggled}) == {"rec": smuggled}
+
+
+def test_unevaluated_only_where_nothing_else_applies() -> None:
+    """Test that members evaluated by an in-place applicator keep their schema."""
+    schema = make_schema(
+        {
+            "rec": {
+                "type": "object",
+                "allOf": [{"properties": {"a": {"type": "string"}}}],
+                "unevaluatedProperties": file_ref(),
+            },
+            "list": {
+                "type": "array",
+                "allOf": [{"prefixItems": [{"type": "string"}]}],
+                "unevaluatedItems": file_ref(),
+            },
+        },
+        {"descriptor_type": "CWL"},
+    )
+    location = "https://e.org/x"
+
+    assert to_workflow_params(
+        schema,
+        {"rec": {"a": "plain text", "b": location}, "list": ["plain", location]},
+    ) == {
+        "rec": {"a": "plain text", "b": {"class": "File", "location": location}},
+        "list": ["plain", {"class": "File", "location": location}],
+    }
 
 
 def test_dynamic_references_fail_closed() -> None:

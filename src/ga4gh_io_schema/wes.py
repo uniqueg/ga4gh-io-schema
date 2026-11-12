@@ -461,6 +461,9 @@ def _check_file_value(
         raise TranslationError("Paths can't have '..' segments.", path)
     if value.startswith("~"):
         raise TranslationError("Paths can't start with '~'.", path)
+    if re.match(r"[/\\]{2}", value):
+        # A network-path reference or UNC path names a host
+        raise TranslationError("Paths can't start with two slashes.", path)
     if value.startswith(("/", "\\")) and not allow_absolute_paths:
         raise TranslationError(
             "Absolute paths are allowed only in deployments with a shared file system.",
@@ -676,9 +679,9 @@ class _Translator:
     ) -> list[_Scope]:
         """Collect the subschemas of a member of an object or an array.
 
-        ``unevaluatedProperties`` and ``unevaluatedItems`` apply where no
-        other keyword of the same schema does; this errs towards treating a
-        value as a file reference, which is checked, rather than missing one.
+        ``unevaluatedProperties`` and ``unevaluatedItems`` apply only if no
+        other keyword of any of the subschemas (which include the in-place
+        applicators, such as ``allOf``) evaluates the member or item.
 
         Args:
             scopes: Subschemas that apply to the object or array.
@@ -688,7 +691,8 @@ class _Translator:
         Returns:
             The subschemas of the member or item.
         """
-        children = []
+        children: list[_Scope] = []
+        unevaluated: list[_Scope] = []
         for scope in scopes:
             schema = scope.schema
             if isinstance(key, int):
@@ -697,12 +701,12 @@ class _Translator:
                     children.append(self._descend(scope, prefix[key]))
                 elif "items" in schema:
                     children.append(self._descend(scope, schema["items"]))
-                elif "unevaluatedItems" in schema:
-                    children.append(self._descend(scope, schema["unevaluatedItems"]))
                 if "contains" in schema:
                     contains = self._descend(scope, schema["contains"])
                     if self._validator(contains).is_valid(item):
                         children.append(contains)
+                if "unevaluatedItems" in schema:
+                    unevaluated.append(self._descend(scope, schema["unevaluatedItems"]))
                 continue
             matched = False
             properties = schema.get("properties")
@@ -715,13 +719,13 @@ class _Translator:
                 if re.search(pattern, key):
                     children.append(self._descend(scope, sub))
                     matched = True
-            if matched:
-                continue
-            for keyword in ("additionalProperties", "unevaluatedProperties"):
-                if keyword in schema:
-                    children.append(self._descend(scope, schema[keyword]))
-                    break
-        return children
+            if not matched and "additionalProperties" in schema:
+                children.append(self._descend(scope, schema["additionalProperties"]))
+            if "unevaluatedProperties" in schema:
+                unevaluated.append(
+                    self._descend(scope, schema["unevaluatedProperties"])
+                )
+        return children or unevaluated
 
     @staticmethod
     def _descend(scope: _Scope, schema: Any) -> _Scope:
@@ -762,6 +766,16 @@ class _Translator:
                 for index, item in enumerate(value)
             ]
         if isinstance(value, dict):
+            if self.binding.descriptor_type == "CWL" and value.get("class") in (
+                "File",
+                "Directory",
+            ):
+                # The runner would stage it, unchecked
+                raise TranslationError(
+                    "CWL File and Directory objects aren't input values: give a "
+                    "file reference as a string.",
+                    path,
+                )
             return {
                 key: self._value(
                     self._children(applicable, key, item), item, (*path, key)
