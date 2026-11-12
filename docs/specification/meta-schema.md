@@ -14,6 +14,9 @@ Schema (Draft 2020-12) of the repository:
 - [`schemas/vocabularies/file.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/file.schema.json):
   the `x-ga4gh-*` keywords of file parameters ([file
   references](files.md), tabular files).
+- [`schemas/vocabularies/outputs.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/outputs.schema.json):
+  the `x-ga4gh-*` keywords that find the outputs of a run
+  ([Outputs](outputs.md)).
 - [`schemas/vocabularies/ui-widgets.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json):
   the vocabulary of UI widgets (values of `x-ga4gh-ui-widget`).
 
@@ -49,7 +52,8 @@ that
 - has `"type": "object"`, if it sets `type`;
 - has `properties` with the wrapper of the parameters: `inputs` (required),
   the JSON Schema of the inputs, and `outputs` (optional), the JSON Schema of
-  the outputs.
+  the outputs: an object schema, with `"type": "object"` if it sets `type`
+  (see [Outputs](outputs.md#the-outputs-schema)).
 
 **Every schema, at any depth** (`$defs/node` of `ga4gh-io-profile.schema.json`):
 the top level and every nested schema (e.g., in `properties`, `items`,
@@ -66,6 +70,7 @@ The rules combine one vocabulary file per keyword group:
 | `x-ga4gh-error-message` | string | `annotations` |
 | `x-ga4gh-file` | an object with `kind` (`file` or `directory`) and optional `mediaType`, `ontology`, `compression`, `secondaryFiles` and `schemes` (see [File references](files.md)); the schema that carries it is a flat string schema (see [The annotation](files.md#the-annotation)) | `file` |
 | `x-ga4gh-tabular-schema` (experimental) | a schema, checked by the same rules | `file` |
+| `x-ga4gh-output-glob` | a relative glob (see [`x-ga4gh-output-glob`](outputs.md#x-ga4gh-output-glob)), on a file reference or on an array whose `items` is a file reference | `outputs` |
 
 Other keywords that start with `x-ga4gh-` (e.g., misspelled ones, or
 `x-ga4gh-fa-icon`, which version 0.3 removed) are rejected: no vocabulary evaluates them, and `$defs/node` doesn't allow

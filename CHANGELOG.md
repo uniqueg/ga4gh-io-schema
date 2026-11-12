@@ -56,9 +56,21 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     (deferred), drafting of IO schemas by AI agents (cut), or the claim that
     the profile suits machine learning pipelines (cut; an open question on
     the roadmap).
+- `outputs` must be an object schema (not a boolean schema), with
+  `"type": "object"` if it sets `type`. It stays optional, as since
+  version 0.1; without it, a schema now explicitly describes no outputs.
+  (#11)
 
 ### Added
 
+- An outputs model: the shapes of output values (files, lists, files keyed
+  by sample, records, scalars; absent, never `null`, if not produced), the
+  normalised outputs object that clients consume, how outputs are found in
+  what WES servers report (by name, else by glob), partial outputs of
+  failed runs, and notes on CWL, WDL, Nextflow and Snakemake. The new
+  keyword `x-ga4gh-output-glob` finds an output among the files of a run,
+  relative to its output directory, for engines that don't report outputs
+  by name. The examples have more outputs. (#11)
 - File references (`x-ga4gh-file`): kind (`file` or `directory`), media
   type, format term, compression, required secondary files as CWL-style
   suffix patterns, and allowed URI schemes; a defined value syntax (absolute

@@ -9,8 +9,8 @@ workflow components with JSON Schema (Draft 2020-12), extended with a set of
 - [File references](files.md): how a string parameter refers to a file or
   a directory, its values, secondary files, and the mapping to the file types
   of CWL, WDL and nf-schema.
-- [Output contract](outputs.md): how clients match the outputs of a schema
-  with the outputs of a run.
+- [Outputs](outputs.md): the outputs schema, the shapes of output values,
+  and how clients find the outputs of a run in what a WES server returns.
 - [Meta-schema](meta-schema.md): the meta-schema and vocabularies that
   schemas are validated against, and where they are served.
 - [Conformance](conformance.md): what schemas, servers and clients must do to

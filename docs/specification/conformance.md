@@ -10,7 +10,7 @@
 >   [Portals and clients](../adoption/portals.md)).
 >
 > Until then, the requirements are those stated in [Keywords](keywords.md),
-> [Output contract](outputs.md), [Security considerations](../security.md)
+> [Outputs](outputs.md), [Security considerations](../security.md)
 > and the [adoption guides](../adoption/index.md).
 
 ## Security requirements
