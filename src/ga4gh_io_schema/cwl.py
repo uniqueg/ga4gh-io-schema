@@ -307,8 +307,9 @@ class _Converter:
             is_input: Whether the parameters are inputs.
 
         Returns:
-            An object schema with one property per parameter; inputs reject
-            unknown properties.
+            An object schema with one property per parameter, which rejects
+            unknown properties (for outputs: the normalised outputs object
+            has only the declared outputs).
         """
         properties: dict[str, Any] = {}
         required: list[str] = []
@@ -324,8 +325,7 @@ class _Converter:
         result: dict[str, Any] = {"type": "object", "properties": properties}
         if required:
             result["required"] = required
-        if is_input:
-            result["additionalProperties"] = False
+        result["additionalProperties"] = False
         return result
 
     def field(
@@ -559,7 +559,11 @@ class _Converter:
 
         Returns:
             The schema of the only type, or ``anyOf`` with one branch per type.
+            Unions of outputs lose ``null``: output values are never
+            ``null``, normalisers leave such values out.
         """
+        if not files.is_input and "null" in types and len(types) > 1:
+            types = [member for member in types if member != "null"]
         if len(types) == 1:
             return self.type_schema(types[0], location, files, names)
         return {

@@ -457,7 +457,36 @@ def test_stdin_stdout_and_stderr_are_files(tmp_path: Path) -> None:
         "type": "object",
         "properties": {"o": file_, "e": file_},
         "required": ["o", "e"],
+        "additionalProperties": False,
     }
+
+
+def test_outputs_are_never_null(tmp_path: Path) -> None:
+    """Test that outputs lose ``null``, and that globs aren't copied."""
+    result = convert(
+        tool(
+            outputs=(
+                "{o: {type: {type: array, items: ['null', File]}, "
+                "outputBinding: {glob: '*.bam'}}, "
+                "p: {type: ['null', int, string], outputBinding: {glob: x}}}"
+            )
+        ),
+        tmp_path,
+    )
+
+    assert result.outputs == {
+        "type": "object",
+        "properties": {
+            "o": {
+                "type": "array",
+                "items": {"type": "string", "x-ga4gh-file": {"kind": "file"}},
+            },
+            "p": {"anyOf": [{"type": "integer"}, {"type": "string"}]},
+        },
+        "required": ["o"],
+        "additionalProperties": False,
+    }
+    assert "x-ga4gh-output-glob" not in json.dumps(result.schema)
 
 
 def test_enum_symbols_are_short_names(tmp_path: Path) -> None:

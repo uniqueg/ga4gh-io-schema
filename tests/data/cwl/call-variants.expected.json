@@ -307,7 +307,8 @@
         "variants",
         "alignments",
         "summary"
-      ]
+      ],
+      "additionalProperties": false
     }
   }
 }

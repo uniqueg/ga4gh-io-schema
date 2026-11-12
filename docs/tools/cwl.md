@@ -117,8 +117,24 @@ The types map as follows:
 
 Inputs reject unknown properties (`"additionalProperties": false`), like the
 [examples](../specification/examples.md) of the profile: a client sends only the
-parameters of the tool. Outputs list the outputs that CWL requires a run to
-produce in `required`.
+parameters of the tool.
+
+The converter converts every output that the document declares (see
+[Outputs](../specification/outputs.md)):
+
+- `outputs` rejects unknown properties too: the normalised outputs object
+  has only the declared outputs.
+- `required` lists the outputs that CWL requires a run to produce (those
+  without `null` in their type).
+- Outputs never allow `null`: `null` in a nested union (e.g., the items
+  `[null, File]` of an array) is left out, since normalisers leave out the
+  `null` values that engines report.
+- Secondary files of outputs are part of the file reference, not of the
+  value: clients find them next to the file.
+- CWL runners report outputs by name (the CWL output object), so normalisers
+  find them by name. The converter never copies `outputBinding.glob` into
+  `x-ga4gh-output-glob`: it is relative to the working directory of a tool,
+  not to the output directory of the run.
 
 ## Limits
 
@@ -154,10 +170,8 @@ The converter doesn't translate:
 
 - **Bindings and requirements** (`inputBinding`, `outputBinding`,
   `requirements` other than `SchemaDefRequirement`): they say how a tool runs,
-  not what its parameters are.
-- **The output contract.** Outputs get their names, types, file references
-  and `required`; the rules that tie them to the outputs of a run are not
-  final yet ([#11](https://github.com/uniqueg/ga4gh-io-schema/issues/11)).
+  not what its parameters are; `outputBinding.glob` in particular is not an
+  `x-ga4gh-output-glob` (see above).
 
 ## Security
 
