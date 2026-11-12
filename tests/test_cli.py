@@ -34,9 +34,110 @@ INVALID = {
         "Validation Error: 'banana' is not valid under any of the given schemas "
         "(at $.properties.inputs.properties.sample_id['x-ga4gh-ui-widget'])"
     ),
-    "drs-uri-not-boolean": (
-        "Validation Error: 'yes' is not of type 'boolean' "
-        "(at $.properties.inputs.properties.sample_id['x-ga4gh-drs-uri'])"
+    "drs-uri-removed": (
+        "Validation Error: Unevaluated properties are not allowed "
+        "('x-ga4gh-drs-uri' was unexpected) (at $.properties.inputs.properties.reads)"
+    ),
+    "file-kind-unknown": (
+        "Validation Error: 'symlink' is not one of ['file', 'directory'] "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'].kind)"
+    ),
+    "file-kind-missing": (
+        "Validation Error: 'kind' is a required property "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'])"
+    ),
+    "file-unknown-key": (
+        "Validation Error: Additional properties are not allowed "
+        "('mimetype' was unexpected) "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'])"
+    ),
+    "file-not-string": (
+        "Validation Error: 'string' was expected "
+        "(at $.properties.inputs.properties.reads.type)"
+    ),
+    "file-type-missing": (
+        "Validation Error: 'type' is a required property "
+        "(at $.properties.inputs.properties.reads)"
+    ),
+    "file-format-uri": (
+        "Validation Error: False schema does not allow 'uri' "
+        "(at $.properties.inputs.properties.reads)"
+    ),
+    "file-content-media-type": (
+        "Validation Error: False schema does not allow 'text/csv' "
+        "(at $.properties.inputs.properties.reads)"
+    ),
+    "file-media-type-bad": (
+        "Validation Error: 'csv' does not match "
+        "'^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}$' "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'].mediaType)"
+    ),
+    "file-ontology-not-uri": (
+        "Validation Error: 'format_2572' is not a 'uri' "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'].ontology)"
+    ),
+    "file-compression-unknown": (
+        "Validation Error: 'rar' is not one of "
+        "['gzip', 'bgzip', 'bzip2', 'xz', 'zstd'] "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'].compression)"
+    ),
+    "file-secondary-pattern-bad": (
+        # The message shows the pattern's repr, with the backslash doubled
+        r"Validation Error: '../etc/passwd' does not match "
+        r"'^\\^*[.]*[A-Za-z0-9_+-][A-Za-z0-9_.+-]*$' "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'].secondaryFiles[0])"
+    ),
+    "file-directory-secondary": (
+        "Validation Error: False schema does not allow ['.bai'] "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'])"
+    ),
+    "file-scheme-bad": (
+        "Validation Error: 'javascript' should not be valid under "
+        "{'enum': ['javascript', 'vbscript', 'livescript', 'data', 'blob', "
+        "'filesystem', 'file', 'jar', 'view-source', 'about']} "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'].schemes[1])"
+    ),
+    "file-secondary-dots": (
+        r"Validation Error: '^..' does not match "
+        r"'^\\^*[.]*[A-Za-z0-9_+-][A-Za-z0-9_.+-]*$' "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'].secondaryFiles[0])"
+    ),
+    "file-in-place-applicator": (
+        "Validation Error: False schema does not allow [{'format': 'uri'}] "
+        "(at $.properties.inputs.properties.reads)"
+    ),
+    "file-content-encoding": (
+        "Validation Error: False schema does not allow 'base64' "
+        "(at $.properties.inputs.properties.reads)"
+    ),
+    "file-directory-media-type": (
+        "Validation Error: False schema does not allow 'text/csv' "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'])"
+    ),
+    "file-schemes-empty": (
+        "Validation Error: [] should be non-empty "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'].schemes)"
+    ),
+    "file-ontology-prefixed": (
+        "Validation Error: 'edam:format_2572' does not match '^https?://' "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'].ontology)"
+    ),
+    "file-in-tabular-column": (
+        "Validation Error: 'kind' is a required property "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-tabular-schema'].items."
+        "properties.fastq_1['x-ga4gh-file'])"
+    ),
+    "file-in-outputs": (
+        "Validation Error: 'kind' is a required property "
+        "(at $.properties.outputs.properties.reads['x-ga4gh-file'])"
+    ),
+    "file-scheme-pattern-bad": (
+        "Validation Error: 's3://' does not match '^[a-z][a-z0-9+.-]*$' "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'].schemes[0])"
+    ),
+    "file-in-array-items": (
+        "Validation Error: 'folder' is not one of ['file', 'directory'] "
+        "(at $.properties.inputs.properties.reads.items['x-ga4gh-file'].kind)"
     ),
     "ontology-not-string": (
         "Validation Error: 42 is not of type 'string' "

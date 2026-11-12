@@ -10,14 +10,32 @@
       "properties": {
         "reference_fasta": {
           "type": "string",
-          "format": "uri",
           "title": "Reference FASTA",
-          "x-ga4gh-ontology": "http://edamontology.org/format_1929"
+          "description": "Reference genome, indexed with bwa index; the five index files lie next to it.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_1929",
+            "secondaryFiles": [".amb", ".ann", ".bwt", ".pac", ".sa"]
+          }
         },
         "read_1": {
           "type": "string",
-          "format": "uri",
-          "title": "Read 1 FASTQ"
+          "title": "Read 1 FASTQ",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_1930",
+            "compression": "gzip"
+          }
+        },
+        "read_2": {
+          "type": "string",
+          "title": "Read 2 FASTQ",
+          "description": "Mates of read_1, for paired-end reads.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_1930",
+            "compression": "gzip"
+          }
         },
         "threads": {
           "type": "integer",
@@ -26,16 +44,19 @@
           "title": "CPU Threads"
         }
       },
-      "required": ["reference_fasta", "read_1"]
+      "required": ["reference_fasta", "read_1"],
+      "additionalProperties": false
     },
     "outputs": {
       "type": "object",
       "properties": {
         "alignment_bam": {
           "type": "string",
-          "format": "uri",
           "title": "Aligned BAM",
-          "x-ga4gh-ontology": "http://edamontology.org/format_2572"
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_2572"
+          }
         }
       }
     }

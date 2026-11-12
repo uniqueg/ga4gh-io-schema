@@ -15,7 +15,7 @@ With IO schemas served by TRS and used by clients and WES, a run goes through th
 
 2. **Configuration (Client/UI):** The client renders an input form from the schema, with a JSON Schema form library and an adapter for the `x-ga4gh-*` keywords (see [Portals and clients](portals.md)).
 
-3. **Data Access (DRS):** The schema's `x-ga4gh-drs-uri` flags let the client offer a DRS picker for inputs. The client submits the `drs://` identifiers; the execution side resolves them with the user's delegated credentials when it stages the data (see [Access to data](../security.md#access-to-data)).
+3. **Data Access (DRS):** The schemes of the schema's [file references](../specification/files.md) let the client offer a DRS picker for inputs that accept `drs`. The client submits the `drs://` identifiers; the execution side resolves them with the user's delegated credentials when it stages the data (see [Access to data](../security.md#access-to-data)).
 
 4. **Execution (WES):** The client checks the input values against the schema, translates them into the `workflow_params` of the workflow's engine and submits the run. A WES server that knows the schema can check the request again and reject it with an error that names the failing parameter, using `x-ga4gh-error-message` where the schema provides one (see [WES](wes.md)).
 
