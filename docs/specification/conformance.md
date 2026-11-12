@@ -320,9 +320,9 @@ negative case (see [Development](../development.md#unit-tests-pytest)).
 `tests/js/` runs the suite through JavaScript validators (Ajv and
 @hyperjump/json-schema), which give the same results on the suite (see
 [JavaScript validators](../tools/javascript.md), also for where they
-differ). A new rule of the meta-schema comes
-with a negative case in the suite, and a change of a rule that makes a valid
-case fail is a breaking change (see
+differ). A new rule of the meta-schema comes with a negative case in the
+suite, and a change of a rule that makes a valid case fail is a breaking
+change (see
 [Versioning and governance](../governance.md)).
 
 ## Implementations

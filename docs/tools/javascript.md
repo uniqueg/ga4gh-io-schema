@@ -45,7 +45,11 @@ of the suite tests yet:
 
 Validators that report all errors (e.g., Ajv with `allErrors: true`) report
 a problem in a nested schema more than once: both the Draft 2020-12
-meta-schema and the rules of the profile check every subschema.
+meta-schema and the rules of the profile check every subschema. They also
+report the valid `x-ga4gh-*` keywords of the enclosing schemas (e.g., an
+`x-ga4gh-hidden` of the parent) as unevaluated properties, because a failed
+subschema drops the annotations of the vocabularies; the error at the
+deepest location is the actual problem.
 
 The meta-schema applies the rules for nested schemas with explicit `$ref`s,
 not with `$dynamicAnchor`, which Ajv supports only at the root of a schema:

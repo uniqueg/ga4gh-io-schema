@@ -79,7 +79,7 @@
       "title": "GA4GH IO Profile Schema Rules",
       "description": "Applies to every schema of an IO schema, at any depth: JSON Schema Draft 2020-12 plus the x-ga4gh-* keywords of the vocabularies. Keywords starting with x-ga4gh- that no vocabulary defines are rejected.",
       "$ref": "#/$defs/keywords",
-      "$comment": "Every keyword that doesn't start with x-ga4gh- counts as evaluated; the vocabularies evaluate the x-ga4gh-* keywords they define; any other x-ga4gh-* keyword is unevaluated and rejected. The pattern is in an allOf that always passes, so that its annotations survive when $defs/keywords fails (otherwise validators that report all errors flag every keyword of every ancestor as unevaluated), and Ajv handles it with allErrors.",
+      "$comment": "Every keyword that doesn't start with x-ga4gh- counts as evaluated; the vocabularies evaluate the x-ga4gh-* keywords they define; any other x-ga4gh-* keyword is unevaluated and rejected. The pattern is in an allOf that always passes, so that its annotations survive when $defs/keywords fails (otherwise validators that report all errors flag every standard keyword of every ancestor as unevaluated), and Ajv handles it with allErrors. The x-ga4gh-* keywords of an ancestor are still flagged in that case, because the vocabularies are part of $defs/keywords.",
       "allOf": [
         {
           "patternProperties": {

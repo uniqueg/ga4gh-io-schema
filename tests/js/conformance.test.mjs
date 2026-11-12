@@ -43,18 +43,27 @@ const VALID = [...documents(new URL("valid/", SUITE)), ...documents(EXAMPLES)];
 const INVALID = documents(new URL("invalid/", SUITE));
 
 /**
- * Return a function that validates a document against the profile with Ajv:
- * the 2020-12 build, formats asserted (ajv-formats), the profile and its
- * vocabularies added from the local copies, so that nothing is fetched.
+ * Return Ajv's compiled check of the profile: the 2020-12 build, formats
+ * asserted (ajv-formats), the profile and its vocabularies added from the
+ * local copies, so that nothing is fetched.
  *
  * @param {object} options - Options of Ajv.
  */
-function ajvValidator(options) {
+function ajvCheck(options) {
   const ajv = new Ajv2020(options);
   addFormats(ajv);
   for (const schema of VOCABULARY_SCHEMAS) ajv.addSchema(schema);
   ajv.addSchema(PROFILE);
-  const check = ajv.getSchema(PROFILE.$id);
+  return ajv.getSchema(PROFILE.$id);
+}
+
+/**
+ * Return a function that validates a document against the profile with Ajv.
+ *
+ * @param {object} options - Options of Ajv.
+ */
+function ajvValidator(options) {
+  const check = ajvCheck(options);
   return async (document) => check(document);
 }
 
@@ -119,11 +128,7 @@ describe("errors of a nested unknown keyword", () => {
   };
 
   test("Ajv (allErrors: true) reports only the unknown keyword", () => {
-    const ajv = new Ajv2020({ strict: false, allErrors: true });
-    addFormats(ajv);
-    for (const schema of VOCABULARY_SCHEMAS) ajv.addSchema(schema);
-    ajv.addSchema(PROFILE);
-    const check = ajv.getSchema(PROFILE.$id);
+    const check = ajvCheck({ strict: false, allErrors: true });
     assert.equal(check(document), false);
     const unevaluated = check.errors
       .filter((error) => error.keyword === "unevaluatedProperties")
@@ -131,7 +136,8 @@ describe("errors of a nested unknown keyword", () => {
     assert.deepEqual([...new Set(unevaluated)], ["x-ga4gh-bogus"]);
   });
 
-  // Runs after the describe blocks above, which registered the schemas.
+  // Uses the schemas that hyperjumpValidator() registered when the file was
+  // loaded (hyperjump's registry is global).
   test("@hyperjump/json-schema reports only the unknown keyword", async () => {
     const output = await validate(PROFILE.$id, document, "BASIC");
     assert.equal(output.valid, false);
