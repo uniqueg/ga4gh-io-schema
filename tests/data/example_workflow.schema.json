@@ -10,10 +10,13 @@
       "properties": {
         "sample_manifest": {
           "type": "string",
-          "format": "uri",
           "title": "Sample Manifest",
-          "description": "Path to a CSV sample sheet containing biological replicate information.",
-          "x-ga4gh-drs-uri": true,
+          "description": "CSV sample sheet containing biological replicate information.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "mediaType": "text/csv",
+            "schemes": ["drs", "https"]
+          },
           "x-ga4gh-tabular-schema": {
             "type": "array",
             "description": "Validates the internal columns of the provided CSV file.",
@@ -21,23 +24,45 @@
               "type": "object",
               "properties": {
                 "sample_id": { "type": "string", "title": "Sample ID", "pattern": "^[a-zA-Z0-9_]+$" },
-                "fastq_1": { "type": "string", "title": "Read 1 FASTQ", "format": "uri" },
+                "fastq_1": {
+                  "type": "string",
+                  "title": "Read 1 FASTQ",
+                  "x-ga4gh-file": { "kind": "file", "compression": "gzip" }
+                },
                 "condition": { "type": "string", "title": "Condition", "enum": ["control", "treatment"] }
               },
               "required": ["sample_id", "fastq_1", "condition"]
             }
           }
+        },
+        "genome_index": {
+          "type": "string",
+          "title": "Genome Index",
+          "description": "Directory with the index of the reference genome for the aligner.",
+          "x-ga4gh-file": { "kind": "directory" }
+        },
+        "known_variants": {
+          "type": "string",
+          "title": "Known Variants",
+          "description": "Variants to mask during QC, as a VCF file indexed with tabix.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_3016",
+            "compression": "bgzip",
+            "secondaryFiles": [".tbi"]
+          }
         }
       },
-      "required": ["sample_manifest"]
+      "required": ["sample_manifest", "genome_index"],
+      "additionalProperties": false
     },
     "outputs": {
       "type": "object",
       "properties": {
         "qc_report": {
           "type": "string",
-          "format": "uri",
           "title": "QC HTML Report",
+          "x-ga4gh-file": { "kind": "file", "mediaType": "text/html" },
           "x-ga4gh-ui-widget": "html-viewer"
         }
       }

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/file-in-array-items",
+  "title": "Invalid: file-in-array-items",
+  "description": "A file reference in the items of an array is checked too.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "reads": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "folder"
+            }
+          }
+        }
+      }
+    }
+  }
+}
