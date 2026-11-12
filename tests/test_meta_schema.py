@@ -144,3 +144,22 @@ def test_schemas_have_no_dynamic_references(path: Path) -> None:
     for node in _walk(load_json(path)):
         assert not isinstance(node.get("$dynamicRef"), str)
         assert not isinstance(node.get("$dynamicAnchor"), str)
+
+
+@pytest.mark.parametrize(
+    "path",
+    sorted((SCHEMAS_DIR / "vocabularies").glob("*.schema.json")),
+    ids=lambda path: path.name,
+)
+def test_vocabularies_keep_dependent_schemas_apart(path: Path) -> None:
+    """Test that no vocabulary has ``dependentSchemas`` next to its keywords.
+
+    Ajv forgets that the keywords in ``properties`` were evaluated when
+    ``dependentSchemas`` is in the same schema and its keyword is absent,
+    and then rejects them as unevaluated; in an ``allOf``, it doesn't.
+
+    Args:
+        path: A vocabulary file of the profile.
+    """
+    vocabulary = load_json(path)
+    assert not ("properties" in vocabulary and "dependentSchemas" in vocabulary)
