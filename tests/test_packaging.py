@@ -17,7 +17,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCHEMAS_DIR = REPO_ROOT / "schemas"
 DATA_DIR = REPO_ROOT / "tests" / "data"
 PROFILE_PATH = SCHEMAS_DIR / "ga4gh-io-profile.schema.json"
-DOCS = [REPO_ROOT / "README.md", REPO_ROOT / "docs" / "proposal_ga4gh_io_schema.md"]
+# Docs that show CLI usage; mkdocs build --strict checks the links of docs/.
+USAGE_DOCS = [REPO_ROOT / "README.md", REPO_ROOT / "docs" / "tools" / "validator.md"]
 
 
 def test_get_schemas_dir_prefers_package_dir(
@@ -78,27 +79,24 @@ def test_examples_reference_the_meta_schema() -> None:
         assert schema["$id"].startswith("https://example.org/"), path
 
 
-@pytest.mark.parametrize("doc", DOCS, ids=lambda path: path.name)
-def test_relative_links_resolve(doc: Path) -> None:
-    """Test that every relative Markdown link points to an existing file.
-
-    Args:
-        doc: Markdown file to check.
-    """
-    text = doc.read_text(encoding="utf-8")
+def test_readme_relative_links_resolve() -> None:
+    """Test that every relative Markdown link of the README exists."""
+    text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     targets = re.findall(r"\]\(([^)#\s]+)(?:#[^)]*)?\)", text)
     relative = [target for target in targets if "://" not in target]
-    assert relative, doc
+    assert relative
     for target in relative:
-        assert (doc.parent / target).exists(), f"{doc.name}: {target}"
+        assert (REPO_ROOT / target).exists(), target
 
 
-def test_readme_uses_existing_cli_options() -> None:
-    """Test that the README only shows options the CLI defines."""
-    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+def test_docs_use_existing_cli_options() -> None:
+    """Test that the documented CLI calls only use options the CLI defines."""
     cli = (REPO_ROOT / "src" / "ga4gh_io_schema" / "cli.py").read_text(encoding="utf-8")
     usage = [
-        line for line in readme.splitlines() if "ga4gh-io-schema-validator " in line
+        line
+        for doc in USAGE_DOCS
+        for line in doc.read_text(encoding="utf-8").splitlines()
+        if line.startswith("ga4gh-io-schema-validator ")
     ]
     assert usage
     for line in usage:

@@ -39,6 +39,19 @@ dev = [
     "reuse>=3.0.2",
     "ruff>=0.4.0",
 ]
+# The documentation (`mkdocs.yml`), built by Read the Docs
+# (`.readthedocs.yaml`) and CI's `docs` job; the plugins of MkDocs are
+# listed too, to bound their major versions (new warnings of minor releases
+# still fail the strict build)
+docs = [
+    "griffelib>=2.4,<3",
+    "mkdocs>=1.6.1,<2",
+    "mkdocs-autorefs>=1.4.4,<2",
+    "mkdocs-material>=9.7.7,<10",
+    "mkdocstrings>=1.0.8,<2",
+    "mkdocstrings-python>=2.0.10,<3",
+    "pymdown-extensions>=12.3,<13",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ga4gh_io_schema"]

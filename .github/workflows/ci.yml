@@ -7,6 +7,7 @@ name: CI
 on:
   push:
     branches: ["main", "v*"]
+  # All pull requests, also those into release branches (e.g., `v0.3`)
   pull_request:
 
 permissions:
@@ -87,9 +88,32 @@ jobs:
         run: |
           ! ga4gh-io-schema-validator tests/data/invalid.schema.json
 
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Python version of Read the Docs (`.readthedocs.yaml`)
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[docs]"
+
+      # Fails on warnings, e.g., of broken links, anchors and references
+      - name: Build documentation
+        run: mkdocs build --strict
+
   passed:
     name: CI passed
-    needs: [lint, test]
+    needs: [lint, test, docs]
     if: always()
     runs-on: ubuntu-latest
     steps:

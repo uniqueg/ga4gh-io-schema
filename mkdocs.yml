@@ -1,0 +1,111 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+site_name: GA4GH IO Schema Profile
+site_description: >-
+  Proposed GA4GH JSON Schema profile for the inputs and outputs of workflows
+  and workflow components
+# Read the Docs serves each version under its own path (e.g., `/en/latest/`)
+site_url: !ENV [READTHEDOCS_CANONICAL_URL, "https://ga4gh-io-schema.readthedocs.io/en/latest/"]
+repo_url: https://github.com/uniqueg/ga4gh-io-schema
+repo_name: uniqueg/ga4gh-io-schema
+edit_uri: edit/main/docs/
+
+# Files included in pages (see `pymdownx.snippets`) and documented code
+watch:
+  - README.md
+  - schemas
+  - src
+  - tests/data
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.footer
+    - navigation.indexes
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  # Sections of `README.md` (between `--8<-- [start:<name>]` and
+  # `--8<-- [end:<name>]`) and the example schemas of `tests/data/`, so that
+  # they are not written twice; fails if a file or section is missing
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["src"]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            members_order: source
+            filters: ["!^_"]
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+nav:
+  - Home: index.md
+  - Motivation: motivation.md
+  - Specification:
+      - specification/index.md
+      - Keywords: specification/keywords.md
+      - Output contract: specification/outputs.md
+      - Meta-schema: specification/meta-schema.md
+      - Conformance: specification/conformance.md
+      - Examples: specification/examples.md
+  - Rationale and related work: rationale.md
+  - Security considerations: security.md
+  - Tools:
+      - tools/index.md
+      - Validator: tools/validator.md
+      - Converters: tools/converters.md
+  - Adoption:
+      - adoption/index.md
+      - TRS: adoption/trs.md
+      - WES: adoption/wes.md
+      - Portals and clients: adoption/portals.md
+  - Roadmap: roadmap.md
+  - Development: development.md
