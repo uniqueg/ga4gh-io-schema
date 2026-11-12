@@ -1,0 +1,136 @@
+[
+  {
+    "name": "https-uri",
+    "annotation": { "kind": "file" },
+    "value": "https://data.example.org/reads_1.fastq.gz",
+    "valid": true
+  },
+  {
+    "name": "drs-uri-host-name",
+    "annotation": { "kind": "file" },
+    "value": "drs://drs.example.org/314159",
+    "valid": true
+  },
+  {
+    "name": "drs-uri-compact-identifier",
+    "annotation": { "kind": "file", "schemes": ["drs"] },
+    "value": "drs://dg.4503:6ca5c2a8",
+    "valid": true
+  },
+  {
+    "name": "scheme-in-uppercase",
+    "annotation": { "kind": "file", "schemes": ["https"] },
+    "value": "HTTPS://data.example.org/reads.fastq.gz",
+    "valid": true
+  },
+  {
+    "name": "directory-uri-with-slash",
+    "annotation": { "kind": "directory" },
+    "value": "https://data.example.org/index/",
+    "valid": true
+  },
+  {
+    "name": "scheme-not-on-allow-list",
+    "annotation": { "kind": "file" },
+    "value": "s3://bucket/reads.fastq.gz",
+    "valid": false
+  },
+  {
+    "name": "scheme-on-deployment-allow-list",
+    "annotation": { "kind": "file" },
+    "value": "s3://bucket/reads.fastq.gz",
+    "allowedSchemes": ["drs", "https", "s3"],
+    "valid": true
+  },
+  {
+    "name": "scheme-not-in-schemes",
+    "annotation": { "kind": "file", "schemes": ["drs"] },
+    "value": "https://data.example.org/reads.fastq.gz",
+    "valid": false
+  },
+  {
+    "name": "schemes-do-not-extend-allow-list",
+    "annotation": { "kind": "file", "schemes": ["drs", "s3"] },
+    "value": "s3://bucket/reads.fastq.gz",
+    "valid": false
+  },
+  {
+    "name": "relative-path",
+    "annotation": { "kind": "file" },
+    "value": "inputs/reads.fastq.gz",
+    "valid": true
+  },
+  {
+    "name": "relative-path-with-colon-after-dot-slash",
+    "annotation": { "kind": "file" },
+    "value": "./sample:1.fastq.gz",
+    "valid": true
+  },
+  {
+    "name": "relative-path-with-colon-looks-like-scheme",
+    "annotation": { "kind": "file" },
+    "value": "sample:1.fastq.gz",
+    "valid": false
+  },
+  {
+    "name": "path-where-schemes",
+    "annotation": { "kind": "file", "schemes": ["drs", "https"] },
+    "value": "inputs/reads.fastq.gz",
+    "valid": false
+  },
+  {
+    "name": "path-with-dot-dot",
+    "annotation": { "kind": "file" },
+    "value": "inputs/../../etc/passwd",
+    "valid": false
+  },
+  {
+    "name": "path-starting-with-dot-dot",
+    "annotation": { "kind": "file" },
+    "value": "../reads.fastq.gz",
+    "valid": false
+  },
+  {
+    "name": "absolute-path",
+    "annotation": { "kind": "file" },
+    "value": "/shared/data/reads.fastq.gz",
+    "valid": false
+  },
+  {
+    "name": "absolute-path-allowed",
+    "annotation": { "kind": "file" },
+    "value": "/shared/data/reads.fastq.gz",
+    "allowAbsolutePaths": true,
+    "valid": true
+  },
+  {
+    "name": "empty",
+    "annotation": { "kind": "file" },
+    "value": "",
+    "valid": false
+  },
+  {
+    "name": "file-uri",
+    "annotation": { "kind": "file" },
+    "value": "file:///etc/passwd",
+    "valid": false
+  },
+  {
+    "name": "javascript-uri",
+    "annotation": { "kind": "file" },
+    "value": "javascript:alert(1)",
+    "valid": false
+  },
+  {
+    "name": "javascript-uri-in-uppercase",
+    "annotation": { "kind": "file" },
+    "value": "JAVASCRIPT:alert(1)",
+    "valid": false
+  },
+  {
+    "name": "data-uri",
+    "annotation": { "kind": "file" },
+    "value": "data:text/plain;base64,SGVsbG8=",
+    "valid": false
+  }
+]

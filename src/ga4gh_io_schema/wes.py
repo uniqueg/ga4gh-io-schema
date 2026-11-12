@@ -326,6 +326,113 @@ def trs_descriptor_url(
     )
 
 
+def check_file_value(
+    annotation: dict[str, Any],
+    value: str,
+    allowed_schemes: Iterable[str] = DEFAULT_ALLOWED_SCHEMES,
+    allow_absolute_paths: bool = False,
+) -> None:
+    """Check a value of a file reference of an input.
+
+    Applies the rules of "File references", "Values": a value is an absolute
+    URI whose scheme is on the deployment's allow-list and, if the annotation
+    has ``schemes``, on that list too; or, without ``schemes``, a path
+    without ``..`` segments, which is absolute only where allowed. Schemes
+    that run code in a browser or refer to local data
+    (:data:`FORBIDDEN_SCHEMES`) are always rejected.
+
+    Args:
+        annotation: The ``x-ga4gh-file`` annotation of the file reference.
+        value: The value.
+        allowed_schemes: URI schemes of the deployment's allow-list.
+        allow_absolute_paths: Whether the value may be an absolute path
+            (only for deployments with a shared file system).
+
+    Raises:
+        TranslationError: If the value breaks a rule; the message doesn't
+            repeat the value.
+        ValueError: If ``allowed_schemes`` names a forbidden scheme.
+    """
+    _check_file_value(
+        annotation, value, _allow_list(allowed_schemes), allow_absolute_paths, ()
+    )
+
+
+def _allow_list(schemes: Iterable[str]) -> frozenset[str]:
+    """Normalise an allow-list of URI schemes.
+
+    Args:
+        schemes: URI schemes, in any case.
+
+    Returns:
+        The schemes, in lowercase.
+
+    Raises:
+        ValueError: If a scheme is forbidden (see :data:`FORBIDDEN_SCHEMES`).
+    """
+    allowed = frozenset(scheme.lower() for scheme in schemes)
+    forbidden = sorted(allowed & FORBIDDEN_SCHEMES)
+    if forbidden:
+        raise ValueError(f"These schemes can't be allowed: {', '.join(forbidden)}")
+    return allowed
+
+
+def _check_file_value(
+    annotation: dict[str, Any],
+    value: str,
+    allowed: frozenset[str],
+    allow_absolute_paths: bool,
+    path: Path,
+) -> None:
+    """Check a value of a file reference (see :func:`check_file_value`).
+
+    Args:
+        annotation: The ``x-ga4gh-file`` annotation.
+        value: The value.
+        allowed: URI schemes of the allow-list, in lowercase.
+        allow_absolute_paths: Whether absolute paths are allowed.
+        path: Location of the value in the input values.
+
+    Raises:
+        TranslationError: If the value breaks a rule.
+    """
+    declared = annotation.get("schemes")
+    match = _SCHEME.match(value)
+    if match:
+        scheme = match.group(1).lower()
+        if scheme in FORBIDDEN_SCHEMES:
+            raise TranslationError(
+                f"File references can't use the scheme '{scheme}'.", path
+            )
+        if isinstance(declared, list) and scheme not in declared:
+            raise TranslationError(
+                f"The scheme '{scheme}' isn't one of the schemes of this file "
+                f"reference ({', '.join(declared)}).",
+                path,
+            )
+        if scheme not in allowed:
+            raise TranslationError(
+                f"The scheme '{scheme}' isn't on the allow-list of the deployment.",
+                path,
+            )
+        return
+    if isinstance(declared, list):
+        raise TranslationError(
+            "This file reference takes only absolute URIs with the schemes "
+            f"{', '.join(declared)}, not paths.",
+            path,
+        )
+    if not value:
+        raise TranslationError("A file reference can't be empty.", path)
+    if ".." in re.split(r"[/\\]", value):
+        raise TranslationError("Paths can't have '..' segments.", path)
+    if value.startswith(("/", "\\")) and not allow_absolute_paths:
+        raise TranslationError(
+            "Absolute paths are allowed only in deployments with a shared file system.",
+            path,
+        )
+
+
 @dataclass(frozen=True)
 class _Scope:
     """A subschema, with the resolver of its base URI.
@@ -361,10 +468,7 @@ class _Translator:
             ValueError: If ``allowed_schemes`` names a forbidden scheme.
         """
         self.binding = binding
-        self.allowed = frozenset(scheme.lower() for scheme in allowed_schemes)
-        forbidden = sorted(self.allowed & FORBIDDEN_SCHEMES)
-        if forbidden:
-            raise ValueError(f"These schemes can't be allowed: {', '.join(forbidden)}")
+        self.allowed = _allow_list(allowed_schemes)
         self.allow_absolute_paths = allow_absolute_paths
         uri = schema["$id"] if isinstance(schema.get("$id"), str) else _DOCUMENT_URI
         registry: Registry = build_registry([get_schemas_dir()]).with_resource(
@@ -594,60 +698,13 @@ class _Translator:
         )
         if annotation is None:
             return value
-        self._check_file(annotation, value, path)
+        _check_file_value(
+            annotation, value, self.allowed, self.allow_absolute_paths, path
+        )
         if self.binding.descriptor_type == "CWL":
             kind = "Directory" if annotation.get("kind") == "directory" else "File"
             return {"class": kind, "location": value}
         return value
-
-    def _check_file(self, annotation: dict[str, Any], value: str, path: Path) -> None:
-        """Check a value of a file reference (see "File references", "Values").
-
-        Args:
-            annotation: The ``x-ga4gh-file`` annotation.
-            value: The value.
-            path: Location of the value in the input values.
-
-        Raises:
-            TranslationError: If the value breaks a rule; the message doesn't
-                repeat the value.
-        """
-        declared = annotation.get("schemes")
-        match = _SCHEME.match(value)
-        if match:
-            scheme = match.group(1).lower()
-            if scheme in FORBIDDEN_SCHEMES:
-                raise TranslationError(
-                    f"File references can't use the scheme '{scheme}'.", path
-                )
-            if isinstance(declared, list) and scheme not in declared:
-                raise TranslationError(
-                    f"The scheme '{scheme}' isn't one of the schemes of this file "
-                    f"reference ({', '.join(declared)}).",
-                    path,
-                )
-            if scheme not in self.allowed:
-                raise TranslationError(
-                    f"The scheme '{scheme}' isn't on the allow-list of the deployment.",
-                    path,
-                )
-            return
-        if isinstance(declared, list):
-            raise TranslationError(
-                "This file reference takes only absolute URIs with the schemes "
-                f"{', '.join(declared)}, not paths.",
-                path,
-            )
-        if not value:
-            raise TranslationError("A file reference can't be empty.", path)
-        if ".." in re.split(r"[/\\]", value):
-            raise TranslationError("Paths can't have '..' segments.", path)
-        if value.startswith(("/", "\\")) and not self.allow_absolute_paths:
-            raise TranslationError(
-                "Absolute paths are allowed only in deployments with a shared "
-                "file system.",
-                path,
-            )
 
     @staticmethod
     def _name(scopes: Iterable[_Scope], key: str) -> str:

@@ -23,6 +23,7 @@ from ga4gh_io_schema.wes import (
     EngineBinding,
     TranslationError,
     build_run_request,
+    check_file_value,
     get_binding,
     to_workflow_params,
     trs_descriptor_url,
@@ -30,6 +31,7 @@ from ga4gh_io_schema.wes import (
 
 VECTORS_DIR = Path(__file__).resolve().parent / "vectors" / "wes-params"
 VECTORS = sorted(path.parent for path in VECTORS_DIR.glob("*/*/schema.json"))
+FILE_VALUES = load_json(VECTORS_DIR.parent / "file-values" / "cases.json")
 PROFILE = (
     "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/"
     "ga4gh-io-profile.schema.json"
@@ -138,6 +140,37 @@ def test_vector(path: Path) -> None:
     with pytest.raises(TranslationError) as info:
         run_vector(path)
     assert info.value.pointer == load_json(path / "error.json")["pointer"]
+
+
+def test_file_value_cases_have_unique_names() -> None:
+    """Test that every case of the file values has a name of its own."""
+    names = [case["name"] for case in FILE_VALUES]
+
+    assert len(names) == len(set(names))
+
+
+@pytest.mark.parametrize("case", FILE_VALUES, ids=lambda case: case["name"])
+def test_file_value(case: dict[str, Any]) -> None:
+    """Test a case of the vectors of file reference values.
+
+    Args:
+        case: Annotation, value, options and whether the value is valid.
+    """
+    options = {
+        "allowed_schemes": case.get("allowedSchemes", DEFAULT_ALLOWED_SCHEMES),
+        "allow_absolute_paths": case.get("allowAbsolutePaths", False),
+    }
+    if case["valid"]:
+        check_file_value(case["annotation"], case["value"], **options)
+        return
+    with pytest.raises(TranslationError):
+        check_file_value(case["annotation"], case["value"], **options)
+
+
+def test_check_file_value_rejects_forbidden_allow_list() -> None:
+    """Test that the allow-list of a single check can't be forbidden either."""
+    with pytest.raises(ValueError, match="data"):
+        check_file_value({"kind": "file"}, "x", allowed_schemes=["data"])
 
 
 def test_values_are_not_changed() -> None:
