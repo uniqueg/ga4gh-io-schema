@@ -182,13 +182,13 @@ The following examples demonstrate the schema in practice, utilizing the GA4GH I
 
 This example demonstrates how to validate a workflow that takes a CSV sample sheet as input.
 
-> *The full schema defining the workflow inputs and outputs is available at [`../tests/data/workflow.schema.json`](../tests/data/workflow.schema.json).*
+> *The full schema defining the workflow inputs and outputs is available at [`../tests/data/example_workflow.schema.json`](../tests/data/example_workflow.schema.json).*
 
 ### 9.2 Example 2: Single-Step Workflow Component
 
 This standard works equally well for defining modular, single-step units (such as a CWL `CommandLineTool` or an `nf-core` module) executed via a workflow orchestrator.
 
-> *The full schema defining the modular component is available at [`../tests/data/tool.schema.json`](../tests/data/tool.schema.json).*
+> *The full schema defining the modular component is available at [`../tests/data/example_tool.schema.json`](../tests/data/example_tool.schema.json).*
 
 ## 10. GA4GH Ecosystem Integration
 

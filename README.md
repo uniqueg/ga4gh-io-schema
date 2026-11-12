@@ -45,6 +45,8 @@ cd ga4gh-io-schema
 pip install -e ".[dev]"
 ```
 
+To install only the validator, run `pip install .` in the cloned repository instead. The package supports Python 3.11 and later, and it ships the meta-schema and its vocabularies, so the validator works offline and outside the repository.
+
 ---
 
 ## Usage
@@ -52,17 +54,25 @@ pip install -e ".[dev]"
 Once installed, the package exposes a command-line interface to validate your drafted tool or workflow IO schemas against the GA4GH meta-schema.
 
 ```bash
-ga4gh-io-schema-validator --schema path/to/your-schema.json --meta-schema schemas/ga4gh-io-profile.schema.json
+ga4gh-io-schema-validator path/to/your-schema.json
 ```
 
-Inside your own drafted schemas, you can reference the meta-schema directly to enable IDE autocompletion and validation:
+By default, the validator uses the meta-schema that the schema names in its `$schema` property and resolves the GA4GH meta-schema and vocabularies from the installed package. Use `--meta-schema` (`-m`) to validate against another meta-schema file:
+
+```bash
+ga4gh-io-schema-validator path/to/your-schema.json --meta-schema path/to/meta-schema.json
+```
+
+Inside your own drafted schemas, you can reference the meta-schema directly to enable IDE autocompletion and validation. The identifier is versioned: it names the release of the profile, not a moving branch.
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
-  "$id": "https://your-domain.org/my-tool-schema.json"
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/my-tool/v1"
 }
 ```
+
+The validator checks the `format` keywords of the meta-schema, for example that `$id` is a URI reference and that `x-ga4gh-ontology` is a URI (format checks use the `format-nongpl` extra of `jsonschema`). It checks the schema itself, not the input values that a WES request would send later. If a client also checks those values with `"format": "uri"`, note that DRS URIs with a host name (`drs://drs.example.org/314159`) are valid URIs, but DRS URIs with a compact identifier (`drs://drs.example.org:314159` or `drs://prefix:accession`) are not, because the part after the colon isn't a port number.
 
 ---
 
@@ -130,10 +140,10 @@ Contributions, issues, and feature requests are welcome! If you have suggestions
 
 This repository is multi-licensed in compliance with the [REUSE specification](https://reuse.software/):
 
-- **Original Code & Schemas (`/src`, `/schemas`):** Licensed under **Apache-2.0**.
-- **Documentation (`/docs`, `README.md`):** Licensed under **CC-BY-4.0**.
+- **Code, schemas, tests and this README (`/src`, `/schemas`, `/tests`, `README.md`):** Licensed under **Apache-2.0**.
+- **Documentation (`/docs`):** Licensed under **CC-BY-4.0**.
 
-Please see the [`LICENSE`](LICENSE) file and `REUSE.toml` for complete details and mapping. Full license texts are located in the `/LICENSES` directory.
+Each file's SPDX header, or its entry in `REUSE.toml`, is authoritative; `reuse lint` checks them in CI. Please see the [`LICENSE`](LICENSE) file and `REUSE.toml` for complete details and mapping. Full license texts are located in the `/LICENSES` directory.
 
 ---
 

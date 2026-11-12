@@ -15,6 +15,26 @@ import jsonschema
 from jsonschema.validators import validator_for
 from referencing import Registry, Resource
 
+#: Schemas shipped inside the installed package (see ``pyproject.toml``).
+PACKAGE_SCHEMAS_DIR = Path(__file__).resolve().parent / "schemas"
+#: Schemas of a source checkout, used by editable installs.
+CHECKOUT_SCHEMAS_DIR = Path(__file__).resolve().parents[2] / "schemas"
+
+
+def get_schemas_dir() -> Path:
+    """Return the directory holding the GA4GH IO Profile schemas.
+
+    Installed packages ship the schemas as package data. Editable installs
+    from a source checkout fall back to the repository's ``schemas/``
+    directory.
+
+    Returns:
+        The directory that contains the meta-schema and its vocabularies.
+    """
+    if PACKAGE_SCHEMAS_DIR.is_dir():
+        return PACKAGE_SCHEMAS_DIR
+    return CHECKOUT_SCHEMAS_DIR
+
 
 def load_json(file_path: Path | str) -> dict[str, Any]:
     """Load and parse a JSON file from the filesystem.
@@ -35,8 +55,17 @@ def load_json(file_path: Path | str) -> dict[str, Any]:
 
 
 def build_registry(search_dirs: list[Path]) -> Registry:
-    """Recursively discover JSON schemas in directories and register them by $id."""
-    registry = Registry()
+    """Discover JSON schemas in directories and register them by ``$id``.
+
+    Files that can't be read or parsed, or that lack an ``$id``, are skipped.
+
+    Args:
+        search_dirs: Directories to search recursively for ``*.json`` files.
+
+    Returns:
+        A registry that resolves each discovered schema by its ``$id``.
+    """
+    registry: Registry = Registry()
     for search_dir in search_dirs:
         if not search_dir.exists() or not search_dir.is_dir():
             continue
@@ -49,7 +78,7 @@ def build_registry(search_dirs: list[Path]) -> Registry:
                     registry = registry.with_resource(
                         uri=data["$id"], resource=resource
                     )
-            except json.JSONDecodeError, OSError, ValueError:
+            except (json.JSONDecodeError, OSError, ValueError):
                 continue
     return registry
 
@@ -64,6 +93,7 @@ def validate_schema(
     If meta_schema is explicitly provided, it forces validation against it.
     Otherwise, the meta-schema is inferred from the target schema's '$schema' property.
     Local vocabulary and extension references are resolved automatically.
+    ``format`` keywords of the meta-schema (e.g. ``uri``) are enforced.
 
     Args:
         target_schema: The JSON schema of the workflow or tool to validate.
@@ -75,8 +105,7 @@ def validate_schema(
         jsonschema.exceptions.SchemaError: If the meta-schema itself is malformed.
     """
     # Auto-discover local schemas for offline/local resolution
-    repo_schemas_dir = Path(__file__).parent.parent.parent / "schemas"
-    search_dirs = [repo_schemas_dir]
+    search_dirs = [get_schemas_dir()]
     if schema_dir and schema_dir.exists():
         search_dirs.append(schema_dir)
 
@@ -96,5 +125,9 @@ def validate_schema(
         validator_cls.check_schema(meta_schema)
         meta_schema_instance = meta_schema
 
-    validator = validator_cls(meta_schema_instance, registry=registry)
+    validator = validator_cls(
+        meta_schema_instance,
+        registry=registry,
+        format_checker=validator_cls.FORMAT_CHECKER,
+    )
     validator.validate(target_schema)

@@ -11,9 +11,21 @@ name = "ga4gh-io-schema"
 version = "0.1.0"
 description = "GA4GH standard profile for workflow and tool inputs and outputs"
 readme = "README.md"
-requires-python = ">=3.9"
+# Keep in sync with the CI test matrix and ruff's target-version.
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
 dependencies = [
-    "jsonschema>=4.21.1",
+    # "format-nongpl" enables format checks (e.g. "uri") without GPL-licensed
+    # extras; don't switch to "format", which pulls in rfc3987 (GPL-3.0).
+    "jsonschema[format-nongpl]>=4.21.1",
+    "referencing>=0.31.0",
 ]
 
 [project.scripts]
@@ -21,11 +33,19 @@ ga4gh-io-schema-validator = "ga4gh_io_schema.cli:main"
 
 [project.optional-dependencies]
 dev = [
+    "build>=1.2.1",
     "pytest>=8.1.1",
     "check-jsonschema>=0.28.1",
     "reuse>=3.0.2",
     "ruff>=0.4.0",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ga4gh_io_schema"]
+
+# Ship the schemas as package data; the repository keeps them in schemas/.
+[tool.hatch.build.targets.wheel.force-include]
+"schemas" = "ga4gh_io_schema/schemas"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -33,7 +53,8 @@ addopts = "-v"
 
 [tool.ruff]
 line-length = 88
-target-version = "py314"
+# Lowest supported Python version (see requires-python).
+target-version = "py311"
 
 [tool.ruff.lint]
 # D: pydocstyle, E: pycodestyle, F: pyflakes, I: isort

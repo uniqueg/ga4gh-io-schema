@@ -6,12 +6,15 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main", "v*"]
   pull_request:
-    branches: [ "main" ]
+
+permissions:
+  contents: read
 
 jobs:
-  test:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -23,13 +26,10 @@ jobs:
           python-version: "3.14"
           cache: "pip"
 
-      - name: Install dependencies and build tools
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --upgrade pip
           pip install -e ".[dev]"
-
-      - name: Verify package build (sdist and wheel)
-        run: python -m build
 
       - name: Check license compliance (REUSE)
         run: reuse lint
@@ -48,7 +48,33 @@ jobs:
           check-jsonschema --check-metaschema schemas/ga4gh-io-profile.schema.json
           check-jsonschema --check-metaschema schemas/vocabularies/ui-widgets.schema.json
 
-      - name: Run Python validator tests
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Lowest to newest supported version; keep in sync with pyproject.toml.
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Verify package build (sdist and wheel)
+        run: python -m build
+
+      - name: Run tests (including installed wheel)
         run: pytest
 
       - name: E2E CLI Validation (Valid Schemas)
@@ -60,3 +86,20 @@ jobs:
       - name: E2E CLI Validation (Invalid Schemas)
         run: |
           ! ga4gh-io-schema-validator tests/data/invalid.schema.json
+
+  passed:
+    name: CI passed
+    needs: [lint, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results of all jobs
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then
+              exit 1
+            fi
+          done

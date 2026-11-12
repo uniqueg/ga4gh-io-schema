@@ -79,3 +79,17 @@ def test_validate_schema_meta_schema_error() -> None:
 
     with pytest.raises(jsonschema.exceptions.SchemaError):
         validate_schema(target_schema, meta_schema)
+
+
+def test_validate_schema_checks_formats() -> None:
+    """Test that ``format`` keywords of the meta-schema are enforced."""
+    meta_schema: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {"x-ga4gh-ontology": {"type": "string", "format": "uri"}},
+    }
+
+    validate_schema(
+        {"x-ga4gh-ontology": "http://edamontology.org/format_1929"}, meta_schema
+    )
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="is not a 'uri'"):
+        validate_schema({"x-ga4gh-ontology": "not a uri"}, meta_schema)
