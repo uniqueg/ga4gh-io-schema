@@ -98,7 +98,10 @@ Keywords live in one vocabulary file per keyword group in
    `$defs/node/$defs/subschemas`, so that the nested schema is checked by
    all rules of the profile. Don't use `$dynamicRef` or `$dynamicAnchor`:
    Ajv supports them only at the root of a schema (the tests check that no
-   schema uses them).
+   schema uses them). Put `dependentSchemas` of a vocabulary file in an
+   `allOf`, not next to its `properties`: Ajv then forgets that the
+   keywords of `properties` were evaluated, and rejects them (the tests
+   check this too).
 2. Add one bad schema per new rule to
    `tests/conformance/schema-documents/invalid/` and its expected message
    to `INVALID` in `tests/test_cli.py`; for a schema-valued keyword,

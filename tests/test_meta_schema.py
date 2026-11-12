@@ -149,9 +149,9 @@ def test_schemas_have_no_dynamic_references(path: Path) -> None:
 def test_profile_declares_a_dialect() -> None:
     """Test that the meta-schema declares its vocabularies (``$vocabulary``).
 
-    Validators that treat ``$schema`` as a dialect (e.g.,
-    @hyperjump/json-schema) then accept IO schemas, which name the profile
-    in ``$schema``, for the validation of values. The vocabularies of Draft
+    The meta-schema is then a dialect of Draft 2020-12, which validators
+    that build dialects from ``$vocabulary`` can use for IO schemas, which
+    name the profile in ``$schema``. The vocabularies of Draft
     2020-12 are required, as in its meta-schema; the profile's own
     vocabulary is optional, so that validators that don't know it still
     process IO schemas (its keywords are annotations of values).
@@ -165,3 +165,22 @@ def test_profile_declares_a_dialect() -> None:
     assert list(own.values()) == [False]
     base = profile["$id"].rsplit("/", 1)[0]
     assert next(iter(own)).startswith(f"{base}/vocabularies/")
+
+
+@pytest.mark.parametrize(
+    "path",
+    sorted((SCHEMAS_DIR / "vocabularies").glob("*.schema.json")),
+    ids=lambda path: path.name,
+)
+def test_vocabularies_keep_dependent_schemas_apart(path: Path) -> None:
+    """Test that no vocabulary has ``dependentSchemas`` next to its keywords.
+
+    Ajv forgets that the keywords in ``properties`` were evaluated when
+    ``dependentSchemas`` is in the same schema and its keyword is absent,
+    and then rejects them as unevaluated; in an ``allOf``, it doesn't.
+
+    Args:
+        path: A vocabulary file of the profile.
+    """
+    vocabulary = load_json(path)
+    assert not ("properties" in vocabulary and "dependentSchemas" in vocabulary)

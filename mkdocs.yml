@@ -100,6 +100,7 @@ nav:
       - specification/index.md
       - Keywords: specification/keywords.md
       - File references: specification/files.md
+      - UI widgets: specification/widgets.md
       - Identity and engine binding: specification/identity.md
       - Engine bindings: specification/engine-bindings.md
       - Outputs: specification/outputs.md

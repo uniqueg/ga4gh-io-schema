@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/ui-widget-slider-no-maximum",
+  "title": "Invalid: ui-widget-slider-no-maximum",
+  "description": "The slider widget is on a number without an upper bound.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "number",
+          "minimum": 0,
+          "x-ga4gh-ui-widget": "slider"
+        }
+      }
+    }
+  }
+}

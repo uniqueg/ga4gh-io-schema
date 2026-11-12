@@ -344,6 +344,140 @@ INVALID = {
         "Validation Error: 'https://raw.githubusercontent.com/example/workflows/"
         "refs/heads/dev/ga4gh-io.schema.json' should not be valid under"
     ),
+    "ui-widget-no-type": (
+        "Validation Error: 'type' is a required property "
+        "(at $.properties.inputs.properties.name)"
+    ),
+    "ui-widget-text-integer": (
+        "Validation Error: 'integer' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.count.type)"
+    ),
+    "ui-widget-slider-string": (
+        "Validation Error: 'string' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.level.type)"
+    ),
+    "ui-widget-slider-no-maximum": (
+        "Validation Error: {'type': 'number', 'minimum': 0, "
+        "'x-ga4gh-ui-widget': 'slider'} is not valid under any of the given "
+        "schemas (at $.properties.inputs.properties.level)"
+    ),
+    "ui-widget-slider-no-minimum": (
+        "Validation Error: {'type': 'integer', 'maximum': 9, "
+        "'x-ga4gh-ui-widget': 'slider'} is not valid under any of the given "
+        "schemas (at $.properties.inputs.properties.level)"
+    ),
+    "ui-widget-dropdown-no-enum": (
+        "Validation Error: {'type': 'string', 'x-ga4gh-ui-widget': 'dropdown'} "
+        "is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.genome)"
+    ),
+    "ui-widget-dropdown-items-no-enum": (
+        "Validation Error: {'type': 'array', 'items': {'type': 'string'}, "
+        "'x-ga4gh-ui-widget': 'dropdown'} is not valid under any of the given "
+        "schemas (at $.properties.inputs.properties.stages)"
+    ),
+    "ui-widget-number-string": (
+        "Validation Error: 'string' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.threads.type)"
+    ),
+    "ui-widget-textarea-integer": (
+        "Validation Error: 'integer' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.notes.type)"
+    ),
+    "ui-widget-color-picker-integer": (
+        "Validation Error: 'integer' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.colour.type)"
+    ),
+    "ui-widget-time-picker-no-format": (
+        "Validation Error: 'format' is a required property "
+        "(at $.properties.inputs.properties.start)"
+    ),
+    "ui-widget-switch-integer": (
+        "Validation Error: 'integer' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.verbose.type)"
+    ),
+    "ui-widget-typeahead-integer": (
+        "Validation Error: 'integer' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.count.type)"
+    ),
+    "ui-widget-file-picker-directory": (
+        "Validation Error: 'file' was expected "
+        "(at $.properties.inputs.properties.reads['x-ga4gh-file'].kind)"
+    ),
+    "ui-widget-directory-picker-no-file": (
+        "Validation Error: 'x-ga4gh-file' is a required property "
+        "(at $.properties.inputs.properties.index)"
+    ),
+    "ui-widget-null-type": (
+        "Validation Error: ['null'] is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.name.type)"
+    ),
+    "ui-widget-ref-only": (
+        "Validation Error: 'type' is a required property "
+        "(at $.properties.inputs.properties.level)"
+    ),
+    "ui-widget-viewer-directory": (
+        "Validation Error: 'file' was expected "
+        "(at $.properties.outputs.properties.report['x-ga4gh-file'].kind)"
+    ),
+    "ui-widget-radio-no-enum": (
+        "Validation Error: 'enum' is a required property "
+        "(at $.properties.inputs.properties.strand)"
+    ),
+    "ui-widget-typeahead-no-suggestions": (
+        "Validation Error: {'type': 'string', 'x-ga4gh-ui-widget': 'typeahead'} "
+        "is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.species)"
+    ),
+    "ui-widget-checkbox-string": (
+        "Validation Error: 'string' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.paired.type)"
+    ),
+    "ui-widget-date-picker-no-format": (
+        "Validation Error: 'format' is a required property "
+        "(at $.properties.inputs.properties.date)"
+    ),
+    "ui-widget-datetime-picker-date": (
+        "Validation Error: 'date-time' was expected "
+        "(at $.properties.inputs.properties.date.format)"
+    ),
+    "ui-widget-file-picker-no-file": (
+        "Validation Error: 'x-ga4gh-file' is a required property "
+        "(at $.properties.inputs.properties.reads)"
+    ),
+    "ui-widget-directory-picker-file": (
+        "Validation Error: 'directory' was expected "
+        "(at $.properties.inputs.properties.index['x-ga4gh-file'].kind)"
+    ),
+    "ui-widget-tags-string": (
+        "Validation Error: 'string' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.labels.type)"
+    ),
+    "ui-widget-tags-integer-items": (
+        "Validation Error: 'string' was expected "
+        "(at $.properties.inputs.properties.labels.items.type)"
+    ),
+    "ui-widget-tags-nullable-items": (
+        "Validation Error: 'string' was expected "
+        "(at $.properties.inputs.properties.labels.items.type)"
+    ),
+    "ui-widget-viewer-on-input": (
+        "Validation Error: 'html-viewer' should not be valid under "
+        "{'enum': ['html-viewer', 'table-viewer']} "
+        "(at $.properties.inputs.properties.report['x-ga4gh-ui-widget'])"
+    ),
+    "ui-widget-input-on-output": (
+        "Validation Error: 'file-picker' should not be valid under {'enum': "
+        "['text', 'textarea', 'number', 'slider', 'dropdown', 'typeahead', "
+        "'radio', 'checkbox', 'switch', 'date-picker', 'time-picker', "
+        "'datetime-picker', 'color-picker', 'file-picker', 'directory-picker', "
+        "'tags']} "
+        "(at $.properties.outputs.properties.report['x-ga4gh-ui-widget'])"
+    ),
+    "ui-widget-viewer-no-file": (
+        "Validation Error: 'x-ga4gh-file' is a required property "
+        "(at $.properties.outputs.properties.summary)"
+    ),
 }
 
 
