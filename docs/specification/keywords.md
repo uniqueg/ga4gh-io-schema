@@ -38,7 +38,7 @@ We propose the following initial set of custom annotations to support execution 
 
 * `x-ga4gh-fa-icon` *(string)*: FontAwesome icon class to display next to the parameter in dynamic UIs. *Relation to nf-schema: Equivalent to the `fa_icon` property.*
 
-* `x-ga4gh-description-format` *(string)*: Indicates the formatting of the standard `description` field (accepted values: `plain_text` (default), `markdown`, `rst`). *Relation to nf-schema: Equivalent in intent to the `help_text` property, but relies on formatting the standard JSON Schema `description` field rather than creating a secondary text property.*
+* `x-ga4gh-description-format` *(string)*: Indicates the formatting of the standard `description` field (accepted values: `plain_text` (default), `markdown`, `rst`; `rst` is removed in version 0.3, see [#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17), and clients show it as plain text, see [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)). *Relation to nf-schema: Equivalent in intent to the `help_text` property, but relies on formatting the standard JSON Schema `description` field rather than creating a secondary text property.*
 
 * `x-ga4gh-hidden` *(boolean)*: Signals UI generators to hide this parameter under "Advanced" toggles. *Relation to nf-schema: Equivalent to the `hidden` property.*
 
