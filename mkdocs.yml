@@ -97,6 +97,7 @@ nav:
   - Specification:
       - specification/index.md
       - Keywords: specification/keywords.md
+      - File references: specification/files.md
       - Output contract: specification/outputs.md
       - Meta-schema: specification/meta-schema.md
       - Conformance: specification/conformance.md

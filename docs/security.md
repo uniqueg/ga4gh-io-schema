@@ -37,7 +37,13 @@ The `pattern` and `patternProperties` keywords run regular expressions from the 
 
 The `uri` format of JSON Schema accepts any scheme of [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986), including `javascript:`, `data:` and `file:`. Validation against `format: uri` therefore doesn't make a reference safe to use, and many validators don't check formats at all.
 
-Until the profile has a file reference type (see [#10](https://github.com/uniqueg/ga4gh-io-schema/issues/10)), which will make the allowed schemes part of the profile, servers and clients treat every string value with `format: uri` and every value of an input with `x-ga4gh-drs-uri` as a file reference, and schemas MUST mark every file input and output in one of these ways. How paths relative to attachments are typed is left to the file reference type.
+Schemas MUST mark every file input and output as a [file reference](specification/files.md) (`x-ga4gh-file`), and servers and clients treat every value of a file reference as one: also a value where a file reference is one branch of `anyOf` or `oneOf`, and the `default`, `const`, `enum` and `examples` of a file reference. [File references](specification/files.md#values) defines the values; in short:
+
+- The annotation's `schemes` can narrow the allow-list below for a parameter, but never extend it.
+- Paths without a scheme are values of inputs only, and not allowed where the annotation has `schemes`.
+- File references in the rows of tabular files (e.g., sample sheets) never reach the server: the execution side MUST check them by the rules below after staging the file and before the engine runs, or enforce the rules for hosts with network controls (see [File references in tabular files](specification/files.md#file-references-in-tabular-files)).
+
+The rules below apply to all of them.
 
 - Servers and clients MUST check the scheme of every file reference, in inputs and in outputs, against an allow-list before they use it: before staging an input, and before showing an output as a link or loading it into a viewer.
 - The allow-list is set by the deployment. It SHOULD contain only `drs` and `https`; the object-store schemes that the deployment supports (e.g., `s3`, `gs`); and `http`, only for internal networks.

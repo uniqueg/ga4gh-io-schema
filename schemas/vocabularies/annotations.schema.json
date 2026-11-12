@@ -7,7 +7,7 @@
     "x-ga4gh-ontology": {
       "type": "string",
       "format": "uri",
-      "description": "URI to an ontology term (e.g., EDAM format) semantically describing the data type."
+      "description": "URI to an ontology term (e.g., an EDAM data term) semantically describing the data of the parameter. The format of a file goes into ontology of x-ga4gh-file."
     },
     "x-ga4gh-ui-widget": {
       "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/ui-widgets.schema.json",
