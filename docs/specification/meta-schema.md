@@ -23,7 +23,8 @@ Schema (Draft 2020-12) of the repository:
   the `x-ga4gh-*` keywords that find the outputs of a run
   ([Outputs](outputs.md)).
 - [`schemas/vocabularies/ui-widgets.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json):
-  the vocabulary of UI widgets (values of `x-ga4gh-ui-widget`).
+  the vocabulary of UI widgets (values of `x-ga4gh-ui-widget`), and the
+  rules for the schemas that each widget fits (see [UI widgets](widgets.md)).
 
 The [validator](../tools/validator.md) checks schemas against them.
 
@@ -76,7 +77,7 @@ The rules combine one vocabulary file per keyword group:
 | Keyword | Value | Vocabulary |
 | ----- | ----- | ----- |
 | `x-ga4gh-ontology` | string, a URI | `annotations` |
-| `x-ga4gh-ui-widget` | a widget of the [vocabulary](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json), or `custom:<name>` (lowercase letters, digits and hyphens) | `annotations` |
+| `x-ga4gh-ui-widget` | a widget of the [vocabulary](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json), or `custom:<name>` (lowercase letters, digits and hyphens); a widget of the vocabulary needs the type and keywords that it fits in the same schema, and viewers are for outputs (see [UI widgets](widgets.md)) | `annotations`, `ui-widgets` |
 | `x-ga4gh-description-format` | `plain_text` or `markdown` | `annotations` |
 | `x-ga4gh-hidden` | boolean | `annotations` |
 | `x-ga4gh-error-message` | string | `annotations` |

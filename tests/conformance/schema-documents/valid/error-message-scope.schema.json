@@ -1,0 +1,34 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/error-message-scope.schema.json",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "samples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sample_id"
+          },
+          "minItems": 1,
+          "x-ga4gh-error-message": "Give at least one sample"
+        },
+        "control": {
+          "$ref": "#/$defs/sample_id",
+          "x-ga4gh-error-message": "The control is a sample ID such as S1"
+        }
+      },
+      "required": [
+        "samples"
+      ]
+    }
+  },
+  "$defs": {
+    "sample_id": {
+      "type": "string",
+      "pattern": "^S[0-9]+$",
+      "x-ga4gh-error-message": "Sample IDs are S followed by digits, e.g., S1"
+    }
+  }
+}
