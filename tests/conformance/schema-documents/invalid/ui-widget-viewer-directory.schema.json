@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/ui-widget-viewer-directory",
+  "title": "Invalid: ui-widget-viewer-directory",
+  "description": "The html-viewer widget is on a file reference to a directory.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string"
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "directory"
+          },
+          "x-ga4gh-ui-widget": "html-viewer"
+        }
+      }
+    }
+  }
+}

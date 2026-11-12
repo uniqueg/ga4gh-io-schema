@@ -14,6 +14,13 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Breaking changes
 
+- Widgets of `x-ga4gh-ui-widget` must fit their schema: the meta-schema
+  rejects, for example, a `slider` without a numeric type and both bounds, a
+  `date-picker` without `"format": "date"`, a `file-picker` without
+  `x-ga4gh-file`, `tags` on anything but an array of strings, and output
+  viewers on the parameters of `inputs` (and input widgets on `outputs`).
+  To migrate, add the `type` and keywords that the widget needs next to it
+  (not only behind a `$ref`), or remove the widget. (#38)
 - The command-line tools are subcommands of one command, `ga4gh-io-schema`:
   `ga4gh-io-schema validate` replaces `ga4gh-io-schema-validator`, which is
   removed without an alias. The exit status now tells failures apart (1: the
@@ -71,6 +78,9 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A specification page "UI widgets": for each widget of the vocabulary, the
+  types and keywords that it needs and the value that it produces; input
+  widgets and output viewers kept apart. (#38)
 - `ga4gh-io-schema convert snakemake`: converts a Snakemake config schema
   (YAML or JSON, Draft 4 to 2020-12) and sample-sheet schemas to an IO
   schema, with file references from documented, overridable heuristics, the
@@ -140,6 +150,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   allowed. (#41)
 - Versioning policy and governance note, and this changelog in the
   documentation, with the history of versions 0.1 and 0.2. (#14)
+- Rules for `x-ga4gh-hidden` and `x-ga4gh-error-message`: form renderers
+  show hidden inputs that users must set (required, no default) and hidden
+  inputs whose values fail; an error message covers the failures at the
+  location of the value that its schema describes, not those of nested
+  values, replaces the validator's message, and the outermost message wins
+  where several apply. (#40)
 - Engine bindings: how input values become the `workflow_params` of a WES
   run request for `NFL`, `SMK`, `WDL` and `CWL` (names from
   `x-ga4gh-parameter`, WDL names qualified with the entry point, CWL `File`
