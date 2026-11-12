@@ -20,7 +20,11 @@ SUITE_DIR = REPO_ROOT / "tests" / "conformance"
 VECTORS_DIR = REPO_ROOT / "tests" / "vectors"
 PROFILE_PATH = SCHEMAS_DIR / "ga4gh-io-profile.schema.json"
 # Docs that show CLI usage; mkdocs build --strict checks the links of docs/.
-USAGE_DOCS = [REPO_ROOT / "README.md", REPO_ROOT / "docs" / "tools" / "validator.md"]
+USAGE_DOCS = [
+    REPO_ROOT / "README.md",
+    REPO_ROOT / "docs" / "tools" / "validator.md",
+    REPO_ROOT / "docs" / "tools" / "cwl.md",
+]
 
 
 def test_get_schemas_dir_prefers_package_dir(

@@ -42,6 +42,10 @@ pip install .
 ga4gh-io-schema validate path/to/your-schema.json
 ```
 
+To convert CWL documents, install the `cwl` extra (`pip install ".[cwl]"`)
+and see the
+[CWL converter](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/cwl/).
+
 Turn input values into the `workflow_params` of a WES run request (see
 [WES parameters](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/wes-params/)):
 
