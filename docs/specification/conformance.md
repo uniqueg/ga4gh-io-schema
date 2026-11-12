@@ -303,8 +303,9 @@ through `ga4gh-io-schema validate` and also check the message of each
 negative case (see [Development](../development.md#unit-tests-pytest)).
 `tests/js/` runs the suite through JavaScript validators (Ajv and
 @hyperjump/json-schema), which give the same results (see [JavaScript
-validators](../tools/javascript.md)). A new rule of the meta-schema comes with a negative case in the suite, and a
-change of a rule that makes a valid case fail is a breaking change (see
+validators](../tools/javascript.md)). A new rule of the meta-schema comes
+with a negative case in the suite, and a change of a rule that makes a valid
+case fail is a breaking change (see
 [Versioning and governance](../governance.md)).
 
 ## Implementations

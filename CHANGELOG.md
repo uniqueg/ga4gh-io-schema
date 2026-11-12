@@ -112,16 +112,10 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   documentation, with the history of versions 0.1 and 0.2. (#14)
 - A JavaScript runner of the conformance suite and the examples
   (`tests/js/`, run in CI) with Ajv and @hyperjump/json-schema, and a page
-  "JavaScript validators" on how to set them up. (#36)
-
-### Fixed
-
-- The meta-schema works with JavaScript validators: the rules of
-  `$defs/node` reach nested schemas through explicit `$ref`s
-  (`$defs/node/$defs/subschemas`) instead of `$dynamicAnchor`, which Ajv
-  supports only at the root of a schema. Ajv accepted schemas that broke
-  the rules for nested schemas (e.g., unknown widgets, bad file
-  references). The results of the Python validator are unchanged. (#36)
+  "JavaScript validators" on how to set them up. The meta-schema applies
+  the rules of `$defs/node` to nested schemas through explicit `$ref`s
+  (`$defs/node/$defs/subschemas`), not `$dynamicAnchor`, which Ajv supports
+  only at the root of a schema and would skip without an error. (#36)
 
 ## v0.2 (2026-10-13)
 

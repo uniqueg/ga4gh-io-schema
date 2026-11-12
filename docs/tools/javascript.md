@@ -12,7 +12,10 @@ validators that the repository tests, and their results on the
 `tests/js/` runs every case of the conformance suite and the examples of
 `tests/data/` through each validator, offline, with the setup described
 below (see [Development](../development.md#javascript-tests-nodejs)); CI
-runs it on every pull request.
+runs it on every pull request. The versions are those pinned in
+`tests/js/package.json`. The setup functions of
+`tests/js/conformance.test.mjs` are a complete, runnable version of the
+snippets below, including how the schemas are read from `schemas/`.
 
 | Validator | Options | Valid documents accepted | Invalid documents rejected |
 | ----- | ----- | ----- | ----- |
@@ -29,12 +32,10 @@ accept `ontology-not-uri`, whose `x-ga4gh-ontology` isn't a URI: a
 check the `regex` format of `pattern`, with the regular expressions of
 JavaScript (ECMA-262).
 
-Earlier drafts of version 0.3 applied the rules for nested schemas through
-`$dynamicAnchor`, which Ajv supports only at the root of a schema: Ajv
-rejected only 18 of the 63 invalid documents of the suite at the time,
-without an error, because it skipped every rule for nested schemas (e.g.,
-unknown widgets, bad file references). The meta-schema now applies them
-with explicit `$ref`s (see
+The meta-schema applies the rules for nested schemas with explicit `$ref`s,
+not with `$dynamicAnchor`, which Ajv supports only at the root of a schema:
+with `$dynamicAnchor`, Ajv would skip every rule for nested schemas (e.g.,
+unknown widgets, bad file references) without an error (see
 [Structure of the meta-schema](../specification/meta-schema.md#structure-of-the-meta-schema)).
 
 Other validators aren't tested. A validator conforms if it accepts every

@@ -37,6 +37,9 @@ dev = [
     "pytest>=8.1.1",
     "pytest-cov>=5.0.0",
     "check-jsonschema>=0.28.1",
+    # The Draft 2020-12 meta-schemas, for tests/test_meta_schema.py (also a
+    # dependency of jsonschema)
+    "jsonschema-specifications>=2023.3.6",
     "reuse>=3.0.2",
     "ruff>=0.4.0",
 ]

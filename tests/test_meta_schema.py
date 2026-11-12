@@ -70,7 +70,9 @@ def test_subschemas_cover_every_applicator() -> None:
     keywords = _recursive_keywords()
     assert {"items", "properties", "$defs", "contentSchema"} <= keywords
     subschemas = load_profile()["$defs"]["node"]["$defs"]["subschemas"]
-    assert keywords <= set(subschemas["properties"])
+    assert keywords | {"x-ga4gh-tabular-schema"} <= set(subschemas["properties"])
+    for name, schema in subschemas["properties"].items():
+        assert {"$ref": "#"} in list(_walk(schema)), name
 
 
 @pytest.mark.parametrize(
