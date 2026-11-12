@@ -121,9 +121,11 @@ servers that validate requests MUST check them (see [Security
 considerations](../security.md#uris-and-file-references)). JSON Schema
 validators don't, because the rules are not expressed in JSON Schema keywords;
 they check only that the value is a string and the other keywords of the
-schema (e.g., `pattern`). The `ga4gh-io-schema` package doesn't check values
-yet; checking and translating input values is planned separately
-([#18](https://github.com/uniqueg/ga4gh-io-schema/issues/18)).
+schema (e.g., `pattern`). The [`wes-params`](../tools/wes-params.md) tool
+of the `ga4gh-io-schema` package checks the values of inputs by these rules
+before it translates them, and the [test
+vectors](engine-bindings.md#test-vectors) of file reference values let other
+implementations check theirs.
 
 ### File references in tabular files
 
@@ -203,7 +205,8 @@ the file types of workflow languages:
 
 The *values* of file references become the file objects or paths of each
 engine (e.g., CWL `{"class": "File", "location": …}`) when a client builds the
-`workflow_params` of a WES request; that translation is defined separately.
+`workflow_params` of a WES request, as defined in [Engine
+bindings](engine-bindings.md).
 
 ## Clients
 
