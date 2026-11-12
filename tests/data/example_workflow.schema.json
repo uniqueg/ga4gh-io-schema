@@ -16,7 +16,7 @@
           "x-ga4gh-drs-uri": true,
           "x-ga4gh-tabular-schema": {
             "type": "array",
-            "description": "Validates the internal columns of the provided CSV file.",
+            "description": "Experimental hint: the expected columns of the CSV sample sheet (not a validation rule).",
             "items": {
               "type": "object",
               "properties": {

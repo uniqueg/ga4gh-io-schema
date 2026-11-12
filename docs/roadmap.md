@@ -17,14 +17,14 @@ and outputs. Earlier versions of the proposal contained features that add
 risk without serving that use. They are either cut (removed, with no plan to
 bring them back) or deferred (removed or kept experimental until a later
 version specifies them properly). See
-[#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17) and the
-[changelog](https://github.com/uniqueg/ga4gh-io-schema/blob/main/CHANGELOG.md).
+[#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17); the changelog
+of the repository lists each removal as a breaking change.
 
 ### Cut
 
 | Feature | Reason |
 | ----- | ----- |
-| The claim that the profile is domain-agnostic and suits machine learning pipelines (MLOps) | Not designed or tested for it; kept as an [open question](#open-questions). |
+| The claim that the profile is domain-agnostic and suits machine learning pipelines (MLOps); a claim, not a feature | The profile is not designed or tested for it; whether it could be is an [open question](#open-questions). |
 | `x-ga4gh-fa-icon` (FontAwesome icon class) | Ties schemas to one icon library and one kind of client; icons are a portal's choice, not part of the contract. The meta-schema rejects the keyword. |
 | `rst` as a value of `x-ga4gh-description-format` | reStructuredText has directives that embed raw HTML or include files, so it can't be rendered safely in a browser (see [Rendering schemas and outputs](security.md#rendering-schemas-and-outputs)); `markdown` covers formatted descriptions. |
 | IO schemas supplied by clients in a run request | A server would validate the request against a schema that the requester chose; schemas come from trusted sources only (see [Sources of schemas](security.md#sources-of-schemas)). |
@@ -36,7 +36,7 @@ version specifies them properly). See
 | Feature | Reason | Until then |
 | ----- | ----- | ----- |
 | Chaining workflows by ontology terms (which outputs fit which inputs) | Needs matching rules (e.g., for more specific terms, genome builds, compression, format versions) that the profile doesn't define (see [APE and Workflomics](related-work.md#ape-and-workflomics)). | `x-ga4gh-ontology` annotates inputs and outputs; matching is up to clients. |
-| Viewers other than download, tables and sandboxed HTML: `genome-browser`, `scatter-plot`, `pdf-viewer`, `markdown-viewer` | Each viewer needs its own rendering and security rules (e.g., PDF and Markdown can carry active content or load external resources). | The vocabulary has `table-viewer` and `html-viewer`; outputs without a known viewer are offered for download. Platforms can try viewers as `custom:<name>` widgets. |
+| Viewers other than download, tables and sandboxed HTML: `genome-browser`, `scatter-plot`, `pdf-viewer`, `markdown-viewer` | Each viewer needs its own rendering and security rules (e.g., PDF and Markdown can carry active content or load external resources). | The vocabulary has `table-viewer` and `html-viewer`; outputs without a known viewer are offered for download. The rendering rules apply by content, so a `custom:` widget doesn't lift them (see [Rendering schemas and outputs](security.md#rendering-schemas-and-outputs)). |
 | Validation of tabular files (e.g., sample sheets) against `x-ga4gh-tabular-schema` | Needs the rules that [Frictionless Table Schema](related-work.md#frictionless-table-schema) and Table Dialect already define (typed cells, empty cells, dialects), and makes the server a data accessor (see [Validation of data files on the server](security.md#validation-of-data-files-on-the-server)). A later version may adopt Table Schema by reference. | `x-ga4gh-tabular-schema` is kept as an experimental form hint (e.g., for a spreadsheet editor), not a validation rule. |
 | A TRS file type `IO_SCHEMA` (and a field naming the schema standard of a file) | Needs a change to TRS. | IO schemas are published with the existing file type `OTHER` and a naming convention (see [#12](https://github.com/uniqueg/ga4gh-io-schema/issues/12) and [TRS](adoption/trs.md)). |
 

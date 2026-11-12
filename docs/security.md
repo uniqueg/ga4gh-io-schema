@@ -73,7 +73,7 @@ This replaces the flow of earlier versions, in which the client resolved DRS ide
 
 ## Secrets
 
-- Workflow parameters are not a channel for secrets: schemas MUST NOT define inputs for passwords, API keys, tokens or other credentials. Version 0.3 removed the `password` value of `x-ga4gh-ui-widget` from the vocabulary (see [Roadmap](roadmap.md#cut)), so the meta-schema rejects it.
+- Workflow parameters are not a channel for secrets: schemas MUST NOT define inputs for passwords, API keys, tokens or other credentials. Version 0.3 removed the `password` value of `x-ga4gh-ui-widget` from the vocabulary (see [Roadmap](roadmap.md#cut)), so the meta-schema rejects it; the rule also covers inputs that the meta-schema can't recognise as secrets, e.g., a `custom:` widget or `"format": "password"`.
 - Credentials that a workflow needs are provided by the deployment (e.g., a secret store of the execution side, or delegated tokens), never by the request.
 
 ## Error messages and logs
