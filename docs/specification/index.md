@@ -14,5 +14,5 @@ workflow components with JSON Schema (Draft 2020-12), extended with a set of
   conform to the profile.
 - [Examples](examples.md): a workflow and a single-step component.
 
-The reasons for the design are in [Rationale and related
-work](../rationale.md).
+The reasons for the design are in [Rationale](../rationale.md), and the
+relation to other work in [Related work](../related-work.md).

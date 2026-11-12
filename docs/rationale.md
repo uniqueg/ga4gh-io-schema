@@ -1,4 +1,4 @@
-# Rationale and related work
+# Rationale
 
 ## Ecosystem survey and the "15th standard" dilemma
 
@@ -49,14 +49,8 @@ Therefore, we propose adopting **pure JSON Schema (Draft 2020-12)** as our found
 
 See [Keywords](specification/keywords.md) for the resulting profile.
 
-## Synergies with RO-Crate profiles
+## Related work
 
-RO-Crate has emerged as a premier standard for packaging research data and computational metadata, making them highly FAIR. However, core RO-Crate does not natively provide execution specifications or results packaging; instead, it relies on specific **RO-Crate Profiles** to provide these features.
-
-The proposed IO Profile complements these RO-Crate profiles perfectly:
-
-* **Workflow RO-Crate:** A `.schema.json` file can be neatly packaged alongside the execution logic. In this model, the RO-Crate manifest (`ro-crate-metadata.json`) handles the rich semantic metadata (author, license, historical provenance), while our GA4GH JSON Schema acts as the strict, machine-readable validation contract dictating exactly *how* a client or agent must format the parameters to execute it via an API.
-
-* **Workflow Run RO-Crate Profiles:** Profiles designed to capture execution history (e.g., *Process Run Crate*, *Workflow Run Crate*, and *Provenance Run Crate*) record the *actual* inputs and outputs of a specific run instance. The GA4GH IO Schema serves as the definitive structural template for these runs. Auditing tools can mathematically validate that a Provenance Run Crate matches the expected semantic shape and parameter bounds declared by the original author.
-
-* **Five Safes RO-Crate:** This profile extends run crates for use in Trusted Research Environments (TREs). The strict parameter validation and shift-left error catching enabled by the IO Schema perfectly align with the rigorous security and auditing postures required by TRE boundaries.
+How the profile relates to other standards and tools that overlap with it,
+including RO-Crate and Bioschemas `FormalParameter`, is described in
+[Related work](related-work.md).
