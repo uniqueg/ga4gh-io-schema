@@ -145,6 +145,8 @@ class WesParamsCommand(Command):
                 "x-ga4gh-workflow names."
             ),
         )
+        # Checks of combined options report through argparse in run(), like
+        # other wrong arguments (exit status 2); argparse can't express them.
         parser.set_defaults(_parser=parser)
 
     def run(self, args: argparse.Namespace) -> CommandResult:
@@ -179,7 +181,8 @@ class WesParamsCommand(Command):
         except RecursionError as exc:
             raise CliError(
                 ErrorKind.IO,
-                f"Too deeply nested to translate - {input_name(args.values)}",
+                "Too deeply nested to translate - "
+                f"{input_name(args.schema)} or {input_name(args.values)}",
             ) from exc
         except jsonschema.exceptions.ValidationError as exc:
             raise CliError(

@@ -111,6 +111,13 @@ deployment's allow-list, or are paths. A value passes only if its scheme is on
 both lists: `schemes` narrows the allow-list of the deployment and never
 extends it. A directory URI may end with `/`.
 
+Values MUST NOT contain control characters (U+0000 to U+001F and U+007F) and
+MUST NOT start or end with whitespace: URL parsers strip or drop them, which
+would hide a scheme (e.g., `" file:///etc/passwd"`). Paths MUST NOT have `..`
+segments, also not percent-encoded (`%2e%2e`), because a path can end up in a
+URI reference (e.g., the `location` of a CWL `File`), and MUST NOT start with
+`~`, which engines and shells expand to a home directory.
+
 A value is checked as a file reference if a file reference schema applies at
 its location, also as one branch of `anyOf` or `oneOf`: a string that would
 pass through a plain `{"type": "string"}` branch next to it is still checked

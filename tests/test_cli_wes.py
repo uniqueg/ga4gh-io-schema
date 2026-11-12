@@ -20,6 +20,8 @@ VECTORS_DIR = Path(__file__).resolve().parent / "vectors" / "wes-params"
 WDL = VECTORS_DIR / "WDL" / "qualified-names"
 CWL = VECTORS_DIR / "CWL" / "file-objects"
 NFL_S3 = VECTORS_DIR / "NFL" / "deployment-scheme"
+EXAMPLE_WDL = Path(__file__).resolve().parent / "data" / "example_wdl.schema.json"
+TOOL_PAGE = Path(__file__).resolve().parents[1] / "docs" / "tools" / "wes-params.md"
 PROFILE = (
     "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/"
     "ga4gh-io-profile.schema.json"
@@ -70,6 +72,34 @@ def write(path: Path, data: Any) -> Path:
     """
     path.write_text(json.dumps(data), encoding="utf-8")
     return path
+
+
+def test_documented_example(capsys: pytest.CaptureFixture[str]) -> None:
+    """Test the example of the tool page, with the schema of Example 3.
+
+    The page shows the values and the result as the first two JSON blocks.
+
+    Args:
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    page = TOOL_PAGE.read_text(encoding="utf-8")
+    values_text, expected_text = page.split("```json\n")[1:3]
+    values = json.loads(values_text.split("```")[0])
+    expected = json.loads(expected_text.split("```")[0])
+    # The vector has the same values as the page
+    assert values == read(WDL / "values.json")
+
+    status = main(
+        [
+            "wes-params",
+            "--schema",
+            str(EXAMPLE_WDL),
+            "--values",
+            str(WDL / "values.json"),
+        ]
+    )
+    assert status == 0
+    assert json.loads(capsys.readouterr().out) == expected
 
 
 def test_writes_workflow_params(capsys: pytest.CaptureFixture[str]) -> None:

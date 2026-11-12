@@ -132,5 +132,60 @@
     "annotation": { "kind": "file" },
     "value": "data:text/plain;base64,SGVsbG8=",
     "valid": false
+  },
+  {
+    "name": "leading-space-hides-scheme",
+    "annotation": { "kind": "file" },
+    "value": " file:///etc/passwd",
+    "valid": false
+  },
+  {
+    "name": "trailing-space",
+    "annotation": { "kind": "file" },
+    "value": "https://data.example.org/reads.fastq.gz ",
+    "valid": false
+  },
+  {
+    "name": "newline-splits-scheme",
+    "annotation": { "kind": "file" },
+    "value": "fi\nle:///etc/passwd",
+    "valid": false
+  },
+  {
+    "name": "leading-tab-hides-scheme",
+    "annotation": { "kind": "file" },
+    "value": "\tjavascript:alert(1)",
+    "valid": false
+  },
+  {
+    "name": "percent-encoded-dot-dot",
+    "annotation": { "kind": "file" },
+    "value": "%2e%2e/%2e%2e/etc/passwd",
+    "valid": false
+  },
+  {
+    "name": "percent-encoded-dot-dot-mixed-case",
+    "annotation": { "kind": "file" },
+    "value": "inputs/.%2E/secret",
+    "valid": false
+  },
+  {
+    "name": "home-directory-path",
+    "annotation": { "kind": "file" },
+    "value": "~/.ssh/id_rsa",
+    "valid": false
+  },
+  {
+    "name": "home-directory-path-even-if-absolute-allowed",
+    "annotation": { "kind": "file" },
+    "value": "~/.ssh/id_rsa",
+    "allowAbsolutePaths": true,
+    "valid": false
+  },
+  {
+    "name": "space-inside-path",
+    "annotation": { "kind": "file" },
+    "value": "inputs/my reads.fastq.gz",
+    "valid": true
   }
 ]

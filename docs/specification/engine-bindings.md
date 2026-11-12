@@ -51,15 +51,21 @@ differs between them.
    structs, maps and pairs, CWL records, Snakemake configuration sections).
    `x-ga4gh-parameter.type` is informative; it doesn't change the value.
 5. **File references.** A string value is a file value if a file reference
-   schema applies at its location: directly, in the `items` or
-   `prefixItems` of an array, in the `properties`, `patternProperties` or
-   `additionalProperties` of an object, through `$ref` or `allOf`, or as a
-   branch of `anyOf` or `oneOf` that the value is valid against, even if a
-   plain string branch next to it would accept the value too (see
-   [Values](files.md#values)). File values are passed as their descriptor
-   type requires. Secondary files are not sent: the execution side finds
-   them next to the referenced file (see [Secondary
-   files](files.md#secondary-files)).
+   schema applies at its location: directly; in the `items`,
+   `prefixItems`, `unevaluatedItems` or `contains` of an array; in the
+   `properties`, `patternProperties`, `additionalProperties`,
+   `unevaluatedProperties` or `dependentSchemas` of an object; through
+   `$ref`, `allOf`, or `if` with `then` or `else`; or as a branch of `anyOf`
+   or `oneOf` that the value is valid against, even if a plain string branch
+   next to it would accept the value too (see [Values](files.md#values)).
+   Where it can't be sure, a translator errs towards treating a value as a
+   file value, which is checked, and MUST reject schemas whose applicators
+   it doesn't model (e.g., `$dynamicRef`) rather than skip the values under
+   them. If several file references apply to one value, the value MUST meet
+   all of them (e.g., the `schemes` of each), and they MUST have the same
+   `kind`. File values are passed as their descriptor type requires.
+   Secondary files are not sent: the execution side finds them next to the
+   referenced file (see [Secondary files](files.md#secondary-files)).
 
 ## Bindings per descriptor type
 

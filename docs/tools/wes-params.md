@@ -96,6 +96,12 @@ params = to_workflow_params(schema, values, allowed_schemes=["drs", "https", "s3
 request = build_run_request(schema, values, workflow_url="https://…")
 ```
 
+A `TranslationError` names the location of the offending value both as a
+JSON Pointer (`pointer`, e.g., `/fastqs/1`, as in the [test
+vectors](../specification/engine-bindings.md#test-vectors)) and as a JSON
+path (`json_path`, e.g., `$.fastqs[1]`, which the command-line interface
+reports, like `validate`).
+
 Reference of the API, generated from its docstrings:
 
 ::: ga4gh_io_schema.wes

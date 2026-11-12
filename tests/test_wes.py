@@ -389,6 +389,73 @@ def test_windows_absolute_path_and_backslash_segments() -> None:
         to_workflow_params(schema, {"reads": "\\\\server\\share"})
 
 
+def test_dynamic_references_fail_closed() -> None:
+    """Test that ``$dynamicRef``, which isn't modelled, is rejected."""
+    schema = make_schema(
+        {"reads": {"$dynamicRef": "#file"}},
+        NFL,
+        **{"$defs": {"file": {"$dynamicAnchor": "file", **file_ref()}}},
+    )
+
+    with pytest.raises(TranslationError, match="'\\$dynamicRef'"):
+        to_workflow_params(schema, {"reads": "file:///etc/passwd"})
+
+
+@pytest.mark.parametrize(
+    ("conditional", "expected"),
+    [
+        # `else` applies; the value is a file reference
+        ({"else": file_ref()}, {"class": "File", "location": "https://e.org/x"}),
+        # Neither `then` nor `else` applies
+        ({"then": file_ref()}, "https://e.org/x"),
+    ],
+)
+def test_if_without_match(conditional: dict[str, Any], expected: Any) -> None:
+    """Test the branches of ``if`` for a value that ``if`` doesn't accept.
+
+    Args:
+        conditional: ``then`` or ``else`` of the schema.
+        expected: Expected translated value.
+    """
+    schema = make_schema(
+        {"reads": {"if": {"maxLength": 1}, **conditional}},
+        {"descriptor_type": "CWL"},
+    )
+
+    assert to_workflow_params(schema, {"reads": "https://e.org/x"}) == {
+        "reads": expected
+    }
+
+
+def test_conflicting_kinds_are_rejected() -> None:
+    """Test that a value can't be a file and a directory at once."""
+    directory = {"type": "string", "x-ga4gh-file": {"kind": "directory"}}
+    schema = make_schema({"reads": {"allOf": [file_ref(), directory]}}, NFL)
+
+    with pytest.raises(TranslationError, match="different kinds") as info:
+        to_workflow_params(schema, {"reads": "https://e.org/x"})
+    assert info.value.pointer == "/reads"
+
+
+def test_unevaluated_items_and_failed_contains() -> None:
+    """Test ``unevaluatedItems``, and items that ``contains`` doesn't match."""
+    schema = make_schema(
+        {
+            "files": {"type": "array", "unevaluatedItems": file_ref()},
+            "mixed": {"type": "array", "contains": file_ref()},
+        },
+        {"descriptor_type": "CWL"},
+    )
+    location = "https://e.org/x"
+
+    assert to_workflow_params(
+        schema, {"files": [location], "mixed": [1, location]}
+    ) == {
+        "files": [{"class": "File", "location": location}],
+        "mixed": [1, {"class": "File", "location": location}],
+    }
+
+
 def test_schemes_are_compared_in_lowercase() -> None:
     """Test that schemes of values and of the allow-list ignore case."""
     schema = make_schema({"reads": file_ref(schemes=["https"])}, NFL)

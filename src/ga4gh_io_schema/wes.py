@@ -11,17 +11,18 @@ of the schema's descriptor type expects, and, with the fields that come from
 the Tool Registry Service (TRS), a full ``RunRequest``.
 """
 
+from __future__ import annotations
+
 import re
 from collections import deque
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Any
-from urllib.parse import quote
+from typing import TYPE_CHECKING, Any
+from urllib.parse import quote, unquote
 
 import jsonschema
 from jsonschema.validators import Draft202012Validator
 from referencing import Registry
-from referencing._core import Resolver
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
@@ -31,6 +32,10 @@ from ga4gh_io_schema.validator import (
     get_schemas_dir,
     validate_schema,
 )
+
+if TYPE_CHECKING:  # pragma: no cover - for type checkers only
+    # `referencing` defines the class in a private module only
+    from referencing._core import Resolver
 
 #: Descriptor types with an engine binding in this version of the profile.
 DESCRIPTOR_TYPES = ("CWL", "NFL", "SMK", "WDL")
@@ -56,6 +61,10 @@ FORBIDDEN_SCHEMES = frozenset(
 # A value has a scheme if it starts with one and a colon (see "File
 # references", "Values").
 _SCHEME = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*):")
+# C0 control characters and DEL
+_UNSAFE_CHARACTERS = re.compile(r"[\x00-\x1f\x7f]")
+# Applicators whose dynamic scope the translator doesn't model
+_UNSUPPORTED = ("$dynamicRef",)
 # Base URI of an IO schema without an `$id`, for its local references
 _DOCUMENT_URI = "urn:ga4gh-io-schema:document"
 # Members of JSON Path that need no quotes (as in jsonschema's `json_path`)
@@ -231,9 +240,7 @@ def to_workflow_params(
         TranslationError: If the values can't be translated.
         ValueError: If ``allowed_schemes`` names a forbidden scheme.
     """
-    validate_schema(schema)
-    if binding is None:
-        binding = get_binding(schema)
+    binding = _prepare(schema, binding)
     return _Translator(
         schema, binding, allowed_schemes, allow_absolute_paths
     ).translate(values)
@@ -276,9 +283,7 @@ def build_run_request(
             meets a ``workflow_url`` that already has a fragment.
         ValueError: If ``allowed_schemes`` names a forbidden scheme.
     """
-    validate_schema(schema)
-    if binding is None:
-        binding = get_binding(schema)
+    binding = _prepare(schema, binding)
     if binding.descriptor_type_version is None:
         raise TranslationError(
             "The descriptor type version is unknown: set "
@@ -301,6 +306,26 @@ def build_run_request(
         "workflow_type_version": binding.descriptor_type_version,
         "workflow_url": workflow_url,
     }
+
+
+def _prepare(schema: dict[str, Any], binding: EngineBinding | None) -> EngineBinding:
+    """Validate the schema and get its engine binding.
+
+    Args:
+        schema: IO schema.
+        binding: Engine binding given by the caller, if any.
+
+    Returns:
+        The given binding, or that of the schema.
+
+    Raises:
+        jsonschema.exceptions.ValidationError: If the schema doesn't comply
+            with the profile.
+        TranslationError: If the schema's binding can't be used.
+    """
+    # The workflow block is read only from a schema that complies
+    validate_schema(schema)
+    return binding if binding is not None else get_binding(schema)
 
 
 def trs_descriptor_url(
@@ -397,6 +422,13 @@ def _check_file_value(
         TranslationError: If the value breaks a rule.
     """
     declared = annotation.get("schemes")
+    if _UNSAFE_CHARACTERS.search(value) or value != value.strip():
+        # URL parsers strip or drop these, which would hide a scheme
+        raise TranslationError(
+            "File references can't contain control characters, or start or "
+            "end with whitespace.",
+            path,
+        )
     match = _SCHEME.match(value)
     if match:
         scheme = match.group(1).lower()
@@ -424,8 +456,11 @@ def _check_file_value(
         )
     if not value:
         raise TranslationError("A file reference can't be empty.", path)
-    if ".." in re.split(r"[/\\]", value):
+    # Also percent-encoded: a path can end up in a URI reference (CWL)
+    if ".." in re.split(r"[/\\]", unquote(value)):
         raise TranslationError("Paths can't have '..' segments.", path)
+    if value.startswith("~"):
+        raise TranslationError("Paths can't start with '~'.", path)
     if value.startswith(("/", "\\")) and not allow_absolute_paths:
         raise TranslationError(
             "Absolute paths are allowed only in deployments with a shared file system.",
@@ -524,7 +559,7 @@ class _Translator:
         inputs = self._expand([self.inputs], values)
         params: dict[str, Any] = {}
         for key, value in values.items():
-            scopes = self._expand(self._children(inputs, key), value)
+            scopes = self._expand(self._children(inputs, key, value), value)
             name = self._qualify(self._name(scopes, key))
             if name in params:
                 raise TranslationError(
@@ -573,8 +608,10 @@ class _Translator:
     def _expand(self, scopes: Iterable[_Scope], value: Any) -> list[_Scope]:
         """Collect the subschemas that apply to a value at one location.
 
-        Follows ``$ref`` and ``allOf``, and the branches of ``anyOf`` and
-        ``oneOf`` that the value is valid against.
+        Follows ``$ref`` and ``allOf``; the branches of ``anyOf`` and
+        ``oneOf`` that the value is valid against; ``if`` and ``then`` if the
+        value is valid against ``if``, ``else`` otherwise; and the
+        ``dependentSchemas`` of the members that an object has.
 
         Args:
             scopes: Subschemas at the location.
@@ -584,6 +621,8 @@ class _Translator:
             The subschemas that apply, in the order of the schema.
 
         Raises:
+            TranslationError: If a subschema uses ``$dynamicRef``, which the
+                translation doesn't model (fail closed).
             referencing.exceptions.Unresolvable: If a reference can't be
                 resolved locally.
         """
@@ -595,8 +634,30 @@ class _Translator:
             schema = scope.schema
             if not isinstance(schema, dict) or id(schema) in seen:
                 continue
+            # Subschemas are never copied, so the identity of one is stable
             seen.add(id(schema))
             found.append(scope)
+            for keyword in _UNSUPPORTED:
+                if keyword in schema:
+                    raise TranslationError(
+                        f"The schema uses '{keyword}', which the translation "
+                        "doesn't support."
+                    )
+            if "if" in schema:
+                condition = self._descend(scope, schema["if"])
+                valid = self._validator(condition).is_valid(value)
+                if valid:
+                    queue.append(condition)
+                branch = "then" if valid else "else"
+                if branch in schema:
+                    queue.append(self._descend(scope, schema[branch]))
+            dependent = schema.get("dependentSchemas")
+            if isinstance(dependent, dict) and isinstance(value, dict):
+                queue.extend(
+                    self._descend(scope, sub)
+                    for name, sub in dependent.items()
+                    if name in value
+                )
             if isinstance(schema.get("$ref"), str):
                 resolved = scope.resolver.lookup(schema["$ref"])
                 queue.append(_Scope(resolved.contents, resolved.resolver))
@@ -610,12 +671,19 @@ class _Translator:
                         queue.append(branch)
         return found
 
-    def _children(self, scopes: Iterable[_Scope], key: str | int) -> list[_Scope]:
+    def _children(
+        self, scopes: Iterable[_Scope], key: str | int, item: Any
+    ) -> list[_Scope]:
         """Collect the subschemas of a member of an object or an array.
+
+        ``unevaluatedProperties`` and ``unevaluatedItems`` apply where no
+        other keyword of the same schema does; this errs towards treating a
+        value as a file reference, which is checked, rather than missing one.
 
         Args:
             scopes: Subschemas that apply to the object or array.
             key: Key of the member, or index of the item.
+            item: Value of the member or item.
 
         Returns:
             The subschemas of the member or item.
@@ -629,6 +697,12 @@ class _Translator:
                     children.append(self._descend(scope, prefix[key]))
                 elif "items" in schema:
                     children.append(self._descend(scope, schema["items"]))
+                elif "unevaluatedItems" in schema:
+                    children.append(self._descend(scope, schema["unevaluatedItems"]))
+                if "contains" in schema:
+                    contains = self._descend(scope, schema["contains"])
+                    if self._validator(contains).is_valid(item):
+                        children.append(contains)
                 continue
             matched = False
             properties = schema.get("properties")
@@ -641,8 +715,12 @@ class _Translator:
                 if re.search(pattern, key):
                     children.append(self._descend(scope, sub))
                     matched = True
-            if not matched and "additionalProperties" in schema:
-                children.append(self._descend(scope, schema["additionalProperties"]))
+            if matched:
+                continue
+            for keyword in ("additionalProperties", "unevaluatedProperties"):
+                if keyword in schema:
+                    children.append(self._descend(scope, schema[keyword]))
+                    break
         return children
 
     @staticmethod
@@ -678,31 +756,39 @@ class _Translator:
         applicable = self._expand(scopes, value)
         if isinstance(value, list):
             return [
-                self._value(self._children(applicable, index), item, (*path, index))
+                self._value(
+                    self._children(applicable, index, item), item, (*path, index)
+                )
                 for index, item in enumerate(value)
             ]
         if isinstance(value, dict):
             return {
-                key: self._value(self._children(applicable, key), item, (*path, key))
+                key: self._value(
+                    self._children(applicable, key, item), item, (*path, key)
+                )
                 for key, item in value.items()
             }
         if not isinstance(value, str):
             return value
-        annotation = next(
-            (
-                scope.schema["x-ga4gh-file"]
-                for scope in applicable
-                if isinstance(scope.schema.get("x-ga4gh-file"), dict)
-            ),
-            None,
-        )
-        if annotation is None:
+        annotations = [
+            scope.schema["x-ga4gh-file"]
+            for scope in applicable
+            if isinstance(scope.schema.get("x-ga4gh-file"), dict)
+        ]
+        if not annotations:
             return value
-        _check_file_value(
-            annotation, value, self.allowed, self.allow_absolute_paths, path
-        )
+        # Every file reference that applies must accept the value
+        for annotation in annotations:
+            _check_file_value(
+                annotation, value, self.allowed, self.allow_absolute_paths, path
+            )
+        kinds = {annotation.get("kind") for annotation in annotations}
+        if len(kinds) > 1:
+            raise TranslationError(
+                "File references of different kinds apply to this value.", path
+            )
         if self.binding.descriptor_type == "CWL":
-            kind = "Directory" if annotation.get("kind") == "directory" else "File"
+            kind = "Directory" if kinds == {"directory"} else "File"
             return {"class": kind, "location": value}
         return value
 
