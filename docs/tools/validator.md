@@ -65,11 +65,11 @@ because patterns are ECMA-262 regular expressions, which Python can't always
 parse (e.g., `\p{L}`).
 
 These checks apply to the IO schema itself, not to the input values that a
-WES request sends later. If a client also checks those values against
-`"format": "uri"`, note that DRS URIs with a host name
-(`drs://drs.example.org/314159`) are valid URIs, but DRS URIs with a compact
-identifier (`drs://drs.example.org:314159` or `drs://prefix:accession`) are
-not, because the part after the colon isn't a port number.
+WES request sends later. File references don't use `"format": "uri"`, which
+would reject DRS URIs with a compact identifier (`drs://prefix:accession`),
+because the part after the colon isn't a port number; the meta-schema rejects
+`format` on them. Their values follow the rules of [File
+references](../specification/files.md#values).
 
 ## Python API
 

@@ -2,7 +2,7 @@
 
 ## Data Repository Service (DRS) interplay
 
-The `x-ga4gh-drs-uri` flag tells a client that an input expects a Data Repository Service (DRS) identifier. The client can then offer a DRS browser or picker, and check that the user can see the object, *before* submitting the run.
+A [file reference](../specification/files.md) whose `schemes` include `drs` tells a client that an input accepts a Data Repository Service (DRS) identifier (`"x-ga4gh-file": {"kind": "file", "schemes": ["drs"]}`). The client can then offer a DRS browser or picker, and check that the user can see the object, *before* submitting the run.
 
 The client should submit the `drs://` identifier itself in `workflow_params`, not a resolved access URL, and must not submit credentials; the execution side resolves the identifier with credentials delegated by the user. See [Access to data](../security.md#access-to-data) for the requirements and the reasons.
 

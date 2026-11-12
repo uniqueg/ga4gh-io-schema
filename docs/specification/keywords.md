@@ -8,9 +8,7 @@ To maintain maximum compatibility with existing libraries (e.g., UI form generat
 
 Where workflow languages have historically invented proprietary keywords, this profile dictates the use of native JSON Schema features:
 
-* **File Paths and References:** Instead of proprietary file types, developers must use the native string formats: `{"type": "string", "format": "uri"}`.
-
-* **Mimetypes:** Instead of custom `mimetype` properties, developers must use the native `contentMediaType` keyword.
+* **File Paths and References:** A file or directory is a string with the `x-ga4gh-file` annotation, not a proprietary type or object: `{"type": "string", "x-ga4gh-file": {"kind": "file"}}`. JSON Schema has no keyword for references to files: `format: uri` rejects relative paths and compact DRS identifiers, can't tell files from directories and carries no index files, and `contentMediaType` describes the string itself, not the file it refers to. See [File references](files.md).
 
 * **Uniqueness:** Where all items of an array must differ, developers must use the native `uniqueItems: true`. This is not the same as `nf-schema`'s `uniqueEntries`, which requires the *combination of the values of given keys* to be unique across the objects of an array (e.g., a unique `sample_id` per row of a sample sheet): with `uniqueItems`, two rows with the same `sample_id` but different other values both pass. The profile has no equivalent of `uniqueEntries` yet.
 
@@ -28,7 +26,7 @@ See also [Security considerations](../security.md).
 
 We propose the following initial set of custom annotations to support execution semantics and dynamic UIs. Where applicable, we explicitly map these to their conceptual origins in the Nextflow ecosystem (`nf-schema`) to acknowledge prior art and ease adoption.
 
-* `x-ga4gh-drs-uri` *(boolean)*: Indicates if a string URI is expected to be a valid Data Repository Service (DRS) identifier. While the `drs://` URI scheme often makes this explicit at runtime, this flag allows UIs to proactively render a DRS-specific data browser or resolution widget before a user provides input.
+* `x-ga4gh-file` *(object)*: Marks a string as a reference to a file or directory: its kind, the media type, format term and compression of the referenced file, its required secondary files (e.g., indexes) and the URI schemes that values may use (e.g., `drs` for Data Repository Service identifiers, so that UIs can offer a DRS browser before a user provides input). See [File references](files.md). *Relation to nf-schema: replaces `format: file-path`, `directory-path` and `path`, and the `mimetype` property.* It replaces `x-ga4gh-drs-uri` of version 0.2 (`"schemes": ["drs"]`).
 
 * `x-ga4gh-ontology` *(string, uri)*: Maps an input or output to a formal ontology term (e.g., `http://edamontology.org/format_1929`), enabling semantic linking and automated reasoning.
 

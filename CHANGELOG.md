@@ -20,8 +20,23 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   valid JSON, or the meta-schema is malformed or has references that can't
   be resolved, 4: unexpected errors); before,
   all failures exited with 1. (#9)
+- Files and directories are file references: strings with the new
+  `x-ga4gh-file` annotation, which the meta-schema checks. `x-ga4gh-drs-uri`
+  is removed; `"schemes": ["drs"]` of the annotation replaces it. Schemas with
+  `x-ga4gh-file` can't have `format` (e.g., `uri`, which rejects compact DRS
+  identifiers) or `contentMediaType`, which described the string, not the
+  referenced file; the media type goes into `mediaType` of the annotation.
+  (#10)
 
 ### Added
+
+- File references (`x-ga4gh-file`): kind (`file` or `directory`), media
+  type, format term, compression, required secondary files as CWL-style
+  suffix patterns, and allowed URI schemes; a defined value syntax (absolute
+  URIs, including compact DRS identifiers, and paths for inputs only); a
+  specification page with the mapping to CWL, WDL and nf-schema. The
+  examples use them, and their inputs reject unknown and missing values
+  (`required`, `additionalProperties: false`). (#10)
 
 - Shared conventions of all subcommands: input from a path or `-` (standard
   input), `--output` for the result, `--json` for results and errors as JSON
