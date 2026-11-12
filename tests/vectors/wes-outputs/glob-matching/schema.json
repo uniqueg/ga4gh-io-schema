@@ -1,0 +1,115 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/globs/nfl/1.0.0",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "NFL",
+    "descriptor_type_version": "DSL2"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          },
+          "x-ga4gh-output-glob": "reports/*.html"
+        },
+        "bams": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file",
+              "secondaryFiles": [
+                "^.bai"
+              ]
+            }
+          },
+          "x-ga4gh-output-glob": "*.bam"
+        },
+        "crams": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file",
+              "secondaryFiles": [
+                ".crai"
+              ]
+            }
+          },
+          "x-ga4gh-output-glob": "crams/*"
+        },
+        "vcfs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file",
+              "secondaryFiles": [
+                ".tbi",
+                "^^.idx"
+              ]
+            }
+          },
+          "x-ga4gh-output-glob": "**/*.vcf.gz"
+        },
+        "single_char": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          },
+          "x-ga4gh-output-glob": "?.txt"
+        },
+        "configs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          },
+          "x-ga4gh-output-glob": "*.cfg"
+        },
+        "indexes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "directory"
+            }
+          },
+          "x-ga4gh-output-glob": "index/*"
+        },
+        "multiqc_data": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "directory"
+          },
+          "x-ga4gh-output-glob": "multiqc/multiqc_data"
+        },
+        "everything_dir": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "directory"
+          },
+          "x-ga4gh-output-glob": "**"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "report"
+      ]
+    }
+  }
+}

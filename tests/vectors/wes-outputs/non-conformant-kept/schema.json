@@ -1,0 +1,44 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/rna-seq/cwl/1.1.0",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "CWL",
+    "descriptor_type_version": "v1.2"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "qc_report": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "schemes": [
+              "s3"
+            ]
+          }
+        },
+        "alignments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          },
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "qc_report",
+        "alignments"
+      ]
+    }
+  }
+}

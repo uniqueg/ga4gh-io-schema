@@ -1,0 +1,16 @@
+{
+  "description": "CWL output object with remote locations (as Toil reports them when it writes outputs to object storage): File and Directory objects, a record with a File and a null field, and an array of files through $ref.",
+  "conformance": "conformant",
+  "outputs": {
+    "qc_report": "s3://example-bucket/toil/run-2/qc.html",
+    "index_dir": "s3://example-bucket/toil/run-2/index",
+    "summary": {
+      "report": "s3://example-bucket/toil/run-2/summary.txt",
+      "contigs": 42
+    },
+    "chunks": [
+      "s3://example-bucket/toil/run-2/chunk_1.fa",
+      "s3://example-bucket/toil/run-2/chunk_2.fa"
+    ]
+  }
+}

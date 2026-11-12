@@ -1,0 +1,19 @@
+{
+  "run_id": "run-3",
+  "state": "COMPLETE",
+  "outputs": {
+    "rnaseq.qc_report": "gs://example-bucket/cromwell-executions/rnaseq/run-3/call-multiqc/multiqc_report.html",
+    "rnaseq.alignments": [
+      "gs://example-bucket/cromwell-executions/rnaseq/run-3/call-align/shard-0/s1.bam",
+      null,
+      "gs://example-bucket/cromwell-executions/rnaseq/run-3/call-align/shard-2/s3.bam"
+    ],
+    "rnaseq.gene_counts": {
+      "s1": "gs://example-bucket/cromwell-executions/rnaseq/run-3/call-count/shard-0/s1.tsv",
+      "s3": "gs://example-bucket/cromwell-executions/rnaseq/run-3/call-count/shard-2/s3.tsv"
+    },
+    "rnaseq.optional_plot": null,
+    "rnaseq.samples_passed_qc": 2,
+    "rnaseq.debug_log": "gs://example-bucket/cromwell-executions/rnaseq/run-3/debug.log"
+  }
+}

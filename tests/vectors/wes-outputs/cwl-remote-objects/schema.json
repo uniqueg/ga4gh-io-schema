@@ -1,0 +1,78 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/assembly/cwl/2.0.0",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "CWL",
+    "descriptor_type_version": "v1.2"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "qc_report": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        },
+        "index_dir": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "directory"
+          }
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "report": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            },
+            "contigs": {
+              "type": "integer"
+            },
+            "plot": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            }
+          },
+          "required": [
+            "report"
+          ]
+        },
+        "chunks": {
+          "$ref": "#/$defs/fileList"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "qc_report",
+        "index_dir",
+        "summary"
+      ]
+    }
+  },
+  "$defs": {
+    "fileList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/file"
+      }
+    },
+    "file": {
+      "type": "string",
+      "x-ga4gh-file": {
+        "kind": "file"
+      }
+    }
+  }
+}

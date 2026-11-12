@@ -1,0 +1,10 @@
+{
+  "description": "A completed run whose outputs don't conform (fewer files than minItems, a scheme outside schemes): the outputs are kept as they are, and the run is reported as non-conformant.",
+  "conformance": "non-conformant",
+  "outputs": {
+    "qc_report": "https://storage.example.org/run-11/report.html",
+    "alignments": [
+      "s3://example-bucket/run-11/s1.bam"
+    ]
+  }
+}
