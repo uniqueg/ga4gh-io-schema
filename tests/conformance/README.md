@@ -5,11 +5,12 @@ implementation:
 
 - `schema-documents/valid/*.schema.json`: a validator MUST accept each.
 - `schema-documents/invalid/*.schema.json`: a validator MUST reject each;
-  each breaks one rule, which its file name names.
+  each breaks the rule that its file name names (a few also break others).
 
-The cases reference only the profile's meta-schema (by the versioned `$id`
-in `$schema`); load it and its vocabularies from `schemas/`, not from the
-network. Error messages are not part of the suite. `*.license` files hold
+Apart from the cases about `$schema` (`foreign-schema`, `missing-schema`,
+`empty`, `plain-json-schema`), the cases name the profile's meta-schema by
+its versioned `$id` in `$schema`; load it and its vocabularies from
+`schemas/`, not from the network. Error messages are not part of the suite. `*.license` files hold
 licence information and are not cases.
 
 The requirements, and how this package runs the suite, are described in the

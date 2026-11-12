@@ -62,8 +62,8 @@ specification states the requirements once it is added.
    [meta-schema](meta-schema.md) of the version of the profile that it
    targets, and MUST name that meta-schema in `$schema`, by its versioned
    `$id`. Valid means valid with the `format` keywords of the meta-schema
-   treated as assertions (e.g., `uri` for `x-ga4gh-ontology`), except
-   `regex`; JSON Schema 2020-12 treats `format` as an annotation by
+   treated as assertions (e.g., `uri` for `x-ga4gh-ontology`, `regex` for
+   `pattern`); JSON Schema 2020-12 treats `format` as an annotation by
    default.
 2. A schema document MUST use the `x-ga4gh-*` keywords only as defined in
    [Keywords](keywords.md) and the [meta-schema](meta-schema.md), and MUST
@@ -86,18 +86,20 @@ specification states the requirements once it is added.
 1. A validator supports one or more versions of the profile, and names
    them in its conformance claim. For each of them, it MUST accept every
    document that meets requirement 1 of [Schema document](#schema-document)
-   and MUST reject every other document that names that version. In
-   particular, it MUST accept every case in `valid/` and MUST reject every
-   case in `invalid/` of the [conformance suite](#conformance-suite) of
-   that version.
+   and MUST reject every other document that names that version.
+   Together with requirement 3, this means that, when it validates against
+   the profile (no other meta-schema asked for), it MUST accept every case
+   in `valid/` and MUST reject every case in `invalid/` of the
+   [conformance suite](#conformance-suite) of that version.
 2. A validator MUST check the `format` keywords that the meta-schema uses
-   (e.g., `uri` for `x-ga4gh-ontology`). It MAY skip the `regex` format,
-   which not every regular expression engine can check for the ECMA-262
-   dialect.
-3. A validator MUST reject a document without `$schema`, or whose `$schema`
-   names neither a version of the profile that it supports nor another
-   meta-schema that it was explicitly asked to use (e.g., a draft of a
-   new version); a document checked against another meta-schema is not
+   (e.g., `uri` for `x-ga4gh-ontology`). As an exception to requirement 1,
+   it MAY skip the `regex` format, which not every regular expression
+   engine can check for the ECMA-262 dialect; a document that it accepts
+   without that check is not thereby shown to conform.
+3. Unless it was explicitly asked to use another meta-schema (e.g., a
+   draft of a new version), a validator MUST reject a document without
+   `$schema`, or whose `$schema` names no version of the profile that it
+   supports. A document checked against another meta-schema is not
    thereby a conforming schema document.
 4. A validator MUST load the meta-schema and its vocabularies from local
    copies and MUST NOT retrieve them, or any other reference, over the
@@ -218,7 +220,8 @@ tests/conformance/
   MUST accept every `*.schema.json` file in `valid/` and MUST reject every
   one in `invalid/`. Each negative case breaks the rule that its file name
   names (a few, such as `empty`, also break others). The valid cases, and
-  the negative cases other than those about `$schema`, name the
+  the negative cases other than those about `$schema` (`empty`,
+  `foreign-schema`, `missing-schema`, `plain-json-schema`), name the
   meta-schema by its versioned `$id`; no case has other references, so a
   runner needs only the
   meta-schema and vocabularies of

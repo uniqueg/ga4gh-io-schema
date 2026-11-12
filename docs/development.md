@@ -7,9 +7,10 @@ To install the package with all development dependencies, see
 
 ## Unit tests (pytest)
 
-Validate the core logic of the Python executable using `pytest`. The tests use the example schemas in `tests/data/` and the schema
-documents of the [conformance suite](specification/conformance.md#conformance-suite)
-in `tests/conformance/`.
+Validate the core logic of the Python executable using `pytest`. The tests
+use the example schemas in `tests/data/` and the schema documents of the
+[conformance suite](specification/conformance.md#conformance-suite) in
+`tests/conformance/`.
 
 ```bash
 pytest
@@ -40,10 +41,10 @@ them together.
 ## Schema versions
 
 The `$id`s of the schemas in `schemas/`, and the `$schema` of the examples in
-`tests/data/`, of the cases in `tests/conformance/` and of the snippet in the meta-schema documentation, name the
-release tag of the profile (e.g., `v0.3.0`). For a new release, change the tag
-in all of them at once (the tests check that they agree), and push the tag so
-that the URLs resolve.
+`tests/data/`, of the cases in `tests/conformance/` and of the snippet in the
+meta-schema documentation, name the release tag of the profile (e.g.,
+`v0.3.0`). For a new release, change the tag in all of them at once (the
+tests check that they agree), and push the tag so that the URLs resolve.
 
 ## Changelog and conformance suite
 
@@ -53,7 +54,8 @@ breaking (see [Versioning and governance](governance.md)). The
 [Changelog](changelog.md) page includes the file between the
 `--8<-- [start:changes]` and `--8<-- [end:changes]` markers; keep them.
 Each new rule of the meta-schema comes with a negative case in
-`tests/conformance/schema-documents/invalid/` (see below), and a new
+`tests/conformance/schema-documents/invalid/` (see
+[Adding keywords](#adding-keywords)), and a new
 implementation of the profile with a row in the
 [table of implementations](specification/conformance.md#implementations).
 
