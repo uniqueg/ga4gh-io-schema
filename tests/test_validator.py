@@ -261,6 +261,38 @@ def test_validate_schema_rejects_file_scheme(scheme: str) -> None:
         validate_schema(_schema_with_schemes(["https", scheme]))
 
 
+@pytest.mark.parametrize(
+    ("keyword", "value"),
+    [
+        ("allOf", [{"format": "uri"}]),
+        ("anyOf", [{"type": "integer"}]),
+        ("oneOf", [{"type": "integer"}]),
+        ("not", {"type": "integer"}),
+        ("if", {"type": "string"}),
+        ("then", {"format": "uri"}),
+        ("else", {"format": "uri"}),
+        ("$ref", "#/$defs/other"),
+        ("$dynamicRef", "#meta"),
+    ],
+)
+def test_validate_schema_rejects_applicator_on_file_reference(
+    keyword: str, value: Any
+) -> None:
+    """Test that a file reference can't have in-place applicators.
+
+    Args:
+        keyword: An in-place applicator.
+        value: A value of the applicator.
+    """
+    schema = _schema_with_schemes(["https"])
+    schema["properties"]["inputs"]["properties"]["reads"][keyword] = value
+
+    with pytest.raises(
+        jsonschema.exceptions.ValidationError, match="False schema does not allow"
+    ):
+        validate_schema(schema)
+
+
 def test_validate_schema_accepts_file_schemes() -> None:
     """Test that common schemes of file references pass."""
     validate_schema(_schema_with_schemes(["drs", "https", "s3", "gs", "ftp"]))

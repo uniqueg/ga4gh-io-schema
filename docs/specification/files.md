@@ -46,15 +46,25 @@ Other keys are rejected. The schema that carries the annotation:
   `then`, `else`, `$ref`, `$dynamicRef`), which could bring `format` or another
   `type` back in. A file reference is a flat string schema.
 
+The same holds for every schema that applies at the location of a file
+reference: a schema with `allOf` or `$ref` that includes a file reference
+MUST NOT add `format`, `contentMediaType`, `contentEncoding`,
+`contentSchema` or a `type` other than `string`, in itself or in another of
+its subschemas. The meta-schema can check only the annotated schema; this rule
+binds authors and converters.
+
 It can have other keywords of the string, e.g., `pattern` to constrain file
-names, `default`, `title` and `description`. A file reference can itself be a
+names, `default`, `title` and `description`. `default`, `const`, `enum` and
+`examples` hold values, so they follow the rules of [Values](#values), and
+clients check them before they prefill or show them. A file reference can itself be a
 branch of `anyOf` or `oneOf` (e.g., a CWL input of type `[File, string]`); see
 [Values](#values) for how such values are checked. `x-ga4gh-ontology` keeps its
 meaning on a file reference: a term for the *data* of the parameter (e.g., an
 EDAM data term), while `ontology` of the annotation names the *format* of the
 file.
 
-The meta-schema checks all of this (see [Meta-schema](meta-schema.md)), and
+The meta-schema checks the annotation and the annotated schema (see
+[Meta-schema](meta-schema.md)), and
 rejects these schemes in `schemes`, which run code in a browser or refer to
 local data: `javascript`, `vbscript`, `livescript`, `data`, `blob`,
 `filesystem`, `file`, `jar`, `view-source` and `about`. This list is no
@@ -148,17 +158,18 @@ the suffix is appended to the name of the referenced file, after each leading
 
 A pattern is a suffix of letters, digits, `_`, `.`, `+` and `-`, optionally
 after carets, with at least one character other than a dot; it can't contain
-`/`. If removing extensions leaves an empty name (e.g., `^.bai` for a file
-named `.bam`), the execution side MUST reject the request: it never stages a
-secondary file whose name is empty, `.` or `..`, so that a pattern can't point
-outside the directory of the referenced file. Every listed secondary file is
-required. Clients don't
-send secondary files as values: the execution side finds them next to the
+`/`. A secondary file name therefore always ends with a character other than a
+dot, so it can't be `.` or `..` or point outside the directory of the
+referenced file. As in CWL, a caret for which the name has no extension left
+removes nothing (`^^.bai` for `sample.bam` gives `sample.bai`). Every listed
+secondary file is required. Clients don't send secondary files as values: the execution side finds them next to the
 referenced file when it stages it, and fails the run, or rejects the request,
 if one is missing.
 
 For URIs whose last path segment is the file name (e.g., `https`, `s3`, `gs`),
-the pattern is applied to that segment. DRS identifiers don't contain the
+the pattern is applied to that segment; the query and the fragment are not
+part of it (values don't carry signed URLs anyway, see [Access to
+data](../security.md#access-to-data)). DRS identifiers don't contain the
 file name; how the execution side finds the secondary files of a DRS object
 (e.g., in the same DRS bundle, or by the object's `name`) is not defined by
 version 0.3 of the profile.

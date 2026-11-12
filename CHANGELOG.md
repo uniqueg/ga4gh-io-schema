@@ -27,7 +27,9 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   a flat string schema: no `format` (`uri` rejects compact DRS identifiers),
   no `contentMediaType`, `contentEncoding` or `contentSchema` (they describe
   the string, not the referenced file; the media type goes into `mediaType`),
-  and no in-place applicators such as `allOf`. (#10)
+  and no in-place applicators such as `allOf` (the meta-schema checks the
+  annotated schema; schemas around it must not add these keywords either).
+  (#10)
 - The format of a file is named by `ontology` of the file reference;
   `x-ga4gh-ontology` names the data of a parameter (e.g., an EDAM data
   term), no longer also the format. (#10)

@@ -28,7 +28,7 @@ We propose the following initial set of custom annotations to support execution 
 
 * `x-ga4gh-file` *(object)*: Marks a string as a reference to a file or directory: its kind, the media type, format term and compression of the referenced file, its required secondary files (e.g., indexes) and the URI schemes that values may use (e.g., `drs` for Data Repository Service identifiers, so that UIs can offer a DRS browser before a user provides input). See [File references](files.md). *Relation to nf-schema: replaces `format: file-path`, `directory-path` and `path`, and the `mimetype` property.* It replaces `x-ga4gh-drs-uri` of version 0.2 (`"schemes": ["drs"]`).
 
-* `x-ga4gh-ontology` *(string, uri)*: Maps an input or output to a formal ontology term (e.g., `http://edamontology.org/format_1929`), enabling semantic linking and automated reasoning.
+* `x-ga4gh-ontology` *(string, uri)*: Maps an input or output to a formal ontology term for its data (e.g., the EDAM data term `http://edamontology.org/data_2044`, *Sequence*), enabling semantic linking and automated reasoning. The format of a referenced file (e.g., an EDAM format term) goes into `ontology` of [`x-ga4gh-file`](files.md).
 
 * `x-ga4gh-ui-widget` *(string)*: A hint for web portals to render a specific component. *Relation to nf-schema: `nf-schema` has no widget keyword (see its [list of keys](https://nextflow-io.github.io/nf-schema/latest/nextflow_schema/nextflow_schema_specification/)); form controls in its ecosystem follow from a parameter's `type` and `format`. This profile adds an explicit hint from a GA4GH vocabulary (e.g., `slider`, `genome-browser`). Generic JSON Schema form libraries don't read it, so portals need an adapter (see [Portals and clients](../adoption/portals.md)).*
 

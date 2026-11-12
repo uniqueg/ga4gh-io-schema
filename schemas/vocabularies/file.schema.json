@@ -15,7 +15,7 @@
   },
   "dependentSchemas": {
     "x-ga4gh-file": {
-      "$comment": "A file reference is a flat string schema. The profile defines its value syntax, not `format` (e.g., `uri` rejects compact DRS identifiers); `contentMediaType`, `contentEncoding` and `contentSchema` describe the string itself, not the referenced file. In-place applicators are not allowed, so that these rules can't be bypassed (e.g., with `allOf: [{format: uri}]`).",
+      "$comment": "A file reference is a flat string schema. The profile defines its value syntax, not `format` (e.g., `uri` rejects compact DRS identifiers); `contentMediaType`, `contentEncoding` and `contentSchema` describe the string itself, not the referenced file. In-place applicators are not allowed on the annotated schema, so that it stays flat for converters and clients. This checks only the annotated schema: schemas that apply at the same location (e.g., a sibling in a parent allOf) can't be checked here; the specification forbids them to add these keywords.",
       "required": [
         "type"
       ],
