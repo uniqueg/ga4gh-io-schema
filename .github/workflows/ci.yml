@@ -81,9 +81,9 @@ jobs:
 
       - name: E2E CLI Validation (Valid Schemas)
         run: |
-          ga4gh-io-schema-validator tests/data/valid.schema.json
-          ga4gh-io-schema-validator tests/data/example_workflow.schema.json
-          ga4gh-io-schema-validator tests/data/example_tool.schema.json
+          ga4gh-io-schema validate tests/data/valid.schema.json
+          ga4gh-io-schema validate tests/data/example_workflow.schema.json
+          ga4gh-io-schema validate - < tests/data/example_tool.schema.json
 
       # Each bad schema must fail with exit code 1 and a validation error, not
       # with any error (e.g. a missing file); tests/test_cli.py checks the
@@ -92,7 +92,7 @@ jobs:
         run: |
           for schema in tests/data/invalid/*.schema.json; do
             set +e
-            output=$(ga4gh-io-schema-validator "$schema" 2>&1)
+            output=$(ga4gh-io-schema validate "$schema" 2>&1)
             status=$?
             set -e
             echo "$schema: $output"

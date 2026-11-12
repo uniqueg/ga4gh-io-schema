@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from ga4gh_io_schema import cli
 from ga4gh_io_schema.cli import main
+from ga4gh_io_schema.cli.commands import validate as validate_command
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 VALID = sorted(DATA_DIR.glob("*.schema.json"))
@@ -95,7 +95,7 @@ def test_cli_accepts_other_extension_keywords(
     path = tmp_path / "extended.schema.json"
     path.write_text(json.dumps(schema), encoding="utf-8")
 
-    main([str(path)])
+    assert main(["validate", str(path)]) == 0
 
     assert "complies" in capsys.readouterr().out
 
@@ -119,7 +119,7 @@ def test_cli_accepts_valid_schema(
         path: Valid IO schema.
         capsys: Pytest fixture capturing standard output and error.
     """
-    main([str(path)])
+    assert main(["validate", str(path)]) == 0
 
     assert f"Success: '{path}' complies with the GA4GH IO Profile." in (
         capsys.readouterr().out
@@ -136,10 +136,7 @@ def test_cli_rejects_invalid_schema(
         name: Name of the bad schema in ``tests/data/invalid/``.
         capsys: Pytest fixture capturing standard output and error.
     """
-    with pytest.raises(SystemExit) as exc_info:
-        main([str(DATA_DIR / "invalid" / f"{name}.schema.json")])
-
-    assert exc_info.value.code == 1
+    assert main(["validate", str(DATA_DIR / "invalid" / f"{name}.schema.json")]) == 1
     assert INVALID[name] in capsys.readouterr().err
 
 
@@ -158,10 +155,7 @@ def test_cli_rejects_plain_json_schema(
         encoding="utf-8",
     )
 
-    with pytest.raises(SystemExit) as exc_info:
-        main([str(path)])
-
-    assert exc_info.value.code == 1
+    assert main(["validate", str(path)]) == 1
     assert "not the GA4GH IO Profile meta-schema" in capsys.readouterr().err
 
 
@@ -187,7 +181,7 @@ def test_cli_uses_custom_meta_schema(
     schema = tmp_path / "io.schema.json"
     schema.write_text(json.dumps({"inputs": {}}), encoding="utf-8")
 
-    main([str(schema), "--meta-schema", str(meta_schema)])
+    assert main(["validate", str(schema), "--meta-schema", str(meta_schema)]) == 0
 
     assert (
         f"Success: '{schema}' complies with the meta-schema '{meta_schema}'."
@@ -201,10 +195,7 @@ def test_cli_reports_missing_file(capsys: pytest.CaptureFixture[str]) -> None:
     Args:
         capsys: Pytest fixture capturing standard output and error.
     """
-    with pytest.raises(SystemExit) as exc_info:
-        main([str(DATA_DIR / "does-not-exist.schema.json")])
-
-    assert exc_info.value.code == 1
+    assert main(["validate", str(DATA_DIR / "does-not-exist.schema.json")]) == 3
     assert "Error: File not found" in capsys.readouterr().err
 
 
@@ -220,10 +211,7 @@ def test_cli_reports_invalid_json(
     path = tmp_path / "broken.schema.json"
     path.write_text("{not json", encoding="utf-8")
 
-    with pytest.raises(SystemExit) as exc_info:
-        main([str(path)])
-
-    assert exc_info.value.code == 1
+    assert main(["validate", str(path)]) == 3
     assert "Error: Invalid JSON" in capsys.readouterr().err
 
 
@@ -239,10 +227,10 @@ def test_cli_reports_invalid_meta_schema(
     meta_schema = tmp_path / "meta.schema.json"
     meta_schema.write_text(json.dumps({"type": "no-such-type"}), encoding="utf-8")
 
-    with pytest.raises(SystemExit) as exc_info:
-        main([str(DATA_DIR / "valid.schema.json"), "-m", str(meta_schema)])
-
-    assert exc_info.value.code == 1
+    assert (
+        main(["validate", str(DATA_DIR / "valid.schema.json"), "-m", str(meta_schema)])
+        == 3
+    )
     assert "Meta-schema Error:" in capsys.readouterr().err
 
 
@@ -267,12 +255,9 @@ def test_cli_reports_unexpected_error(
         """
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(cli, "validate_schema", fail)
+    monkeypatch.setattr(validate_command, "validate_schema", fail)
 
-    with pytest.raises(SystemExit) as exc_info:
-        main([str(DATA_DIR / "valid.schema.json")])
-
-    assert exc_info.value.code == 1
+    assert main(["validate", str(DATA_DIR / "valid.schema.json")]) == 4
     assert "An unexpected error occurred: boom" in capsys.readouterr().err
 
 
@@ -284,8 +269,10 @@ def test_cli_omits_location_of_top_level_errors(
     Args:
         capsys: Pytest fixture capturing standard output and error.
     """
-    with pytest.raises(SystemExit):
-        main([str(DATA_DIR / "invalid" / "missing-schema.schema.json")])
+    assert (
+        main(["validate", str(DATA_DIR / "invalid" / "missing-schema.schema.json")])
+        == 1
+    )
 
     assert "(at $)" not in capsys.readouterr().err
 
@@ -302,8 +289,8 @@ def test_cli_rejects_meta_schema_that_is_no_schema(
     meta_schema = tmp_path / "null.json"
     meta_schema.write_text("null", encoding="utf-8")
 
-    with pytest.raises(SystemExit) as exc_info:
-        main([str(DATA_DIR / "valid.schema.json"), "-m", str(meta_schema)])
-
-    assert exc_info.value.code == 1
+    assert (
+        main(["validate", str(DATA_DIR / "valid.schema.json"), "-m", str(meta_schema)])
+        == 3
+    )
     assert "Meta-schema Error: The meta-schema must be" in capsys.readouterr().err
