@@ -6,6 +6,7 @@ tool:
 | Subcommand | Purpose |
 | --- | --- |
 | `validate` | Check an IO schema against the GA4GH IO Profile (see [Validator](validator.md)). |
+| `convert snakemake` | Convert a Snakemake config schema and sample-sheet schemas to an IO schema (see [Snakemake converter](convert-snakemake.md)). |
 
 Converters and the WES tools will be added as further subcommands (e.g.,
 `ga4gh-io-schema convert nextflow`). `ga4gh-io-schema --help` lists the

@@ -37,8 +37,15 @@ dev = [
     "pytest>=8.1.1",
     "pytest-cov>=5.0.0",
     "check-jsonschema>=0.28.1",
+    # The tests of `convert snakemake` need the `snakemake` extra.
+    "ga4gh-io-schema[snakemake]",
     "reuse>=3.0.2",
     "ruff>=0.4.0",
+]
+# `ga4gh-io-schema convert snakemake` reads YAML schemas with PyYAML, as
+# Snakemake does; JSON schemas need no extra.
+snakemake = [
+    "pyyaml>=6.0.1",
 ]
 # The documentation (`mkdocs.yml`), built by Read the Docs
 # (`.readthedocs.yaml`) and CI's `docs` job; the plugins of MkDocs are
