@@ -16,6 +16,6 @@ An AI agent or UI client does not need to know which internal `/scratch` folder 
 
 ## Agentic chaining
 
-This explicit input and output contract is what makes the ecosystem truly "Agent-Ready." Because one workload's output is another workload's input, an AI tasked with chaining workflows together relies on the `x-ga4gh-ontology` terms mapped across both sides of the contract. If Workflow A produces an output tagged as an EDAM VCF format, the agent deterministically knows it can route that URL directly into Workflow B's input that demands a VCF format, without ever downloading or inspecting the file.
+Because one workflow's output can be another workflow's input, the `x-ga4gh-ontology` terms on both sides of the contract give an agent (or a person) a hint which outputs may fit which inputs. If Workflow A produces an output tagged with the EDAM term for VCF, and Workflow B has an input tagged with the same term, B is a *candidate* for A's output. A single exact term is not enough to decide that the file fits: it doesn't cover more specific terms (subclasses), and it says nothing about, e.g., the genome build, the compression or the VCF version. Rules for matching are not part of this version of the profile.
 
 See also [the `x-ga4gh-*` vocabulary](keywords.md#the-x-ga4gh-vocabulary).
