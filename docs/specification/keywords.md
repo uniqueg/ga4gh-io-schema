@@ -38,9 +38,9 @@ We propose the following initial set of custom annotations to support execution 
 
 * `x-ga4gh-description-format` *(string)*: Indicates the formatting of the standard `description` field (accepted values: `plain_text` (default) and `markdown`, which means CommonMark with a few named extensions, see [Markdown descriptions](#markdown-descriptions); version 0.3 removed `rst`, see [Roadmap](../roadmap.md#cut), and clients show descriptions in any other format as plain text, see [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)). *Relation to nf-schema: Equivalent in intent to the `help_text` property, but relies on formatting the standard JSON Schema `description` field rather than creating a secondary text property.*
 
-* `x-ga4gh-hidden` *(boolean)*: Signals UI generators to hide this parameter under "Advanced" toggles. *Relation to nf-schema: Equivalent to the `hidden` property.*
+* `x-ga4gh-hidden` *(boolean)*: Signals UI generators to hide this parameter under "Advanced" toggles, except where users must set it (see [Hidden inputs](#hidden-inputs)). *Relation to nf-schema: Equivalent to the `hidden` property.*
 
-* `x-ga4gh-error-message` *(string)*: A custom, human-readable error message to display if payload validation fails. *Relation to nf-schema: Equivalent to the `errorMessage` property.*
+* `x-ga4gh-error-message` *(string)*: A custom, human-readable error message to display if payload validation fails, in place of the validator's message, for failures at the location of the value that the schema describes (see [Error messages](#error-messages)). *Relation to nf-schema: Equivalent to the `errorMessage` property.*
 
 * `x-ga4gh-parameter` *(object)*: Binds a property of `inputs` or `outputs` to the engine's parameter: its `name` relative to the entry point, where it differs from the property name, and its `type` as declared in the workflow language (see [Parameter bindings](identity.md#parameter-bindings)). *Relation to nf-schema: none; Nextflow parameters have the names of the properties.*
 
@@ -119,3 +119,132 @@ on its allow-list):
 
 The `<b>` element comes out as text, with its attribute, and no image is
 loaded.
+
+### Hidden inputs
+
+`"x-ga4gh-hidden": true` marks an input that most users don't need to
+change, e.g., a tuning parameter with a good default. Form renderers MAY
+show such inputs only on request (e.g., under "Advanced").
+
+An input that users must set can't be hidden: the form couldn't be
+submitted until the user found it. An input must be set if it is listed in
+`required` of the object that contains it and no `default` gives it a value
+(neither the `default` of its own schema nor one of an enclosing schema);
+for an input inside an optional object, this applies once the object is
+set.
+
+* Form renderers MUST show an input that must be set with the inputs that
+  aren't hidden, as if its `x-ga4gh-hidden` were `false`.
+* Form renderers MUST show a hidden input, with its error, when its value
+  fails validation.
+* Schema documents SHOULD NOT set `"x-ga4gh-hidden": true` on inputs that
+  must be set. The meta-schema doesn't reject them: whether an input is
+  required is stated in `required` of the enclosing object, not in the
+  schema of the input, and JSON Schema can't compare the names in
+  `required` with the schemas in `properties`.
+
+### Error messages
+
+`x-ga4gh-error-message` is the text that users see when a value fails
+validation, in place of the message of the validator.
+
+* **Scope:** the message of a schema covers the failures at the location of
+  the value that the schema applies to: failures of its own keywords and of
+  the subschemas that it applies to the same value (`allOf`, `anyOf`,
+  `oneOf`, `not`, `if`, `then`, `else`, `dependentSchemas`, `$ref`,
+  `$dynamicRef`). It doesn't cover failures of other values, such as the
+  values of properties or the items of an array: they get the message of
+  their own schema, if any. The location of a failure is the instance
+  location
+  ([JSON Schema Core, §12.3.3](https://json-schema.org/draft/2020-12/json-schema-core#section-12.3.3))
+  of the schema that contains the keyword that failed. A missing property
+  is a failure of `required`, a keyword of the object, so it gets the
+  message of the object's schema, not that of the property; likewise, a
+  property that `"additionalProperties": false` rejects is a failure of
+  `additionalProperties` at the location of the object (the schema `false`
+  has no keywords, and no message).
+* **Precedence:** if more than one schema with a message applies to the
+  location of a failure (e.g., the schema of a property, with a message,
+  refers with `$ref` to a definition with a message of its own), the
+  outermost of them is used, i.e., the one nearest to the root of the IO
+  schema on the evaluation path: it is the most specific to the parameter,
+  while definitions are shared. Of schemas at the same depth (e.g., branches
+  of `anyOf`), the first in the document is used.
+* **Replacement:** the message replaces the validator's messages of all the
+  failures that it covers, and is given once per location, however many
+  keywords fail there. Form renderers SHOULD show it with the input; they
+  MAY offer the validator's messages on request (e.g., to authors of
+  schemas). WES servers return it in `msg` of the `ErrorResponse`, after
+  the JSON Pointer of the location (see [WES](../adoption/wes.md)).
+  Failures that no message covers get a message built from the location and
+  the keyword that failed.
+
+For example, with this IO schema:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "samples": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/sample_id"},
+          "minItems": 1,
+          "x-ga4gh-error-message": "Give at least one sample"
+        },
+        "control": {
+          "$ref": "#/$defs/sample_id",
+          "x-ga4gh-error-message": "The control is a sample ID such as S1"
+        }
+      },
+      "required": ["samples"]
+    }
+  },
+  "$defs": {
+    "sample_id": {
+      "type": "string",
+      "pattern": "^S[0-9]+$",
+      "x-ga4gh-error-message": "Sample IDs are S followed by digits, e.g., S1"
+    }
+  }
+}
+```
+
+a WES server that validates `"workflow_params": {"samples": []}` returns
+the message of `samples`, which covers `minItems`:
+
+```json
+{
+  "msg": "/samples: Give at least one sample",
+  "status_code": 400
+}
+```
+
+For `{"samples": ["S1", "x2"]}`, the failing value is an item, which the
+message of `samples` doesn't cover; the item's schema is the definition,
+whose message is used:
+
+```json
+{
+  "msg": "/samples/1: Sample IDs are S followed by digits, e.g., S1",
+  "status_code": 400
+}
+```
+
+For `{"samples": ["S1"], "control": "c1"}`, both `control` and the
+definition that it refers to have a message for the location `/control`;
+the outer one, of `control`, is used:
+
+```json
+{
+  "msg": "/control: The control is a sample ID such as S1",
+  "status_code": 400
+}
+```
+
+For `{}`, the failure is the `required` of the inputs object, which has no
+message: the server builds the message from the location and the keyword
+that failed.

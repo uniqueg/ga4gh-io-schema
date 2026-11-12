@@ -150,16 +150,19 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    resolve locally.
 2. A form renderer MUST let users set every input of `inputs`; it MAY show
    inputs with `"x-ga4gh-hidden": true` only on request (e.g., under
-   "Advanced").
+   "Advanced"), except that it MUST show hidden inputs that users must set
+   and hidden inputs whose values fail validation, as defined in
+   [Hidden inputs](keywords.md#hidden-inputs).
 3. A form renderer MUST render an input whose `x-ga4gh-ui-widget` it doesn't
    know as it renders inputs of the same type without a widget hint.
 4. A form renderer MUST meet the rules of
    [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)
    for the text of a schema document, and MUST render Markdown descriptions
    as defined in [Markdown descriptions](keywords.md#markdown-descriptions)
-   (or show them as plain text). It SHOULD show the schema's
-   `x-ga4gh-error-message`, where there is one, when a value fails
-   validation.
+   (or show them as plain text). When a value fails validation, it
+   SHOULD show the `x-ga4gh-error-message` that covers the failure, where
+   there is one, in place of the validator's message, as defined in
+   [Error messages](keywords.md#error-messages).
 5. A form renderer SHOULD NOT download data files into a browser to
    validate them (see
    [Validation of data files on the server](../security.md#validation-of-data-files-on-the-server)).
@@ -248,7 +251,8 @@ document from a trusted source is available.
 3. A WES server MUST reject a request that fails validation with
    `HTTP 400 Bad Request` and the WES `ErrorResponse`, whose `msg` names the
    location of the error as a JSON Pointer relative to `workflow_params`
-   and the rule that failed, or the schema's `x-ga4gh-error-message` (see
+   and the rule that failed, or the `x-ga4gh-error-message` that covers the
+   failure (see [Error messages](keywords.md#error-messages),
    [WES](../adoption/wes.md) and
    [Error messages and logs](../security.md#error-messages-and-logs)).
 4. A WES server MUST meet all requirements for servers of

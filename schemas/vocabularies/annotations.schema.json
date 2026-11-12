@@ -24,11 +24,11 @@
     },
     "x-ga4gh-hidden": {
       "type": "boolean",
-      "description": "Inspired by nf-core. If true, UI generators should hide this parameter from default user views."
+      "description": "Inspired by nf-core. If true, UI generators should hide this parameter from default user views, unless users must set it (required without a default) or its value fails validation."
     },
     "x-ga4gh-error-message": {
       "type": "string",
-      "description": "Inspired by nf-core. Custom, human-readable error message to display if WES payload validation fails."
+      "description": "Inspired by nf-core. Custom, human-readable error message to display, in place of the validator's message, if validation fails at the location of the value that this schema describes (not for nested values); the outermost message wins where several apply."
     }
   }
 }
