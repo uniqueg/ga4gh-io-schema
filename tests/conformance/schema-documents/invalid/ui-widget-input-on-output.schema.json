@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/ui-widget-input-on-output",
+  "title": "Invalid: ui-widget-input-on-output",
+  "description": "The file-picker widget, an input widget, is on an output.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string"
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          },
+          "x-ga4gh-ui-widget": "file-picker"
+        }
+      }
+    }
+  }
+}

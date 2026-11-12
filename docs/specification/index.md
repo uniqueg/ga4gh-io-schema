@@ -12,6 +12,9 @@ described in [Notational conventions](conformance.md#notational-conventions).
 - [File references](files.md): how a string parameter refers to a file or
   a directory, its values, secondary files, and the mapping to the file types
   of CWL, WDL and nf-schema.
+- [UI widgets](widgets.md): the input widgets and output viewers of
+  `x-ga4gh-ui-widget`, the types and keywords that each one needs, and the
+  values that input widgets produce.
 - [Identity and engine binding](identity.md): how a schema names the
   workflow version and engine it describes, how clients detect drift, and
   how parameters bind to the engine's parameters.

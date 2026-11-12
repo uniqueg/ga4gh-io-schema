@@ -153,8 +153,12 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    "Advanced"), except that it MUST show hidden inputs that users must set
    and hidden inputs whose values fail validation, as defined in
    [Hidden inputs](keywords.md#hidden-inputs).
-3. A form renderer MUST render an input whose `x-ga4gh-ui-widget` it doesn't
-   know as it renders inputs of the same type without a widget hint.
+3. A form renderer MUST meet the rules of [UI widgets](widgets.md#rules):
+   (a) it MUST render an input whose `x-ga4gh-ui-widget` it doesn't know, or
+   whose widget doesn't fit the input's schema (e.g., an output viewer), as
+   it renders inputs of the same type without a widget hint; (b) for the
+   widgets of the vocabulary that it renders, it MUST produce values as
+   defined in [Input widgets](widgets.md#input-widgets).
 4. A form renderer MUST meet the rules of
    [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs)
    for the text of a schema document, and MUST render Markdown descriptions

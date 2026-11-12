@@ -172,3 +172,30 @@ def test_every_vocabulary_is_registered() -> None:
         else:
             assert vocabulary_id in every_schema, path
             assert vocabulary_id not in top_level, path
+
+
+def test_every_widget_has_one_fit_rule_and_one_group() -> None:
+    """Test that the widget lists of ``ui-widgets.schema.json`` agree.
+
+    Every widget of the vocabulary has exactly one rule in ``$defs/fit``, and
+    is either an output viewer (rejected on inputs) or an input widget
+    (rejected on outputs), so that a new widget can't go unchecked.
+    """
+    vocabulary = load_json(SCHEMAS_DIR / "vocabularies" / "ui-widgets.schema.json")
+    widgets = vocabulary["anyOf"][0]["enum"]
+    defs = vocabulary["$defs"]
+    ruled = [
+        widget
+        for rule in defs["fit"]["allOf"]
+        for widget in rule["if"]["properties"]["x-ga4gh-ui-widget"]["enum"]
+    ]
+    viewers = defs["inputParameters"]["additionalProperties"]["properties"][
+        "x-ga4gh-ui-widget"
+    ]["not"]["enum"]
+    inputs = defs["outputParameters"]["additionalProperties"]["properties"][
+        "x-ga4gh-ui-widget"
+    ]["not"]["enum"]
+
+    assert sorted(ruled) == sorted(widgets)
+    assert sorted(viewers + inputs) == sorted(widgets)
+    assert not set(viewers) & set(inputs)
