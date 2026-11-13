@@ -308,6 +308,8 @@ package builds the normalised outputs object from a WES run log.
 No client implements the profile yet. ELIXIR Cloud Components plans
 elements that render input forms, build run requests and show outputs from
 IO schemas (see [Implementations](../specification/conformance.md#implementations)).
+The [End-to-end demo](demo.md#3-run-it-from-a-portal) lists what a portal
+should show for its workflow, as a check for a client.
 
 ## Data Repository Service (DRS) interplay
 
