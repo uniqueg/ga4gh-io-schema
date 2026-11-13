@@ -208,6 +208,18 @@ def test_merge_patch(target: Any, patch: Any, expected: Any) -> None:
     assert build_schema.merge_patch(target, patch) == expected
 
 
+def test_wdl_commands_dont_interpolate_strings() -> None:
+    """The free-text input ``read_filter`` reaches the shell through a file.
+
+    Clients that skip the schema can send any string, so the commands read
+    it from a file (``write_lines``) and check it, rather than putting it
+    into the script.
+    """
+    text = (DEMO_DIR / "demo.wdl").read_text(encoding="utf-8")
+    assert "~{read_filter}" not in text
+    assert text.count("read_filter=$(cat ~{write_lines([read_filter])})") == 2
+
+
 def test_values_translate() -> None:
     """The demo values give the qualified ``workflow_params`` of WDL."""
     assert to_workflow_params(SCHEMA, VALUES) == {
@@ -373,6 +385,18 @@ def test_http_token_needs_https(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TRS_TOKEN", "secret-token")
     with pytest.raises(demo_http.HTTPError, match="Refusing to send the token"):
         demo_http.request_json("GET", "http://trs.example.org/", token_env="TRS_TOKEN")
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "[::1]"])
+def test_http_token_to_loopback(host: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tokens may go over plain http to loopback hosts (local test servers)."""
+    monkeypatch.setenv("TRS_TOKEN", "secret-token")
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    with pytest.raises(demo_http.HTTPError) as info:
+        demo_http.request_json("GET", f"http://{host}:{port}/", token_env="TRS_TOKEN")
+    assert "Refusing" not in str(info.value)
 
 
 def test_http_token_not_redirected(mock: Mock, monkeypatch: pytest.MonkeyPatch) -> None:

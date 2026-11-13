@@ -9,7 +9,7 @@
     "checksum": [
       {
         "type": "sha-256",
-        "checksum": "6b063246a65c01980ec87e34a2f5203f007b2b6f64cc353d234feb712fa8316e"
+        "checksum": "752bcc3fafff87dbd85121975b05264735021a7aaf07d5e802183100be862c1b"
       }
     ],
     "trs_tool_id": "ga4gh-io-schema-demo",

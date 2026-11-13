@@ -79,8 +79,9 @@ task filter_sort_index {
 
   command <<<
     set -euo pipefail
-    # Quoted for the shell: clients that skip the schema can send any string.
-    read_filter=~{sep("", squote([read_filter]))}
+    # Read from a file, not interpolated into the script: clients that skip
+    # the schema can send any string.
+    read_filter=$(cat ~{write_lines([read_filter])})
     case "$read_filter" in
       none) flags="" ;;
       proper_pairs) flags="-f 2" ;;
@@ -115,7 +116,7 @@ task make_report {
 
   command <<<
     set -euo pipefail
-    read_filter=~{sep("", squote([read_filter]))}
+    read_filter=$(cat ~{write_lines([read_filter])})  # see filter_sort_index
     case "$read_filter" in
       none|proper_pairs|primary_only) ;;
       *) echo "Unknown read filter" >&2; exit 1 ;;

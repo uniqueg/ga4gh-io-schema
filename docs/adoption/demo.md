@@ -61,8 +61,9 @@ the samtools image is `quay.io/biocontainers/samtools:1.24--h9dcdb79_1`.
   Schemas](https://trs-filer.readthedocs.io/en/latest/io-schema/) in its
   documentation), and an access token that may write tools, in the
   environment variable `TRS_TOKEN` (sent over `https` only). If TRS-Filer
-  validates tool classes, the tool class `workflow` must exist. With `custom.io_schema.validation`,
-  TRS-Filer also checks the schema when it's registered.
+  validates tool classes, the tool class `workflow` must exist. With
+  `custom.io_schema.validation`, TRS-Filer also checks the schema when it's
+  registered.
 - **Conquest** with WDL 1.1, able to fetch from `github.com`, the test data
   over `https`, and the samtools image. If it checks tokens, the token is in
   the environment variable `WES_TOKEN` (sent over `https` only).
@@ -249,7 +250,7 @@ bounds and error message of `min_mapq`, widgets, format terms (EDAM) and the
 media type of the report, and an example value. The tests fail if the
 checked-in schema differs from what the script writes, and the checksum in
 `x-ga4gh-workflow` changes with every change of `demo.wdl`. Then raise
-`trs_version_id` in the overlay too, and register the new version from a new
+`trs_version_id` in `schema.overlay.json` too, run `build_schema.py`, and register the new version from a new
 commit: `register.py` replaces the whole tool (`PUT`) with that one version,
 and clients that fetched the old version must not get another workflow under
 its identifier.
