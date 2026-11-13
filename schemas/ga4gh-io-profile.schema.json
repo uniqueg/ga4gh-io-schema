@@ -1,6 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$vocabulary": {
+    "https://json-schema.org/draft/2020-12/vocab/core": true,
+    "https://json-schema.org/draft/2020-12/vocab/applicator": true,
+    "https://json-schema.org/draft/2020-12/vocab/unevaluated": true,
+    "https://json-schema.org/draft/2020-12/vocab/validation": true,
+    "https://json-schema.org/draft/2020-12/vocab/meta-data": true,
+    "https://json-schema.org/draft/2020-12/vocab/format-annotation": true,
+    "https://json-schema.org/draft/2020-12/vocab/content": true,
+    "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/ga4gh-io": false
+  },
   "title": "GA4GH IO Profile Meta-Schema",
   "description": "Meta-schema for validating GA4GH workflow and tool IO JSON Schema profiles. The top level requires the inputs/outputs wrapper and may carry the top-level keywords of the workflow vocabulary; every schema, at any depth, must follow the rules of $defs/node, which combines one vocabulary file per keyword group.",
   "allOf": [
@@ -9,6 +19,11 @@
     },
     {
       "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/workflow.schema.json"
+    },
+    {
+      "patternProperties": {
+        "^(?!x-ga4gh-)": true
+      }
     }
   ],
   "type": "object",
@@ -75,26 +90,26 @@
     }
   },
   "$comment": "The top level takes the keywords of every schema from $defs/node (without its check of unevaluated keywords), adds the top-level keywords, and rejects other x-ga4gh-* keywords itself. Nested schemas get all of $defs/node, so top-level keywords are rejected there.",
-  "patternProperties": {
-    "^(?!x-ga4gh-)": true
-  },
   "unevaluatedProperties": false,
   "$defs": {
     "node": {
       "$id": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile-node",
-      "$dynamicAnchor": "meta",
       "title": "GA4GH IO Profile Schema Rules",
       "description": "Applies to every schema of an IO schema, at any depth: JSON Schema Draft 2020-12 plus the x-ga4gh-* keywords of the vocabularies. Keywords starting with x-ga4gh- that no vocabulary defines are rejected.",
       "$ref": "#/$defs/keywords",
-      "$comment": "Every keyword that doesn't start with x-ga4gh- counts as evaluated; the vocabularies evaluate the x-ga4gh-* keywords they define; any other x-ga4gh-* keyword is unevaluated and rejected.",
-      "patternProperties": {
-        "^(?!x-ga4gh-)": true
-      },
+      "$comment": "Every keyword that doesn't start with x-ga4gh- counts as evaluated; the vocabularies evaluate the x-ga4gh-* keywords they define; any other x-ga4gh-* keyword is unevaluated and rejected. The pattern is in an allOf that always passes, so that its annotations survive when $defs/keywords fails (otherwise validators that report all errors flag every standard keyword of every ancestor as unevaluated), and Ajv handles it with allErrors. The x-ga4gh-* keywords of an ancestor are still flagged in that case, because the vocabularies are part of $defs/keywords.",
+      "allOf": [
+        {
+          "patternProperties": {
+            "^(?!x-ga4gh-)": true
+          }
+        }
+      ],
       "unevaluatedProperties": false,
       "$defs": {
         "keywords": {
           "title": "GA4GH IO Profile Keywords",
-          "description": "The keywords of every schema: JSON Schema Draft 2020-12 plus the x-ga4gh-* keywords of the vocabularies. Used by $defs/node and, without the check of unevaluated keywords, by the top level.",
+          "description": "The keywords of every schema: JSON Schema Draft 2020-12 plus the x-ga4gh-* keywords of the vocabularies, with $defs/node applied to every subschema ($defs/subschemas). Used by $defs/node and, without the check of unevaluated keywords, by the top level.",
           "allOf": [
             {
               "$ref": "https://json-schema.org/draft/2020-12/schema"
@@ -110,8 +125,111 @@
             },
             {
               "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/outputs.schema.json"
+            },
+            {
+              "$ref": "#/$defs/subschemas"
             }
           ]
+        },
+        "subschemas": {
+          "title": "GA4GH IO Profile Subschemas",
+          "description": "Applies $defs/node to every subschema: the values of the applicators of JSON Schema Draft 2020-12, of the deprecated definitions and dependencies (which the Draft 2020-12 meta-schema also checks), and of x-ga4gh-tabular-schema.",
+          "$comment": "Explicit $refs instead of the $dynamicRef of the Draft 2020-12 meta-schema: some validators (e.g., Ajv) support $dynamicAnchor only at the root of a schema and would skip these rules. The Draft 2020-12 meta-schema ($defs/keywords) still checks every subschema against plain JSON Schema. A new applicator of JSON Schema, or a new x-ga4gh-* keyword whose value is a schema, needs an entry here.",
+          "properties": {
+            "$defs": {
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            },
+            "definitions": {
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            },
+            "dependencies": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "$ref": "#"
+                  },
+                  {
+                    "type": "array"
+                  }
+                ]
+              }
+            },
+            "prefixItems": {
+              "items": {
+                "$ref": "#"
+              }
+            },
+            "items": {
+              "$ref": "#"
+            },
+            "contains": {
+              "$ref": "#"
+            },
+            "additionalProperties": {
+              "$ref": "#"
+            },
+            "properties": {
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            },
+            "patternProperties": {
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            },
+            "dependentSchemas": {
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            },
+            "propertyNames": {
+              "$ref": "#"
+            },
+            "if": {
+              "$ref": "#"
+            },
+            "then": {
+              "$ref": "#"
+            },
+            "else": {
+              "$ref": "#"
+            },
+            "allOf": {
+              "items": {
+                "$ref": "#"
+              }
+            },
+            "anyOf": {
+              "items": {
+                "$ref": "#"
+              }
+            },
+            "oneOf": {
+              "items": {
+                "$ref": "#"
+              }
+            },
+            "not": {
+              "$ref": "#"
+            },
+            "unevaluatedItems": {
+              "$ref": "#"
+            },
+            "unevaluatedProperties": {
+              "$ref": "#"
+            },
+            "contentSchema": {
+              "$ref": "#"
+            },
+            "x-ga4gh-tabular-schema": {
+              "$ref": "#"
+            }
+          }
         }
       }
     }

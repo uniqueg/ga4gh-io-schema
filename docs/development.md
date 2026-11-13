@@ -42,6 +42,23 @@ in `requires-python` and the classifiers of `pyproject.toml`, ruff's
 `target-version` and the test matrix of `.github/workflows/ci.yml`; change
 them together.
 
+## JavaScript tests (Node.js)
+
+`tests/js/` runs the conformance suite and the examples through JavaScript
+validators (Ajv and @hyperjump/json-schema), offline, as described in
+[JavaScript validators](tools/javascript.md); CI runs it in the job
+`Test (JavaScript)`. It needs Node.js 22 or later:
+
+```bash
+cd tests/js
+npm ci
+npm test
+```
+
+The versions of the validators are pinned in `package.json` and
+`package-lock.json`; update them together (`npm install --save-exact
+<package>@<version>`), and update the results on the page.
+
 ## Schema versions
 
 The `$id`s of the schemas in `schemas/`, and the `$schema` of the examples in
@@ -76,10 +93,15 @@ Keywords live in one vocabulary file per keyword group in
    the top level (like `x-ga4gh-workflow`) goes into
    `vocabularies/workflow.schema.json`, which the `allOf` of the top level
    references.
-   A keyword whose value is a schema (like `x-ga4gh-tabular-schema`) uses
-   `"$dynamicRef": "#meta"`, and its vocabulary file declares
-   `"$dynamicAnchor": "meta"` at its root, so that the nested schema is
-   checked by all rules of the profile (see `vocabularies/file.schema.json`).
+   A keyword whose value is a schema (like `x-ga4gh-tabular-schema`) also
+   gets an entry `{"$ref": "#"}` in the `properties` of
+   `$defs/node/$defs/subschemas`, so that the nested schema is checked by
+   all rules of the profile. Don't use `$dynamicRef` or `$dynamicAnchor`:
+   Ajv supports them only at the root of a schema (the tests check that no
+   schema uses them). Put `dependentSchemas` of a vocabulary file in an
+   `allOf`, not next to its `properties`: Ajv then forgets that the
+   keywords of `properties` were evaluated, and rejects them (the tests
+   check this too).
 2. Add one bad schema per new rule to
    `tests/conformance/schema-documents/invalid/` and its expected message
    to `INVALID` in `tests/test_cli.py`; for a schema-valued keyword,

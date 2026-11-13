@@ -385,3 +385,7 @@ $RECYCLE.BIN/
 
 # End of 
 # https://www.toptal.com/developers/gitignore/api/python,windows,macos,linux,visualstudiocode,pycharm
+
+### Node.js ###
+# Dependencies of the JavaScript tests (tests/js/), installed with npm ci
+node_modules/
