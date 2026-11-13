@@ -1,12 +1,9 @@
 """The ``convert wdl`` subcommand: convert a WDL workflow or task."""
 
 import argparse
-import json
-import sys
 from pathlib import Path
 
 from ga4gh_io_schema.cli.base import (
-    ROOT,
     STDIN,
     CliError,
     Command,
@@ -14,13 +11,8 @@ from ga4gh_io_schema.cli.base import (
     ErrorKind,
     read_text,
 )
+from ga4gh_io_schema.cli.convert import CONVERT, conversion_result
 from ga4gh_io_schema.converters import wdl
-
-#: Group of the converters; each converter module gets or creates it with
-#: the same help text (see :mod:`~ga4gh_io_schema.cli.commands.convert_snakemake`).
-CONVERT = ROOT.group(
-    "convert", "Convert the parameter descriptions of workflow languages."
-)
 
 
 class WdlCommand(Command):
@@ -110,16 +102,7 @@ class WdlCommand(Command):
             raise CliError(ErrorKind.VALIDATION, exc.message) from exc
         except wdl.ConversionError as exc:
             raise CliError(ErrorKind.VALIDATION, exc.message, exc.location) from exc
-        if not args.json:
-            for note in conversion.notes:
-                print(note.to_text(), file=sys.stderr)
-        return CommandResult(
-            text=json.dumps(conversion.schema, indent=2),
-            data={
-                "schema": conversion.schema,
-                "notes": [note.to_dict() for note in conversion.notes],
-            },
-        )
+        return conversion_result(conversion, args)
 
 
 CONVERT.register(WdlCommand())

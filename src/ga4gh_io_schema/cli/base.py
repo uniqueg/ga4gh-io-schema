@@ -294,14 +294,26 @@ def read_text(source: str | Path) -> str:
             # As UTF-8, like files, whatever the locale
             return sys.stdin.buffer.read().decode("utf-8")
         return Path(source).read_text(encoding="utf-8")
-    except FileNotFoundError as exc:
-        raise CliError(ErrorKind.IO, f"File not found - {exc}") from exc
-    except UnicodeDecodeError as exc:
-        raise CliError(
-            ErrorKind.IO, f"Not UTF-8 text - {input_name(source)}: {exc}"
-        ) from exc
-    except OSError as exc:
-        raise CliError(ErrorKind.IO, f"Can't read - {exc}") from exc
+    except (OSError, UnicodeDecodeError) as exc:
+        raise read_error(exc, source) from exc
+
+
+def read_error(exc: OSError | UnicodeDecodeError, source: str | Path) -> CliError:
+    """Describe an input that can't be read.
+
+    Args:
+        exc: The error of reading the input.
+        source: Path of the input, or the string ``-`` for standard input.
+
+    Returns:
+        An I/O error: the file isn't found, isn't UTF-8 text, or can't be
+        read.
+    """
+    if isinstance(exc, FileNotFoundError):
+        return CliError(ErrorKind.IO, f"File not found - {exc}")
+    if isinstance(exc, UnicodeDecodeError):
+        return CliError(ErrorKind.IO, f"Not UTF-8 text - {input_name(source)}: {exc}")
+    return CliError(ErrorKind.IO, f"Can't read - {exc}")
 
 
 def read_json(source: str | Path) -> Any:

@@ -9,22 +9,21 @@ from typing import Any
 import jsonschema
 
 from ga4gh_io_schema.cli.base import (
-    ROOT,
     STDIN,
     CliError,
     Command,
     CommandResult,
     ErrorKind,
     input_name,
+    read_error,
     read_text,
 )
+from ga4gh_io_schema.cli.convert import CONVERT
+from ga4gh_io_schema.converters.common import notes_as_dicts
 from ga4gh_io_schema.validator import validate_schema
 
 #: Top-level modules of the optional dependencies of the converter.
 OPTIONAL_MODULES = frozenset({"cwl_utils", "schema_salad", "ruamel"})
-
-#: Help of the ``convert`` group, the same in every converter module.
-CONVERT_HELP = "Convert the parameter descriptions of workflow languages."
 
 
 class ConvertCwlCommand(Command):
@@ -108,14 +107,8 @@ class ConvertCwlCommand(Command):
             else:
                 process = parser.parse(args.document)
             schema = parser.to_ga4gh(process)
-        except FileNotFoundError as exc:
-            raise CliError(ErrorKind.IO, f"File not found - {exc}") from exc
-        except UnicodeDecodeError as exc:
-            raise CliError(
-                ErrorKind.IO, f"Not UTF-8 text - {args.document}: {exc}"
-            ) from exc
-        except OSError as exc:
-            raise CliError(ErrorKind.IO, f"Can't read - {exc}") from exc
+        except (OSError, UnicodeDecodeError) as exc:
+            raise read_error(exc, args.document) from exc
         except cwl.CwlSyntaxError as exc:
             raise CliError(
                 ErrorKind.IO, f"{input_name(args.document)}: {exc.message}"
@@ -124,17 +117,16 @@ class ConvertCwlCommand(Command):
             raise CliError(ErrorKind.VALIDATION, exc.message, exc.location) from exc
         _check(schema)
 
-        warnings = cwl.notes_as_dicts(parser.notes)
         if not args.json:
-            for warning in warnings:
-                print(
-                    f"Warning: {warning['message']} (at {warning['location']})",
-                    file=sys.stderr,
-                )
+            for note in parser.notes:
+                print(note.to_text("Warning"), file=sys.stderr)
         # Defaults are finite (NaN and infinities are left out), so this is
         # strict JSON
         output = json.dumps(schema, indent=2, allow_nan=False)
-        return CommandResult(text=output, data={"output": output, "warnings": warnings})
+        return CommandResult(
+            text=output,
+            data={"output": output, "warnings": notes_as_dicts(parser.notes)},
+        )
 
 
 def _check(schema: dict[str, Any]) -> None:
@@ -160,4 +152,4 @@ def _check(schema: dict[str, Any]) -> None:
         ) from exc
 
 
-ROOT.group("convert", help=CONVERT_HELP).register(ConvertCwlCommand())
+CONVERT.register(ConvertCwlCommand())

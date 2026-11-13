@@ -2,13 +2,10 @@
 
 import argparse
 import functools
-import json
-import sys
 
 import jsonschema
 
 from ga4gh_io_schema.cli.base import (
-    ROOT,
     STDIN,
     CliError,
     Command,
@@ -17,6 +14,7 @@ from ga4gh_io_schema.cli.base import (
     input_name,
     read_text,
 )
+from ga4gh_io_schema.cli.convert import CONVERT, conversion_result
 from ga4gh_io_schema.converters.snakemake import (
     ConversionError,
     Output,
@@ -26,11 +24,6 @@ from ga4gh_io_schema.converters.snakemake import (
     to_ga4gh,
 )
 from ga4gh_io_schema.validator import validate_schema
-
-#: Help of the ``convert`` group. Each converter module gets the group with
-#: ``ROOT.group("convert", CONVERT_HELP)`` (get or create), in any order; keep
-#: the text the same in every module.
-CONVERT_HELP = "Convert the parameter descriptions of workflow languages."
 
 
 def sample_sheet_argument(value: str) -> tuple[str | None, str]:
@@ -205,16 +198,7 @@ class SnakemakeCommand(Command):
                 f"{exc.message}",
                 location=None if exc.json_path == "$" else exc.json_path,
             ) from exc
-        if not args.json:
-            for note in conversion.notes:
-                print(note.to_text(), file=sys.stderr)
-        return CommandResult(
-            text=json.dumps(conversion.schema, indent=2),
-            data={
-                "schema": conversion.schema,
-                "notes": [note.to_dict() for note in conversion.notes],
-            },
-        )
+        return conversion_result(conversion, args)
 
 
-ROOT.group("convert", CONVERT_HELP).register(SnakemakeCommand())
+CONVERT.register(SnakemakeCommand())
