@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "CWL",
+    "descriptor_type_version": "v1.1",
+    "checksum": [
+      {
+        "type": "sha-256",
+        "checksum": "f6ff6a01dadfb4d5e83bc49adc9fcaedab4a9ee840612bb60feb8b9fa196c5be"
+      }
+    ]
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "irec": {
+          "type": "object",
+          "properties": {
+            "ifoo": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            },
+            "ibar": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            }
+          },
+          "required": [
+            "ifoo",
+            "ibar"
+          ],
+          "additionalProperties": false,
+          "x-ga4gh-parameter": {
+            "type": "irec"
+          }
+        }
+      },
+      "required": [
+        "irec"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "orec": {
+          "type": "object",
+          "properties": {
+            "ofoo": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            },
+            "obar": {
+              "type": "string",
+              "x-ga4gh-file": {
+                "kind": "file"
+              }
+            }
+          },
+          "required": [
+            "ofoo",
+            "obar"
+          ],
+          "additionalProperties": false,
+          "x-ga4gh-parameter": {
+            "type": "orec"
+          }
+        }
+      },
+      "required": [
+        "orec"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
