@@ -1,0 +1,16 @@
+{
+  "state": "COMPLETE",
+  "conformance": "conformant",
+  "outputs": {
+    "filtered_bam": "s3://conquest/v1/workflow-runs/9f1c2e4a-5b6d-4e7f-8a9b-0c1d2e3f4a5b/outputs/files/miniwdl-runs/20261113_021212_io_schema_demo/out/filtered_bam/filtered.bam",
+    "filtered_bam_index": "s3://conquest/v1/workflow-runs/9f1c2e4a-5b6d-4e7f-8a9b-0c1d2e3f4a5b/outputs/files/miniwdl-runs/20261113_021212_io_schema_demo/out/filtered_bam_index/filtered.bam.bai",
+    "report": "s3://conquest/v1/workflow-runs/9f1c2e4a-5b6d-4e7f-8a9b-0c1d2e3f4a5b/outputs/files/miniwdl-runs/20261113_021212_io_schema_demo/out/report/report.html"
+  },
+  "errors": [],
+  "removed": {},
+  "ambiguous": {},
+  "unconverted": [],
+  "undeclared": {},
+  "unmatchedFiles": [],
+  "skippedFiles": []
+}

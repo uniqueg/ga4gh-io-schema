@@ -15,6 +15,7 @@ edit_uri: edit/main/docs/
 # Files included in pages (see `pymdownx.snippets`) and documented code
 watch:
   - docs_hooks
+  - examples/demo
   - CHANGELOG.md
   - README.md
   - schemas
@@ -126,6 +127,7 @@ nav:
       - TRS: adoption/trs.md
       - WES: adoption/wes.md
       - Portals and clients: adoption/portals.md
+      - End-to-end demo: adoption/demo.md
   - Roadmap: roadmap.md
   - Changelog: changelog.md
   - Versioning and governance: governance.md

@@ -6,6 +6,8 @@ The profile is independent of workflow engines. Its integration with the GA4GH A
 * [WES](wes.md): validating run requests against IO schemas.
 * [Portals and clients](portals.md): rendering forms, resolving DRS
   identifiers and interpreting outputs.
+* [End-to-end demo](demo.md): a WDL workflow registered in TRS-Filer with
+  its IO schema and run on Conquest, from a portal or the command line.
 
 ## The end-to-end GA4GH lifecycle (summary)
 

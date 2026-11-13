@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# The I/O Schema of the demo workflow names the SHA-256 checksum of the
+# bytes of its primary descriptor: keep its line endings as they are.
+examples/demo/demo.wdl text eol=lf
+examples/demo/data/*.bam binary

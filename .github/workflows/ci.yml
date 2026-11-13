@@ -86,6 +86,7 @@ jobs:
           done
           ga4gh-io-schema validate tests/data/example_workflow.schema.json
           ga4gh-io-schema validate tests/data/example_wdl.schema.json
+          ga4gh-io-schema validate examples/demo/ga4gh-io.schema.json
           ga4gh-io-schema validate - < tests/data/example_tool.schema.json
 
       - name: E2E CLI Conversion (CWL)
