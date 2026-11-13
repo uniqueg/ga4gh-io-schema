@@ -107,7 +107,10 @@ together with the workflow engine that it runs.
    draft of a new version), a validator MUST reject a document without
    `$schema`, or whose `$schema` names no version of the profile that it
    supports. A document checked against another meta-schema is not
-   thereby a conforming schema document.
+   thereby a conforming schema document. The meta-schema checks the value
+   of `$schema` but doesn't require it (see [Structure of the
+   meta-schema](meta-schema.md#structure-of-the-meta-schema)), so a
+   validator checks that `$schema` is present itself.
 4. A validator MUST load the meta-schema and its vocabularies from local
    copies and MUST NOT retrieve them, or any other reference, over the
    network (see [Sources of schemas](../security.md#sources-of-schemas)).
@@ -117,7 +120,8 @@ together with the workflow engine that it runs.
 Requirements 2 and 3 are what some negative cases of the suite expect: a
 validator that doesn't check formats accepts `ontology-not-uri`, and one
 that validates against whatever meta-schema `$schema` names (e.g.,
-draft-07) accepts `foreign-schema` and `plain-json-schema`.
+draft-07) accepts `foreign-schema` and `plain-json-schema`; one that only
+applies the meta-schema accepts `missing-schema`.
 
 ### Producer
 
@@ -305,9 +309,10 @@ tests/conformance/
   meta-schema and vocabularies of
   [`schemas/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/schemas),
   loaded from local copies: a runner maps each `$id` of `schemas/` to its
-  file. Error messages differ between validators and are not part of the
-  suite. Files ending in `.license` hold licence information
-  ([REUSE](https://reuse.software/)) and are not cases.
+  file. A runner checks `$schema` before the meta-schema (requirement 3
+  of [Validator](#validator)). Error messages differ between validators
+  and are not part of the suite. Files ending in `.license` hold licence
+  information ([REUSE](https://reuse.software/)) and are not cases.
 - **Test vectors** in
   [`tests/vectors/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/tests/vectors)
   test the class [Request builder](#request-builder): the translation of

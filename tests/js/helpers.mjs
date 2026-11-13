@@ -8,7 +8,11 @@
 import { readFileSync, readdirSync } from "node:fs";
 
 import { removeUriSchemePlugin } from "@hyperjump/browser";
-import { setShouldValidateFormat } from "@hyperjump/json-schema/draft-2020-12";
+import {
+  hasSchema,
+  registerSchema,
+  setShouldValidateFormat,
+} from "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/formats";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
@@ -37,6 +41,19 @@ export const VOCABULARY_SCHEMAS = documents(
 ).map(([, schema]) => schema);
 
 /**
+ * Return whether a document names the profile in `$schema`. The meta-schema
+ * doesn't require `$schema` (hyperjump removes it before it checks a schema
+ * against its dialect), so a validator checks it before the meta-schema, as
+ * requirement 3 of "Validator" in docs/specification/conformance.md asks.
+ *
+ * @param {unknown} document - The document to check.
+ */
+export const namesProfile = (document) =>
+  typeof document === "object" &&
+  document !== null &&
+  document.$schema === PROFILE.$id;
+
+/**
  * Return an Ajv instance: the 2020-12 build, formats asserted
  * (ajv-formats), and the vocabularies of the profile added from the local
  * copies, so that nothing is fetched. The caller adds the profile, as a
@@ -61,3 +78,37 @@ export function setUpHyperjump() {
   removeUriSchemePlugin("https");
   setShouldValidateFormat(true);
 }
+
+/**
+ * Set up @hyperjump/json-schema offline (see setUpHyperjump()) and register
+ * the profile and its vocabularies from the local copies, unless they are
+ * registered already: hyperjump's registry is global, and registering a
+ * schema twice fails. Tests that use the profile call it themselves, so that
+ * they don't depend on the order in which tests run.
+ */
+export function registerProfile() {
+  setUpHyperjump();
+  for (const schema of [...VOCABULARY_SCHEMAS, PROFILE]) {
+    if (!hasSchema(schema.$id)) registerSchema(schema);
+  }
+}
+
+/**
+ * Return a copy of an IO schema in which every member `$schema` whose value
+ * is the profile's `$id` names Draft 2020-12 instead, at the root and in
+ * embedded resources, as docs/tools/javascript.md shows (the snippet there
+ * is this function).
+ *
+ * @param {unknown} value - The IO schema, or a part of it.
+ */
+export const toDraft = (value) =>
+  Array.isArray(value)
+    ? value.map(toDraft)
+    : value !== null && typeof value === "object"
+      ? Object.fromEntries(
+          Object.entries(value).map(([key, item]) => [
+            key,
+            key === "$schema" && item === PROFILE.$id ? DRAFT_2020_12 : toDraft(item),
+          ]),
+        )
+      : value;

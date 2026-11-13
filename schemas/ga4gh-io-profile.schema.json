@@ -37,12 +37,11 @@
   ],
   "type": "object",
   "required": [
-    "$schema",
     "properties"
   ],
   "properties": {
     "$schema": {
-      "description": "IO schemas must name this meta-schema.",
+      "description": "IO schemas must name this meta-schema. Validators check that $schema is present before they apply the meta-schema; the meta-schema doesn't require it, because some validators (e.g., @hyperjump/json-schema) remove $schema from a schema before they check it against its dialect.",
       "const": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json"
     },
     "$id": {

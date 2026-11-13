@@ -20,10 +20,10 @@ import {
   EXAMPLES,
   PROFILE,
   SUITE,
-  VOCABULARY_SCHEMAS,
   newAjv,
   readJson,
-  setUpHyperjump,
+  registerProfile,
+  toDraft,
 } from "./helpers.mjs";
 
 const TOOL = readJson(new URL("example_tool.schema.json", EXAMPLES));
@@ -115,15 +115,16 @@ function ajvValidator() {
 
 /**
  * Return a function that validates values against `inputs` of an IO schema
- * with @hyperjump/json-schema: the IO schemas are registered as copies that
- * name the Draft 2020-12 dialect in `$schema` (see the test below for why).
+ * with @hyperjump/json-schema: the profile and its vocabularies are
+ * registered from the local copies, and the IO schemas as they are, with the
+ * profile as their dialect; hyperjump checks each IO schema against the
+ * profile before it validates values against it.
  */
 function hyperjumpValidator() {
-  setUpHyperjump();
-  for (const schema of [TOOL, WORKFLOW]) {
-    registerSchema({ ...schema, $schema: DRAFT_2020_12 });
-  }
-  registerSchema({ ...DATED, $schema: DRAFT_2020_12 }, DATED_KEY);
+  registerProfile();
+  registerSchema(TOOL);
+  registerSchema(WORKFLOW);
+  registerSchema(DATED, DATED_KEY);
   return async (schema, values) =>
     (await validate(inputsUri(keyOf(schema)), values)).valid;
 }
@@ -160,14 +161,50 @@ describe("behaviour of the validators", () => {
   });
 
   // hyperjump removes `$schema` from a schema before it checks the schema
-  // against its dialect, so the profile, which requires `$schema`, rejects
-  // every IO schema.
-  test("@hyperjump/json-schema rejects IO schemas as the profile's dialect", async () => {
-    setUpHyperjump();
-    for (const schema of VOCABULARY_SCHEMAS) registerSchema(schema);
-    registerSchema(PROFILE);
-    const id = `${WORKFLOW.$id}/unchanged`;
-    registerSchema({ ...WORKFLOW, $id: id });
-    await assert.rejects(validate(inputsUri(id), {}), /Invalid Schema/);
+  // against its dialect; the profile doesn't require `$schema`, so that IO
+  // schemas pass that check, and invalid ones still fail it.
+  test("@hyperjump/json-schema accepts IO schemas with the profile as their dialect", async () => {
+    registerProfile();
+    const id = `${DATED_KEY}:as-dialect`;
+    registerSchema(DATED, id);
+    assert.equal((await validate(inputsUri(id), { day: "2020-12-31" })).valid, true);
+    assert.equal((await validate(inputsUri(id), { day: "2020-13-45" })).valid, false);
+  });
+
+  // An embedded resource is checked against the dialect that its own
+  // `$schema` names: one that names the profile fails the rules for the top
+  // level, so clients validate against a copy that names Draft 2020-12 (see
+  // docs/tools/javascript.md).
+  test("@hyperjump/json-schema rejects embedded resources that name the profile", async () => {
+    registerProfile();
+    const embedded = (schema, name) => ({
+      $schema: PROFILE.$id,
+      $id: `${WORKFLOW.$id}/embedded/${name}`,
+      $defs: {
+        s: { $id: `s-${name}`, $schema: schema, type: "string" },
+      },
+      properties: {
+        inputs: { type: "object", properties: { x: { $ref: `s-${name}` } } },
+      },
+    });
+    const asProfile = embedded(PROFILE.$id, "profile");
+    const asDraft = embedded(DRAFT_2020_12, "draft");
+    const copy = toDraft(embedded(PROFILE.$id, "copy"));
+    registerSchema(asProfile);
+    registerSchema(asDraft);
+    registerSchema(copy);
+    await assert.rejects(validate(inputsUri(asProfile.$id), { x: "y" }), /Invalid Schema/);
+    for (const schema of [asDraft, copy]) {
+      assert.equal((await validate(inputsUri(schema.$id), { x: "y" })).valid, true);
+      assert.equal((await validate(inputsUri(schema.$id), { x: 1 })).valid, false);
+    }
+    assert.equal(copy.$schema, DRAFT_2020_12);
+    assert.equal(copy.$defs.s.$schema, DRAFT_2020_12);
+  });
+
+  test("@hyperjump/json-schema checks IO schemas against the profile as their dialect", async () => {
+    registerProfile();
+    registerSchema(INVALID);
+    await assert.rejects(validate(inputsUri(INVALID.$id), {}), /Invalid Schema/);
   });
 });

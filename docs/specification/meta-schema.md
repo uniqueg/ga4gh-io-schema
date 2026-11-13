@@ -67,9 +67,10 @@ against `properties.inputs` of the IO schema, and normalised outputs against
   first validate the IO schema against the profile, and then MAY validate
   values against a copy of the IO schema in which every `$schema` that
   names the profile (at the root and in embedded resources) names Draft
-  2020-12 (`https://json-schema.org/draft/2020-12/schema`) instead. [JavaScript
-  validators](../tools/javascript.md#validating-input-values) describes
-  validators that need this.
+  2020-12 (`https://json-schema.org/draft/2020-12/schema`) instead.
+  [JavaScript validators](../tools/javascript.md#validating-input-values)
+  describes a validator that needs this for IO schemas with embedded
+  resources that name the profile.
 - `format` is an annotation in Draft 2020-12. A request builder SHOULD
   assert `format` on values for the formats that its validator supports
   (e.g., `date` for date widgets). Validators differ in the formats they
@@ -88,12 +89,23 @@ As a schema standard, there is no active deployment of a service. The schemas an
 
 ## Structure of the meta-schema
 
+The meta-schema doesn't require `$schema`: some validators (e.g.,
+@hyperjump/json-schema) remove `$schema` from a schema before they check the
+schema against its dialect, and would reject every IO schema with the
+profile as its dialect if the meta-schema required it. IO schemas still MUST
+name the meta-schema in `$schema` (requirement 1 of [Schema
+document](conformance.md#schema-document)), and validators check that
+before they apply the meta-schema (requirement 3 of
+[Validator](conformance.md#validator)); a document without `$schema` that
+passes the meta-schema is not a conforming schema document.
+
 The meta-schema has two parts.
 
 **Top level** (`ga4gh-io-profile.schema.json`): an IO schema is a JSON object
 that
 
-- names the meta-schema in `$schema`, by its versioned `$id`;
+- names the meta-schema in `$schema`, by its versioned `$id`, if it sets
+  `$schema` (see above for why the meta-schema doesn't require it);
 - has an absolute URI as `$id`, if it sets `$id`, and not the URL of a
   branch (see [Identifiers and
   versions](identity.md#identifiers-and-versions));

@@ -15,7 +15,9 @@ below (see [Development](../development.md#javascript-tests-nodejs)); CI
 runs it on every pull request. The versions are those pinned in
 `tests/js/package.json`. The setup functions of
 `tests/js/conformance.test.mjs` are a complete, runnable version of the
-snippets below, including how the schemas are read from `schemas/`.
+snippets below, including how the schemas are read from `schemas/` and the
+check of `$schema` before the meta-schema (`namesProfile()` of
+`tests/js/helpers.mjs`).
 
 | Validator | Options | Valid documents accepted | Invalid documents rejected |
 | ----- | ----- | ----- | ----- |
@@ -78,8 +80,15 @@ for (const schema of vocabularies) ajv.addSchema(schema); // schemas/vocabularie
 ajv.addSchema(profile); // schemas/ga4gh-io-profile.schema.json
 const validateIoSchema = ajv.getSchema(profile.$id);
 
+if (ioSchema?.$schema !== profile.$id) throw new Error("not an IO schema");
 if (!validateIoSchema(ioSchema)) console.log(validateIoSchema.errors);
 ```
+
+The meta-schema checks the value of `$schema`, but doesn't require it (see
+[Structure of the meta-schema](../specification/meta-schema.md#structure-of-the-meta-schema)),
+so a client checks that `$schema` names the profile first, as the
+[Python validator](validator.md) does; without that check, both validators
+accept `missing-schema` of the suite.
 
 Ajv's [strict mode](https://ajv.js.org/strict-mode.html) can stay on,
 except for two of its checks, which the meta-schema can't meet without
@@ -118,10 +127,12 @@ setShouldValidateFormat(true);
 for (const schema of vocabularies) registerSchema(schema);
 registerSchema(profile);
 
+if (ioSchema?.$schema !== profile.$id) throw new Error("not an IO schema");
 const output = await validate(profile.$id, ioSchema);
 if (!output.valid) console.log(output.errors);
 ```
 
+As for Ajv, the snippet checks `$schema` before the meta-schema.
 hyperjump doesn't compile schemas with `new Function`, so it needs no
 `'unsafe-eval'`. Its errors name the keyword (as a URI) and the location in
 the document, without a message text.
@@ -165,20 +176,62 @@ as `x-ga4gh-file`, and Ajv can allow extension keywords only by exact name,
 not the `x-` keywords of other platforms that the profile allows.
 ajv-formats asserts `format` on values.
 
-**@hyperjump/json-schema** removes `$schema` from an IO schema before it
-checks the IO schema against its dialect, so the profile's meta-schema,
-which requires `$schema`, rejects every IO schema ("Invalid Schema").
-After the check above, register a copy of the IO schema that names Draft
-2020-12 instead. The copy below rewrites only the root `$schema`; an IO
-schema with embedded resources whose `$schema` names the profile needs
-those rewritten too.
+**@hyperjump/json-schema** takes the profile, registered as above, as the
+dialect of IO schemas that name it in `$schema`. After the check above,
+register the IO schema as it is; hyperjump checks it against the profile
+once more before it validates values against it, and rejects an invalid IO
+schema with "Invalid Schema":
 
 ```js
 const base = ioSchema.$id ?? "urn:example:io-schema"; // or the retrieval URL
-registerSchema(
-  { ...ioSchema, $schema: "https://json-schema.org/draft/2020-12/schema" },
-  base,
-);
+registerSchema(ioSchema, base);
 
 const output = await validate(`${base}#/properties/inputs`, values);
 ```
+
+hyperjump removes `$schema` from a schema before it checks the schema
+against its dialect. This is why the meta-schema doesn't require `$schema`
+(see [Structure of the
+meta-schema](../specification/meta-schema.md#structure-of-the-meta-schema)),
+and why the check above tests `$schema` itself.
+
+hyperjump also checks an embedded resource (a subschema with an `$id` of
+its own, e.g., a shared definition bundled into `$defs`, see [One workflow,
+several engines](../specification/identity.md#one-workflow-several-engines))
+against the dialect that the resource's own `$schema` names. An embedded
+resource that names the profile is checked against the rules for the top
+level of an IO schema, which it doesn't meet (e.g., it has no `inputs`), and
+hyperjump rejects the whole IO schema with "Invalid Schema". Decide before
+registering: hyperjump can't register a second schema under the same base
+URI (without `unregisterSchema(base)` first). If an IO schema has embedded
+resources whose `$schema` names the profile, register a copy in which every
+`$schema` that names the profile, at the root and in embedded resources,
+names Draft 2020-12 instead, as [Dialect and validation of
+values](../specification/meta-schema.md#dialect-and-validation-of-values)
+allows (`toDraft()` of `tests/js/helpers.mjs` is the function below, and
+`tests/js/values.test.mjs` tests it):
+
+```js
+const DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema";
+const toDraft = (value) =>
+  Array.isArray(value)
+    ? value.map(toDraft)
+    : value !== null && typeof value === "object"
+      ? Object.fromEntries(
+          Object.entries(value).map(([key, item]) => [
+            key,
+            key === "$schema" && item === profile.$id ? DRAFT_2020_12 : toDraft(item),
+          ]),
+        )
+      : value;
+registerSchema(toDraft(ioSchema), base);
+```
+
+The function rewrites every member `$schema` whose value is the profile's
+`$id`, also where it isn't a keyword: inside the values of `const`, `enum`,
+`default` or `examples` that are objects with such a member. A rewritten
+`const` or `enum` would change the values that the copy accepts. The
+function is a simplification that is safe for IO schemas without such
+values; a client that can't rule them out rewrites `$schema` only in the
+root and in the schemas with an `$id` that the keywords of the Draft 2020-12
+applicators (e.g., `$defs`, `properties`, `items`, `allOf`) hold.

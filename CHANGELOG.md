@@ -228,6 +228,17 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   error that `ga4gh-io-schema validate` reports can differ). The
   conformance suite has a new positive case with deeply nested parameters,
   `nested.schema.json`. (#47)
+- The meta-schema no longer requires `$schema` (it still checks its value),
+  so that @hyperjump/json-schema, which removes `$schema` from a schema
+  before it checks the schema against its dialect, accepts IO schemas with
+  the profile as their dialect. IO schemas still must name the meta-schema
+  in `$schema`, and validators reject documents without it: the Python
+  validator as before, and the JavaScript setups of the documentation with a
+  check of `$schema` before the meta-schema. Clients and meta-schemas that
+  apply only the profile's meta-schema must now check `$schema` themselves.
+  Clients that use hyperjump no longer need a copy of the IO schema that
+  names Draft 2020-12 to validate values, unless an embedded resource of
+  the IO schema names the profile. (#61)
 
 ## v0.2 (2026-10-13)
 

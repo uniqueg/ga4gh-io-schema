@@ -14,10 +14,18 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+import jsonschema
 import pytest
+from jsonschema.validators import validator_for
 from jsonschema_specifications import REGISTRY
 
-from ga4gh_io_schema.validator import load_json, load_profile
+from ga4gh_io_schema.validator import (
+    build_registry,
+    get_schemas_dir,
+    load_json,
+    load_profile,
+    validate_schema,
+)
 
 SCHEMAS_DIR = Path(__file__).resolve().parents[1] / "schemas"
 SCHEMA_FILES = sorted(SCHEMAS_DIR.rglob("*.schema.json"))
@@ -188,6 +196,30 @@ def test_profile_declares_a_dialect() -> None:
     assert list(own.values()) == [False]
     base = profile["$id"].rsplit("/", 1)[0]
     assert next(iter(own)).startswith(f"{base}/vocabularies/")
+
+
+def test_profile_does_not_require_schema_keyword() -> None:
+    """Test that ``$schema`` is checked by the validator, not the meta-schema.
+
+    Validators such as @hyperjump/json-schema remove ``$schema`` from a
+    schema before they check it against its dialect, so a meta-schema that
+    requires ``$schema`` would reject every IO schema there. The meta-schema
+    alone accepts a document without ``$schema`` and still rejects one that
+    names another meta-schema; ``validate_schema`` rejects both.
+    """
+    profile = load_profile()
+    validator = validator_for(profile)(
+        profile, registry=build_registry([get_schemas_dir()])
+    )
+    document: dict[str, Any] = {"properties": {"inputs": {"type": "object"}}}
+    foreign = {**document, "$schema": f"{DRAFT_2020_12}schema"}
+
+    assert validator.is_valid(document)
+    assert not validator.is_valid(foreign)
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="lacks a"):
+        validate_schema(document)
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="not the"):
+        validate_schema(foreign)
 
 
 @pytest.mark.parametrize(
