@@ -67,7 +67,8 @@ that
 - may carry the top-level keywords of `vocabularies/workflow.schema.json`
   (`x-ga4gh-workflow`), which are allowed only there.
 
-**Every schema, at any depth** (`$defs/node` of `ga4gh-io-profile.schema.json`):
+**Every schema, at any depth** (`$defs/node` of `ga4gh-io-profile.schema.json`,
+with the Draft 2020-12 meta-schema applied once per tree, see below):
 the top level and every nested schema (e.g., in `properties`, `items`,
 `$defs`, and `x-ga4gh-tabular-schema`) MUST be valid JSON Schema Draft
 2020-12 and MUST use the `x-ga4gh-*` keywords as defined in

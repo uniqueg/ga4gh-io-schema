@@ -201,6 +201,10 @@ def _references(
 ) -> Iterator[str]:
     """Yield every reference that a schema reaches, following references.
 
+    Deliberately minimal: it resolves absolute and fragment-only (``#...``)
+    references with JSON pointers that need no unescaping, which is all
+    that the profile uses.
+
     Args:
         schema: The schema (or any JSON value in it).
         base: The URI of the document that holds the schema.
@@ -250,6 +254,7 @@ def test_checks_of_unevaluated_keywords_reach_no_nested_schema() -> None:
         documents[vocabulary["$id"]] = vocabulary
     forbidden = {
         "https://json-schema.org/draft/2020-12/schema",
+        profile["$id"] + "#",
         node["$id"] + "#",
         node["$id"] + "#/$defs/subschemas",
         node["$id"] + "#/$defs/schema",

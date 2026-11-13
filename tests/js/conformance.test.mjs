@@ -121,7 +121,11 @@ describe("errors of a nested unknown keyword", () => {
       inputs: {
         type: "object",
         properties: {
-          a: { type: "object", properties: { b: { "x-ga4gh-bogus": 1 } } },
+          a: {
+            type: "object",
+            "x-ga4gh-hidden": true,
+            properties: { b: { "x-ga4gh-bogus": 1 } },
+          },
         },
       },
     },

@@ -208,6 +208,17 @@ INVALID = {
         "properties.sample_id['x-ga4gh-tabular-schema'].items.properties.condition"
         "['x-ga4gh-hidden'])"
     ),
+    # Draft 2020-12 applies once per tree of schemas, and still reaches every
+    # schema of it (#47)
+    "draft-keyword-nested-deep": (
+        "Validation Error: -1 is less than the minimum of 0 (at $.properties."
+        "inputs.properties.samples.items.properties.reads.items.minLength)"
+    ),
+    "draft-keyword-in-tabular": (
+        "Validation Error: 'text' is not valid under any of the given schemas "
+        "(at $.properties.inputs.properties.sample_sheet"
+        "['x-ga4gh-tabular-schema'].properties.condition.type)"
+    ),
     "outputs-nested": (
         "Validation Error: 3 is not of type 'string' "
         "(at $.properties.outputs.properties.report['x-ga4gh-ui-widget'])"

@@ -196,13 +196,11 @@ def test_groups_of_inputs_validate_in_time(size: int, budget: float) -> None:
 def test_nested_schemas_in_tabular_schemas_validate_in_time() -> None:
     """Test that nested schemas in tabular schemas validate within the budget.
 
-    Each ``x-ga4gh-tabular-schema`` nested in another one still multiplies
-    the time (a known limitation, see "Structure of the meta-schema" in
-    ``docs/specification/meta-schema.md``); other nesting within a tabular
-    schema doesn't.
+    Each tabular schema starts a tree of its own for the Draft 2020-12 rules,
+    so time stays linear within and across nested tabular schemas.
     """
     schema: dict[str, Any] = nested_records(4, 3)
-    for _ in range(2):
+    for _ in range(4):
         schema = {
             "type": "string",
             "x-ga4gh-file": {"kind": "file"},
@@ -243,3 +241,24 @@ def test_nested_schema_errors_are_found_in_time() -> None:
         pytest.raises(jsonschema.ValidationError, match="x-ga4gh-unknown"),
     ):
         validate_schema(io_schema(inner))
+
+
+def test_time_budget_stops_slow_blocks() -> None:
+    """Test that the budget stops a block that runs too long, then disarms."""
+    previous = signal.getsignal(signal.SIGALRM)
+
+    with pytest.raises(BudgetExceededError, match="longer than"):
+        with time_budget(0.05):
+            while True:
+                pass
+
+    assert signal.getsignal(signal.SIGALRM) is previous
+    assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
+
+
+def test_time_budget_fails_blocks_that_ran_too_long() -> None:
+    """Test that the budget fails a block that the timer didn't interrupt."""
+    with pytest.raises(BudgetExceededError, match="more than"):
+        with time_budget(0.05):
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            time.sleep(0.1)
