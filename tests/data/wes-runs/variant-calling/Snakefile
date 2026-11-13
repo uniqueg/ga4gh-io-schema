@@ -1,0 +1,26 @@
+rule all:
+    input:
+        "results/calls/a.vcf.gz",
+        "results/calls/a.vcf.gz.tbi",
+        "results/calls/B.vcf.gz",
+        "results/calls/B.vcf.gz.tbi",
+        "results/report.html",
+
+
+rule call:
+    output:
+        vcf="results/calls/{sample}.vcf.gz",
+        tbi="results/calls/{sample}.vcf.gz.tbi",
+    shell:
+        "printf 'vcf' > {output.vcf}; printf 'ix' > {output.tbi}"
+
+
+rule report:
+    input:
+        expand("results/calls/{sample}.vcf.gz", sample=["a", "B"]),
+    output:
+        "results/report.html",
+    params:
+        title=config["title"],
+    shell:
+        "printf '<html>{params.title}</html>' > {output}"

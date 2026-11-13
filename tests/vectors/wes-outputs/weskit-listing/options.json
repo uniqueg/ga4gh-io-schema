@@ -1,3 +1,3 @@
 {
-  "outputDir": "s3://example-bucket/weskit/run-6"
+  "outputDir": "s3://wesk/weskit-run-6"
 }

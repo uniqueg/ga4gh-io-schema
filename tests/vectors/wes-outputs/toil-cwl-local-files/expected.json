@@ -1,0 +1,14 @@
+{
+  "description": "Toil (9.5) WES server with toil-cwl-runner, local job store: the CWL output object, files and a Directory as objects with percent-encoded file: locations (a name with a space and #) and raw paths, secondary files, null for an optional output that wasn't produced, and an integer. Captured from a real run; paths and run ID anonymised.",
+  "conformance": "conformant",
+  "outputs": {
+    "qc_report": "https://wes.example.org/toil/runs/run-17/outputs/multiqc_report.html",
+    "alignments": [
+      "https://wes.example.org/toil/runs/run-17/outputs/s1.bam",
+      "https://wes.example.org/toil/runs/run-17/outputs/s2.bam"
+    ],
+    "gene_counts": "https://wes.example.org/toil/runs/run-17/outputs/counts",
+    "pipeline_report": "https://wes.example.org/toil/runs/run-17/outputs/report%20%231.html",
+    "samples_passed_qc": 2
+  }
+}

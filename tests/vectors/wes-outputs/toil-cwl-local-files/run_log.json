@@ -1,0 +1,94 @@
+{
+  "run_id": "run-17",
+  "state": "COMPLETE",
+  "outputs": {
+    "alignments": [
+      {
+        "basename": "s1.bam",
+        "checksum": "sha1$7af258594b50ff874a047b54a92442e81f458cfb",
+        "class": "File",
+        "location": "file:///data/toil/workflows/run-17/outputs/s1.bam",
+        "nameext": ".bam",
+        "nameroot": "s1",
+        "path": "/data/toil/workflows/run-17/outputs/s1.bam",
+        "secondaryFiles": [
+          {
+            "basename": "s1.bam.bai",
+            "checksum": "sha1$d4f506d11f53beffb8d67eda0740af3a887a992e",
+            "class": "File",
+            "location": "file:///data/toil/workflows/run-17/outputs/s1.bam.bai",
+            "nameext": ".bai",
+            "nameroot": "s1.bam",
+            "path": "/data/toil/workflows/run-17/outputs/s1.bam.bai",
+            "size": 2
+          }
+        ],
+        "size": 3
+      },
+      {
+        "basename": "s2.bam",
+        "checksum": "sha1$7af258594b50ff874a047b54a92442e81f458cfb",
+        "class": "File",
+        "location": "file:///data/toil/workflows/run-17/outputs/s2.bam",
+        "nameext": ".bam",
+        "nameroot": "s2",
+        "path": "/data/toil/workflows/run-17/outputs/s2.bam",
+        "secondaryFiles": [
+          {
+            "basename": "s2.bam.bai",
+            "checksum": "sha1$d4f506d11f53beffb8d67eda0740af3a887a992e",
+            "class": "File",
+            "location": "file:///data/toil/workflows/run-17/outputs/s2.bam.bai",
+            "nameext": ".bai",
+            "nameroot": "s2.bam",
+            "path": "/data/toil/workflows/run-17/outputs/s2.bam.bai",
+            "size": 2
+          }
+        ],
+        "size": 3
+      }
+    ],
+    "gene_counts": {
+      "basename": "counts",
+      "class": "Directory",
+      "listing": [
+        {
+          "basename": "s1.tsv",
+          "checksum": "sha1$165505b60a863826442272a60e78fc160ca309c8",
+          "class": "File",
+          "location": "file:///data/toil/workflows/run-17/outputs/counts/s1.tsv",
+          "nameext": ".tsv",
+          "nameroot": "s1",
+          "path": "/data/toil/workflows/run-17/outputs/counts/s1.tsv",
+          "size": 4
+        }
+      ],
+      "location": "file:///data/toil/workflows/run-17/outputs/counts",
+      "nameext": "",
+      "nameroot": "counts",
+      "path": "/data/toil/workflows/run-17/outputs/counts"
+    },
+    "missing_optional": null,
+    "pipeline_report": {
+      "basename": "report #1.html",
+      "checksum": "sha1$941efb7368e46b27b937d34b07fc4d41da01b002",
+      "class": "File",
+      "location": "file:///data/toil/workflows/run-17/outputs/report%20%231.html",
+      "nameext": ".html",
+      "nameroot": "report #1",
+      "path": "/data/toil/workflows/run-17/outputs/report #1.html",
+      "size": 13
+    },
+    "qc_report": {
+      "basename": "multiqc_report.html",
+      "checksum": "sha1$941efb7368e46b27b937d34b07fc4d41da01b002",
+      "class": "File",
+      "location": "file:///data/toil/workflows/run-17/outputs/multiqc_report.html",
+      "nameext": ".html",
+      "nameroot": "multiqc_report",
+      "path": "/data/toil/workflows/run-17/outputs/multiqc_report.html",
+      "size": 13
+    },
+    "samples_passed_qc": 2
+  }
+}
