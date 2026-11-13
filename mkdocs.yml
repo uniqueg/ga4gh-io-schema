@@ -114,6 +114,7 @@ nav:
       - tools/index.md
       - Command-line interface: tools/cli.md
       - Validator: tools/validator.md
+      - JavaScript validators: tools/javascript.md
       - Converters: tools/converters.md
       - Snakemake converter: tools/convert-snakemake.md
       - CWL converter: tools/cwl.md
