@@ -126,3 +126,60 @@ if (!output.valid) console.log(output.errors);
 hyperjump doesn't compile schemas with `new Function`, so it needs no
 `'unsafe-eval'`. Its errors name the keyword (as a URI) and the location in
 the document, without a message text.
+
+## Validating input values
+
+Input values are validated against `inputs` of an IO schema with the
+semantics of Draft 2020-12 (see [Dialect and validation of
+values](../specification/meta-schema.md#dialect-and-validation-of-values)),
+after the IO schema itself has passed the check above. `tests/js/values.test.mjs`
+validates valid and invalid values against the examples with both validators,
+as `tests/test_examples.py` does in Python.
+
+Both snippets reuse the setup of the check above (`profile`, `vocabularies`
+and the IO schema `ioSchema`). The profile doesn't require `$id`, so they
+register the IO schema under a base URI: its `$id` if it has one, or a URI
+that the client chooses, such as the URL it fetched the IO schema from.
+
+**Ajv** accepts IO schemas that name the profile in `$schema` once the
+meta-schema is added with `addMetaSchema`. That check is no conformance
+check: Ajv compiles a meta-schema without asserting `format`, and falls back
+to its default meta-schema when `$schema` is missing. So run the check above
+(`validateIoSchema`, with the profile added by `addSchema`) first, and use a
+separate instance for values:
+
+```js
+if (!validateIoSchema(ioSchema)) throw new Error("not an IO schema");
+
+const base = ioSchema.$id ?? "urn:example:io-schema"; // or the retrieval URL
+const valuesAjv = new Ajv2020({ strict: false });
+addFormats(valuesAjv);
+for (const schema of vocabularies) valuesAjv.addSchema(schema);
+valuesAjv.addMetaSchema(profile);
+valuesAjv.addSchema(ioSchema, base);
+
+const valid = valuesAjv.validate(`${base}#/properties/inputs`, values);
+```
+
+`strict: false` is needed, because strict mode rejects unknown keywords such
+as `x-ga4gh-file`, and Ajv can allow extension keywords only by exact name,
+not the `x-` keywords of other platforms that the profile allows.
+ajv-formats asserts `format` on values.
+
+**@hyperjump/json-schema** removes `$schema` from an IO schema before it
+checks the IO schema against its dialect, so the profile's meta-schema,
+which requires `$schema`, rejects every IO schema ("Invalid Schema").
+After the check above, register a copy of the IO schema that names Draft
+2020-12 instead. The copy below rewrites only the root `$schema`; an IO
+schema with embedded resources whose `$schema` names the profile needs
+those rewritten too.
+
+```js
+const base = ioSchema.$id ?? "urn:example:io-schema"; // or the retrieval URL
+registerSchema(
+  { ...ioSchema, $schema: "https://json-schema.org/draft/2020-12/schema" },
+  base,
+);
+
+const output = await validate(`${base}#/properties/inputs`, values);
+```

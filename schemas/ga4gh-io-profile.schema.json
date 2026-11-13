@@ -1,6 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$vocabulary": {
+    "https://json-schema.org/draft/2020-12/vocab/core": true,
+    "https://json-schema.org/draft/2020-12/vocab/applicator": true,
+    "https://json-schema.org/draft/2020-12/vocab/unevaluated": true,
+    "https://json-schema.org/draft/2020-12/vocab/validation": true,
+    "https://json-schema.org/draft/2020-12/vocab/meta-data": true,
+    "https://json-schema.org/draft/2020-12/vocab/format-annotation": true,
+    "https://json-schema.org/draft/2020-12/vocab/content": true,
+    "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/ga4gh-io": false
+  },
   "title": "GA4GH IO Profile Meta-Schema",
   "description": "Meta-schema for validating GA4GH workflow and tool IO JSON Schema profiles. The top level requires the inputs/outputs wrapper and may carry the top-level keywords of the workflow vocabulary; every schema, at any depth, must follow the rules of $defs/node, which combines one vocabulary file per keyword group.",
   "allOf": [

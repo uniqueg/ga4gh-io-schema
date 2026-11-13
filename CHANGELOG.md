@@ -156,6 +156,16 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the rules of `$defs/node` to nested schemas through explicit `$ref`s
   (`$defs/node/$defs/subschemas`), not `$dynamicAnchor`, which Ajv supports
   only at the root of a schema and would skip without an error. (#36)
+- The meta-schema declares its vocabularies (`$vocabulary`: the Draft
+  2020-12 vocabularies as required, the profile's vocabulary as optional),
+  so that it is a dialect of Draft 2020-12. The specification states how
+  input values and outputs are validated (against `properties.inputs` or
+  `properties.outputs`, with the semantics of Draft 2020-12; `x-ga4gh-*`
+  keywords don't change the result; request builders should assert
+  `format`). Clients that validate values with the Draft 2020-12 dialect
+  must check the IO schema against the profile first; Ajv and
+  @hyperjump/json-schema need the setup in the JavaScript guide. The
+  JavaScript tests validate values against the examples with both. (#37)
 - Rules for `x-ga4gh-hidden` and `x-ga4gh-error-message`: form renderers
   show hidden inputs that users must set (required, no default) and hidden
   inputs whose values fail; an error message covers the failures at the
