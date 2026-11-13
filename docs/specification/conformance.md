@@ -237,6 +237,11 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    [Runs that don't complete](outputs.md#runs-that-dont-complete), and the
    outputs of a non-conformant run with the same warning, keeping all of
    them.
+6. An output normaliser MUST produce the results of the test vectors in
+   `tests/vectors/wes-outputs/`: of every case whose shape of
+   `RunLog.outputs` it supports (see
+   [Output normaliser](../tools/outputs.md#test-vectors)), including the
+   cases that it must reject.
 
 ### WES server
 
@@ -311,8 +316,11 @@ tests/conformance/
   compact DRS identifiers, paths; `file-values/`). Their format is described
   in [Engine bindings](engine-bindings.md#test-vectors); this package runs
   them with `tests/test_wes.py`.
-- Cases for the other classes (e.g., for the normalisation of outputs) are
-  added to the suite with the features they test.
+- **Outputs of runs** test the class [Output normaliser](#output-normaliser):
+  the cases of `tests/vectors/wes-outputs/` (described in its `README.md`)
+  give a schema document, a WES run log and options, and the normalised
+  outputs object and report that a normaliser produces, or that it rejects
+  the input; this package runs them with `tests/test_outputs.py`.
 
 The runner of this package is `tests/test_conformance.py`; it checks every
 case against the [Python API](../tools/validator.md#python-api) of the
@@ -346,7 +354,8 @@ that they implement or plan to implement:
 | ----- | ----- | ----- | ----- |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Validator | Available (`ga4gh-io-schema validate`); passes the conformance suite |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Request builder (translation and checks; submission is left to the caller) | Available (`ga4gh-io-schema wes-params`); passes the test vectors |
-| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Producer, Output normaliser | Planned (converters, normalisation of outputs) |
+| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Output normaliser | Available (`ga4gh-io-schema outputs`); passes the `wes-outputs` test vectors |
+| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Producer | Planned (converters) |
 | [ELIXIR Cloud Components](https://github.com/elixir-cloud-aai/cloud-components) | TypeScript | Form renderer, Request builder, Output normaliser | Planned |
 
 Further implementations are welcome: propose an entry for this table with a

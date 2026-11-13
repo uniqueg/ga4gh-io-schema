@@ -1,0 +1,155 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/rna-seq/nfl/1.0.0",
+  "title": "RNA-Seq Pipeline",
+  "description": "Bulk RNA-Seq alignment and QC workflow.",
+  "x-ga4gh-workflow": {
+    "trs_tool_id": "#workflow/example.org/rna-seq",
+    "trs_version_id": "1.0.0",
+    "descriptor_type": "NFL",
+    "descriptor_type_version": "DSL2",
+    "primary_descriptor_path": "main.nf",
+    "checksum": [
+      {
+        "type": "sha-256",
+        "checksum": "3f7a2c9e1b4d6f8a0c2e4b6d8f1a3c5e7b9d0f2a4c6e8b1d3f5a7c9e0b2d4f6a"
+      }
+    ]
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_manifest": {
+          "type": "string",
+          "title": "Sample Manifest",
+          "description": "CSV sample sheet containing biological replicate information.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "mediaType": "text/csv",
+            "schemes": [
+              "drs",
+              "https"
+            ]
+          },
+          "x-ga4gh-tabular-schema": {
+            "type": "array",
+            "description": "Experimental hint: the expected columns of the CSV sample sheet (not a validation rule).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sample_id": {
+                  "type": "string",
+                  "title": "Sample ID",
+                  "pattern": "^[a-zA-Z0-9_]+$"
+                },
+                "fastq_1": {
+                  "type": "string",
+                  "title": "Read 1 FASTQ",
+                  "x-ga4gh-file": {
+                    "kind": "file",
+                    "compression": "gzip"
+                  }
+                },
+                "condition": {
+                  "type": "string",
+                  "title": "Condition",
+                  "enum": [
+                    "control",
+                    "treatment"
+                  ]
+                }
+              },
+              "required": [
+                "sample_id",
+                "fastq_1",
+                "condition"
+              ]
+            }
+          }
+        },
+        "genome_index": {
+          "type": "string",
+          "title": "Genome Index",
+          "description": "Directory with the index of the reference genome for the aligner.",
+          "x-ga4gh-file": {
+            "kind": "directory"
+          }
+        },
+        "known_variants": {
+          "type": "string",
+          "title": "Known Variants",
+          "description": "Variants to mask during QC, as a VCF file indexed with tabix.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_3016",
+            "compression": "bgzip",
+            "secondaryFiles": [
+              ".tbi"
+            ]
+          }
+        }
+      },
+      "required": [
+        "sample_manifest",
+        "genome_index"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "qc_report": {
+          "type": "string",
+          "title": "QC HTML Report",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "mediaType": "text/html"
+          },
+          "x-ga4gh-ui-widget": "html-viewer",
+          "x-ga4gh-output-glob": "multiqc/multiqc_report.html"
+        },
+        "alignments": {
+          "type": "array",
+          "title": "Aligned Reads",
+          "description": "One BAM file per sample, each with its index next to it.",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file",
+              "ontology": "http://edamontology.org/format_2572",
+              "secondaryFiles": [
+                ".bai"
+              ]
+            }
+          },
+          "x-ga4gh-output-glob": "alignments/*.bam"
+        },
+        "gene_counts": {
+          "type": "object",
+          "title": "Gene Counts",
+          "description": "Gene counts per sample, keyed by sample ID.",
+          "additionalProperties": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file",
+              "mediaType": "text/tab-separated-values"
+            },
+            "x-ga4gh-ui-widget": "table-viewer"
+          }
+        },
+        "samples_passed_qc": {
+          "type": "integer",
+          "minimum": 0,
+          "title": "Samples Passing QC"
+        }
+      },
+      "required": [
+        "qc_report",
+        "alignments"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

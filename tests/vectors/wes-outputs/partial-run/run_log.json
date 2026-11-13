@@ -1,0 +1,15 @@
+{
+  "run_id": "run-10",
+  "state": "EXECUTOR_ERROR",
+  "outputs": {
+    "qc_report": {
+      "class": "File",
+      "location": "s3://example-bucket/runs/run-10/report.html"
+    },
+    "alignments": {
+      "class": "File",
+      "location": "s3://example-bucket/runs/run-10/s1.bam"
+    },
+    "samples_passed_qc": "two"
+  }
+}

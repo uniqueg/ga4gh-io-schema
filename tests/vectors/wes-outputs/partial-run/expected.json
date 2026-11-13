@@ -1,0 +1,11 @@
+{
+  "description": "A run that ended in EXECUTOR_ERROR: its outputs are checked one by one, required doesn't apply, and outputs with invalid values are left out and reported.",
+  "conformance": "partial",
+  "outputs": {
+    "qc_report": "s3://example-bucket/runs/run-10/report.html"
+  },
+  "removed": [
+    "alignments",
+    "samples_passed_qc"
+  ]
+}

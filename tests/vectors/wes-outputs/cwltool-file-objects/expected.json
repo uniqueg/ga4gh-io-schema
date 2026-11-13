@@ -1,0 +1,12 @@
+{
+  "description": "cwltool (3.3): the CWL output object, files as File objects with file: locations and secondary files, null for an optional output that wasn't produced. Captured from a real run; paths anonymised.",
+  "conformance": "conformant",
+  "outputs": {
+    "qc_report": "s3://example-bucket/runs/run-1/outputs/report.html",
+    "alignments": [
+      "s3://example-bucket/runs/run-1/outputs/s1.bam",
+      "s3://example-bucket/runs/run-1/outputs/s2.bam"
+    ],
+    "samples_passed_qc": 2
+  }
+}

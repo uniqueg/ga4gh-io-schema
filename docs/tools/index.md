@@ -13,3 +13,6 @@
 - [WES parameters](wes-params.md): validate input values against an IO
   schema and translate them into the `workflow_params` of a WES run request,
   or a full `RunRequest`, as a command-line tool and a Python API.
+- [Output normaliser](outputs.md): builds the normalised outputs object of
+  a WES run from what the server reports, as a command-line tool and a
+  Python API.

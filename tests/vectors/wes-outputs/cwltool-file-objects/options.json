@@ -1,0 +1,4 @@
+{
+  "outputDir": "s3://example-bucket/runs/run-1/outputs",
+  "localDir": "/data/wes/runs/run-1/outputs"
+}

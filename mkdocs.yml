@@ -120,6 +120,7 @@ nav:
       - CWL converter: tools/cwl.md
       - WDL converter: tools/convert-wdl.md
       - WES parameters: tools/wes-params.md
+      - Output normaliser: tools/outputs.md
   - Adoption:
       - adoption/index.md
       - TRS: adoption/trs.md

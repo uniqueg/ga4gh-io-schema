@@ -1,0 +1,11 @@
+{
+  "description": "WDL outputs as absolute local paths (as miniwdl reports them), turned into URIs of the output directory; x-ga4gh-parameter names the output in the engine; a path outside the output directory is reported, not converted.",
+  "conformance": "conformant",
+  "outputs": {
+    "variants_vcf": "https://wes.example.org/runs/run-4/files/out/vcf/calls%201.vcf.gz",
+    "stats": "https://wes.example.org/runs/run-4/files/out/stats/calls.stats"
+  },
+  "unconverted": [
+    "log"
+  ]
+}

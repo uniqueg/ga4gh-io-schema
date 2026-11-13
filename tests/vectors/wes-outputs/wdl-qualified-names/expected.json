@@ -1,0 +1,19 @@
+{
+  "description": "WDL outputs keyed by names qualified with the workflow name, as Cromwell, miniwdl and Conquest report them: null for an optional output and for an item of Array[File?], Map[String, File] as files keyed by name, and an output that the schema doesn't declare.",
+  "conformance": "conformant",
+  "outputs": {
+    "qc_report": "gs://example-bucket/cromwell-executions/rnaseq/run-3/call-multiqc/multiqc_report.html",
+    "alignments": [
+      "gs://example-bucket/cromwell-executions/rnaseq/run-3/call-align/shard-0/s1.bam",
+      "gs://example-bucket/cromwell-executions/rnaseq/run-3/call-align/shard-2/s3.bam"
+    ],
+    "gene_counts": {
+      "s1": "gs://example-bucket/cromwell-executions/rnaseq/run-3/call-count/shard-0/s1.tsv",
+      "s3": "gs://example-bucket/cromwell-executions/rnaseq/run-3/call-count/shard-2/s3.tsv"
+    },
+    "samples_passed_qc": 2
+  },
+  "undeclared": [
+    "rnaseq.debug_log"
+  ]
+}

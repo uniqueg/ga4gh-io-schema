@@ -1,0 +1,9 @@
+{
+  "run_id": "run-4",
+  "state": "COMPLETE",
+  "outputs": {
+    "variant_calling.vcf": "/data/wes/runs/run-4/out/vcf/calls 1.vcf.gz",
+    "variant_calling.stats": "file:///data/wes/runs/run-4/out/stats/calls.stats",
+    "variant_calling.log": "/scratch/tmp/run-4.log"
+  }
+}

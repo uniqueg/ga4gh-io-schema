@@ -161,8 +161,11 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   so that it is a dialect of Draft 2020-12. The specification states how
   input values and outputs are validated (against `properties.inputs` or
   `properties.outputs`, with the semantics of Draft 2020-12; `x-ga4gh-*`
-  keywords don't change the result), and the JavaScript tests validate
-  values against the examples with Ajv and @hyperjump/json-schema. (#37)
+  keywords don't change the result; request builders should assert
+  `format`). Clients that validate values with the Draft 2020-12 dialect
+  must check the IO schema against the profile first; Ajv and
+  @hyperjump/json-schema need the setup in the JavaScript guide. The
+  JavaScript tests validate values against the examples with both. (#37)
 - Rules for `x-ga4gh-hidden` and `x-ga4gh-error-message`: form renderers
   show hidden inputs that users must set (required, no default) and hidden
   inputs whose values fail; an error message covers the failures at the
@@ -182,6 +185,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   write `workflow_params` or, with `--request`, a WES `RunRequest`. (#18)
 - Language-neutral test vectors in `tests/vectors/` for the translation
   (`wes-params/`) and for file reference values (`file-values/`). (#18)
+- The subcommand `ga4gh-io-schema outputs` and the module
+  `ga4gh_io_schema.outputs`: build the normalised outputs object of a WES
+  run from `RunLog.outputs` (outputs by name, also qualified WDL names and
+  CWL `File` objects; Sapporo and WESkit listings matched by glob), validate
+  it, and report ambiguous, unconverted and undeclared outputs, unmatched
+  files and skipped entries of listings. Language-neutral test vectors in
+  `tests/vectors/wes-outputs/`; a page "Output normaliser" with the
+  supported shapes and their limits. The URIs of listed files percent-encode
+  every character but the unreserved ones of RFC 3986. (#19)
 
 ## v0.2 (2026-10-13)
 
