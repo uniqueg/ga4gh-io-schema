@@ -310,8 +310,8 @@ tests/conformance/
   [`schemas/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/schemas),
   loaded from local copies: a runner maps each `$id` of `schemas/` to its
   file. A runner checks `$schema` before the meta-schema (requirement 3
-  of [Validator](#validator)). Error messages differ between validators and are not part of the
-  suite. Files ending in `.license` hold licence information
+  of [Validator](#validator)). Error messages differ between validators
+  and are not part of the suite. Files ending in `.license` hold licence information
   ([REUSE](https://reuse.software/)) and are not cases.
 - **Test vectors** in
   [`tests/vectors/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/tests/vectors)

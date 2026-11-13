@@ -68,6 +68,12 @@ against `properties.inputs` of the IO schema, and normalised outputs against
   values against a copy of the IO schema in which every `$schema` that
   names the profile (at the root and in embedded resources) names Draft
   2020-12 (`https://json-schema.org/draft/2020-12/schema`) instead.
+  [JavaScript validators](../tools/javascript.md#validating-input-values)
+  describes a validator that needs this for IO schemas with embedded
+  resources that name the profile.
+  [JavaScript validators](../tools/javascript.md#validating-input-values)
+  describes a validator that needs this for IO schemas with embedded
+  resources that name the profile.
 - `format` is an annotation in Draft 2020-12. A request builder SHOULD
   assert `format` on values for the formats that its validator supports
   (e.g., `date` for date widgets). Validators differ in the formats they
@@ -102,7 +108,7 @@ The meta-schema has two parts.
 that
 
 - names the meta-schema in `$schema`, by its versioned `$id`, if it sets
-  `$schema` (see below for why the meta-schema doesn't require it);
+  `$schema` (see above for why the meta-schema doesn't require it);
 - has an absolute URI as `$id`, if it sets `$id`, and not the URL of a
   branch (see [Identifiers and
   versions](identity.md#identifiers-and-versions));

@@ -8,7 +8,11 @@
 import { readFileSync, readdirSync } from "node:fs";
 
 import { removeUriSchemePlugin } from "@hyperjump/browser";
-import { setShouldValidateFormat } from "@hyperjump/json-schema/draft-2020-12";
+import {
+  hasSchema,
+  registerSchema,
+  setShouldValidateFormat,
+} from "@hyperjump/json-schema/draft-2020-12";
 import "@hyperjump/json-schema/formats";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
@@ -73,4 +77,18 @@ export function setUpHyperjump() {
   removeUriSchemePlugin("http");
   removeUriSchemePlugin("https");
   setShouldValidateFormat(true);
+}
+
+/**
+ * Set up @hyperjump/json-schema offline (see setUpHyperjump()) and register
+ * the profile and its vocabularies from the local copies, unless they are
+ * registered already: hyperjump's registry is global, and registering a
+ * schema twice fails. Tests that use the profile call it themselves, so that
+ * they don't depend on the order in which tests run.
+ */
+export function registerProfile() {
+  setUpHyperjump();
+  for (const schema of [...VOCABULARY_SCHEMAS, PROFILE]) {
+    if (!hasSchema(schema.$id)) registerSchema(schema);
+  }
 }

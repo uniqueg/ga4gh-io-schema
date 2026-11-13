@@ -80,7 +80,7 @@ for (const schema of vocabularies) ajv.addSchema(schema); // schemas/vocabularie
 ajv.addSchema(profile); // schemas/ga4gh-io-profile.schema.json
 const validateIoSchema = ajv.getSchema(profile.$id);
 
-if (ioSchema.$schema !== profile.$id) throw new Error("not an IO schema");
+if (ioSchema?.$schema !== profile.$id) throw new Error("not an IO schema");
 if (!validateIoSchema(ioSchema)) console.log(validateIoSchema.errors);
 ```
 
@@ -127,7 +127,7 @@ setShouldValidateFormat(true);
 for (const schema of vocabularies) registerSchema(schema);
 registerSchema(profile);
 
-if (ioSchema.$schema !== profile.$id) throw new Error("not an IO schema");
+if (ioSchema?.$schema !== profile.$id) throw new Error("not an IO schema");
 const output = await validate(profile.$id, ioSchema);
 if (!output.valid) console.log(output.errors);
 ```
@@ -194,3 +194,39 @@ against its dialect. This is why the meta-schema doesn't require `$schema`
 (see [Structure of the
 meta-schema](../specification/meta-schema.md#structure-of-the-meta-schema)),
 and why the check above tests `$schema` itself.
+
+hyperjump also checks an embedded resource (a subschema with an `$id` of
+its own, e.g., a shared definition bundled into `$defs`, see [One workflow,
+several engines](../specification/identity.md#one-workflow-several-engines))
+against the dialect that the resource's own `$schema` names. An embedded
+resource that names the profile is checked against the rules for the top
+level of an IO schema, which it doesn't meet (e.g., it has no `inputs`), and
+hyperjump rejects the whole IO schema with "Invalid Schema". For such IO
+schemas, register a copy in which every `$schema` that names the profile,
+at the root and in embedded resources, names Draft 2020-12 instead, as
+[Dialect and validation of
+values](../specification/meta-schema.md#dialect-and-validation-of-values)
+allows:
+
+```js
+const DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema";
+const toDraft = (value) =>
+  Array.isArray(value)
+    ? value.map(toDraft)
+    : value !== null && typeof value === "object"
+      ? Object.fromEntries(
+          Object.entries(value).map(([key, item]) => [
+            key,
+            key === "$schema" && item === profile.$id ? DRAFT_2020_12 : toDraft(item),
+          ]),
+        )
+      : value;
+registerSchema(toDraft(ioSchema), base);
+```
+
+The function rewrites every member `$schema` whose value is the profile's
+`$id`, also where it isn't a keyword: inside the values of `const`, `enum`,
+`default` or `examples` that are objects with such a member. A rewritten
+`const` or `enum` would change the values that the copy accepts, so a
+client that can't rule such values out walks only the schemas of the IO
+schema instead.
