@@ -12,7 +12,7 @@ import pytest
 
 from ga4gh_io_schema import cwl
 from ga4gh_io_schema.cli.app import load_commands
-from ga4gh_io_schema.cli.base import ROOT
+from ga4gh_io_schema.cli.base import ROOT, ErrorKind, read_error
 from ga4gh_io_schema.cli.convert import CONVERT, CONVERT_HELP, conversion_result
 from ga4gh_io_schema.converters import common, snakemake, wdl
 
@@ -23,6 +23,7 @@ from ga4gh_io_schema.converters import common, snakemake, wdl
         (),
         ("properties", "inputs", 0, "items"),
         ("_a", "a_1", "1a", "a.b", "x-ga4gh-file", "it's", "a\\b", "ä"),
+        ("a\n", "properties", "b\n"),
     ],
 )
 def test_json_path_matches_validator(pointer: tuple[str | int, ...]) -> None:
@@ -50,6 +51,7 @@ def test_converters_share_parts() -> None:
         assert module.ConversionError is common.ConversionError
         assert module.json_path is common.json_path
     assert issubclass(cwl.CwlConversionError, common.ConversionError)
+    assert cwl.notes_as_dicts is common.notes_as_dicts
     assert snakemake.MAX_VALUES == cwl.MAX_DOCUMENT_NODES == common.MAX_SOURCE_VALUES
 
 
@@ -104,3 +106,30 @@ def test_conversion_result(as_json: bool, capsys: pytest.CaptureFixture[str]) ->
     }
     expected = "" if as_json else "Note: Guessed. (at $.a)\n"
     assert capsys.readouterr().err == expected
+
+
+@pytest.mark.parametrize(
+    ("exc", "message"),
+    [
+        (
+            FileNotFoundError(2, "No such file"),
+            "File not found - [Errno 2] No such file",
+        ),
+        (
+            UnicodeDecodeError("utf-8", b"\xff", 0, 1, "bad"),
+            "Not UTF-8 text - <stdin>: ",
+        ),
+        (PermissionError(13, "Denied"), "Can't read - [Errno 13] Denied"),
+    ],
+)
+def test_read_error(exc: OSError | UnicodeDecodeError, message: str) -> None:
+    """Test that read errors are described as I/O errors.
+
+    Args:
+        exc: The error of reading the input.
+        message: Start of the expected message.
+    """
+    error = read_error(exc, "-")
+
+    assert error.kind == ErrorKind.IO
+    assert error.message.startswith(message)

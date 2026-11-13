@@ -16,7 +16,6 @@ import ga4gh_io_schema
 from ga4gh_io_schema import cwl
 from ga4gh_io_schema.cli import main
 from ga4gh_io_schema.cli.commands import convert_cwl
-from ga4gh_io_schema.cli.convert import CONVERT_HELP
 from ga4gh_io_schema.validator import load_profile, validate_schema
 
 CWL_DIR = Path(__file__).resolve().parent / "data" / "cwl"
@@ -1300,7 +1299,7 @@ def test_convert_group_is_shared() -> None:
     from ga4gh_io_schema.cli.base import ROOT
 
     group = ROOT.groups["convert"]
-    assert group.help == CONVERT_HELP
+    assert group.help == convert_cwl.CONVERT_HELP
     assert isinstance(group.commands["cwl"], convert_cwl.ConvertCwlCommand)
 
 

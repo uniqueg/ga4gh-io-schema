@@ -19,6 +19,7 @@ from ga4gh_io_schema.cli.base import (
     read_text,
 )
 from ga4gh_io_schema.cli.convert import CONVERT
+from ga4gh_io_schema.cli.convert import CONVERT_HELP as CONVERT_HELP
 from ga4gh_io_schema.converters.common import notes_as_dicts
 from ga4gh_io_schema.validator import validate_schema
 

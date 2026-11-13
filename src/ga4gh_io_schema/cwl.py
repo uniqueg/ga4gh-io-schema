@@ -48,6 +48,7 @@ from ga4gh_io_schema.converters.common import (
     Note,
     child_path,
 )
+from ga4gh_io_schema.converters.common import notes_as_dicts as notes_as_dicts
 from ga4gh_io_schema.validator import load_profile
 
 #: Classes of CWL documents that have inputs and outputs.
@@ -102,7 +103,8 @@ class ConversionNote(Note):
     """Part of a CWL document that the converter couldn't convert.
 
     A :class:`~ga4gh_io_schema.converters.common.Note` that takes the
-    location first.
+    location first, as the CWL converter did before the notes were shared.
+    Like every dataclass, it equals only notes of its own class.
 
     Attributes:
         location: JSON path of the affected schema in the converted IO schema.

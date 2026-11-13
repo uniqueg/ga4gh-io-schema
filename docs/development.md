@@ -125,7 +125,12 @@ there, so a new subcommand needs no change elsewhere:
    with an `ErrorKind`, which sets the label and the exit status. Read input
    with `read_text()` or `read_json()`, which accept `-` for standard input.
 2. Register it at the end of the module: `ROOT.register(MyCommand())`, or, in
-   a group, `ROOT.group("convert", help="...").register(MyCommand())`.
+   a group, `ROOT.group("name", help="...").register(MyCommand())`. A
+   converter registers in the `convert` group, which
+   `ga4gh_io_schema.cli.convert` declares once:
+   `CONVERT.register(MyCommand())`; `conversion_result()` of that module
+   turns a `Conversion` (see `ga4gh_io_schema.converters.common`) into the
+   result, with the notes on standard error.
 3. Test it through `main()` of `ga4gh_io_schema.cli`, with 100% coverage.
    Tests of the framework build their own `CommandGroup` and pass it as
    `main(argv, root=group)`, so that they don't change `ROOT`.
