@@ -29,6 +29,21 @@ import {
 const TOOL = readJson(new URL("example_tool.schema.json", EXAMPLES));
 const WORKFLOW = readJson(new URL("example_workflow.schema.json", EXAMPLES));
 const INVALID = readJson(new URL("invalid/ui-widget-unknown.schema.json", SUITE));
+const NOT_A_URI = readJson(new URL("invalid/ontology-not-uri.schema.json", SUITE));
+
+// An IO schema without `$id` (which the profile allows), with a `format`;
+// clients register it under a key of their choice.
+const DATED = {
+  $schema: PROFILE.$id,
+  properties: {
+    inputs: {
+      type: "object",
+      properties: { day: { type: "string", format: "date" } },
+    },
+  },
+};
+const DATED_KEY = "urn:example:dated";
+const keyOf = (schema) => schema.$id ?? DATED_KEY;
 
 // Input values; the valid ones are those of tests/test_examples.py.
 const CASES = [
@@ -69,6 +84,8 @@ const CASES = [
     },
     false,
   ],
+  ["a date", DATED, { day: "2020-12-31" }, true],
+  ["a value that fails its format", DATED, { day: "2020-13-45" }, false],
 ];
 
 /** Return the URI of `inputs` of an IO schema with the given `$id`. */
@@ -92,7 +109,8 @@ function ajvValidator() {
   const ajv = ajvWithProfile();
   ajv.addSchema(TOOL);
   ajv.addSchema(WORKFLOW);
-  return async (schema, values) => ajv.validate(inputsUri(schema.$id), values);
+  ajv.addSchema(DATED, DATED_KEY);
+  return async (schema, values) => ajv.validate(inputsUri(keyOf(schema)), values);
 }
 
 /**
@@ -105,8 +123,9 @@ function hyperjumpValidator() {
   for (const schema of [TOOL, WORKFLOW]) {
     registerSchema({ ...schema, $schema: DRAFT_2020_12 });
   }
+  registerSchema({ ...DATED, $schema: DRAFT_2020_12 }, DATED_KEY);
   return async (schema, values) =>
-    (await validate(inputsUri(schema.$id), values)).valid;
+    (await validate(inputsUri(keyOf(schema)), values)).valid;
 }
 
 for (const [name, setUp] of [
@@ -128,6 +147,16 @@ for (const [name, setUp] of [
 describe("behaviour of the validators", () => {
   test("Ajv checks an IO schema against the profile when it is added", () => {
     assert.throws(() => ajvWithProfile().addSchema(INVALID), /schema is invalid/);
+  });
+
+  // Ajv compiles a meta-schema with format assertion off, so the profile
+  // added with addMetaSchema is no conformance check; the profile added
+  // with addSchema is (as in conformance.test.mjs).
+  test("Ajv doesn't assert formats of the profile added as a meta-schema", () => {
+    assert.equal(ajvWithProfile().validate(PROFILE.$id, NOT_A_URI), true);
+    const checker = newAjv({ strict: false });
+    checker.addSchema(PROFILE);
+    assert.equal(checker.validate(PROFILE.$id, NOT_A_URI), false);
   });
 
   // hyperjump removes `$schema` from a schema before it checks the schema

@@ -77,7 +77,10 @@ against `properties.inputs` of the IO schema, and normalised outputs against
   rely on a client's check of `format`.
 - References in `inputs` (e.g., to the `$defs` of the IO schema) MUST
   resolve against the IO schema; a validator that follows them validates
-  against `inputs` in place, e.g., by its URI `<$id>#/properties/inputs`.
+  against `inputs` in place, e.g., by the URI
+  `<base URI>#/properties/inputs`, where the base URI is the `$id` of the
+  IO schema or, without one, a URI that the client assigns (e.g., its
+  retrieval URL).
 
 ## Where the meta-schema is served
 
