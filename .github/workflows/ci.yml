@@ -88,6 +88,11 @@ jobs:
           ga4gh-io-schema validate tests/data/example_wdl.schema.json
           ga4gh-io-schema validate - < tests/data/example_tool.schema.json
 
+      - name: E2E CLI Conversion (CWL)
+        run: |
+          ga4gh-io-schema convert cwl tests/data/cwl/call-variants.cwl -o "$RUNNER_TEMP/call-variants.json"
+          ga4gh-io-schema validate "$RUNNER_TEMP/call-variants.json"
+
       # Each bad schema must fail with exit code 1 and a validation error, not
       # with any error (e.g. a missing file); tests/test_cli.py checks the
       # exact message of each.

@@ -117,6 +117,7 @@ nav:
       - JavaScript validators: tools/javascript.md
       - Converters: tools/converters.md
       - Snakemake converter: tools/convert-snakemake.md
+      - CWL converter: tools/cwl.md
       - WDL converter: tools/convert-wdl.md
       - WES parameters: tools/wes-params.md
   - Adoption:
