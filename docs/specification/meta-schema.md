@@ -116,14 +116,15 @@ Each check of unevaluated keywords sits in an `allOf` branch next to the
 Draft 2020-12 rules, not in the schema that applies them, and applies only
 the vocabularies. Some validators (e.g., Python's `jsonschema`) evaluate the
 subschemas that a check of unevaluated keywords sees once more, to collect
-their annotations; if the check saw the Draft 2020-12
-rules, which apply `$defs/node` to every nested schema, each level would
-validate all levels below it again, in time exponential in the depth of
-nesting. Split this way, validation takes time roughly linear in the size of
-the schema, and accepts and rejects exactly what a single check over all
-keywords would. One exception remains: the check does see the file
-vocabulary, so each `x-ga4gh-tabular-schema` nested in another one doubles
-the time of the tabular schemas inside it. The `$ref`s
-between the schemas use the versioned `$id`s; the validator resolves them
-from the copies that the package ships and never fetches them from the
-network.
+their annotations. If the check saw the Draft 2020-12 rules, which apply
+`$defs/node` to every nested schema, each level would validate all levels
+below it again, in time exponential in the depth of nesting. Split this
+way, validation takes time roughly linear in the size of the schema, and
+accepts and rejects exactly what a single check over all keywords would.
+A known limitation remains: the check does see the file vocabulary, so with
+such validators each `x-ga4gh-tabular-schema` nested in another one
+multiplies the time of the schemas inside it (about twice per level).
+
+The `$ref`s between the schemas use the versioned `$id`s; the validator
+resolves them from the copies that the package ships and never fetches them
+from the network.

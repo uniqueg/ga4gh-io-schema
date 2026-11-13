@@ -172,8 +172,8 @@ def resolve(schema: dict[str, Any], ref: str) -> Any:
 def test_varlociraptor_references_resolve() -> None:
     """Test a public config schema with definitions and references.
 
-    The library is used without the CLI's check against the profile; the
-    CLI tests check that, and ``test_performance.py`` how long it takes.
+    The library is used without the CLI's check against the profile, which
+    the CLI tests cover; ``test_performance.py`` times that check.
     """
     source = load_schema(
         (VARLOCIRAPTOR / "config.schema.yaml").read_text(encoding="utf-8"), "x"

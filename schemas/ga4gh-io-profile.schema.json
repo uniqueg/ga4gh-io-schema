@@ -109,9 +109,14 @@
       ],
       "$defs": {
         "schema": {
-          "title": "JSON Schema Draft 2020-12",
-          "description": "The rules of JSON Schema Draft 2020-12. Referenced from within the resource of $defs/node, so that the dynamic scope contains its anchor and the applicators of Draft 2020-12 apply $defs/node to every nested schema. Used by $defs/node and by the top level.",
-          "$ref": "https://json-schema.org/draft/2020-12/schema"
+          "title": "JSON Schema Draft 2020-12 and nested schemas",
+          "description": "The rules of JSON Schema Draft 2020-12, and $defs/node for the nested schemas of the vocabularies (x-ga4gh-tabular-schema). Referenced from within the resource of $defs/node, so that the dynamic scope contains its anchor and the applicators of Draft 2020-12 apply $defs/node to every nested schema. Used by $defs/node and by the top level.",
+          "$ref": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "x-ga4gh-tabular-schema": {
+              "$dynamicRef": "#meta"
+            }
+          }
         },
         "keywords": {
           "title": "GA4GH IO Profile Keywords",

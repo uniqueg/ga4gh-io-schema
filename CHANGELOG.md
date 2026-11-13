@@ -173,15 +173,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - Validation against the meta-schema takes time roughly linear in the size
-  of the schema, no longer exponential in its depth of nesting (e.g., the
-  converted `dna-seq-varlociraptor` config in about 0.05 s instead of 7 s,
-  arrays of arrays 7 levels deep in milliseconds instead of 44 s). The
-  meta-schema checks the `x-ga4gh-*` keywords in a branch next to the
-  Draft 2020-12 rules (`$defs/node/$defs/schema`), so that its check of
-  unevaluated keywords no longer validates every nested schema again; it
-  accepts and rejects the same schemas as before. A new positive case of
-  the conformance suite, `nested.schema.json`, has deeply nested parameters.
-  (#47)
+  of the schema, no longer exponential in its depth of nesting: deeply
+  nested parameters (e.g., arrays of arrays, nested records) validate in
+  milliseconds instead of seconds or minutes. The meta-schema accepts and
+  rejects the same schemas as before, with the same error messages. The
+  conformance suite has a new positive case with deeply nested parameters,
+  `nested.schema.json`. (#47)
 
 ## v0.2 (2026-10-13)
 

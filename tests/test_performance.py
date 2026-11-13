@@ -7,7 +7,10 @@
 Validation once took time exponential in the nesting depth of a schema
 (issue #47): every level validated its subschemas several times. These
 tests validate deeply nested schemas within a time budget that is generous
-for linear time and far too short for exponential time.
+for linear time and far too short for exponential time. They need SIGALRM
+to stop a slow run early, and are skipped where it is missing (e.g., on
+Windows); ``test_packaging.py`` checks the structure that keeps validation
+fast on every platform, without timing it.
 """
 
 import signal
@@ -28,7 +31,7 @@ from ga4gh_io_schema.validator import load_profile, validate_schema
 #: more than a minute.
 BUDGET = 2.0
 
-VARLOCIRAPTOR = (
+VARLOCIRAPTOR_CONFIG = (
     Path(__file__).resolve().parent
     / "data"
     / "snakemake"
@@ -146,20 +149,15 @@ def nested_records(depth: int, width: int) -> dict[str, Any]:
     return schema
 
 
-@pytest.mark.parametrize("depth", [10])
-def test_nested_arrays_validate_in_time(depth: int) -> None:
-    """Test that a deeply nested array schema validates within the budget.
-
-    Args:
-        depth: The number of nested arrays.
-    """
-    schema = io_schema(nested_arrays(depth))
+def test_nested_arrays_validate_in_time() -> None:
+    """Test that arrays nested 10 levels deep validate within the budget."""
+    schema = io_schema(nested_arrays(10))
 
     with time_budget(BUDGET):
         validate_schema(schema)
 
 
-@pytest.mark.parametrize(("depth", "width"), [(4, 3), (6, 2)])
+@pytest.mark.parametrize(("depth", "width"), [(4, 3), (6, 1), (6, 2)])
 def test_nested_records_validate_in_time(depth: int, width: int) -> None:
     """Test that a schema of nested records validates within the budget.
 
@@ -173,13 +171,33 @@ def test_nested_records_validate_in_time(depth: int, width: int) -> None:
         validate_schema(schema)
 
 
+@pytest.mark.parametrize("size", [10, 30])
+def test_groups_of_inputs_validate_in_time(size: int) -> None:
+    """Test that groups of inputs (records of scalars) validate in time.
+
+    The shape of IO schemas that group the inputs of a large workflow,
+    e.g., 30 groups of 30 inputs each.
+
+    Args:
+        size: The number of groups, and of inputs in each group.
+    """
+    groups = {
+        f"group_{group}": nested_records(1, size) | {"title": f"Group {group}"}
+        for group in range(size)
+    }
+    schema = io_schema({"type": "object", "properties": groups})
+
+    with time_budget(BUDGET):
+        validate_schema(schema)
+
+
 def test_nested_schemas_in_tabular_schemas_validate_in_time() -> None:
     """Test that nested schemas in tabular schemas validate within the budget.
 
-    Each level of ``x-ga4gh-tabular-schema`` in another one still doubles the
-    time (see "Structure of the meta-schema" in
-    ``docs/specification/meta-schema.md``); nesting
-    within a tabular schema doesn't.
+    Each ``x-ga4gh-tabular-schema`` nested in another one still multiplies
+    the time (a known limitation, see "Structure of the meta-schema" in
+    ``docs/specification/meta-schema.md``); other nesting within a tabular
+    schema doesn't.
     """
     schema: dict[str, Any] = nested_records(4, 3)
     for _ in range(2):
@@ -202,7 +220,7 @@ def test_varlociraptor_conversion_validates_in_time() -> None:
     The acceptance criterion of issue #47.
     """
     schema = to_ga4gh(
-        load_schema(VARLOCIRAPTOR.read_text(encoding="utf-8"), "config")
+        load_schema(VARLOCIRAPTOR_CONFIG.read_text(encoding="utf-8"), "config")
     ).schema
     validate_schema(schema)  # Warm-up: load the meta-schema once
 

@@ -1,7 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/file.schema.json",
-  "$dynamicAnchor": "meta",
   "title": "GA4GH IO Profile File Keywords",
   "description": "Keywords that describe file parameters: file references and the structure of tabular files.",
   "properties": {
@@ -9,8 +8,8 @@
       "$ref": "#/$defs/fileReference"
     },
     "x-ga4gh-tabular-schema": {
-      "$dynamicRef": "#meta",
-      "description": "Experimental. A nested JSON schema describing the rows of a tabular file (e.g., a sample sheet), as a hint for clients (e.g., to offer a spreadsheet editor). Not a validation rule: validation of tabular files is deferred. Checked by the same rules as every other schema of the IO schema."
+      "description": "Experimental. A nested JSON schema describing the rows of a tabular file (e.g., a sample sheet), as a hint for clients (e.g., to offer a spreadsheet editor). Not a validation rule: validation of tabular files is deferred. Checked by the same rules as every other schema of the IO schema.",
+      "$comment": "Defined here, so that the keyword counts as evaluated; the meta-schema applies its rules ($defs/node) to the value in $defs/node/$defs/schema, next to the Draft 2020-12 rules, not here: the check of unevaluated keywords sees this vocabulary, and validators that evaluate what it sees once more would validate nested tabular schemas again at each level."
     }
   },
   "dependentSchemas": {
