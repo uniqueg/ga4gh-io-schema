@@ -48,15 +48,42 @@ reasons of reports are not part of the vectors.
 
 ## Provenance
 
-No case holds data of real users or runs other than the one below.
+No case holds data of real users. The real runs below ran tiny test
+workflows (no real data) on local Docker containers of the servers, in
+November 2026 ([#55](https://github.com/uniqueg/ga4gh-io-schema/issues/55)).
+Their run logs are `GET /runs/{run_id}` as the server returned it, cut down
+to `run_id`, `state` and `outputs`, with host paths, run IDs and signatures
+of presigned URLs replaced. The workflows are in
+[`tests/data/wes-runs/`](../../data/wes-runs/).
 
 | Case | Source |
 | ----- | ----- |
 | `cwltool-file-objects` | Real run: the output object of cwltool 3.3 (`--no-container`) for a test tool, paths anonymised |
-| `cwl-remote-objects` | Derived: the CWL output object as cwltool writes it, with remote locations as Toil reports them when it writes to object storage |
-| `wdl-qualified-names` | Derived: WDL outputs keyed by qualified names, as documented for Cromwell, miniwdl and Conquest |
-| `wdl-local-paths` | Derived: miniwdl's outputs as absolute local paths |
-| `sapporo-listing` | Derived from the source of sapporo-service: `sapporo/run.py` (the listing of `outputs`, `file_url` as `{base_url}/runs/{run_id}/outputs/{file_name}`) and `sapporo/schemas.py` (`FileObject`) |
-| `weskit-listing` | Derived from the source of WESkit: `weskit/tasks/submission_worker.py` (paths relative to the working directory), `weskit/tasks/monitoring_worker.py` (`outputs["filesystem"]`) and `weskit/classes/Manager.py` (`outputs["S3"]`, presigned URLs) |
+| `sapporo-listing` | Real run: sapporo-service 2.4.2 with Nextflow 26.10.0, `main.nf`; the run log is the same as the one derived before from the source of sapporo-service (`sapporo/run.py`, `sapporo/schemas.py`) |
+| `sapporo-cwltool-listing` | Real run: sapporo-service 2.4.2 with cwltool 3.3.20260925135507, `qc.cwl` |
+| `weskit-listing` | Real run: WESkit (image `api:latest` of 2026-07, Snakemake 9.16.3), `variant-calling/Snakefile` with the parameters `{"title": "calls"}`, and S3 settings so that it adds presigned URLs (it signs them locally; no S3 store ran) |
+| `toil-cwl-local-files` | Real run: Toil 9.5.0 `toil server` (`--bypass_celery`) with toil-cwl-runner and a local job store, `qc.cwl` |
+| `cromwell-wdl-local-paths` | Real run: the WES API of Cromwell 92 in server mode, local backend, `rnaseq.wdl` |
+| `cwl-remote-objects` | Derived: the CWL output object as cwltool writes it, with remote locations as Toil reports them when it writes to object storage (`--dest_bucket_base`; not captured: it needs an S3 store) |
+| `wdl-qualified-names` | Derived: WDL outputs keyed by qualified names, as documented for Cromwell, miniwdl and Conquest, with `gs:` URIs of Cromwell on Google Cloud (not captured: it needs a cloud backend) |
+| `wdl-local-paths` | Derived: miniwdl's outputs as absolute local paths (not captured: no WES server here runs miniwdl, and the WES server of Toil 9.5 fails WDL runs with a local job store, as it passes the CWL option `--outdir` to toil-wdl-runner); `cromwell-wdl-local-paths` has the same shape from a real run |
 | `nextflow-no-outputs` | Derived: Nextflow on servers that report no outputs |
 | other cases | Synthetic: rules of the specification (checks of listings, globs, partial and non-conformant runs, errors) |
+
+The real runs differ from the derived cases in these points, which the
+normaliser already handles:
+
+- Sapporo lists the files of the output directory for every engine, also
+  for CWL: `RunLog.outputs` isn't the CWL output object, and cwltool puts
+  files directly into the output directory (files keep only their base
+  name, `Directory` outputs their own name).
+- WESkit lists the files that the run wrote into its working directory
+  (`config.yaml`, results, `.snakemake/log/` and `.snakemake/metadata/`),
+  in the order of the file system, but not the Snakefile, which it runs
+  from its workflows directory. `S3` has a presigned URL (AWS signature
+  version 2: `AWSAccessKeyId`, `Signature`, `Expires`) for every listed
+  file, in a bucket named by the first four characters of the run ID.
+- Toil's CWL `location`s are percent-encoded `file:` URIs (e.g.,
+  `report%20%231.html`), its `path`s are not.
+- The WES API of Cromwell reports absolute local paths on the local
+  backend, under `cromwell-executions/<workflow>/<run_id>/`.

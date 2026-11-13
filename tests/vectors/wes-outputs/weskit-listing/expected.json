@@ -1,16 +1,20 @@
 {
-  "description": "WESkit: RunLog.outputs is {\"filesystem\": [...]}, the files of the working directory of the run, relative to it, and, with S3, presigned URLs of the same files, which carry credentials and are ignored. Matches are sorted by code point (B before a).",
+  "description": "WESkit (master of 2026-07, Snakemake 9.16.3): RunLog.outputs is {\"filesystem\": [...]}, the files of the working directory of the run, relative to it, in the order of the file system, and, with S3, presigned URLs of the same files (bucket: the first four characters of the run ID), which carry credentials and are ignored. Matches are sorted by code point (B before a). Captured from a real run; run ID anonymised, signatures redacted.",
   "conformance": "conformant",
   "outputs": {
     "calls": [
-      "s3://example-bucket/weskit/run-6/results/calls/B.vcf.gz",
-      "s3://example-bucket/weskit/run-6/results/calls/a.vcf.gz"
+      "s3://wesk/weskit-run-6/results/calls/B.vcf.gz",
+      "s3://wesk/weskit-run-6/results/calls/a.vcf.gz"
     ],
-    "report": "s3://example-bucket/weskit/run-6/results/report.html"
+    "report": "s3://wesk/weskit-run-6/results/report.html"
   },
   "unmatchedFiles": [
-    "s3://example-bucket/weskit/run-6/.snakemake/metadata/cmVzdWx0cw%3D%3D",
-    "s3://example-bucket/weskit/run-6/Snakefile",
-    "s3://example-bucket/weskit/run-6/config.yaml"
+    "s3://wesk/weskit-run-6/.snakemake/log/2026-11-13T020908.258601.snakemake.log",
+    "s3://wesk/weskit-run-6/.snakemake/metadata/cmVzdWx0cy9jYWxscy9CLnZjZi5neg%3D%3D",
+    "s3://wesk/weskit-run-6/.snakemake/metadata/cmVzdWx0cy9jYWxscy9CLnZjZi5nei50Ymk%3D",
+    "s3://wesk/weskit-run-6/.snakemake/metadata/cmVzdWx0cy9jYWxscy9hLnZjZi5neg%3D%3D",
+    "s3://wesk/weskit-run-6/.snakemake/metadata/cmVzdWx0cy9jYWxscy9hLnZjZi5nei50Ymk%3D",
+    "s3://wesk/weskit-run-6/.snakemake/metadata/cmVzdWx0cy9yZXBvcnQuaHRtbA%3D%3D",
+    "s3://wesk/weskit-run-6/config.yaml"
   ]
 }

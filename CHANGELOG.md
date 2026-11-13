@@ -193,7 +193,9 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   files and skipped entries of listings. Language-neutral test vectors in
   `tests/vectors/wes-outputs/`; a page "Output normaliser" with the
   supported shapes and their limits. The URIs of listed files percent-encode
-  every character but the unreserved ones of RFC 3986. (#19)
+  every character but the unreserved ones of RFC 3986. (#19) The vectors of
+  Sapporo, WESkit, Toil and Cromwell are captured from real runs of these
+  servers. (#55)
 
 ## v0.2 (2026-10-13)
 

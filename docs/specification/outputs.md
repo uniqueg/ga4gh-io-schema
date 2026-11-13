@@ -249,8 +249,11 @@ report them, and how a schema finds them. The behaviour of engines and
 servers is informative: it was surveyed in November 2026 for
 [#11](https://github.com/uniqueg/ga4gh-io-schema/issues/11), with the WES
 servers Sapporo, WESkit and Conquest (a WES server that runs workflows from
-Git repositories), and may change with new versions. The test vectors of
-the normaliser record the shapes that it supports (see [Output
+Git repositories), and checked against real runs of Sapporo 2.4, WESkit,
+Toil 9.5 and Cromwell 92 for
+[#55](https://github.com/uniqueg/ga4gh-io-schema/issues/55); it may change
+with new versions. The test vectors of the normaliser record the shapes
+that it supports (see [Output
 normaliser](../tools/outputs.md#supported-shapes)).
 
 | Language | Declared outputs | Reported by | How a schema finds them |
@@ -261,7 +264,9 @@ normaliser](../tools/outputs.md#supported-shapes)).
 | Snakemake | no named outputs of the workflow; the `output` files of rules, relative to the working directory (usually the targets of the first rule, e.g., `rule all`) | Not by name, in the WES servers checked | By glob, relative to the working directory. |
 
 WES servers that run several engines differ too: Sapporo reports a list of
-files without names, and WESkit an object with a list of files
+files without names, for every engine (also for CWL: cwltool puts output
+files directly into the output directory, so globs match their base
+names), and WESkit an object with a list of files
 (`{"filesystem": [...]}`). Outputs of these servers are found by glob, from
 these lists. Scalars (e.g., a count) can't be found by glob; for engines
 without named outputs, schemas declare only outputs that are files.

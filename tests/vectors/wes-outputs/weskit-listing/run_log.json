@@ -1,19 +1,34 @@
 {
-  "run_id": "run-6",
+  "run_id": "weskit-run-6",
   "state": "COMPLETE",
   "outputs": {
-    "filesystem": [
-      "Snakefile",
-      "config.yaml",
-      "results/calls/a.vcf.gz",
-      "results/calls/a.vcf.gz.tbi",
-      "results/calls/B.vcf.gz",
-      "results/calls/B.vcf.gz.tbi",
-      "results/report.html",
-      ".snakemake/metadata/cmVzdWx0cw=="
-    ],
     "S3": [
-      "https://s3.example.org/example-bucket/weskit/run-6/results/report.html?X-Amz-Signature=REDACTED"
+      "https://s3.example.org/wesk/weskit-run-6/config.yaml?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353",
+      "https://s3.example.org/wesk/weskit-run-6/results/report.html?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353",
+      "https://s3.example.org/wesk/weskit-run-6/results/calls/a.vcf.gz?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353",
+      "https://s3.example.org/wesk/weskit-run-6/results/calls/B.vcf.gz.tbi?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353",
+      "https://s3.example.org/wesk/weskit-run-6/results/calls/B.vcf.gz?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353",
+      "https://s3.example.org/wesk/weskit-run-6/results/calls/a.vcf.gz.tbi?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353",
+      "https://s3.example.org/wesk/weskit-run-6/.snakemake/log/2026-11-13T020908.258601.snakemake.log?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353",
+      "https://s3.example.org/wesk/weskit-run-6/.snakemake/metadata/cmVzdWx0cy9jYWxscy9CLnZjZi5neg%3D%3D?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353",
+      "https://s3.example.org/wesk/weskit-run-6/.snakemake/metadata/cmVzdWx0cy9yZXBvcnQuaHRtbA%3D%3D?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353",
+      "https://s3.example.org/wesk/weskit-run-6/.snakemake/metadata/cmVzdWx0cy9jYWxscy9CLnZjZi5nei50Ymk%3D?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353",
+      "https://s3.example.org/wesk/weskit-run-6/.snakemake/metadata/cmVzdWx0cy9jYWxscy9hLnZjZi5nei50Ymk%3D?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353",
+      "https://s3.example.org/wesk/weskit-run-6/.snakemake/metadata/cmVzdWx0cy9jYWxscy9hLnZjZi5neg%3D%3D?AWSAccessKeyId=EXAMPLEKEYID&Signature=REDACTED&Expires=1794539353"
+    ],
+    "filesystem": [
+      "config.yaml",
+      "results/report.html",
+      "results/calls/a.vcf.gz",
+      "results/calls/B.vcf.gz.tbi",
+      "results/calls/B.vcf.gz",
+      "results/calls/a.vcf.gz.tbi",
+      ".snakemake/log/2026-11-13T020908.258601.snakemake.log",
+      ".snakemake/metadata/cmVzdWx0cy9jYWxscy9CLnZjZi5neg==",
+      ".snakemake/metadata/cmVzdWx0cy9yZXBvcnQuaHRtbA==",
+      ".snakemake/metadata/cmVzdWx0cy9jYWxscy9CLnZjZi5nei50Ymk=",
+      ".snakemake/metadata/cmVzdWx0cy9jYWxscy9hLnZjZi5nei50Ymk=",
+      ".snakemake/metadata/cmVzdWx0cy9jYWxscy9hLnZjZi5neg=="
     ]
   }
 }

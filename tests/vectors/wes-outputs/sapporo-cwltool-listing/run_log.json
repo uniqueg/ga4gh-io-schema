@@ -1,0 +1,34 @@
+{
+  "run_id": "run-16",
+  "state": "COMPLETE",
+  "outputs": [
+    {
+      "file_name": "counts/s1.tsv",
+      "file_url": "https://wes.example.org/runs/run-16/outputs/counts/s1.tsv"
+    },
+    {
+      "file_name": "multiqc_report.html",
+      "file_url": "https://wes.example.org/runs/run-16/outputs/multiqc_report.html"
+    },
+    {
+      "file_name": "report #1.html",
+      "file_url": "https://wes.example.org/runs/run-16/outputs/report%20%231.html"
+    },
+    {
+      "file_name": "s1.bam",
+      "file_url": "https://wes.example.org/runs/run-16/outputs/s1.bam"
+    },
+    {
+      "file_name": "s1.bam.bai",
+      "file_url": "https://wes.example.org/runs/run-16/outputs/s1.bam.bai"
+    },
+    {
+      "file_name": "s2.bam",
+      "file_url": "https://wes.example.org/runs/run-16/outputs/s2.bam"
+    },
+    {
+      "file_name": "s2.bam.bai",
+      "file_url": "https://wes.example.org/runs/run-16/outputs/s2.bam.bai"
+    }
+  ]
+}
