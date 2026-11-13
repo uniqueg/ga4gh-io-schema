@@ -84,6 +84,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   that regenerates it), a script that registers both in TRS-Filer, and a
   script that turns a request of `wes-params --request` into one for
   Conquest, submits it, waits for the run and normalises its outputs. (#24)
+- A guide for portals and clients: the steps from fetching an IO schema in
+  TRS to handing the values to a request builder, the rendering of unions
+  with a file reference (CWL `[File, string]`) and of hidden inputs that
+  must be set, and corrected notes on form libraries (Ajv needs
+  `strictSchema: false` and `'unsafe-eval'`; validators must not fetch
+  references). (#39)
 - A specification page "UI widgets": for each widget of the vocabulary, the
   types and keywords that it needs and the value that it produces; input
   widgets and output viewers kept apart. (#38)
