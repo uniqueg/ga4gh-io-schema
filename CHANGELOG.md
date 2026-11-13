@@ -169,6 +169,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   write `workflow_params` or, with `--request`, a WES `RunRequest`. (#18)
 - Language-neutral test vectors in `tests/vectors/` for the translation
   (`wes-params/`) and for file reference values (`file-values/`). (#18)
+- The subcommand `ga4gh-io-schema outputs` and the module
+  `ga4gh_io_schema.outputs`: build the normalised outputs object of a WES
+  run from `RunLog.outputs` (outputs by name, also qualified WDL names and
+  CWL `File` objects; Sapporo and WESkit listings matched by glob), validate
+  it, and report ambiguous, unconverted and undeclared outputs, unmatched
+  files and skipped entries of listings. Language-neutral test vectors in
+  `tests/vectors/wes-outputs/`; a page "Output normaliser" with the
+  supported shapes and their limits. The URIs of listed files percent-encode
+  every character but the unreserved ones of RFC 3986. (#19)
 
 ## v0.2 (2026-10-13)
 

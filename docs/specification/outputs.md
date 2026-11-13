@@ -114,8 +114,8 @@ A *normaliser* builds the object from what the WES server reports for a run
 can run in a client or in a gateway in front of WES servers. WES 1.1 has no
 field for the object; how structured outputs could become part of WES is
 discussed in [WES pull request #226](../related-work.md#wes-pull-request-226).
-The normaliser of the `ga4gh-io-schema` package is planned
-([#19](https://github.com/uniqueg/ga4gh-io-schema/issues/19)).
+The `ga4gh-io-schema` package has a normaliser (see [Output
+normaliser](../tools/outputs.md)).
 
 ## Finding outputs
 
@@ -168,14 +168,20 @@ matches:
 - It builds the URI of a match by percent-encoding each segment of the path
   (so that `?`, `#` and `%` in names stay part of the name) and appending
   the segments to the URI of the output directory, not by resolving the path
-  as a URI reference.
+  as a URI reference. Every character other than the unreserved characters
+  of [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986#section-2.3)
+  (letters, digits, `-`, `.`, `_` and `~`) is percent-encoded, as UTF-8 with
+  uppercase hexadecimal digits, so that every normaliser builds the same URI
+  (e.g., `s 1#.tsv` becomes `s%201%23.tsv`).
 - Where the server lists URIs instead of paths, a normaliser MUST accept a
   listed URI only if it starts with the URI of the output directory with
   exactly one trailing `/`, and has no query or fragment. It derives the
   relative path from the rest: split at `/`, each segment percent-decoded.
   The decoded path MUST pass the checks of listed paths above (e.g., a
-  listed `…/out/../8/secret.bam` is skipped), and the URI of a match is
-  built from it as above.
+  listed `…/out/../8/secret.bam` is skipped), and a decoded segment MUST
+  NOT contain `/` (e.g., `…/out/x%2F..%2F..%2Fsecret.bam` is skipped:
+  some storage treats `%2F` as `/`). The URI of a match is built from the
+  decoded path as above.
 
 Syntax:
 
@@ -244,8 +250,8 @@ servers is informative: it was surveyed in November 2026 for
 [#11](https://github.com/uniqueg/ga4gh-io-schema/issues/11), with the WES
 servers Sapporo, WESkit and Conquest (a WES server that runs workflows from
 Git repositories), and may change with new versions. The test vectors of
-the normaliser ([#19](https://github.com/uniqueg/ga4gh-io-schema/issues/19))
-are to record the shapes that it supports.
+the normaliser record the shapes that it supports (see [Output
+normaliser](../tools/outputs.md#supported-shapes)).
 
 | Language | Declared outputs | Reported by | How a schema finds them |
 | ----- | ----- | ----- | ----- |

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/rna-seq/wdl/1.0.0",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "WDL",
+    "descriptor_type_version": "1.0",
+    "entry_point": "rnaseq"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "qc_report": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        },
+        "alignments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          }
+        },
+        "gene_counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file"
+            }
+          }
+        },
+        "optional_plot": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        },
+        "samples_passed_qc": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "qc_report",
+        "alignments"
+      ]
+    }
+  }
+}

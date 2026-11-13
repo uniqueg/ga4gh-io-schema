@@ -1,0 +1,7 @@
+{
+  "outputDir": "s3://example-bucket/runs/run-12",
+  "files": [
+    "multiqc/multiqc_report.html",
+    "alignments/s1.bam"
+  ]
+}

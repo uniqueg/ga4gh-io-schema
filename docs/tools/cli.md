@@ -10,6 +10,7 @@ tool:
 | `convert cwl` | Convert the inputs and outputs of a CWL document to an IO schema (see [CWL converter](cwl.md)). |
 | `convert wdl` | Convert the inputs and outputs of a WDL workflow or task to an IO schema (see [WDL converter](convert-wdl.md)). |
 | `wes-params` | Validate input values against an IO schema and translate them into WES `workflow_params` or a `RunRequest` (see [WES parameters](wes-params.md)). |
+| `outputs` | Normalise the outputs of a WES run (see [Output normaliser](outputs.md)). |
 
 Further converters will be added as subcommands (e.g.,
 `ga4gh-io-schema convert nextflow`). `ga4gh-io-schema --help` lists the

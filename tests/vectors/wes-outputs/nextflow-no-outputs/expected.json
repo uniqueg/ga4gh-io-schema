@@ -1,0 +1,5 @@
+{
+  "description": "Nextflow on a server that reports no outputs (RunLog.outputs is {}): without a listing, globs find nothing; the required outputs are missing, so the outputs of the completed run are non-conformant.",
+  "conformance": "non-conformant",
+  "outputs": {}
+}

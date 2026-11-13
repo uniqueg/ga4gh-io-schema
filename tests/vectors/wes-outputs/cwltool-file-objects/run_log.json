@@ -1,0 +1,54 @@
+{
+  "run_id": "run-1",
+  "state": "COMPLETE",
+  "outputs": {
+    "alignments": [
+      {
+        "location": "file:///data/wes/runs/run-1/outputs/s1.bam",
+        "basename": "s1.bam",
+        "class": "File",
+        "checksum": "sha1$d0257f733e5e1c54fcf496857e2b4f0e4148c017",
+        "size": 3,
+        "secondaryFiles": [
+          {
+            "basename": "s1.bam.bai",
+            "location": "file:///data/wes/runs/run-1/outputs/s1.bam.bai",
+            "class": "File",
+            "size": 2,
+            "checksum": "sha1$397d543883c5cb5019a0ed08acba13fcb26261c2",
+            "path": "/data/wes/runs/run-1/outputs/s1.bam.bai"
+          }
+        ],
+        "path": "/data/wes/runs/run-1/outputs/s1.bam"
+      },
+      {
+        "location": "file:///data/wes/runs/run-1/outputs/s2.bam",
+        "basename": "s2.bam",
+        "class": "File",
+        "checksum": "sha1$630081a5992e722541bc1fc6f3dee804a22b6233",
+        "size": 3,
+        "secondaryFiles": [
+          {
+            "basename": "s2.bam.bai",
+            "location": "file:///data/wes/runs/run-1/outputs/s2.bam.bai",
+            "class": "File",
+            "size": 2,
+            "checksum": "sha1$397d543883c5cb5019a0ed08acba13fcb26261c2",
+            "path": "/data/wes/runs/run-1/outputs/s2.bam.bai"
+          }
+        ],
+        "path": "/data/wes/runs/run-1/outputs/s2.bam"
+      }
+    ],
+    "missing_optional": null,
+    "qc_report": {
+      "location": "file:///data/wes/runs/run-1/outputs/report.html",
+      "basename": "report.html",
+      "class": "File",
+      "checksum": "sha1$ec2daf6a782747ad7d983aefafd954cc7e661cf7",
+      "size": 14,
+      "path": "/data/wes/runs/run-1/outputs/report.html"
+    },
+    "samples_passed_qc": 2
+  }
+}
