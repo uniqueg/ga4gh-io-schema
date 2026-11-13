@@ -92,8 +92,8 @@ Other keywords that start with `x-ga4gh-` (e.g., misspelled ones, or
 unevaluated `x-ga4gh-*` keywords. Other extension keywords (e.g.,
 `x-my-platform-hint`) are allowed. A new keyword group goes into a new file
 in `schemas/vocabularies/`, referenced from `$defs/node/$defs/keywords`
-(keywords of every schema) or from the `allOf` of the top level (top-level
-keywords). The rule marks
+(keywords of every schema) or from the branch of the top level's `allOf`
+that checks the `x-ga4gh-*` keywords (top-level keywords). The rule marks
 other keywords as evaluated with the pattern `^(?!x-ga4gh-)`, a negative
 lookahead: valid ECMA-262, and supported by the common validators of Python
 and JavaScript, but not by validators built on RE2 (e.g., Go's `regexp`).
@@ -102,14 +102,28 @@ The rules reach nested schemas through the `$dynamicAnchor` mechanism of
 Draft 2020-12: `$defs/node` declares `"$dynamicAnchor": "meta"`, so the
 applicators of the Draft 2020-12 meta-schema apply it, not plain JSON
 Schema, to every subschema. The top-level rules don't declare the anchor, so
-they apply only to the top level. The top level uses the keywords of
-`$defs/node` (`$defs/node/$defs/keywords`) without its check of unevaluated
-keywords, adds the top-level keywords, and rejects other `x-ga4gh-*`
-keywords with its own check: a check of unevaluated keywords only sees the
-keywords evaluated in its own schema and the subschemas it applies, so the
-check of `$defs/node` would reject the top-level keywords. The keywords
-are kept inside the resource of `$defs/node` (not at the top level) so that
-the dynamic scope always contains the anchor of `$defs/node`. The `$ref`s
+they apply only to the top level. The top level uses the Draft 2020-12 rules
+(`$defs/node/$defs/schema`) and the keywords (`$defs/node/$defs/keywords`) of
+`$defs/node` without its check of unevaluated keywords, adds the top-level
+keywords, and rejects other `x-ga4gh-*` keywords with its own check: a check
+of unevaluated keywords only sees the keywords evaluated in its own schema
+and the subschemas it applies, so the check of `$defs/node` would reject the
+top-level keywords. Both are kept inside the resource of `$defs/node` (not
+at the top level) so that the dynamic scope always contains the anchor of
+`$defs/node`.
+
+Each check of unevaluated keywords sits in an `allOf` branch next to the
+Draft 2020-12 rules, not in the schema that applies them, and applies only
+the vocabularies. Some validators (e.g., Python's `jsonschema`) evaluate the
+subschemas that a check of unevaluated keywords sees once more, to collect
+their annotations; if the check saw the Draft 2020-12
+rules, which apply `$defs/node` to every nested schema, each level would
+validate all levels below it again, in time exponential in the depth of
+nesting. Split this way, validation takes time roughly linear in the size of
+the schema, and accepts and rejects exactly what a single check over all
+keywords would. One exception remains: the check does see the file
+vocabulary, so each `x-ga4gh-tabular-schema` nested in another one doubles
+the time of the tabular schemas inside it. The `$ref`s
 between the schemas use the versioned `$id`s; the validator resolves them
 from the copies that the package ships and never fetches them from the
 network.

@@ -4,6 +4,7 @@
 
 """Tests for the packaging, schema identifiers and documentation of the project."""
 
+import json
 import re
 from pathlib import Path
 
@@ -159,13 +160,14 @@ def test_every_vocabulary_is_registered() -> None:
     """Test that each keyword vocabulary is referenced from exactly one place.
 
     Keywords of every schema go into ``$defs/node/$defs/keywords``; top-level
-    keywords (``workflow.schema.json``) into the ``allOf`` of the top level.
+    keywords (``workflow.schema.json``) into the branch of the top level's
+    ``allOf`` that checks the ``x-ga4gh-*`` keywords.
     ``ui-widgets.schema.json`` is a value vocabulary, referenced from a keyword.
     """
     profile = load_json(PROFILE_PATH)
     keywords = profile["$defs"]["node"]["$defs"]["keywords"]["allOf"]
     every_schema = {entry["$ref"] for entry in keywords}
-    top_level = {entry["$ref"] for entry in profile["allOf"]}
+    top_level = {entry["$ref"] for entry in profile["allOf"][1]["allOf"]}
     for path in (SCHEMAS_DIR / "vocabularies").glob("*.schema.json"):
         vocabulary_id = load_json(path)["$id"]
         if path.name == "ui-widgets.schema.json":
@@ -176,6 +178,31 @@ def test_every_vocabulary_is_registered() -> None:
         else:
             assert vocabulary_id in every_schema, path
             assert vocabulary_id not in top_level, path
+
+
+def test_checks_of_unevaluated_keywords_skip_draft_rules() -> None:
+    """Test that no check of unevaluated keywords reaches the Draft rules.
+
+    A check of unevaluated keywords evaluates the in-place subschemas of its
+    schema; if they include the Draft 2020-12 rules, which apply
+    ``$defs/node`` to every nested schema, each level of nesting validates
+    the levels below it once more, in time exponential in the depth (issue
+    #47). The checks therefore sit in branches next to the Draft rules.
+    """
+    profile = load_json(PROFILE_PATH)
+    node = profile["$defs"]["node"]
+    draft = node["$defs"]["schema"]["$ref"]
+    checks = [profile["allOf"][1], node["allOf"][1]]
+    assert draft == "https://json-schema.org/draft/2020-12/schema"
+    for schema in [profile, node, node["$defs"]["schema"]]:
+        assert "unevaluatedProperties" not in schema
+    for check in checks:
+        assert check["unevaluatedProperties"] is False
+        assert draft not in json.dumps(check)
+        assert "$defs/schema" not in json.dumps(check)
+    assert "unevaluatedProperties" not in json.dumps(node["$defs"]["keywords"])
+    for path in (SCHEMAS_DIR / "vocabularies").glob("*.schema.json"):
+        assert "unevaluatedProperties" not in path.read_text(encoding="utf-8"), path
 
 
 def test_every_widget_has_one_fit_rule_and_one_group() -> None:
