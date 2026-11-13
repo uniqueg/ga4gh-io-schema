@@ -236,9 +236,11 @@ draft-07) accepts `foreign-schema` and `plain-json-schema`.
    [Runs that don't complete](outputs.md#runs-that-dont-complete), and the
    outputs of a non-conformant run with the same warning, keeping all of
    them.
-6. An output normaliser SHOULD produce the results of the test vectors in
-   `tests/vectors/wes-outputs/` for the shapes of `RunLog.outputs` that it
-   supports (see [Output normaliser](../tools/outputs.md#test-vectors)).
+6. An output normaliser MUST produce the results of the test vectors in
+   `tests/vectors/wes-outputs/`: of every case whose shape of
+   `RunLog.outputs` it supports (see
+   [Output normaliser](../tools/outputs.md#test-vectors)), including the
+   cases that it must reject.
 
 ### WES server
 

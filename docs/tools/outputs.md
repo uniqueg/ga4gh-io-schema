@@ -141,7 +141,11 @@ one directory per case, described in its `README.md`. They cover the shapes
 above, the checks of listings, glob matching, and completed, non-conformant
 and partial runs. The case `cwltool-file-objects` is the output of a real
 cwltool run, with its paths anonymised; the others are written from the
-shapes in the documentation and source code of the engines and servers.
+shapes in the documentation and source code of the engines and servers
+(the README of the vectors names the source of each case). Normalisers
+MUST produce the results of the cases whose shapes they support
+(requirement 6 of [Output
+normaliser](../specification/conformance.md#output-normaliser)).
 `tests/test_outputs.py` runs them against this package.
 
 ## Python API

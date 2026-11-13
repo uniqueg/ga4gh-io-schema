@@ -46,8 +46,17 @@ values (`ambiguous` compares the URIs too); a normaliser's own report may carry 
 (e.g., the values and reasons). Validation errors, their messages and the
 reasons of reports are not part of the vectors.
 
-The case `cwltool-file-objects` is the output object of a real cwltool run,
-with its paths anonymised. The others are written from the shapes that the
-documentation and source code of the engines and servers describe (Toil,
-Cromwell, miniwdl, Conquest, Sapporo and WESkit); they hold no data of real
-runs.
+## Provenance
+
+No case holds data of real users or runs other than the one below.
+
+| Case | Source |
+| ----- | ----- |
+| `cwltool-file-objects` | Real run: the output object of cwltool 3.3 (`--no-container`) for a test tool, paths anonymised |
+| `cwl-remote-objects` | Derived: the CWL output object as cwltool writes it, with remote locations as Toil reports them when it writes to object storage |
+| `wdl-qualified-names` | Derived: WDL outputs keyed by qualified names, as documented for Cromwell, miniwdl and Conquest |
+| `wdl-local-paths` | Derived: miniwdl's outputs as absolute local paths |
+| `sapporo-listing` | Derived from the source of sapporo-service: `sapporo/run.py` (the listing of `outputs`, `file_url` as `{base_url}/runs/{run_id}/outputs/{file_name}`) and `sapporo/schemas.py` (`FileObject`) |
+| `weskit-listing` | Derived from the source of WESkit: `weskit/tasks/submission_worker.py` (paths relative to the working directory), `weskit/tasks/monitoring_worker.py` (`outputs["filesystem"]`) and `weskit/classes/Manager.py` (`outputs["S3"]`, presigned URLs) |
+| `nextflow-no-outputs` | Derived: Nextflow on servers that report no outputs |
+| other cases | Synthetic: rules of the specification (checks of listings, globs, partial and non-conformant runs, errors) |
