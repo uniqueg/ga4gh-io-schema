@@ -150,6 +150,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   allowed. (#41)
 - Versioning policy and governance note, and this changelog in the
   documentation, with the history of versions 0.1 and 0.2. (#14)
+- A JavaScript runner of the conformance suite and the examples
+  (`tests/js/`, run in CI) with Ajv and @hyperjump/json-schema, and a page
+  "JavaScript validators" on how to set them up. The meta-schema applies
+  the rules of `$defs/node` to nested schemas through explicit `$ref`s
+  (`$defs/node/$defs/subschemas`), not `$dynamicAnchor`, which Ajv supports
+  only at the root of a schema and would skip without an error. (#36)
 - Rules for `x-ga4gh-hidden` and `x-ga4gh-error-message`: form renderers
   show hidden inputs that users must set (required, no default) and hidden
   inputs whose values fail; an error message covers the failures at the

@@ -114,6 +114,33 @@ jobs:
             fi
           done
 
+  # The conformance suite and the examples through JavaScript validators
+  # (tests/js/), offline, so that JavaScript clients see the results of the
+  # Python validator.
+  test-js:
+    name: Test (JavaScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests/js
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Active LTS version of Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: tests/js/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run JavaScript validators
+        run: npm test
+
   docs:
     name: Docs
     runs-on: ubuntu-latest
@@ -141,7 +168,7 @@ jobs:
   # cancelled job fails it too).
   passed:
     name: CI passed
-    needs: [lint, test, docs]
+    needs: [lint, test, test-js, docs]
     if: always()
     runs-on: ubuntu-latest
     steps:

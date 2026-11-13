@@ -334,9 +334,13 @@ run of one file doesn't meet.)
 
 The tests of the [command-line interface](../tools/cli.md) run the same cases
 through `ga4gh-io-schema validate` and also check the message of each
-negative case (see [Development](../development.md#unit-tests-pytest)). A
-new rule of the meta-schema comes with a negative case in the suite, and a
-change of a rule that makes a valid case fail is a breaking change (see
+negative case (see [Development](../development.md#unit-tests-pytest)).
+`tests/js/` runs the suite through JavaScript validators (Ajv and
+@hyperjump/json-schema), which give the same results on the suite (see
+[JavaScript validators](../tools/javascript.md), also for where they
+differ). A new rule of the meta-schema comes with a negative case in the
+suite, and a change of a rule that makes a valid case fail is a breaking
+change (see
 [Versioning and governance](../governance.md)).
 
 ## Implementations
