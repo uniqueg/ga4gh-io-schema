@@ -44,8 +44,11 @@ TOKEN_ENV = "TRS_TOKEN"
 #: A full commit SHA of Git.
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 #: A repository on GitHub, as its root URL.
+#: Owner and name are not ``.`` or ``..``, and the name has no ``.git`` suffix,
+#: so that the URL of the primary descriptor can be built from it.
 _GITHUB_REPOSITORY = re.compile(
-    r"^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    r"^https://github\.com/(?!\.\.?/)[A-Za-z0-9_.-]+/(?!\.\.?$)(?!.*\.git$)"
+    r"[A-Za-z0-9_.-]+$"
 )
 
 
@@ -83,7 +86,7 @@ def check_repository(repository: str) -> str:
     if not _GITHUB_REPOSITORY.match(repository):
         raise ValueError(
             "The repository must be a GitHub repository URL: "
-            "https://github.com/<owner>/<repo>"
+            "https://github.com/<owner>/<repo>, without .git"
         )
     return repository
 

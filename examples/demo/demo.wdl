@@ -79,11 +79,13 @@ task filter_sort_index {
 
   command <<<
     set -euo pipefail
-    case "~{read_filter}" in
+    # Quoted for the shell: clients that skip the schema can send any string.
+    read_filter=~{sep("", squote([read_filter]))}
+    case "$read_filter" in
       none) flags="" ;;
       proper_pairs) flags="-f 2" ;;
       primary_only) flags="-F 0x900" ;;
-      *) echo "Unknown read filter: ~{read_filter}" >&2; exit 1 ;;
+      *) echo "Unknown read filter" >&2; exit 1 ;;
     esac
     # shellcheck disable=SC2086
     samtools view -b -q ~{min_mapq} $flags "~{reads}" \
@@ -113,6 +115,11 @@ task make_report {
 
   command <<<
     set -euo pipefail
+    read_filter=~{sep("", squote([read_filter]))}
+    case "$read_filter" in
+      none|proper_pairs|primary_only) ;;
+      *) echo "Unknown read filter" >&2; exit 1 ;;
+    esac
     samtools flagstat "~{reads}" > before.txt
     samtools flagstat "~{filtered_bam}" > after.txt
     {
@@ -120,7 +127,7 @@ task make_report {
       echo '<html lang="en"><head><meta charset="utf-8">'
       echo '<title>Alignment report</title></head><body>'
       echo '<h1>Alignment report</h1>'
-      echo '<p>Minimum mapping quality: ~{min_mapq}; read filter: ~{read_filter}.</p>'
+      echo "<p>Minimum mapping quality: ~{min_mapq}; read filter: $read_filter.</p>"
       echo '<h2>Before filtering</h2><pre>'
       sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' before.txt
       echo '</pre><h2>After filtering</h2><pre>'

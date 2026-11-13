@@ -12,11 +12,14 @@ they are never printed.
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
 #: Seconds to wait for a response.
 TIMEOUT = 30
+#: Hosts that tokens may be sent to over plain http (local test servers).
+LOOPBACK = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
 class HTTPError(RuntimeError):
@@ -36,14 +39,16 @@ def request_json(
         url: URL of the request; ``http`` or ``https`` only.
         body: JSON body of the request, if any.
         token_env: Name of an environment variable with a bearer token; if
-            it is set and not empty, the token is sent in ``Authorization``.
+            it is set and not empty, the token is sent in ``Authorization``,
+            over ``https`` only (or ``http`` to a loopback host).
 
     Returns:
         The parsed body of the response.
 
     Raises:
-        HTTPError: If the URL isn't ``http`` or ``https``, the request fails,
-            the status isn't 2xx, or the body isn't JSON.
+        HTTPError: If the URL isn't ``http`` or ``https``, a token would be
+            sent over plain ``http`` to another host than a loopback one, the
+            request fails, the status isn't 2xx, or the body isn't JSON.
     """
     if not url.startswith(("http://", "https://")):
         raise HTTPError(f"Not an http or https URL: {url}")
@@ -55,6 +60,9 @@ def request_json(
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     token = os.environ.get(token_env, "") if token_env else ""
     if token:
+        parts = urllib.parse.urlsplit(url)
+        if parts.scheme != "https" and parts.hostname not in LOOPBACK:
+            raise HTTPError(f"Refusing to send the token of {token_env} over http")
         # Not sent again if the server redirects, possibly to another host
         req.add_unredirected_header("Authorization", f"Bearer {token}")
     try:

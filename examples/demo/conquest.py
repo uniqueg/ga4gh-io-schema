@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from demo_http import HTTPError, request_json
+from jsonschema.exceptions import ValidationError
 from register import (
     DEFAULT_REPOSITORY,
     REPOSITORY_DIR,
@@ -58,7 +59,7 @@ FINAL_STATES = frozenset(
 
 
 def add_engine_parameters(
-    request: dict[str, Any],
+    request: Any,
     revision: str,
     repository: str = DEFAULT_REPOSITORY,
     main_workflow_path: str = DEFAULT_MAIN_WORKFLOW_PATH,
@@ -76,8 +77,11 @@ def add_engine_parameters(
         and ``workflow_engine_parameters`` to the revision and the path.
 
     Raises:
-        ValueError: If the revision or the repository is malformed.
+        ValueError: If the request isn't a JSON object, or the revision or
+            the repository is malformed.
     """
+    if not isinstance(request, dict):
+        raise ValueError("The run request must be a JSON object")
     check_revision(revision)
     check_repository(repository)
     return {
@@ -289,7 +293,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     Returns:
         The exit status: 0 on success, 1 on errors (invalid arguments or
-        values, a failed request, a run that hasn't ended in time, or, for
+        values, a schema that doesn't comply with the profile, a failed
+        request, a run that hasn't ended in time, or, for
         ``run``, a run that ended in another state than ``COMPLETE``, whose
         outputs are printed nonetheless).
     """
@@ -302,6 +307,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         OSError,
         TimeoutError,
         TranslationError,
+        ValidationError,
         ValueError,
     ) as exc:
         print(f"Error: {exc}", file=sys.stderr)

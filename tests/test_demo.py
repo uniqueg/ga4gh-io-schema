@@ -274,6 +274,10 @@ def test_revision_must_be_full_sha(revision: str) -> None:
         "https://github.com/owner",
         "https://github.com/owner/repo/tree/main",
         "http://github.com/owner/repo",
+        "https://github.com/owner/repo.git",
+        "https://github.com/../..",
+        "https://github.com/owner/..",
+        "https://github.com/./repo",
     ],
 )
 def test_repository_must_be_github_root(repository: str) -> None:
@@ -362,6 +366,13 @@ def test_http_without_token(mock: Mock, monkeypatch: pytest.MonkeyPatch) -> None
     mock.add("GET", "/x", 200, {})
     assert demo_http.request_json("GET", f"{mock.url}/x", token_env="WES_TOKEN") == {}
     assert "Authorization" not in mock.received[0].headers
+
+
+def test_http_token_needs_https(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A token isn't sent over plain http, except to loopback hosts."""
+    monkeypatch.setenv("TRS_TOKEN", "secret-token")
+    with pytest.raises(demo_http.HTTPError, match="Refusing to send the token"):
+        demo_http.request_json("GET", "http://trs.example.org/", token_env="TRS_TOKEN")
 
 
 def test_http_token_not_redirected(mock: Mock, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -594,4 +605,25 @@ def test_request_file_errors(
     if content is not None:
         path.write_text(content, encoding="utf-8")
     assert conquest.main(["request", str(path), "--revision", SHA]) == 1
+    assert capsys.readouterr().err.startswith("Error: ")
+
+
+def test_request_must_be_object(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A run request that isn't a JSON object is an error."""
+    path = tmp_path / "request.json"
+    path.write_text("[1, 2]", encoding="utf-8")
+    assert conquest.main(["request", str(path), "--revision", SHA]) == 1
+    assert "must be a JSON object" in capsys.readouterr().err
+
+
+def test_run_rejects_invalid_schema(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A schema that doesn't comply with the profile is an error."""
+    schema = tmp_path / "schema.json"
+    schema.write_text(json.dumps({**SCHEMA, "type": "array"}), encoding="utf-8")
+    argv = ["run", "--dry-run", "--revision", SHA, "--schema", str(schema)]
+    assert conquest.main(argv) == 1
     assert capsys.readouterr().err.startswith("Error: ")
