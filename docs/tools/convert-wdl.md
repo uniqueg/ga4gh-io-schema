@@ -191,4 +191,9 @@ directory of the document, not, e.g., in `/`.
 
 ## Python API
 
+The module also offers the [shared parts of the
+converters](converters.md#python-api-shared-parts) under its name:
+`Conversion`, `Note`, `SourceError`, `ConversionError`, `json_path` and
+`Pointer`.
+
 ::: ga4gh_io_schema.converters.wdl

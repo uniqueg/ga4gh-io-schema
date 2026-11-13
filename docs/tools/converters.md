@@ -24,8 +24,25 @@ Converters emit only keywords and values of the profile version that they
 target: output with removed ones (e.g., `x-ga4gh-fa-icon`, the `rst`
 description format, the `password` widget) fails validation.
 
+Every converter reports what the author should check (e.g., a guess, or a
+part of the source that it left out) as notes, each with a message and the
+location of the affected schema as a JSON path in the notation of the
+validator (e.g., `$.properties.inputs.properties['call.threads']`). The
+subcommands write the notes to standard error (`convert cwl` labels them
+`Warning:`, the others `Note:`); with `--json`, the result holds them.
+
 ## From IO schemas to WES
 
 - **WES `workflow_params`:** build the `workflow_params` of a WES run request
   from values that are valid against an IO schema; available as
   [`wes-params`](wes-params.md).
+
+## Python API: shared parts
+
+The converter modules share the notes, the errors, the result of a
+conversion and the rendering of JSON paths; each module also offers these
+under its own name (e.g., `ga4gh_io_schema.converters.wdl.Note`).
+
+::: ga4gh_io_schema.converters.common
+    options:
+      show_root_heading: false

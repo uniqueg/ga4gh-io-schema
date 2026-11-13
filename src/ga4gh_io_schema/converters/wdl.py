@@ -19,17 +19,21 @@ import json
 import os
 import re
 from collections.abc import Sequence
-from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 import jsonschema
 
+from ga4gh_io_schema.converters.common import (
+    Conversion,
+    ConversionError,
+    Note,
+    Pointer,
+    SourceError,
+    json_path,
+)
 from ga4gh_io_schema.validator import load_profile
-
-#: Location in a JSON document, as keys and indexes.
-Pointer = tuple[str | int, ...]
 
 #: Versions of WDL that the converter accepts.
 SUPPORTED_VERSIONS = ("1.0", "1.1", "1.2")
@@ -51,116 +55,14 @@ _URI = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]+://")
 #: Imports that name a remote document: any scheme followed by ``//``, also
 #: of one letter, so unlike :data:`_URI`, which needs two (``C://`` is a path).
 _REMOTE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://")
-#: Names that a JSON path can use without brackets.
-_JSON_PATH_NAME = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
 class MissingDependencyError(ImportError):
     """miniwdl, the optional dependency of the ``wdl`` extra, isn't installed."""
 
 
-class SourceError(ValueError):
-    """A WDL document can't be loaded: syntax, types, imports or version.
-
-    Attributes:
-        message: Description of the error.
-    """
-
-    def __init__(self, message: str) -> None:
-        """Initialise the error.
-
-        Args:
-            message: Description of the error.
-        """
-        super().__init__(message)
-        self.message = message
-
-
 class ImportReadError(SourceError):
     """An import of a WDL document can't be read: not found, or not UTF-8."""
-
-
-class ConversionError(ValueError):
-    """A WDL document can't be converted, as it is or with the given options.
-
-    Attributes:
-        message: Description of the error.
-        location: JSON path of the offending schema in the IO schema, if any.
-    """
-
-    def __init__(self, message: str, location: str | None = None) -> None:
-        """Initialise the error.
-
-        Args:
-            message: Description of the error.
-            location: JSON path of the offending schema in the IO schema.
-        """
-        super().__init__(message)
-        self.message = message
-        self.location = location
-
-
-@dataclass(frozen=True)
-class Note:
-    """Decision of the conversion that the author should know about.
-
-    Attributes:
-        message: What the converter did, and why.
-        location: JSON path of the schema in the IO schema that it concerns.
-    """
-
-    message: str
-    location: str
-
-    def to_text(self) -> str:
-        """Render the note as a line of text.
-
-        Returns:
-            ``Note:``, the message and the location.
-        """
-        return f"Note: {self.message} (at {self.location})"
-
-    def to_dict(self) -> dict[str, str]:
-        """Render the note as a JSON object.
-
-        Returns:
-            The message and the location.
-        """
-        return {"message": self.message, "location": self.location}
-
-
-@dataclass(frozen=True)
-class Conversion:
-    """Result of a conversion.
-
-    Attributes:
-        schema: The IO schema.
-        notes: Decisions that the author should check, in the order made.
-    """
-
-    schema: dict[str, Any]
-    notes: list[Note]
-
-
-def json_path(pointer: Pointer) -> str:
-    """Render a location as a JSON path, as the validator reports locations.
-
-    Args:
-        pointer: Keys and indexes from the root of the document.
-
-    Returns:
-        The JSON path, e.g. ``$.properties.inputs.properties['call.threads']``.
-    """
-    path = "$"
-    for element in pointer:
-        if isinstance(element, int):
-            path += f"[{element}]"
-        elif _JSON_PATH_NAME.match(element):
-            path += f".{element}"
-        else:
-            escaped = element.replace("\\", "\\\\").replace("'", "\\'")
-            path += f"['{escaped}']"
-    return path
 
 
 def miniwdl() -> ModuleType:

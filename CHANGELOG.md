@@ -136,6 +136,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the document (`--root` names another one) and rejects documents that
   would expand to very large schemas. It needs the optional dependency
   `cwl-utils` (`ga4gh-io-schema[cwl]`). (#21)
+- The converters share their notes, errors, results and JSON paths, in
+  `ga4gh_io_schema.converters.common`; the notes of the CWL converter
+  (`ConversionNote`) are notes of this module too. (#54)
+- `ConversionNote` still takes the location first, but its `repr` and
+  dataclass fields list the message first, as those of all notes. (#54)
+- All converters render the keys of JSON paths exactly as the validator
+  does. Before, the WDL converter didn't bracket keys that start with `_`
+  (which WDL names can't), and the CWL converter bracketed keys that end in
+  a line break. (#54)
 - Conformance: BCP 14 (RFC 2119, RFC 8174) key words, used consistently in
   the normative text; conformance classes (Schema document, Validator,
   Producer, Form renderer, Request builder, Output normaliser, WES server)

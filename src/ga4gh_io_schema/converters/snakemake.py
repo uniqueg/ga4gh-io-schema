@@ -23,14 +23,20 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from ga4gh_io_schema.converters.common import (
+    MAX_SOURCE_VALUES,
+    Conversion,
+    ConversionError,
+    Note,
+    Pointer,
+    SourceError,
+    json_path,
+)
 from ga4gh_io_schema.validator import load_profile
-
-#: Location in a JSON document, as keys and indexes.
-Pointer = tuple[str | int, ...]
 
 #: Most values (objects, arrays and scalars) that a source may hold; bounds
 #: the work for documents that YAML aliases blow up (or make cyclic).
-MAX_VALUES = 100_000
+MAX_VALUES = MAX_SOURCE_VALUES
 
 #: Names of the property of the configuration that holds the sample sheet, if
 #: a sample-sheet schema is given without a property.
@@ -149,73 +155,6 @@ _EXCLUSIVE = {"maximum": "exclusiveMaximum", "minimum": "exclusiveMinimum"}
 _POINTER_SAFE = "!$&'()*+,;=:@"
 # Command-line flag of each option, where it differs from the option.
 _FLAGS = {"sheet": "sample-sheet"}
-_JSON_PATH_NAME = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]*$")
-
-
-class SourceError(ValueError):
-    """A source can't be read: invalid JSON or YAML, or not JSON data.
-
-    Attributes:
-        message: Description of the error.
-    """
-
-    def __init__(self, message: str) -> None:
-        """Initialise the error.
-
-        Args:
-            message: Description of the error.
-        """
-        super().__init__(message)
-        self.message = message
-
-
-class ConversionError(ValueError):
-    """A source schema can't be converted, as it is or with the given options.
-
-    Attributes:
-        message: Description of the error.
-        location: JSON path of the offending schema in the IO schema, if any.
-    """
-
-    def __init__(self, message: str, location: str | None = None) -> None:
-        """Initialise the error.
-
-        Args:
-            message: Description of the error.
-            location: JSON path of the offending schema in the IO schema.
-        """
-        super().__init__(message)
-        self.message = message
-        self.location = location
-
-
-@dataclass(frozen=True)
-class Note:
-    """Decision of the conversion that the author should know about.
-
-    Attributes:
-        message: What the converter did, and why.
-        location: JSON path of the schema in the IO schema that it concerns.
-    """
-
-    message: str
-    location: str
-
-    def to_text(self) -> str:
-        """Render the note as a line of text.
-
-        Returns:
-            ``Note:``, the message and the location.
-        """
-        return f"Note: {self.message} (at {self.location})"
-
-    def to_dict(self) -> dict[str, str]:
-        """Render the note as a JSON object.
-
-        Returns:
-            The message and the location.
-        """
-        return {"message": self.message, "location": self.location}
 
 
 @dataclass(frozen=True)
@@ -264,40 +203,6 @@ class Output:
             {"type": "array", "items": reference} if self.many else reference
         )
         return {**schema, "x-ga4gh-output-glob": self.glob}
-
-
-@dataclass(frozen=True)
-class Conversion:
-    """Result of a conversion.
-
-    Attributes:
-        schema: The IO schema.
-        notes: Decisions that the author should check, in the order made.
-    """
-
-    schema: dict[str, Any]
-    notes: list[Note]
-
-
-def json_path(pointer: Pointer) -> str:
-    """Render a location as a JSON path, as the validator reports locations.
-
-    Args:
-        pointer: Keys and indexes from the root of the document.
-
-    Returns:
-        The JSON path, e.g. ``$.properties.inputs['x-ga4gh-file']``.
-    """
-    path = "$"
-    for element in pointer:
-        if isinstance(element, int):
-            path += f"[{element}]"
-        elif _JSON_PATH_NAME.match(element):
-            path += f".{element}"
-        else:
-            escaped = element.replace("\\", "\\\\").replace("'", "\\'")
-            path += f"['{escaped}']"
-    return path
 
 
 def load_schema(text: str, name: str) -> Any:

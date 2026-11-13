@@ -28,7 +28,7 @@ import math
 import re
 import urllib.parse
 import urllib.request
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -42,6 +42,13 @@ from schema_salad.exceptions import ValidationException
 from schema_salad.fetcher import DefaultFetcher
 from schema_salad.utils import yaml_no_ts
 
+from ga4gh_io_schema.converters.common import (
+    MAX_SOURCE_VALUES,
+    ConversionError,
+    Note,
+    child_path,
+)
+from ga4gh_io_schema.converters.common import notes_as_dicts as notes_as_dicts
 from ga4gh_io_schema.validator import load_profile
 
 #: Classes of CWL documents that have inputs and outputs.
@@ -82,7 +89,7 @@ MAX_TEXT = 1_000_000
 #: Most values (mappings, lists and scalars) of a document and the files it
 #: imports, once their YAML aliases are expanded, as the parser of
 #: ``cwl-utils`` does.
-MAX_DOCUMENT_NODES = 100_000
+MAX_DOCUMENT_NODES = MAX_SOURCE_VALUES
 
 # Ontology terms that the profile accepts
 _HTTP_IRI = re.compile(r"https?://")
@@ -90,41 +97,38 @@ _HTTP_IRI = re.compile(r"https?://")
 _FORMATS = Draft202012Validator.FORMAT_CHECKER
 # Absolute URIs, as defined for the values of file references
 _URI_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
-# Keys of JSON paths that need no brackets, as in the paths of jsonschema
-_PLAIN_KEY = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 
 
-@dataclass(frozen=True)
-class ConversionNote:
+class ConversionNote(Note):
     """Part of a CWL document that the converter couldn't convert.
+
+    A :class:`~ga4gh_io_schema.converters.common.Note` that takes the
+    location first, as the CWL converter did before the notes were shared.
+    Like every dataclass, it equals only notes of its own class.
 
     Attributes:
         location: JSON path of the affected schema in the converted IO schema.
         message: What was left out or changed, and why.
     """
 
-    location: str
-    message: str
+    def __init__(self, location: str, message: str) -> None:
+        """Initialise the note.
+
+        Args:
+            location: JSON path of the affected schema in the converted IO
+                schema.
+            message: What was left out or changed, and why.
+        """
+        super().__init__(message=message, location=location)
 
 
-class CwlConversionError(ValueError):
+class CwlConversionError(ConversionError):
     """The CWL document can't be read or converted.
 
     Attributes:
         message: Description of the error.
         location: JSON path of the affected schema, if any.
     """
-
-    def __init__(self, message: str, location: str | None = None) -> None:
-        """Initialise the error.
-
-        Args:
-            message: Description of the error.
-            location: JSON path of the affected schema, if any.
-        """
-        super().__init__(message)
-        self.message = message
-        self.location = location
 
 
 class _LocalFetcher(DefaultFetcher):
@@ -1114,22 +1118,4 @@ def _child(location: str, *keys: str) -> str:
     Returns:
         The extended path, e.g. ``$.properties['args.py']``.
     """
-    for key in keys:
-        if _PLAIN_KEY.fullmatch(key):
-            location += f".{key}"
-        else:
-            escaped = key.replace("\\", "\\\\").replace("'", "\\'")
-            location += f"['{escaped}']"
-    return location
-
-
-def notes_as_dicts(notes: Iterable[ConversionNote]) -> list[dict[str, str]]:
-    """Render conversion notes as JSON objects.
-
-    Args:
-        notes: The notes.
-
-    Returns:
-        One object per note, with ``message`` and ``location``.
-    """
-    return [{"message": note.message, "location": note.location} for note in notes]
+    return child_path(location, *keys)
