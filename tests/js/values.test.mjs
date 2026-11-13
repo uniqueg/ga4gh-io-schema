@@ -23,6 +23,7 @@ import {
   newAjv,
   readJson,
   registerProfile,
+  toDraft,
 } from "./helpers.mjs";
 
 const TOOL = readJson(new URL("example_tool.schema.json", EXAMPLES));
@@ -164,10 +165,10 @@ describe("behaviour of the validators", () => {
   // schemas pass that check, and invalid ones still fail it.
   test("@hyperjump/json-schema accepts IO schemas with the profile as their dialect", async () => {
     registerProfile();
-    const id = `${TOOL.$id}/as-dialect`;
-    registerSchema({ ...TOOL, $id: id });
-    const output = await validate(inputsUri(id), {});
-    assert.equal(typeof output.valid, "boolean");
+    const id = `${DATED_KEY}:as-dialect`;
+    registerSchema(DATED, id);
+    assert.equal((await validate(inputsUri(id), { day: "2020-12-31" })).valid, true);
+    assert.equal((await validate(inputsUri(id), { day: "2020-13-45" })).valid, false);
   });
 
   // An embedded resource is checked against the dialect that its own
@@ -188,11 +189,17 @@ describe("behaviour of the validators", () => {
     });
     const asProfile = embedded(PROFILE.$id, "profile");
     const asDraft = embedded(DRAFT_2020_12, "draft");
+    const copy = toDraft(embedded(PROFILE.$id, "copy"));
     registerSchema(asProfile);
     registerSchema(asDraft);
+    registerSchema(copy);
     await assert.rejects(validate(inputsUri(asProfile.$id), { x: "y" }), /Invalid Schema/);
-    assert.equal((await validate(inputsUri(asDraft.$id), { x: "y" })).valid, true);
-    assert.equal((await validate(inputsUri(asDraft.$id), { x: 1 })).valid, false);
+    for (const schema of [asDraft, copy]) {
+      assert.equal((await validate(inputsUri(schema.$id), { x: "y" })).valid, true);
+      assert.equal((await validate(inputsUri(schema.$id), { x: 1 })).valid, false);
+    }
+    assert.equal(copy.$schema, DRAFT_2020_12);
+    assert.equal(copy.$defs.s.$schema, DRAFT_2020_12);
   });
 
   test("@hyperjump/json-schema checks IO schemas against the profile as their dialect", async () => {

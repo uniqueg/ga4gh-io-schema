@@ -201,12 +201,15 @@ several engines](../specification/identity.md#one-workflow-several-engines))
 against the dialect that the resource's own `$schema` names. An embedded
 resource that names the profile is checked against the rules for the top
 level of an IO schema, which it doesn't meet (e.g., it has no `inputs`), and
-hyperjump rejects the whole IO schema with "Invalid Schema". For such IO
-schemas, register a copy in which every `$schema` that names the profile,
-at the root and in embedded resources, names Draft 2020-12 instead, as
-[Dialect and validation of
+hyperjump rejects the whole IO schema with "Invalid Schema". Decide before
+registering: hyperjump can't register a second schema under the same base
+URI (without `unregisterSchema(base)` first). If an IO schema has embedded
+resources whose `$schema` names the profile, register a copy in which every
+`$schema` that names the profile, at the root and in embedded resources,
+names Draft 2020-12 instead, as [Dialect and validation of
 values](../specification/meta-schema.md#dialect-and-validation-of-values)
-allows:
+allows (`toDraft()` of `tests/js/helpers.mjs` is the function below, and
+`tests/js/values.test.mjs` tests it):
 
 ```js
 const DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema";
@@ -227,6 +230,8 @@ registerSchema(toDraft(ioSchema), base);
 The function rewrites every member `$schema` whose value is the profile's
 `$id`, also where it isn't a keyword: inside the values of `const`, `enum`,
 `default` or `examples` that are objects with such a member. A rewritten
-`const` or `enum` would change the values that the copy accepts, so a
-client that can't rule such values out walks only the schemas of the IO
-schema instead.
+`const` or `enum` would change the values that the copy accepts. The
+function is a simplification that is safe for IO schemas without such
+values; a client that can't rule them out rewrites `$schema` only in the
+root and in the schemas with an `$id` that the keywords of the Draft 2020-12
+applicators (e.g., `$defs`, `properties`, `items`, `allOf`) hold.

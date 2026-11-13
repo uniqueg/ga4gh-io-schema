@@ -92,3 +92,23 @@ export function registerProfile() {
     if (!hasSchema(schema.$id)) registerSchema(schema);
   }
 }
+
+/**
+ * Return a copy of an IO schema in which every member `$schema` whose value
+ * is the profile's `$id` names Draft 2020-12 instead, at the root and in
+ * embedded resources, as docs/tools/javascript.md shows (the snippet there
+ * is this function).
+ *
+ * @param {unknown} value - The IO schema, or a part of it.
+ */
+export const toDraft = (value) =>
+  Array.isArray(value)
+    ? value.map(toDraft)
+    : value !== null && typeof value === "object"
+      ? Object.fromEntries(
+          Object.entries(value).map(([key, item]) => [
+            key,
+            key === "$schema" && item === PROFILE.$id ? DRAFT_2020_12 : toDraft(item),
+          ]),
+        )
+      : value;

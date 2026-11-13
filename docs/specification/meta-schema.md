@@ -71,9 +71,6 @@ against `properties.inputs` of the IO schema, and normalised outputs against
   [JavaScript validators](../tools/javascript.md#validating-input-values)
   describes a validator that needs this for IO schemas with embedded
   resources that name the profile.
-  [JavaScript validators](../tools/javascript.md#validating-input-values)
-  describes a validator that needs this for IO schemas with embedded
-  resources that name the profile.
 - `format` is an annotation in Draft 2020-12. A request builder SHOULD
   assert `format` on values for the formats that its validator supports
   (e.g., `date` for date widgets). Validators differ in the formats they

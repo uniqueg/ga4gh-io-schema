@@ -51,8 +51,8 @@ function ajvValidator(options) {
 
 /**
  * Return a function that validates a document against the profile with
- * @hyperjump/json-schema, offline (see setUpHyperjump()), with the profile
- * and its vocabularies registered from the local copies, after checking its
+ * @hyperjump/json-schema, offline, with the profile and its vocabularies
+ * registered from the local copies (see registerProfile()), after checking its
  * `$schema` (see namesProfile()).
  */
 function hyperjumpValidator() {
