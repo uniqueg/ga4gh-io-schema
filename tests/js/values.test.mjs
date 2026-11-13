@@ -3,39 +3,32 @@
 
 // Validates input values against `inputs` of the examples (tests/data/)
 // with JavaScript validators, offline, as tests/test_examples.py does in
-// Python: with the semantics of JSON Schema Draft 2020-12, whatever the
-// `$schema` of the IO schema (see docs/specification/keywords.md and
-// docs/tools/javascript.md).
+// Python: with the semantics of JSON Schema Draft 2020-12 (see "Dialect and
+// validation of values" in docs/specification/meta-schema.md, and
+// docs/tools/javascript.md for the setup of each validator).
 
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
 import { describe, test } from "node:test";
 
-import { removeUriSchemePlugin } from "@hyperjump/browser";
 import {
   registerSchema,
-  setShouldValidateFormat,
   validate,
 } from "@hyperjump/json-schema/draft-2020-12";
-import "@hyperjump/json-schema/formats";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
 
-const ROOT = new URL("../../", import.meta.url);
-const SCHEMAS = new URL("schemas/", ROOT);
-const VOCABULARIES = new URL("vocabularies/", SCHEMAS);
-const EXAMPLES = new URL("tests/data/", ROOT);
+import {
+  DRAFT_2020_12,
+  EXAMPLES,
+  PROFILE,
+  SUITE,
+  VOCABULARY_SCHEMAS,
+  newAjv,
+  readJson,
+  setUpHyperjump,
+} from "./helpers.mjs";
 
-const DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema";
-
-const readJson = (url) => JSON.parse(readFileSync(url, "utf-8"));
-
-const PROFILE = readJson(new URL("ga4gh-io-profile.schema.json", SCHEMAS));
-const VOCABULARY_SCHEMAS = readdirSync(VOCABULARIES)
-  .filter((name) => name.endsWith(".schema.json"))
-  .map((name) => readJson(new URL(name, VOCABULARIES)));
 const TOOL = readJson(new URL("example_tool.schema.json", EXAMPLES));
 const WORKFLOW = readJson(new URL("example_workflow.schema.json", EXAMPLES));
+const INVALID = readJson(new URL("invalid/ui-widget-unknown.schema.json", SUITE));
 
 // Input values; the valid ones are those of tests/test_examples.py.
 const CASES = [
@@ -78,41 +71,42 @@ const CASES = [
   ],
 ];
 
-/** Return the URI of `inputs` of an IO schema. */
-const inputsUri = (schema) => `${schema.$id}#/properties/inputs`;
+/** Return the URI of `inputs` of an IO schema with the given `$id`. */
+const inputsUri = (id) => `${id}#/properties/inputs`;
+
+/** Return Ajv with the profile added as a meta-schema. */
+function ajvWithProfile() {
+  const ajv = newAjv({ strict: false });
+  ajv.addMetaSchema(PROFILE);
+  return ajv;
+}
 
 /**
  * Return a function that validates values against `inputs` of an IO schema
  * with Ajv: the profile is added as a meta-schema, so that Ajv accepts IO
- * schemas that name it in `$schema` (and checks them against it).
+ * schemas that name it in `$schema`. Ajv's meta-schema check in `addSchema`
+ * skips `format`, so it is not a conformance check; the examples are
+ * checked against the profile in conformance.test.mjs.
  */
 function ajvValidator() {
-  const ajv = new Ajv2020({ strict: false });
-  addFormats(ajv);
-  for (const schema of VOCABULARY_SCHEMAS) ajv.addSchema(schema);
-  ajv.addMetaSchema(PROFILE);
+  const ajv = ajvWithProfile();
   ajv.addSchema(TOOL);
   ajv.addSchema(WORKFLOW);
-  return async (schema, values) => ajv.validate(inputsUri(schema), values);
+  return async (schema, values) => ajv.validate(inputsUri(schema.$id), values);
 }
 
 /**
  * Return a function that validates values against `inputs` of an IO schema
  * with @hyperjump/json-schema: the IO schemas are registered as copies that
- * name the Draft 2020-12 dialect in `$schema`. hyperjump removes `$schema`
- * from a schema before it checks the schema against its dialect, so the
- * profile's meta-schema, which requires `$schema`, would reject every IO
- * schema.
+ * name the Draft 2020-12 dialect in `$schema` (see the test below for why).
  */
 function hyperjumpValidator() {
-  removeUriSchemePlugin("http");
-  removeUriSchemePlugin("https");
-  setShouldValidateFormat(true);
+  setUpHyperjump();
   for (const schema of [TOOL, WORKFLOW]) {
     registerSchema({ ...schema, $schema: DRAFT_2020_12 });
   }
   return async (schema, values) =>
-    (await validate(inputsUri(schema), values)).valid;
+    (await validate(inputsUri(schema.$id), values)).valid;
 }
 
 for (const [name, setUp] of [
@@ -128,3 +122,23 @@ for (const [name, setUp] of [
     }
   });
 }
+
+// The setup above relies on these behaviours of the validators; if one of
+// them changes, update docs/tools/javascript.md.
+describe("behaviour of the validators", () => {
+  test("Ajv checks an IO schema against the profile when it is added", () => {
+    assert.throws(() => ajvWithProfile().addSchema(INVALID), /schema is invalid/);
+  });
+
+  // hyperjump removes `$schema` from a schema before it checks the schema
+  // against its dialect, so the profile, which requires `$schema`, rejects
+  // every IO schema.
+  test("@hyperjump/json-schema rejects IO schemas as the profile's dialect", async () => {
+    setUpHyperjump();
+    for (const schema of VOCABULARY_SCHEMAS) registerSchema(schema);
+    registerSchema(PROFILE);
+    const id = `${WORKFLOW.$id}/unchanged`;
+    registerSchema({ ...WORKFLOW, $id: id });
+    await assert.rejects(validate(inputsUri(id), {}), /Invalid Schema/);
+  });
+});
