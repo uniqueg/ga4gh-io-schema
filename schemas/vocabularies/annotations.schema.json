@@ -31,10 +31,15 @@
       "description": "Inspired by nf-core. Custom, human-readable error message to display, in place of the validator's message, if validation fails at the location of the value that this schema describes (not for nested values); the outermost message wins where several apply."
     }
   },
-  "dependentSchemas": {
-    "x-ga4gh-ui-widget": {
-      "$comment": "A widget of the vocabulary needs the keywords that it fits in the same schema (e.g., a slider a numeric type and both bounds); see the table of widgets in the specification.",
-      "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/ui-widgets.schema.json#/$defs/fit"
+  "allOf": [
+    {
+      "$comment": "dependentSchemas is wrapped in an allOf: Ajv drops the properties that this schema evaluates (properties) when dependentSchemas sits next to them and its keyword is absent, and would reject them as unevaluated.",
+      "dependentSchemas": {
+        "x-ga4gh-ui-widget": {
+          "$comment": "A widget of the vocabulary needs the keywords that it fits in the same schema (e.g., a slider a numeric type and both bounds); see the table of widgets in the specification.",
+          "$ref": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/ui-widgets.schema.json#/$defs/fit"
+        }
+      }
     }
-  }
+  ]
 }
