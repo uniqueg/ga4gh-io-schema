@@ -83,7 +83,8 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["ga4gh_io_schema"]
+# The demo scripts (examples/demo/) are tested too.
+source = ["ga4gh_io_schema", "examples/demo"]
 branch = true
 
 [tool.coverage.report]

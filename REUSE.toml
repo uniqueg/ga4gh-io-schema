@@ -25,6 +25,11 @@ path = "schemas/**"
 SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
 SPDX-License-Identifier = "Apache-2.0"
 
+[[annotations]]
+path = "examples/**"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-License-Identifier = "Apache-2.0"
+
 # Docs released under a data-appropriate license.
 [[annotations]]
 path = "docs/**"

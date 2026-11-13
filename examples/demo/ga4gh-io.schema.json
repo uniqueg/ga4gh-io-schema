@@ -1,0 +1,126 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "title": "I/O Schema demo",
+  "description": "Filters aligned reads by mapping quality and flags, sorts and indexes them, and reports alignment statistics.",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "WDL",
+    "descriptor_type_version": "1.1",
+    "entry_point": "io_schema_demo",
+    "checksum": [
+      {
+        "type": "sha-256",
+        "checksum": "667fae842833adeaa163be3fcd1867f47f481aa97666e5a522f3d6db8915ae46"
+      }
+    ],
+    "trs_tool_id": "ga4gh-io-schema-demo",
+    "trs_version_id": "1.0.0",
+    "primary_descriptor_path": "demo.wdl"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "reads": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_2572",
+            "schemes": [
+              "https",
+              "s3"
+            ]
+          },
+          "description": "Reads aligned to a reference, in BAM format, in any order.",
+          "title": "Aligned reads (BAM)",
+          "x-ga4gh-parameter": {
+            "type": "File"
+          },
+          "examples": [
+            "https://raw.githubusercontent.com/nf-core/test-datasets/3e548a3b34994380db1602506e0721fadbad6de1/data/genomics/sarscov2/illumina/bam/test.paired_end.bam"
+          ]
+        },
+        "min_mapq": {
+          "type": "integer",
+          "description": "Reads with a lower mapping quality are removed (0 keeps all reads).",
+          "title": "Minimum mapping quality",
+          "default": 0,
+          "x-ga4gh-parameter": {
+            "type": "Int"
+          },
+          "minimum": 0,
+          "maximum": 60,
+          "x-ga4gh-ui-widget": "slider",
+          "x-ga4gh-error-message": "The minimum mapping quality is a whole number from 0 to 60"
+        },
+        "read_filter": {
+          "type": "string",
+          "description": "Which reads to keep besides the mapping quality: all, properly paired only, or primary alignments only.",
+          "title": "Read filter",
+          "enum": [
+            "none",
+            "proper_pairs",
+            "primary_only"
+          ],
+          "default": "none",
+          "x-ga4gh-parameter": {
+            "type": "String"
+          },
+          "x-ga4gh-ui-widget": "radio"
+        }
+      },
+      "required": [
+        "reads"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "filtered_bam": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_2572"
+          },
+          "description": "The filtered reads, sorted by coordinate; the index lies next to it.",
+          "title": "Filtered reads (BAM)",
+          "x-ga4gh-parameter": {
+            "type": "File"
+          }
+        },
+        "filtered_bam_index": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_3327"
+          },
+          "description": "The index of the filtered reads.",
+          "title": "Index of the filtered reads (BAI)",
+          "x-ga4gh-parameter": {
+            "type": "File"
+          }
+        },
+        "report": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "mediaType": "text/html"
+          },
+          "description": "Statistics of the reads before and after filtering.",
+          "title": "Alignment report (HTML)",
+          "x-ga4gh-parameter": {
+            "type": "File"
+          },
+          "x-ga4gh-ui-widget": "html-viewer"
+        }
+      },
+      "required": [
+        "filtered_bam",
+        "filtered_bam_index",
+        "report"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
