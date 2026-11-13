@@ -37,6 +37,19 @@ export const VOCABULARY_SCHEMAS = documents(
 ).map(([, schema]) => schema);
 
 /**
+ * Return whether a document names the profile in `$schema`. The meta-schema
+ * doesn't require `$schema` (hyperjump removes it before it checks a schema
+ * against its dialect), so a validator checks it before the meta-schema, as
+ * requirement 3 of "Validator" in docs/specification/conformance.md asks.
+ *
+ * @param {unknown} document - The document to check.
+ */
+export const namesProfile = (document) =>
+  typeof document === "object" &&
+  document !== null &&
+  document.$schema === PROFILE.$id;
+
+/**
  * Return an Ajv instance: the 2020-12 build, formats asserted
  * (ajv-formats), and the vocabularies of the profile added from the local
  * copies, so that nothing is fetched. The caller adds the profile, as a

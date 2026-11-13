@@ -17,11 +17,13 @@ import {
 } from "@hyperjump/json-schema/draft-2020-12";
 
 import {
+  DRAFT_2020_12,
   EXAMPLES,
   PROFILE,
   SUITE,
   VOCABULARY_SCHEMAS,
   documents,
+  namesProfile,
   newAjv,
   setUpHyperjump,
 } from "./helpers.mjs";
@@ -41,25 +43,28 @@ function ajvCheck(options) {
 }
 
 /**
- * Return a function that validates a document against the profile with Ajv.
+ * Return a function that validates a document against the profile with Ajv,
+ * after checking its `$schema` (see namesProfile()).
  *
  * @param {object} options - Options of Ajv.
  */
 function ajvValidator(options) {
   const check = ajvCheck(options);
-  return async (document) => check(document);
+  return async (document) => namesProfile(document) && check(document);
 }
 
 /**
  * Return a function that validates a document against the profile with
  * @hyperjump/json-schema, offline (see setUpHyperjump()), with the profile
- * and its vocabularies registered from the local copies.
+ * and its vocabularies registered from the local copies, after checking its
+ * `$schema` (see namesProfile()).
  */
 function hyperjumpValidator() {
   setUpHyperjump();
   for (const schema of VOCABULARY_SCHEMAS) registerSchema(schema);
   registerSchema(PROFILE);
-  return async (document) => (await validate(PROFILE.$id, document)).valid;
+  return async (document) =>
+    namesProfile(document) && (await validate(PROFILE.$id, document)).valid;
 }
 
 for (const [name, setUp] of [
@@ -132,5 +137,30 @@ describe("errors of a nested unknown keyword", () => {
     for (const error of output.errors) {
       assert.match(error.instanceLocation, /\/x-ga4gh-bogus$/);
     }
+  });
+});
+
+// The meta-schema doesn't require `$schema`, because hyperjump removes it
+// before it checks a schema against its dialect (see values.test.mjs); the
+// runners above check it first (namesProfile()). A `$schema` that names
+// another meta-schema still fails the meta-schema.
+describe("$schema", () => {
+  const document = { properties: { inputs: { type: "object" } } };
+  const foreign = { ...document, $schema: DRAFT_2020_12 };
+
+  test("the profile accepts a document without $schema", async () => {
+    assert.equal(ajvCheck({ strict: false })(document), true);
+    // Uses the schemas that hyperjumpValidator() registered.
+    assert.equal((await validate(PROFILE.$id, document)).valid, true);
+  });
+
+  test("the profile rejects a $schema that names another meta-schema", async () => {
+    assert.equal(ajvCheck({ strict: false })(foreign), false);
+    assert.equal((await validate(PROFILE.$id, foreign)).valid, false);
+  });
+
+  test("the runners reject a document without $schema", () => {
+    assert.equal(namesProfile(document), false);
+    assert.equal(namesProfile({ ...document, $schema: PROFILE.$id }), true);
   });
 });

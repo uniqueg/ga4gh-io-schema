@@ -258,9 +258,8 @@ defines:
 The validators need different setups for this, which
 [Validating input values](../tools/javascript.md#validating-input-values)
 gives: Ajv uses a second instance, to which the profile is added as a
-meta-schema; @hyperjump/json-schema validates against a copy of the schema
-whose `$schema` names Draft 2020-12, because it rejects schemas that name
-the profile as their dialect.
+meta-schema; @hyperjump/json-schema validates against the schema as it is,
+with the profile registered as its dialect.
 
 ### 8. Hand the values to a request builder
 

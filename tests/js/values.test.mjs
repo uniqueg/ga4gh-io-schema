@@ -16,7 +16,6 @@ import {
 } from "@hyperjump/json-schema/draft-2020-12";
 
 import {
-  DRAFT_2020_12,
   EXAMPLES,
   PROFILE,
   SUITE,
@@ -115,15 +114,18 @@ function ajvValidator() {
 
 /**
  * Return a function that validates values against `inputs` of an IO schema
- * with @hyperjump/json-schema: the IO schemas are registered as copies that
- * name the Draft 2020-12 dialect in `$schema` (see the test below for why).
+ * with @hyperjump/json-schema: the profile and its vocabularies are
+ * registered from the local copies, and the IO schemas as they are, with the
+ * profile as their dialect; hyperjump checks each IO schema against the
+ * profile before it validates values against it.
  */
 function hyperjumpValidator() {
   setUpHyperjump();
-  for (const schema of [TOOL, WORKFLOW]) {
-    registerSchema({ ...schema, $schema: DRAFT_2020_12 });
-  }
-  registerSchema({ ...DATED, $schema: DRAFT_2020_12 }, DATED_KEY);
+  for (const schema of VOCABULARY_SCHEMAS) registerSchema(schema);
+  registerSchema(PROFILE);
+  registerSchema(TOOL);
+  registerSchema(WORKFLOW);
+  registerSchema(DATED, DATED_KEY);
   return async (schema, values) =>
     (await validate(inputsUri(keyOf(schema)), values)).valid;
 }
@@ -160,14 +162,12 @@ describe("behaviour of the validators", () => {
   });
 
   // hyperjump removes `$schema` from a schema before it checks the schema
-  // against its dialect, so the profile, which requires `$schema`, rejects
-  // every IO schema.
-  test("@hyperjump/json-schema rejects IO schemas as the profile's dialect", async () => {
-    setUpHyperjump();
-    for (const schema of VOCABULARY_SCHEMAS) registerSchema(schema);
-    registerSchema(PROFILE);
-    const id = `${WORKFLOW.$id}/unchanged`;
-    registerSchema({ ...WORKFLOW, $id: id });
-    await assert.rejects(validate(inputsUri(id), {}), /Invalid Schema/);
+  // against its dialect; the profile doesn't require `$schema`, so that IO
+  // schemas pass that check, and invalid ones still fail it. Uses the
+  // schemas that hyperjumpValidator() registered when the file was loaded
+  // (hyperjump's registry is global).
+  test("@hyperjump/json-schema checks IO schemas against the profile as their dialect", async () => {
+    registerSchema(INVALID);
+    await assert.rejects(validate(inputsUri(INVALID.$id), {}), /Invalid Schema/);
   });
 });

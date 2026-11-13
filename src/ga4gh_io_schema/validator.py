@@ -176,9 +176,12 @@ def _check_schema_keyword(
 ) -> None:
     """Check that a schema's ``$schema`` names the expected meta-schema.
 
-    The profile's meta-schema checks the same (``const`` of ``$schema``);
-    this check runs first so that a missing or foreign ``$schema`` gets a
-    clear message, and it also applies to custom meta-schemas.
+    The profile's meta-schema checks the value of ``$schema`` (``const``),
+    but doesn't require it, because some validators (e.g.,
+    @hyperjump/json-schema) remove ``$schema`` before they check a schema
+    against its dialect; this check is what rejects a missing ``$schema``.
+    It runs first so that a missing or foreign ``$schema`` gets a clear
+    message, and it also applies to custom meta-schemas.
 
     Args:
         target_schema: The JSON schema of the workflow or tool to validate.
