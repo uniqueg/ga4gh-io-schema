@@ -1,0 +1,19 @@
+{
+  "run_id": "run-6",
+  "state": "COMPLETE",
+  "outputs": {
+    "filesystem": [
+      "Snakefile",
+      "config.yaml",
+      "results/calls/a.vcf.gz",
+      "results/calls/a.vcf.gz.tbi",
+      "results/calls/B.vcf.gz",
+      "results/calls/B.vcf.gz.tbi",
+      "results/report.html",
+      ".snakemake/metadata/cmVzdWx0cw=="
+    ],
+    "S3": [
+      "https://s3.example.org/example-bucket/weskit/run-6/results/report.html?X-Amz-Signature=REDACTED"
+    ]
+  }
+}

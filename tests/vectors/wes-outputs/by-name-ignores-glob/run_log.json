@@ -1,0 +1,10 @@
+{
+  "run_id": "run-12",
+  "state": "CANCELED",
+  "outputs": {
+    "qc_report": null,
+    "alignments": [
+      "s3://example-bucket/runs/run-12/alignments/s1.bam"
+    ]
+  }
+}

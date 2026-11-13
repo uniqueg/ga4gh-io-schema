@@ -1,0 +1,10 @@
+{
+  "run_id": "run-15",
+  "state": "COMPLETE",
+  "outputs": [
+    {
+      "file_name": "multiqc/multiqc_report.html",
+      "file_url": "https://wes.example.org/runs/run-15/outputs/multiqc/multiqc_report.html"
+    }
+  ]
+}

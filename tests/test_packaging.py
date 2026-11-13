@@ -4,8 +4,8 @@
 
 """Tests for the packaging, schema identifiers and documentation of the project."""
 
-import json
 import re
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -168,7 +168,8 @@ def test_every_vocabulary_is_registered() -> None:
     profile = load_json(PROFILE_PATH)
     keywords = profile["$defs"]["node"]["$defs"]["keywords"]["allOf"]
     every_schema = {entry["$ref"] for entry in keywords}
-    top_level = {entry["$ref"] for entry in _keyword_check(profile)["allOf"]}
+    check = _keyword_check(profile)
+    top_level = {entry.get("$ref") for entry in check["allOf"]} - {None}
     for path in (SCHEMAS_DIR / "vocabularies").glob("*.schema.json"):
         vocabulary_id = load_json(path)["$id"]
         if path.name == "ui-widgets.schema.json":
@@ -195,35 +196,71 @@ def _keyword_check(schema: dict[str, Any]) -> dict[str, Any]:
     return checks[0]
 
 
-def test_checks_of_unevaluated_keywords_skip_draft_rules() -> None:
-    """Test that no check of unevaluated keywords reaches the Draft rules.
+def _references(
+    schema: Any, base: str, documents: dict[str, Any], seen: set[str]
+) -> Iterator[str]:
+    """Yield every reference that a schema reaches, following references.
 
-    The reason is explained under "Structure of the meta-schema" in
-    ``docs/specification/meta-schema.md`` (issue #47).
+    Args:
+        schema: The schema (or any JSON value in it).
+        base: The URI of the document that holds the schema.
+        documents: The documents of the profile, by URI.
+        seen: The absolute references followed so far.
+
+    Yields:
+        Each absolute reference, once.
+    """
+    if isinstance(schema, list):
+        for item in schema:
+            yield from _references(item, base, documents, seen)
+        return
+    if not isinstance(schema, dict):
+        return
+    for key, value in schema.items():
+        if key in ("$ref", "$dynamicRef") and isinstance(value, str):
+            target = base + value if value.startswith("#") else value
+            if target in seen:
+                continue
+            seen.add(target)
+            yield target
+            uri, _, pointer = target.partition("#")
+            if uri in documents:
+                resolved = documents[uri]
+                for segment in filter(None, pointer.split("/")):
+                    resolved = resolved[segment]
+                yield from _references(resolved, uri, documents, seen)
+        elif key != "$defs":
+            yield from _references(value, base, documents, seen)
+
+
+def test_checks_of_unevaluated_keywords_reach_no_nested_schema() -> None:
+    """Test that no check of unevaluated keywords reaches nested schemas.
+
+    The checks may see only the vocabularies, not ``$defs/node`` itself,
+    ``$defs/subschemas``, ``$defs/schema`` or the Draft 2020-12 meta-schema:
+    they would validate the nested schemas again at each level (see
+    "Structure of the meta-schema" in ``docs/specification/meta-schema.md``,
+    issue #47).
     """
     profile = load_json(PROFILE_PATH)
     node = profile["$defs"]["node"]
-    draft_rules = node["$defs"]["schema"]
-    assert draft_rules == {
-        **draft_rules,
-        "$ref": "https://json-schema.org/draft/2020-12/schema",
+    documents = {profile["$id"]: profile, node["$id"]: node}
+    for path in (SCHEMAS_DIR / "vocabularies").glob("*.schema.json"):
+        vocabulary = load_json(path)
+        documents[vocabulary["$id"]] = vocabulary
+    forbidden = {
+        "https://json-schema.org/draft/2020-12/schema",
+        node["$id"] + "#",
+        node["$id"] + "#/$defs/subschemas",
+        node["$id"] + "#/$defs/schema",
     }
-    draft_rule_refs = {
-        draft_rules["$ref"],
-        "#/$defs/schema",
-        f"{node['$id']}#/$defs/schema",
-    }
-    for schema in [profile, node]:
+    for schema, base in [(profile, profile["$id"]), (node, node["$id"])]:
         assert "unevaluatedProperties" not in schema
-        assert {branch.get("$ref") for branch in schema["allOf"]} & draft_rule_refs
         check = _keyword_check(schema)
         assert check["unevaluatedProperties"] is False
-        text = json.dumps(check)
-        for ref in draft_rule_refs:
-            assert f'"{ref}"' not in text, ref
-    assert "unevaluatedProperties" not in json.dumps(node["$defs"]["keywords"])
-    for path in (SCHEMAS_DIR / "vocabularies").glob("*.schema.json"):
-        assert "unevaluatedProperties" not in path.read_text(encoding="utf-8"), path
+        reached = set(_references(check, base, documents, set()))
+        assert node["$id"] + "#/$defs/keywords" in reached
+        assert not reached & forbidden, reached & forbidden
 
 
 def test_every_widget_has_one_fit_rule_and_one_group() -> None:

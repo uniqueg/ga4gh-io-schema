@@ -150,6 +150,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   allowed. (#41)
 - Versioning policy and governance note, and this changelog in the
   documentation, with the history of versions 0.1 and 0.2. (#14)
+- A JavaScript runner of the conformance suite and the examples
+  (`tests/js/`, run in CI) with Ajv and @hyperjump/json-schema, and a page
+  "JavaScript validators" on how to set them up. The meta-schema applies
+  the rules of `$defs/node` to nested schemas through explicit `$ref`s
+  (`$defs/node/$defs/subschemas`), not `$dynamicAnchor`, which Ajv supports
+  only at the root of a schema and would skip without an error. (#36)
 - Rules for `x-ga4gh-hidden` and `x-ga4gh-error-message`: form renderers
   show hidden inputs that users must set (required, no default) and hidden
   inputs whose values fail; an error message covers the failures at the
@@ -169,6 +175,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   write `workflow_params` or, with `--request`, a WES `RunRequest`. (#18)
 - Language-neutral test vectors in `tests/vectors/` for the translation
   (`wes-params/`) and for file reference values (`file-values/`). (#18)
+- The subcommand `ga4gh-io-schema outputs` and the module
+  `ga4gh_io_schema.outputs`: build the normalised outputs object of a WES
+  run from `RunLog.outputs` (outputs by name, also qualified WDL names and
+  CWL `File` objects; Sapporo and WESkit listings matched by glob), validate
+  it, and report ambiguous, unconverted and undeclared outputs, unmatched
+  files and skipped entries of listings. Language-neutral test vectors in
+  `tests/vectors/wes-outputs/`; a page "Output normaliser" with the
+  supported shapes and their limits. The URIs of listed files percent-encode
+  every character but the unreserved ones of RFC 3986. (#19)
 
 ### Fixed
 
@@ -176,7 +191,8 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   of the schema, no longer exponential in its depth of nesting: deeply
   nested parameters (e.g., arrays of arrays, nested records) validate in
   milliseconds instead of seconds or minutes. The meta-schema accepts and
-  rejects the same schemas as before, with the same error messages. The
+  rejects the same schemas as before (for schemas with several errors, the
+  error that `ga4gh-io-schema validate` reports can differ). The
   conformance suite has a new positive case with deeply nested parameters,
   `nested.schema.json`. (#47)
 

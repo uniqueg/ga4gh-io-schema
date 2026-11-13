@@ -1,0 +1,16 @@
+{
+  "description": "WESkit: RunLog.outputs is {\"filesystem\": [...]}, the files of the working directory of the run, relative to it, and, with S3, presigned URLs of the same files, which carry credentials and are ignored. Matches are sorted by code point (B before a).",
+  "conformance": "conformant",
+  "outputs": {
+    "calls": [
+      "s3://example-bucket/weskit/run-6/results/calls/B.vcf.gz",
+      "s3://example-bucket/weskit/run-6/results/calls/a.vcf.gz"
+    ],
+    "report": "s3://example-bucket/weskit/run-6/results/report.html"
+  },
+  "unmatchedFiles": [
+    "s3://example-bucket/weskit/run-6/.snakemake/metadata/cmVzdWx0cw%3D%3D",
+    "s3://example-bucket/weskit/run-6/Snakefile",
+    "s3://example-bucket/weskit/run-6/config.yaml"
+  ]
+}

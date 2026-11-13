@@ -98,32 +98,40 @@ other keywords as evaluated with the pattern `^(?!x-ga4gh-)`, a negative
 lookahead: valid ECMA-262, and supported by the common validators of Python
 and JavaScript, but not by validators built on RE2 (e.g., Go's `regexp`).
 
-The rules reach nested schemas through the `$dynamicAnchor` mechanism of
-Draft 2020-12: `$defs/node` declares `"$dynamicAnchor": "meta"`, so the
-applicators of the Draft 2020-12 meta-schema apply it, not plain JSON
-Schema, to every subschema. The top-level rules don't declare the anchor, so
-they apply only to the top level. The top level uses the Draft 2020-12 rules
-(`$defs/node/$defs/schema`) and the keywords (`$defs/node/$defs/keywords`) of
-`$defs/node` without its check of unevaluated keywords, adds the top-level
-keywords, and rejects other `x-ga4gh-*` keywords with its own check: a check
-of unevaluated keywords only sees the keywords evaluated in its own schema
-and the subschemas it applies, so the check of `$defs/node` would reject the
-top-level keywords. Both are kept inside the resource of `$defs/node` (not
-at the top level) so that the dynamic scope always contains the anchor of
-`$defs/node`.
+The rules reach nested schemas through explicit `$ref`s:
+`$defs/node/$defs/subschemas` applies `$defs/node` to the value of every
+keyword whose value is a schema or holds schemas (the applicators of Draft
+2020-12, e.g., `properties`, `items`, `allOf` and `$defs`, the deprecated
+`definitions` and `dependencies`, and `x-ga4gh-tabular-schema`). The
+Draft 2020-12 meta-schema checks every subschema against plain JSON Schema:
+it is applied once per tree of schemas (`$defs/node/$defs/schema`), to the
+top level and to each `x-ga4gh-tabular-schema`, which its applicators don't
+reach, and from there checks every schema nested in it. The meta-schema
+uses no `$dynamicRef` or `$dynamicAnchor`, because some validators (e.g.,
+Ajv) support them only at the root of a schema and would skip the rules for
+nested schemas without an error (see [JavaScript
+validators](../tools/javascript.md)).
 
-Each check of unevaluated keywords sits in an `allOf` branch next to the
-Draft 2020-12 rules, not in the schema that applies them, and applies only
-the vocabularies. Some validators (e.g., Python's `jsonschema`) evaluate the
+The top level uses the rules of `$defs/node` (`$defs/node/$defs/schema` and
+`$defs/node/$defs/keywords`) without its check of unevaluated keywords, adds
+the top-level keywords, and rejects other `x-ga4gh-*` keywords with its own
+check: a check of unevaluated keywords only sees the keywords evaluated in
+its own schema and the subschemas it applies, so the check of `$defs/node`
+would reject the top-level keywords.
+
+The structure keeps validation time roughly linear in the size of the
+schema. Each check of unevaluated keywords sits in an `allOf` branch of its
+own and sees only the vocabularies (`$defs/node/$defs/keywords`), none of
+which reaches a nested schema; the rules for nested schemas are in another
+branch. Some validators (e.g., Python's `jsonschema`) evaluate the
 subschemas that a check of unevaluated keywords sees once more, to collect
-their annotations. If the check saw the Draft 2020-12 rules, which apply
-`$defs/node` to every nested schema, each level would validate all levels
-below it again, in time exponential in the depth of nesting. Split this
-way, validation takes time roughly linear in the size of the schema, and
-accepts and rejects exactly what a single check over all keywords would.
-A known limitation remains: the check does see the file vocabulary, so with
-such validators each `x-ga4gh-tabular-schema` nested in another one
-multiplies the time of the schemas inside it (about twice per level).
+their annotations; if the check saw the rules for nested schemas, each level
+would validate all levels below it again, in time exponential in the depth
+of nesting. For the same reason, `$defs/node` doesn't apply the Draft
+2020-12 meta-schema itself: applied to every schema, it would check each
+schema once for each of its ancestors. Changes of the meta-schema keep this
+structure (`tests/test_packaging.py` and `tests/test_meta_schema.py` check
+it).
 
 The `$ref`s between the schemas use the versioned `$id`s; the validator
 resolves them from the copies that the package ships and never fetches them

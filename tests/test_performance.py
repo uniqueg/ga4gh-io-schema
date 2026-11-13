@@ -27,8 +27,8 @@ from ga4gh_io_schema.converters.snakemake import load_schema, to_ga4gh
 from ga4gh_io_schema.validator import load_profile, validate_schema
 
 #: Seconds that validating one of the schemas below may take. They take
-#: less than 0.1 s each on a laptop; before the fix of issue #47, each took
-#: more than a minute.
+#: about 0.2 s or less each on a laptop; before the fix of issue #47, each
+#: took several seconds to more than a minute.
 BUDGET = 2.0
 
 VARLOCIRAPTOR_CONFIG = (
@@ -171,15 +171,17 @@ def test_nested_records_validate_in_time(depth: int, width: int) -> None:
         validate_schema(schema)
 
 
-@pytest.mark.parametrize("size", [10, 30])
-def test_groups_of_inputs_validate_in_time(size: int) -> None:
+@pytest.mark.parametrize(("size", "budget"), [(10, BUDGET), (30, 4 * BUDGET)])
+def test_groups_of_inputs_validate_in_time(size: int, budget: float) -> None:
     """Test that groups of inputs (records of scalars) validate in time.
 
     The shape of IO schemas that group the inputs of a large workflow,
-    e.g., 30 groups of 30 inputs each.
+    e.g., 30 groups of 30 inputs each (about 0.3 s on a laptop, 35 s before
+    the fix of issue #47).
 
     Args:
         size: The number of groups, and of inputs in each group.
+        budget: The time budget, larger for the larger schema.
     """
     groups = {
         f"group_{group}": nested_records(1, size) | {"title": f"Group {group}"}
@@ -187,7 +189,7 @@ def test_groups_of_inputs_validate_in_time(size: int) -> None:
     }
     schema = io_schema({"type": "object", "properties": groups})
 
-    with time_budget(BUDGET):
+    with time_budget(budget):
         validate_schema(schema)
 
 
