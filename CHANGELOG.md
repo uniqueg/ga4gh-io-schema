@@ -206,6 +206,17 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Sapporo, WESkit, Toil and Cromwell are captured from real runs of these
   servers. (#55)
 
+### Fixed
+
+- Validation against the meta-schema takes time roughly linear in the size
+  of the schema, no longer exponential in its depth of nesting: deeply
+  nested parameters (e.g., arrays of arrays, nested records) validate in
+  milliseconds instead of seconds or minutes. The meta-schema accepts and
+  rejects the same schemas as before (for schemas with several errors, the
+  error that `ga4gh-io-schema validate` reports can differ). The
+  conformance suite has a new positive case with deeply nested parameters,
+  `nested.schema.json`. (#47)
+
 ## v0.2 (2026-10-13)
 
 Draft of the proposal; not released (no tag).

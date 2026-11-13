@@ -91,12 +91,15 @@ Keywords live in one vocabulary file per keyword group in
    `allOf` of `$defs/node/$defs/keywords` in
    `schemas/ga4gh-io-profile.schema.json`. A keyword that is allowed only at
    the top level (like `x-ga4gh-workflow`) goes into
-   `vocabularies/workflow.schema.json`, which the `allOf` of the top level
-   references.
+   `vocabularies/workflow.schema.json`, which the check of `x-ga4gh-*`
+   keywords in the `allOf` of the top level references.
    A keyword whose value is a schema (like `x-ga4gh-tabular-schema`) also
-   gets an entry `{"$ref": "#"}` in the `properties` of
-   `$defs/node/$defs/subschemas`, so that the nested schema is checked by
-   all rules of the profile. Don't use `$dynamicRef` or `$dynamicAnchor`:
+   gets an entry in the `properties` of `$defs/node/$defs/subschemas`, so
+   that the nested schema is checked by all rules of the profile; its
+   vocabulary file only defines it, without applying a schema to the value,
+   so that validation time stays linear (see [Structure of the
+   meta-schema](specification/meta-schema.md#structure-of-the-meta-schema)).
+   Don't use `$dynamicRef` or `$dynamicAnchor`:
    Ajv supports them only at the root of a schema (the tests check that no
    schema uses them). Put `dependentSchemas` of a vocabulary file in an
    `allOf`, not next to its `properties`: Ajv then forgets that the

@@ -5,7 +5,9 @@
 """Tests for the packaging, schema identifiers and documentation of the project."""
 
 import re
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -159,13 +161,15 @@ def test_every_vocabulary_is_registered() -> None:
     """Test that each keyword vocabulary is referenced from exactly one place.
 
     Keywords of every schema go into ``$defs/node/$defs/keywords``; top-level
-    keywords (``workflow.schema.json``) into the ``allOf`` of the top level.
+    keywords (``workflow.schema.json``) into the branch of the top level's
+    ``allOf`` that checks the ``x-ga4gh-*`` keywords.
     ``ui-widgets.schema.json`` is a value vocabulary, referenced from a keyword.
     """
     profile = load_json(PROFILE_PATH)
     keywords = profile["$defs"]["node"]["$defs"]["keywords"]["allOf"]
     every_schema = {entry["$ref"] for entry in keywords}
-    top_level = {entry.get("$ref") for entry in profile["allOf"]} - {None}
+    check = _keyword_check(profile)
+    top_level = {entry.get("$ref") for entry in check["allOf"]} - {None}
     for path in (SCHEMAS_DIR / "vocabularies").glob("*.schema.json"):
         vocabulary_id = load_json(path)["$id"]
         if path.name == "ui-widgets.schema.json":
@@ -176,6 +180,92 @@ def test_every_vocabulary_is_registered() -> None:
         else:
             assert vocabulary_id in every_schema, path
             assert vocabulary_id not in top_level, path
+
+
+def _keyword_check(schema: dict[str, Any]) -> dict[str, Any]:
+    """Return the branch of a schema's ``allOf`` that checks x-ga4gh-* keywords.
+
+    Args:
+        schema: The top level of the profile, or ``$defs/node``.
+
+    Returns:
+        The only branch with ``unevaluatedProperties``.
+    """
+    checks = [branch for branch in schema["allOf"] if "unevaluatedProperties" in branch]
+    assert len(checks) == 1, checks
+    return checks[0]
+
+
+def _references(
+    schema: Any, base: str, documents: dict[str, Any], seen: set[str]
+) -> Iterator[str]:
+    """Yield every reference that a schema reaches, following references.
+
+    Deliberately minimal: it resolves absolute and fragment-only (``#...``)
+    references with JSON pointers that need no unescaping, which is all
+    that the profile uses.
+
+    Args:
+        schema: The schema (or any JSON value in it).
+        base: The URI of the document that holds the schema.
+        documents: The documents of the profile, by URI.
+        seen: The absolute references followed so far.
+
+    Yields:
+        Each absolute reference, once.
+    """
+    if isinstance(schema, list):
+        for item in schema:
+            yield from _references(item, base, documents, seen)
+        return
+    if not isinstance(schema, dict):
+        return
+    for key, value in schema.items():
+        if key in ("$ref", "$dynamicRef") and isinstance(value, str):
+            target = base + value if value.startswith("#") else value
+            if target in seen:
+                continue
+            seen.add(target)
+            yield target
+            uri, _, pointer = target.partition("#")
+            if uri in documents:
+                resolved = documents[uri]
+                for segment in filter(None, pointer.split("/")):
+                    resolved = resolved[segment]
+                yield from _references(resolved, uri, documents, seen)
+        elif key != "$defs":
+            yield from _references(value, base, documents, seen)
+
+
+def test_checks_of_unevaluated_keywords_reach_no_nested_schema() -> None:
+    """Test that no check of unevaluated keywords reaches nested schemas.
+
+    The checks may see only the vocabularies, not ``$defs/node`` itself,
+    ``$defs/subschemas``, ``$defs/schema`` or the Draft 2020-12 meta-schema:
+    they would validate the nested schemas again at each level (see
+    "Structure of the meta-schema" in ``docs/specification/meta-schema.md``,
+    issue #47).
+    """
+    profile = load_json(PROFILE_PATH)
+    node = profile["$defs"]["node"]
+    documents = {profile["$id"]: profile, node["$id"]: node}
+    for path in (SCHEMAS_DIR / "vocabularies").glob("*.schema.json"):
+        vocabulary = load_json(path)
+        documents[vocabulary["$id"]] = vocabulary
+    forbidden = {
+        "https://json-schema.org/draft/2020-12/schema",
+        profile["$id"] + "#",
+        node["$id"] + "#",
+        node["$id"] + "#/$defs/subschemas",
+        node["$id"] + "#/$defs/schema",
+    }
+    for schema, base in [(profile, profile["$id"]), (node, node["$id"])]:
+        assert "unevaluatedProperties" not in schema
+        check = _keyword_check(schema)
+        assert check["unevaluatedProperties"] is False
+        reached = set(_references(check, base, documents, set()))
+        assert node["$id"] + "#/$defs/keywords" in reached
+        assert not reached & forbidden, reached & forbidden
 
 
 def test_every_widget_has_one_fit_rule_and_one_group() -> None:

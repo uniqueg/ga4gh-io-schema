@@ -173,7 +173,7 @@ def test_varlociraptor_references_resolve() -> None:
     """Test a public config schema with definitions and references.
 
     The library is used without the CLI's check against the profile, which
-    is slow for a schema of this size; the CLI tests check that.
+    the CLI tests cover; ``test_performance.py`` times that check.
     """
     source = load_schema(
         (VARLOCIRAPTOR / "config.schema.yaml").read_text(encoding="utf-8"), "x"

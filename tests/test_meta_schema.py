@@ -125,7 +125,30 @@ def test_subschemas_cover_every_applicator() -> None:
                 name,
                 path,
             )
-    assert subschemas["properties"]["x-ga4gh-tabular-schema"] == {"$ref": "#"}
+    # Draft 2020-12 doesn't reach tabular schemas: they get it themselves.
+    tabular = subschemas["properties"]["x-ga4gh-tabular-schema"]
+    assert tabular["allOf"] == [
+        {"$ref": "https://json-schema.org/draft/2020-12/schema"},
+        {"$ref": "#"},
+    ]
+
+
+def test_draft_rules_apply_once_per_tree() -> None:
+    """Test that the Draft 2020-12 meta-schema applies at the roots only.
+
+    It checks the whole tree below the schema it is applied to, so applied
+    to every schema, it would check each schema once per ancestor (issue
+    #47): it applies to the top level (``$defs/schema``) and to each tabular
+    schema, which its applicators don't reach, not in ``$defs/node``.
+    """
+    profile = load_profile()
+    node = profile["$defs"]["node"]
+    draft = {"$ref": "https://json-schema.org/draft/2020-12/schema"}
+    tree = node["$defs"]["schema"]
+    assert tree["allOf"] == [draft, {"$ref": "#/$defs/subschemas"}]
+    assert {"$ref": f"{node['$id']}#/$defs/schema"} in profile["allOf"]
+    assert draft not in node["allOf"]
+    assert {"$ref": "#/$defs/subschemas"} in node["allOf"]
 
 
 @pytest.mark.parametrize(
