@@ -49,10 +49,9 @@ The meta-schema declares its vocabularies in `$vocabulary`, so that it is a
 dialect of JSON Schema Draft 2020-12: the vocabularies of Draft 2020-12
 (core, applicator, unevaluated, validation, meta-data, format-annotation,
 content) are required, as in the Draft 2020-12 meta-schema, and the
-profile's vocabulary
-(`https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/vocabularies/ga4gh-io`,
-an identifier, not a document) is optional, so that validators that don't
-know it still process IO schemas.
+profile's own vocabulary (an identifier, not a document; see `$vocabulary`
+in the meta-schema) is optional, so that validators that don't know it
+still process IO schemas.
 
 Input values (e.g., the `workflow_params` of a WES request) are validated
 against `properties.inputs` of the IO schema, and normalised outputs against
@@ -63,17 +62,22 @@ against `properties.inputs` of the IO schema, and normalised outputs against
   references](files.md#values)) are checked separately, where this
   specification says so.
 - A validator MAY use the dialect of the profile (the `$schema` of the IO
-  schema) or the Draft 2020-12 dialect; the result is the same. Some
-  validators can't use the profile's dialect directly: Ajv needs the
-  meta-schema added as a meta-schema, and @hyperjump/json-schema rejects
-  every IO schema as invalid against it (see [JavaScript
-  validators](../tools/javascript.md#validating-input-values)). Such clients
-  validate values against a copy of the IO schema whose `$schema` names
-  Draft 2020-12 (`https://json-schema.org/draft/2020-12/schema`), after they
-  have checked the IO schema itself against the profile.
-- References in `inputs` (e.g., to the `$defs` of the IO schema) resolve
-  against the IO schema, so a validator that follows them validates against
-  `inputs` in place, e.g., by its URI `<$id>#/properties/inputs`.
+  schema) or the Draft 2020-12 dialect; the choice of dialect MUST NOT
+  change the result. A client that uses the Draft 2020-12 dialect MUST
+  first validate the IO schema against the profile, and then MAY validate
+  values against a copy of the IO schema in which every `$schema` that
+  names the profile (at the root and in embedded resources) names Draft
+  2020-12 (`https://json-schema.org/draft/2020-12/schema`) instead. [JavaScript
+  validators](../tools/javascript.md#validating-input-values) describes
+  validators that need this.
+- `format` is an annotation in Draft 2020-12. A request builder SHOULD
+  assert `format` on values for the formats that its validator supports
+  (e.g., `date` for date widgets). Validators differ in the formats they
+  support and in how strictly they check them, so a WES server MUST NOT
+  rely on a client's check of `format`.
+- References in `inputs` (e.g., to the `$defs` of the IO schema) MUST
+  resolve against the IO schema; a validator that follows them validates
+  against `inputs` in place, e.g., by its URI `<$id>#/properties/inputs`.
 
 ## Where the meta-schema is served
 

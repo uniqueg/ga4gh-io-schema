@@ -136,29 +136,38 @@ after the IO schema itself has passed the check above. `tests/js/values.test.mjs
 validates valid and invalid values against the examples with both validators,
 as `tests/test_examples.py` does in Python.
 
+Both snippets reuse the setup of the check above (`profile`, `vocabularies`
+and the IO schema `ioSchema`).
+
 **Ajv** accepts IO schemas that name the profile in `$schema` once the
-meta-schema is added with `addMetaSchema`; `addSchema` then checks each IO
-schema against the profile, and throws if it doesn't conform:
+meta-schema is added with `addMetaSchema`. `addSchema` checks the IO schema
+against its meta-schema, but this is not a conformance check: Ajv skips
+`format` there, and falls back to its default meta-schema when `$schema` is
+missing. Validate the IO schema as an instance against the profile first:
 
 ```js
 const ajv = new Ajv2020({ strict: false });
 addFormats(ajv);
 for (const schema of vocabularies) ajv.addSchema(schema);
 ajv.addMetaSchema(profile);
+if (!ajv.validate(profile.$id, ioSchema)) throw new Error("not an IO schema");
 ajv.addSchema(ioSchema);
 
 const valid = ajv.validate(`${ioSchema.$id}#/properties/inputs`, values);
 ```
 
-`strict: false` (or at least `strictSchema: false`) is needed, because
-strict mode rejects unknown keywords such as `x-ga4gh-file`, and Ajv can
-allow extension keywords only by exact name, not the `x-` keywords of other
-platforms that the profile allows.
+`strict: false` is needed, because strict mode rejects unknown keywords such
+as `x-ga4gh-file`, and Ajv can allow extension keywords only by exact name,
+not the `x-` keywords of other platforms that the profile allows.
+ajv-formats asserts `format` on values.
 
 **@hyperjump/json-schema** removes `$schema` from an IO schema before it
 checks the IO schema against its dialect, so the profile's meta-schema,
 which requires `$schema`, rejects every IO schema ("Invalid Schema").
-Register a copy of the IO schema that names Draft 2020-12 instead:
+After the check above, register a copy of the IO schema that names Draft
+2020-12 instead. The copy below rewrites only the root `$schema`; an IO
+schema with embedded resources whose `$schema` names the profile needs
+those rewritten too.
 
 ```js
 registerSchema({
