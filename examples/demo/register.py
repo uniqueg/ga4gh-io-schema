@@ -35,6 +35,8 @@ from demo_http import HTTPError, request_json
 DEMO_DIR = Path(__file__).resolve().parent
 #: Path of the demo directory in the repository.
 REPOSITORY_DIR = "examples/demo"
+#: Name of the I/O Schema file, next to the primary descriptor.
+SCHEMA_NAME = "ga4gh-io.schema.json"
 #: The repository that holds the demo workflow.
 DEFAULT_REPOSITORY = "https://github.com/uniqueg/ga4gh-io-schema"
 #: Name of the environment variable with the access token.
@@ -109,7 +111,7 @@ def build_payload(
     """
     check_revision(revision)
     check_repository(repository)
-    schema_bytes = (DEMO_DIR / "ga4gh-io.schema.json").read_bytes()
+    schema_bytes = (DEMO_DIR / SCHEMA_NAME).read_bytes()
     schema = json.loads(schema_bytes)
     workflow = schema["x-ga4gh-workflow"]
     descriptor_path = workflow["primary_descriptor_path"]
@@ -151,7 +153,7 @@ def build_payload(
                     },
                     {
                         "tool_file": {
-                            "path": "ga4gh-io.schema.json",
+                            "path": SCHEMA_NAME,
                             "file_type": "OTHER",
                         },
                         "type": descriptor_type,
@@ -166,32 +168,44 @@ def build_payload(
     }
 
 
-def tool_id() -> str:
-    """Return the TRS identifier of the demo tool, as the schema names it.
+def load_workflow() -> dict[str, Any]:
+    """Return the ``x-ga4gh-workflow`` block of the demo's I/O Schema.
 
     Returns:
-        ``trs_tool_id`` of the schema's ``x-ga4gh-workflow``.
+        The block, with the TRS identifiers of the tool and the version.
     """
-    schema = json.loads((DEMO_DIR / "ga4gh-io.schema.json").read_text(encoding="utf-8"))
-    return schema["x-ga4gh-workflow"]["trs_tool_id"]
+    schema = json.loads((DEMO_DIR / SCHEMA_NAME).read_text(encoding="utf-8"))
+    return schema["x-ga4gh-workflow"]
 
 
-def schema_url(trs_url: str, payload: dict[str, Any]) -> str:
+def tool_url(trs_url: str, workflow: dict[str, Any]) -> str:
+    """Return the TRS URL of the demo tool.
+
+    Args:
+        trs_url: Base URL of the TRS API.
+        workflow: The ``x-ga4gh-workflow`` block of the schema.
+
+    Returns:
+        The URL of the tool, ``{trs_url}/tools/{id}``.
+    """
+    tool_id = urllib.parse.quote(workflow["trs_tool_id"], safe="")
+    return f"{trs_url.rstrip('/')}/tools/{tool_id}"
+
+
+def schema_url(trs_url: str, workflow: dict[str, Any]) -> str:
     """Return the TRS URL of the I/O Schema of the registered version.
 
     Args:
         trs_url: Base URL of the TRS API.
-        payload: The registration, from :func:`build_payload`.
+        workflow: The ``x-ga4gh-workflow`` block of the schema.
 
     Returns:
         The URL of the schema's ``FileWrapper``.
     """
-    version = payload["versions"][0]
-    quote = urllib.parse.quote
+    version_id = urllib.parse.quote(workflow["trs_version_id"], safe="")
     return (
-        f"{trs_url.rstrip('/')}/tools/{quote(tool_id(), safe='')}"
-        f"/versions/{quote(version['id'], safe='')}"
-        f"/{version['descriptor_type'][0]}/descriptor/ga4gh-io.schema.json"
+        f"{tool_url(trs_url, workflow)}/versions/{version_id}"
+        f"/{workflow['descriptor_type']}/descriptor/{SCHEMA_NAME}"
     )
 
 
@@ -237,14 +251,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not args.trs_url:
         print("Error: --trs-url is required unless --dry-run is given", file=sys.stderr)
         return 1
-    url = f"{args.trs_url.rstrip('/')}/tools/{urllib.parse.quote(tool_id(), safe='')}"
+    workflow = load_workflow()
     try:
-        registered = request_json("PUT", url, payload, token_env=TOKEN_ENV)
+        request_json(
+            "PUT", tool_url(args.trs_url, workflow), payload, token_env=TOKEN_ENV
+        )
     except HTTPError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
-    print(f"Registered tool {registered}", file=sys.stderr)
-    print(schema_url(args.trs_url, payload))
+    print(schema_url(args.trs_url, workflow))
     return 0
 
 

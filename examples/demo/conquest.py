@@ -33,7 +33,12 @@ from pathlib import Path
 from typing import Any
 
 from demo_http import HTTPError, request_json
-from register import DEFAULT_REPOSITORY, check_repository, check_revision
+from register import (
+    DEFAULT_REPOSITORY,
+    REPOSITORY_DIR,
+    check_repository,
+    check_revision,
+)
 
 from ga4gh_io_schema.outputs import NormalisationError, normalise_outputs
 from ga4gh_io_schema.wes import TranslationError, build_run_request
@@ -41,7 +46,7 @@ from ga4gh_io_schema.wes import TranslationError, build_run_request
 #: Directory of the demo.
 DEMO_DIR = Path(__file__).resolve().parent
 #: Path of the main workflow file in the repository.
-DEFAULT_MAIN_WORKFLOW_PATH = "examples/demo/demo.wdl"
+DEFAULT_MAIN_WORKFLOW_PATH = f"{REPOSITORY_DIR}/demo.wdl"
 #: URI schemes of input files that Conquest stages.
 CONQUEST_SCHEMES = ("https", "s3")
 #: Name of the environment variable with the access token.
@@ -203,6 +208,9 @@ def _cmd_run(args: argparse.Namespace) -> int:
     print(f"Run {run_id} submitted", file=sys.stderr)
     run_log = wait(args.wes_url, run_id, args.interval, args.timeout)
     _print_json(normalise_outputs(schema, run_log).to_json())
+    if run_log.get("state") != "COMPLETE":
+        print(f"Run {run_id} ended in state {run_log.get('state')}", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -281,7 +289,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     Returns:
         The exit status: 0 on success, 1 on errors (invalid arguments or
-        values, a failed request, a run that hasn't ended in time).
+        values, a failed request, a run that hasn't ended in time, or, for
+        ``run``, a run that ended in another state than ``COMPLETE``, whose
+        outputs are printed nonetheless).
     """
     args = _parser().parse_args(argv)
     try:

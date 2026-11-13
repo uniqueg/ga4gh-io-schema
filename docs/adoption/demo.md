@@ -69,7 +69,7 @@ the samtools image is `quay.io/biocontainers/samtools:1.24--h9dcdb79_1`.
   TRS-Filer and Conquest (e.g., in a service registry), and builds run
   requests with Conquest's engine parameters, such as Krini with the form of
   ELIXIR Cloud Components. These are under development; until they are
-  deployed, the [command-line path](#command-line-path) is the demo.
+  deployed, the [command-line path](#2-run-it-from-the-command-line) is the demo.
 
 The commands below are for Bash; set the URLs of the deployments first:
 
@@ -115,25 +115,7 @@ curl "$TRS_URL/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/descriptor/ga4gh-io
 The first lists `ga4gh-io.schema.json` (`OTHER`) next to `demo.wdl`
 (`PRIMARY_DESCRIPTOR`); the second returns the schema in `content`.
 
-## 2. Run it from a portal
-
-With a portal as described in [Prerequisites](#prerequisites) (e.g., Krini):
-
-1. Log in and choose to run a workflow; pick "I/O Schema demo". Expected: a
-   form with the titled fields of the table above: a file reference for the
-   reads, a slider for the mapping quality, a choice of read filters; no
-   workflow type, no WES URL, no JSON editor.
-2. Enter a mapping quality of 61 (e.g., in a text field, if the slider
-   doesn't allow it). Expected: the error "The minimum mapping quality is a
-   whole number from 0 to 60" next to the field; nothing is sent.
-3. Enter the values of `values.json` and submit. Expected: the run moves from
-   `QUEUED` through `RUNNING` to `COMPLETE`.
-4. Open the outputs. Expected: the three outputs with their titles; the
-   report in a sandboxed viewer. Conquest gives `s3://` URIs, which a browser
-   can download only through a gateway or presigned URLs (see [Known
-   limits](#known-limits)).
-
-## Command-line path
+## 2. Run it from the command line
 
 The same run without a portal, step by step, from the values file to the
 normalised outputs.
@@ -210,9 +192,31 @@ the request of step 2 and stops):
 python examples/demo/conquest.py run --revision "$SHA" --wes-url "$WES_URL"
 ```
 
+If the run ends in another state than `COMPLETE`, `run` prints the partial
+outputs (`"conformance": "partial"`) and exits with status 1.
+
 `wes-params` stays server-neutral: the engine parameters, and the GitHub
 repository in place of a TRS URL, are what Conquest needs today; a WES server
 that resolves TRS URLs needs neither.
+
+## 3. Run it from a portal
+
+Once a portal as described in [Prerequisites](#prerequisites) is deployed
+(e.g., Krini with the I/O Schema form, still under development):
+
+1. Log in and choose to run a workflow; pick "I/O Schema demo". Expected: a
+   form with the titled fields of the table above: a file reference for the
+   reads, a slider for the mapping quality, a choice of read filters; no
+   workflow type, no WES URL, no JSON editor.
+2. Enter a mapping quality of 61 (e.g., in a text field, if the slider
+   doesn't allow it). Expected: the error "The minimum mapping quality is a
+   whole number from 0 to 60" next to the field; nothing is sent.
+3. Enter the values of `values.json` and submit. Expected: the run moves from
+   `QUEUED` through `RUNNING` to `COMPLETE`.
+4. Open the outputs. Expected: the three outputs with their titles; the
+   report in a sandboxed viewer. Conquest gives `s3://` URIs, which a browser
+   can download only through a gateway or presigned URLs (see [Known
+   limits](#known-limits)).
 
 ## Running the workflow locally
 

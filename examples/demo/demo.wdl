@@ -36,7 +36,7 @@ workflow io_schema_demo {
     }
     filtered_bam: {
       label: "Filtered reads (BAM)",
-      description: "The filtered reads, sorted by coordinate; the index lies next to it."
+      description: "The filtered reads, sorted by coordinate."
     }
     filtered_bam_index: {
       label: "Index of the filtered reads (BAI)",

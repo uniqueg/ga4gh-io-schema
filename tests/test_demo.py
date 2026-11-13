@@ -11,6 +11,7 @@ local mock server instead, so the tests run offline.
 import hashlib
 import io
 import json
+import socket
 import sys
 import threading
 from collections.abc import Iterator
@@ -19,19 +20,19 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+import build_schema
+import conquest
+import demo_http
 import pytest
+import register
 
 from ga4gh_io_schema.outputs import normalise_outputs
 from ga4gh_io_schema.validator import validate_schema
 from ga4gh_io_schema.wes import TranslationError, to_workflow_params
 
+# build_schema, conquest, demo_http and register are the demo scripts, on the
+# path through `pythonpath` of pytest (pyproject.toml).
 DEMO_DIR = Path(__file__).resolve().parents[1] / "examples" / "demo"
-sys.path.insert(0, str(DEMO_DIR))
-
-import build_schema  # noqa: E402
-import conquest  # noqa: E402
-import demo_http  # noqa: E402
-import register  # noqa: E402
 
 SHA = "0123456789abcdef0123456789abcdef01234567"
 SCHEMA = json.loads((DEMO_DIR / "ga4gh-io.schema.json").read_text(encoding="utf-8"))
@@ -345,10 +346,14 @@ def test_http_rejects_non_json(mock: Mock) -> None:
         demo_http.request_json("GET", f"{mock.url}/x")
 
 
-def test_http_connection_error(mock: Mock) -> None:
+def test_http_connection_error() -> None:
     """A failed connection is an error."""
-    with pytest.raises(demo_http.HTTPError, match="GET http://127.0.0.1:9/"):
-        demo_http.request_json("GET", "http://127.0.0.1:9/")
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    url = f"http://127.0.0.1:{port}/"
+    with pytest.raises(demo_http.HTTPError, match=f"GET {url}"):
+        demo_http.request_json("GET", url)
 
 
 def test_http_without_token(mock: Mock, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -541,3 +546,52 @@ def test_run(mock: Mock, capsys: pytest.CaptureFixture[str]) -> None:
     assert conquest.main(["run", "--revision", SHA, "--wes-url", mock.url]) == 0
     assert json.loads(capsys.readouterr().out) == OUTPUTS
     assert mock.received[0].body["workflow_engine_parameters"]["revision"] == SHA
+
+
+def test_run_sends_wes_token(mock: Mock, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Requests to WES carry the token of ``WES_TOKEN``."""
+    monkeypatch.setenv("WES_TOKEN", "wes-token")
+    mock.add("POST", "/runs", 200, {"run_id": RUN_ID})
+    mock.add("GET", f"/runs/{RUN_ID}/status", 200, {"state": "COMPLETE"})
+    mock.add("GET", f"/runs/{RUN_ID}", 200, RUN_LOG)
+    assert conquest.main(["run", "--revision", SHA, "--wes-url", mock.url]) == 0
+    assert [e.headers["Authorization"] for e in mock.received] == [
+        "Bearer wes-token"
+    ] * 3
+
+
+def test_run_failed(mock: Mock, capsys: pytest.CaptureFixture[str]) -> None:
+    """A run that fails gets its partial outputs printed, and exit status 1."""
+    failed = {**RUN_LOG, "state": "EXECUTOR_ERROR"}
+    mock.add("POST", "/runs", 200, {"run_id": RUN_ID})
+    mock.add("GET", f"/runs/{RUN_ID}/status", 200, {"state": "EXECUTOR_ERROR"})
+    mock.add("GET", f"/runs/{RUN_ID}", 200, failed)
+    assert conquest.main(["run", "--revision", SHA, "--wes-url", mock.url]) == 1
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)["conformance"] == "partial"
+    assert "ended in state EXECUTOR_ERROR" in captured.err
+
+
+def test_run_overrides(capsys: pytest.CaptureFixture[str]) -> None:
+    """The repository and the main workflow path can be changed."""
+    argv = ["run", "--dry-run", "--revision", SHA]
+    argv += ["--repository", "https://github.com/fork/repo"]
+    argv += ["--main-workflow-path", "demo/main.wdl"]
+    assert conquest.main(argv) == 0
+    request = json.loads(capsys.readouterr().out)
+    assert request["workflow_url"] == "https://github.com/fork/repo"
+    assert request["workflow_engine_parameters"]["main_workflow_path"] == (
+        "demo/main.wdl"
+    )
+
+
+@pytest.mark.parametrize("content", [None, "{not json"])
+def test_request_file_errors(
+    tmp_path: Path, content: str | None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A missing or invalid request file is an error, with exit status 1."""
+    path = tmp_path / "request.json"
+    if content is not None:
+        path.write_text(content, encoding="utf-8")
+    assert conquest.main(["request", str(path), "--revision", SHA]) == 1
+    assert capsys.readouterr().err.startswith("Error: ")

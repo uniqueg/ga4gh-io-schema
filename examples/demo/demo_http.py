@@ -63,7 +63,7 @@ def request_json(
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:1000]
         raise HTTPError(f"{method} {url}: HTTP {exc.code}: {detail}") from exc
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+    except OSError as exc:  # also URLError and timeouts
         raise HTTPError(f"{method} {url}: {exc}") from exc
     try:
         return json.loads(payload)

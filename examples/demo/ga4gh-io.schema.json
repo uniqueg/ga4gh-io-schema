@@ -9,7 +9,7 @@
     "checksum": [
       {
         "type": "sha-256",
-        "checksum": "667fae842833adeaa163be3fcd1867f47f481aa97666e5a522f3d6db8915ae46"
+        "checksum": "078024666b83f48ec41590e5863b2f418d5a2013aa835aa73d18d8c16904c415"
       }
     ],
     "trs_tool_id": "ga4gh-io-schema-demo",
@@ -83,7 +83,7 @@
             "kind": "file",
             "ontology": "http://edamontology.org/format_2572"
           },
-          "description": "The filtered reads, sorted by coordinate; the index lies next to it.",
+          "description": "The filtered reads, sorted by coordinate.",
           "title": "Filtered reads (BAM)",
           "x-ga4gh-parameter": {
             "type": "File"
