@@ -938,11 +938,6 @@ def test_cli_notes_a_missing_sample_sheet(
             {},
             "Error: The sample-sheet schema 'a\x00b' isn't a valid path: ",
         ),
-        (
-            "x" * 300,
-            {},
-            f"Error: The sample-sheet schema '{'x' * 300}' isn't a valid path: ",
-        ),
     ],
 )
 def test_cli_rejects_bad_sample_sheets(
@@ -983,7 +978,13 @@ def test_cli_rejects_bad_sample_sheets(
 @pytest.mark.parametrize(
     ("source", "argv", "status", "message"),
     [
-        ("[" * 100_000, [], 3, "Error: Too deeply nested to convert"),
+        # Valid JSON (Python 3.14 parses it), too deep to convert
+        (
+            '{"properties": {"a": ' * 20_000 + "{}" + "}}" * 20_000,
+            [],
+            3,
+            "Error: Too deeply nested to convert",
+        ),
         ("[]", [], 1, "Validation Error: The nf-schema must be a JSON object."),
         (
             json.dumps(nf_schema({"p": {"type": "string"}})),
@@ -1026,3 +1027,44 @@ def test_cli_errors(
     assert result == status
     assert out == ""
     assert err.startswith(message)
+
+
+def test_cli_reports_sheet_paths_that_cant_be_checked(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Test that an error of the file check (e.g., no access) exits with 3.
+
+    Args:
+        tmp_path: Temporary directory.
+        monkeypatch: Pytest fixture for patching the file check.
+        capsys: Pytest fixture capturing the output.
+    """
+    path = write_pipeline(
+        tmp_path,
+        nf_schema(
+            {"input": {"type": "string", "format": "file-path", "schema": SHEET}}
+        ),
+    )
+
+    def is_file(self: Path) -> bool:
+        """Fail like a path in a directory without access.
+
+        Args:
+            self: The path.
+
+        Raises:
+            PermissionError: Always.
+        """
+        raise PermissionError(13, "Permission denied", str(self))
+
+    monkeypatch.setattr(Path, "is_file", is_file)
+
+    status, out, err = run(["convert", "nextflow", str(path)], capsys)
+
+    assert status == 3
+    assert out == ""
+    assert err.startswith(
+        f"Error: The sample-sheet schema '{SHEET}' isn't a valid path: "
+    )
