@@ -312,6 +312,10 @@ IO schemas (see [Implementations](../specification/conformance.md#implementation
 The [End-to-end demo](demo.md#3-run-it-from-a-portal) lists what a portal
 should show for its workflow, as a check for a client.
 
+The [form proof of concept](form.md) of this repository goes through steps
+3 to 8 for one schema, with a minimal form and a Python host, to show that
+an IO schema is enough for them; it is no reference client.
+
 ## Data Repository Service (DRS) interplay
 
 A [file reference](../specification/files.md) whose `schemes` include `drs` tells a client that an input accepts a Data Repository Service (DRS) identifier (`"x-ga4gh-file": {"kind": "file", "schemes": ["drs"]}`). The client can then offer a DRS browser or picker, and check that the user can see the object, *before* submitting the run.

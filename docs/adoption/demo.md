@@ -71,7 +71,9 @@ the samtools image is `quay.io/biocontainers/samtools:1.24--h9dcdb79_1`.
   TRS-Filer and Conquest (e.g., in a service registry), and builds run
   requests with Conquest's engine parameters, such as Krini with the form of
   ELIXIR Cloud Components. These are under development; until they are
-  deployed, the [command-line path](#2-run-it-from-the-command-line) is the demo.
+  deployed, the [command-line path](#2-run-it-from-the-command-line) is the demo,
+  and the [form proof of concept](form.md) shows the form of step 3 locally,
+  up to the `workflow_params`, without submitting them.
 
 The commands below are for Bash; set the URLs of the deployments first:
 

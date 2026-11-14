@@ -8,6 +8,8 @@ The profile is independent of workflow engines. Its integration with the GA4GH A
   identifiers and interpreting outputs.
 * [End-to-end demo](demo.md): a WDL workflow registered in TRS-Filer with
   its IO schema and run on Conquest, from a portal or the command line.
+* [Form proof of concept](form.md): a minimal form and host in this
+  repository, from an IO schema to `workflow_params`.
 
 ## The end-to-end GA4GH lifecycle (summary)
 
