@@ -33,6 +33,16 @@ function element(tag, attributes = {}, text = undefined) {
   return node;
 }
 
+/**
+ * The label of a value of `enum`: strings as they are, others as JSON.
+ *
+ * @param {*} option The value.
+ * @returns {string} The label.
+ */
+function optionLabel(option) {
+  return typeof option === "string" ? option : JSON.stringify(option);
+}
+
 class IoSchemaForm extends HTMLElement {
   #fields = [];
   #controls = new Map();
@@ -145,7 +155,7 @@ class IoSchemaForm extends HTMLElement {
       if (control !== "multiselect") node.append(element("option", { value: "" }, ""));
       options.forEach((option, index) => {
         const value = control === "boolean-select" ? String(option) : String(index);
-        const item = element("option", { value }, JSON.stringify(option).replace(/^"|"$/g, ""));
+        const item = element("option", { value }, optionLabel(option));
         item.selected = [initial].flat().includes(value);
         node.append(item);
       });
@@ -160,7 +170,7 @@ class IoSchemaForm extends HTMLElement {
         const input = element("input", { type: "radio", name: field.id, value: String(index) });
         input.checked = initial === String(index);
         const label = element("label");
-        label.append(input, ` ${JSON.stringify(option).replace(/^"|"$/g, "")}`);
+        label.append(input, ` ${optionLabel(option)}`);
         node.append(label);
       });
       this.#controls.set(field, () => node.querySelector("input:checked")?.value ?? "");
@@ -181,6 +191,10 @@ class IoSchemaForm extends HTMLElement {
       for (const bound of ["minimum", "maximum"]) {
         if (typeof schema[bound] === "number") node.setAttribute(bound.slice(0, 3), String(schema[bound]));
       }
+      if (typeof schema.multipleOf === "number") node.setAttribute("step", String(schema.multipleOf));
+      else if (control === "number" || control === "slider") {
+        node.setAttribute("step", [schema.type].flat().includes("integer") ? "1" : "any");
+      }
       if (control === "file") {
         const schemes = schema["x-ga4gh-file"]?.schemes;
         node.placeholder = schemes ? `${schemes.join(", ")} URL` : "URL or path";
@@ -191,7 +205,9 @@ class IoSchemaForm extends HTMLElement {
       // A number field next to the slider shows its value, and also takes
       // values that the slider can't produce, so that validation sees them
       const range = element("input", { type: "range", "aria-hidden": "true", tabindex: "-1" });
-      for (const bound of ["min", "max"]) range.setAttribute(bound, node.getAttribute(bound));
+      for (const name of ["min", "max", "step"]) {
+        if (node.hasAttribute(name)) range.setAttribute(name, node.getAttribute(name));
+      }
       range.value = initial;
       range.addEventListener("input", () => {
         node.value = range.value;

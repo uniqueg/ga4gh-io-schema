@@ -273,7 +273,15 @@ def test_message_through_conditions_and_embedded_resources() -> None:
 
 def test_pointer_escapes_special_characters() -> None:
     """Test that keys with ``/`` and ``~`` are escaped in pointers."""
-    assert form_host.pointer(["a/b", "c~d", 0]) == "/a~1b/c~0d/0"
+    schema = {
+        "$schema": PROFILE,
+        "type": "object",
+        "properties": {
+            "inputs": {"type": "object", "properties": {"a/b~": {"type": "string"}}}
+        },
+    }
+    _, errors = form_host.check_values(schema, {"a/b~": 1})
+    assert errors[0]["pointer"] == "/a~1b~0"
 
 
 def test_file_reference_rules_are_checked() -> None:
@@ -305,6 +313,7 @@ def test_host_serves_the_form(host: str) -> None:
     assert status == 200
     assert headers["Content-Type"].startswith("text/html")
     assert headers["Content-Security-Policy"] == "default-src 'self'"
+    assert headers["X-Content-Type-Options"] == "nosniff"
     assert b"<io-schema-form>" in body
     for path in ("/app.js", "/form.js", "/io-schema-form.js", "/form.css"):
         status, _, body = _request(f"{host}{path}")

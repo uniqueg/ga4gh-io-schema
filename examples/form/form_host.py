@@ -167,7 +167,8 @@ def validation_errors(schema: dict[str, Any], values: Any) -> list[dict[str, str
     for error in sorted(validator.iter_errors(values), key=lambda e: list(e.path)):
         path = list(error.absolute_path)
         message = error_message(inputs, path) or error.message
-        entry = {"pointer": pointer(path), "message": message}
+        location = TranslationError(message, path).pointer
+        entry = {"pointer": location, "message": message}
         if entry not in errors:
             errors.append(entry)
     return errors
@@ -197,20 +198,6 @@ def error_message(inputs: Scope, path: Sequence[str | int]) -> str | None:
         if isinstance(message, str):
             return message
     return None
-
-
-def pointer(path: Iterable[str | int]) -> str:
-    """Turn a location into a JSON Pointer (RFC 6901).
-
-    Args:
-        path: Keys of objects and indexes of arrays.
-
-    Returns:
-        The JSON Pointer; the empty string for the values as a whole.
-    """
-    return "".join(
-        "/" + str(part).replace("~", "~0").replace("/", "~1") for part in path
-    )
 
 
 def _descend(resolver: Any, subschema: Any) -> Scope:

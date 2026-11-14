@@ -93,7 +93,7 @@ error messages, the HTTP API), and `tests/js/form.test.mjs` the logic of the
 form (controls, hidden inputs, values from the controls); see
 [Development](../development.md#javascript-tests-nodejs).
 
-## Limits
+## Known limits
 
 What the proof of concept leaves out, on purpose:
 
@@ -113,7 +113,12 @@ What the proof of concept leaves out, on purpose:
   once rendered, always has a value; arrays of strings or numbers are text
   areas with one value per line; arrays of objects, objects without
   `properties`, and unions other than those with a file reference are text
-  areas for JSON. The form follows local `$ref`s (`#/...`) only.
+  areas for JSON. The form follows local `$ref`s (`#/...`) only. A slider
+  takes `minimum` and `maximum` (not the exclusive bounds) and the step of
+  `multipleOf`.
+- **Tests:** the tests cover the host and the logic of the form
+  (`form.js`), not the rendering in a browser (`io-schema-form.js`,
+  `app.js`), which was checked by hand.
 - **Descriptions** with `"x-ga4gh-description-format": "markdown"` are shown
   as plain text, which the guide allows.
 - **Error messages:** the host looks for the message in every branch of the
