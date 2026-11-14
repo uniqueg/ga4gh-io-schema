@@ -205,7 +205,7 @@ the file types of workflow languages:
 | WDL | index files, declared as separate inputs | separate file references; WDL has no secondary files |
 | nf-schema | `"format": "file-path"` | `"x-ga4gh-file": {"kind": "file"}`, without `format` |
 | nf-schema | `"format": "directory-path"` | `"x-ga4gh-file": {"kind": "directory"}`, without `format` |
-| nf-schema | `"format": "path"` (file or directory) | `"x-ga4gh-file": {"kind": "file"}`, unless the pipeline documents a directory; the converter reports the choice |
+| nf-schema | `"format": "path"` (file or directory) | `"x-ga4gh-file": {"kind": "file"}`, unless the pipeline documents a directory; the converter reports the choice, and takes directories as an option (see [Nextflow converter](../tools/convert-nextflow.md#file-references)) |
 | nf-schema | `"format": "file-path-pattern"` (a glob) | No equivalent: a glob is not a reference; the converter keeps a plain string and reports it |
 | nf-schema | `mimetype` | `mediaType` |
 | nf-schema | `schema` (sample sheet) | `x-ga4gh-tabular-schema` (see [Keywords](keywords.md#tabular-data-and-cloud-sovereignty)) |

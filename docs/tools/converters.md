@@ -6,13 +6,9 @@
 
 ## From workflow languages to IO schemas
 
-- **Nextflow:** from `nextflow_schema.json` (`nf-schema`); planned (see
-  [issue #1](https://github.com/uniqueg/ga4gh-io-schema/issues/1)). It is
-  to drop `fa_icon` (the profile has no icon keyword since version 0.3, see
-  [Roadmap](../roadmap.md#cut)), to map a sample sheet's `schema` only to
-  the experimental `x-ga4gh-tabular-schema` hint, and not to map
-  `uniqueEntries` to `uniqueItems`, which means something else (see
-  [Keywords](../specification/keywords.md#leveraging-native-json-schema-what-we-dont-reinvent)).
+- **Nextflow:** from `nextflow_schema.json` (nf-schema or nf-validation)
+  and its sample-sheet schemas: `ga4gh-io-schema convert nextflow` (see
+  [Nextflow converter](convert-nextflow.md)).
 - **Snakemake:** from the config schema and the sample-sheet schemas; see
   [Snakemake converter](convert-snakemake.md).
 - **CWL:** from the inputs and outputs of a `Workflow` or `CommandLineTool`;
@@ -40,9 +36,25 @@ subcommands write the notes to standard error (`convert cwl` labels them
 ## Python API: shared parts
 
 The converter modules share the notes, the errors, the result of a
-conversion and the rendering of JSON paths; each module also offers these
-under its own name (e.g., `ga4gh_io_schema.converters.wdl.Note`).
+conversion, the file outputs given as options and the rendering of JSON
+paths; each module also offers these under its own name (e.g.,
+`ga4gh_io_schema.converters.wdl.Note`).
 
 ::: ga4gh_io_schema.converters.common
     options:
       show_root_heading: false
+
+The converters of JSON Schema sources (Snakemake and nf-schema) share the
+upgrade to Draft 2020-12, the rewriting of local references and the checks
+of file references:
+
+::: ga4gh_io_schema.converters.schemas
+    options:
+      show_root_heading: false
+      members:
+        - SchemaConverter
+        - check_json
+        - file_reference_problem
+        - child_name
+        - DATA_KEYWORDS
+        - NOT_ON_FILES

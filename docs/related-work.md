@@ -31,7 +31,7 @@ Several standards and tools overlap with this profile. This page says, for each 
 
 - **Overlap:** Typed inputs and outputs of a workflow, as JSON Schema, for Nextflow.
 - **Difference:** The pipeline spec is specific to Nextflow; the profile covers several workflow languages and adds keywords for ontology terms and viewers.
-- **Relation: converge.** The planned Nextflow converter ([#1](https://github.com/uniqueg/ga4gh-io-schema/issues/1)) reads `nextflow_schema.json`; it should read the pipeline spec once that is stable. Where the pipeline spec and the profile describe the same thing, the profile should use compatible keywords, so that the conversion is lossless. We plan to contact the authors.
+- **Relation: converge.** The [Nextflow converter](tools/convert-nextflow.md) reads `nextflow_schema.json`; it should read the pipeline spec once that is stable. Where the pipeline spec and the profile describe the same thing, the profile should use compatible keywords, so that the conversion is lossless. We plan to contact the authors.
 
 ## Bioschemas `FormalParameter` and RO-Crate
 

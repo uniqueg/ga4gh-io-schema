@@ -1,15 +1,17 @@
-"""Parts that the converters share: notes, errors, results and JSON paths.
+"""Parts that the converters share: notes, errors, results, outputs, JSON paths.
 
 Each converter reports the decisions of a conversion as :class:`Note` objects,
 whose locations are JSON paths in the notation of the validator
 (:func:`json_path`), and fails with a :class:`SourceError` (the source can't
-be read) or a :class:`ConversionError` (it can't be converted). The converter
+be read) or a :class:`ConversionError` (it can't be converted). Converters of
+sources that don't describe outputs take them as :class:`Output` objects
+(:func:`outputs_schema`). The converter
 modules import these names, so that they're also available there (e.g.,
 ``ga4gh_io_schema.converters.wdl.Note``).
 """
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -107,6 +109,58 @@ class Conversion:
 
     schema: dict[str, Any]
     notes: list[Note]
+
+
+@dataclass(frozen=True)
+class Output:
+    """File output of the workflow, found by glob among the files of a run.
+
+    Attributes:
+        name: Name of the output (a property of ``outputs``).
+        glob: ``x-ga4gh-output-glob``: the glob, relative to the output
+            directory of the run (e.g., ``results/*.bam``; Snakemake's
+            working directory, Nextflow's ``outdir``).
+        kind: ``file`` or ``directory``.
+        many: Whether the output is an array of file references, so that
+            the glob may find several files.
+    """
+
+    name: str
+    glob: str
+    kind: str = "file"
+    many: bool = False
+
+    def to_schema(self) -> dict[str, Any]:
+        """Render the schema of the output.
+
+        Returns:
+            A file reference, or an array of them, with the glob.
+        """
+        reference = {"type": "string", "x-ga4gh-file": {"kind": self.kind}}
+        schema: dict[str, Any] = (
+            {"type": "array", "items": reference} if self.many else reference
+        )
+        return {**schema, "x-ga4gh-output-glob": self.glob}
+
+
+def outputs_schema(outputs: Sequence[Output]) -> dict[str, Any]:
+    """Build the schema of the outputs.
+
+    Args:
+        outputs: The file outputs, in order.
+
+    Returns:
+        An object schema with one property per output.
+
+    Raises:
+        ConversionError: If two outputs have the same name.
+    """
+    properties: dict[str, Any] = {}
+    for output in outputs:
+        if output.name in properties:
+            raise ConversionError(f"Two outputs named '{output.name}'.")
+        properties[output.name] = output.to_schema()
+    return {"type": "object", "properties": properties}
 
 
 def json_path(pointer: Pointer) -> str:

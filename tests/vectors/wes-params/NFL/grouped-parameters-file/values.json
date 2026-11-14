@@ -1,0 +1,4 @@
+{
+  "input": "../samplesheet.csv",
+  "outdir": "https://data.example.org/results/"
+}

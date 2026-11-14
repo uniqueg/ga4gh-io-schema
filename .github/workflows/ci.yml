@@ -94,6 +94,11 @@ jobs:
           ga4gh-io-schema convert cwl tests/data/cwl/call-variants.cwl -o "$RUNNER_TEMP/call-variants.json"
           ga4gh-io-schema validate "$RUNNER_TEMP/call-variants.json"
 
+      - name: E2E CLI Conversion (Nextflow)
+        run: |
+          ga4gh-io-schema convert nextflow tests/data/nextflow/demo/nextflow_schema.json -o "$RUNNER_TEMP/demo.json"
+          ga4gh-io-schema validate "$RUNNER_TEMP/demo.json"
+
       # Each bad schema must fail with exit code 1 and a validation error, not
       # with any error (e.g. a missing file); tests/test_cli.py checks the
       # exact message of each.

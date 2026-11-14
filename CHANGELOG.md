@@ -98,6 +98,20 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A specification page "UI widgets": for each widget of the vocabulary, the
   types and keywords that it needs and the value that it produces; input
   widgets and output viewers kept apart. (#38)
+- `ga4gh-io-schema convert nextflow`: converts an nf-schema file
+  (`nextflow_schema.json`; nf-schema's Draft 2020-12 or nf-validation's
+  Draft 7) to an IO schema: groups of parameters kept as `$defs`, path
+  formats as file references (`mimetype` as `mediaType`, `format: path` a
+  file unless `--directory` names it), sample-sheet schemas (`schema`, read
+  from the pipeline directory) as tabular hints, `help_text` as Markdown
+  descriptions, `hidden` and `errorMessage` as `x-ga4gh-hidden` and
+  `x-ga4gh-error-message`; engine-local and display keywords (`exists`,
+  `fa_icon`, `meta`, `uniqueEntries`) dropped, with notes; file outputs
+  found by glob (`--out-file`, `--out-files`, `--out-dir`), and the engine
+  binding (`descriptor_type` `NFL`). It replaces the separate
+  `ga4gh-io-schema-converter` command of the draft in
+  [#2](https://github.com/uniqueg/ga4gh-io-schema/pull/2), which was never
+  released. (#1)
 - `ga4gh-io-schema convert snakemake`: converts a Snakemake config schema
   (YAML or JSON, Draft 4 to 2020-12) and sample-sheet schemas to an IO
   schema, with file references from documented, overridable heuristics, the

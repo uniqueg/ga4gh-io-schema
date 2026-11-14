@@ -117,6 +117,7 @@ nav:
       - Validator: tools/validator.md
       - JavaScript validators: tools/javascript.md
       - Converters: tools/converters.md
+      - Nextflow converter: tools/convert-nextflow.md
       - Snakemake converter: tools/convert-snakemake.md
       - CWL converter: tools/cwl.md
       - WDL converter: tools/convert-wdl.md
