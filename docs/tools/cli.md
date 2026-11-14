@@ -6,15 +6,15 @@ tool:
 | Subcommand | Purpose |
 | --- | --- |
 | `validate` | Check an IO schema against the GA4GH IO Profile (see [Validator](validator.md)). |
+| `convert nextflow` | Convert an nf-schema file (`nextflow_schema.json`) and its sample-sheet schemas to an IO schema (see [Nextflow converter](convert-nextflow.md)). |
 | `convert snakemake` | Convert a Snakemake config schema and sample-sheet schemas to an IO schema (see [Snakemake converter](convert-snakemake.md)). |
 | `convert cwl` | Convert the inputs and outputs of a CWL document to an IO schema (see [CWL converter](cwl.md)). |
 | `convert wdl` | Convert the inputs and outputs of a WDL workflow or task to an IO schema (see [WDL converter](convert-wdl.md)). |
 | `wes-params` | Validate input values against an IO schema and translate them into WES `workflow_params` or a `RunRequest` (see [WES parameters](wes-params.md)). |
 | `outputs` | Normalise the outputs of a WES run (see [Output normaliser](outputs.md)). |
 
-Further converters will be added as subcommands (e.g.,
-`ga4gh-io-schema convert nextflow`). `ga4gh-io-schema --help` lists the
-subcommands, and `ga4gh-io-schema <subcommand> --help` their options.
+`ga4gh-io-schema --help` lists the subcommands, and
+`ga4gh-io-schema <subcommand> --help` their options.
 
 !!! note "Renamed in v0.3.0"
     `ga4gh-io-schema validate` replaces the `ga4gh-io-schema-validator`
