@@ -1,0 +1,70 @@
+{
+  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/vectors/nfl-groups/1.0.0",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "NFL"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "title": "Parameters in groups, as converted from nf-schema",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/input_output_options"
+        },
+        {
+          "$ref": "#/$defs/generic_options"
+        }
+      ]
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  "$defs": {
+    "input_output_options": {
+      "title": "Input/output options",
+      "type": "object",
+      "required": [
+        "input",
+        "outdir"
+      ],
+      "properties": {
+        "input": {
+          "type": "string",
+          "pattern": "^\\S+\\.csv$",
+          "description": "Path to the sample sheet.\n\nA *CSV* file with a header row.",
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-error-message": "The sample sheet must be a CSV file.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "mediaType": "text/csv"
+          }
+        },
+        "outdir": {
+          "type": "string",
+          "x-ga4gh-file": {
+            "kind": "directory"
+          }
+        }
+      }
+    },
+    "generic_options": {
+      "title": "Generic options",
+      "type": "object",
+      "properties": {
+        "publish_dir_mode": {
+          "type": "string",
+          "enum": [
+            "copy",
+            "symlink"
+          ],
+          "default": "copy",
+          "x-ga4gh-hidden": true
+        }
+      }
+    }
+  }
+}

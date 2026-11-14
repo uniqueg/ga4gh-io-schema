@@ -32,8 +32,8 @@ _DRAFT_URI = re.compile(
     r"(?:draft-0(?P<old>[3467])/schema|draft/(?P<new>2019-09|2020-12)/schema)#?$"
 )
 
-# Keywords of the drafts whose values are instance data, copied unchanged.
-_DATA = frozenset({"const", "default", "enum", "examples"})
+#: Keywords of the drafts whose values are instance data, copied unchanged.
+DATA_KEYWORDS = frozenset({"const", "default", "enum", "examples"})
 # Keywords whose value is a schema.
 _SINGLE = frozenset(
     {
@@ -55,7 +55,7 @@ _SINGLE = frozenset(
 _ARRAYS = frozenset({"allOf", "anyOf", "oneOf", "prefixItems"})
 # Keywords whose value maps names to schemas (``properties`` is handled apart).
 _MAPS = frozenset({"dependentSchemas", "patternProperties"})
-# Keywords that a file reference must not have, and are dropped from it.
+#: Keywords that a file reference must not have; converters drop them.
 NOT_ON_FILES = ("format", "contentMediaType", "contentEncoding", "contentSchema")
 # In-place applicators: a file reference can't have them, so they prevent it.
 _APPLICATORS = (
@@ -260,7 +260,7 @@ class SchemaConverter:
                         )
                         break
         for key, value in node.items():
-            if key not in _DATA:
+            if key not in DATA_KEYWORDS:
                 self._check_references(
                     value,
                     resource,
@@ -396,7 +396,7 @@ class SchemaConverter:
                         pointer,
                     )
                     continue
-            if key in _DATA:
+            if key in DATA_KEYWORDS:
                 result[key] = copy.deepcopy(value)
             elif key == "$ref" or (
                 key == "$dynamicRef" and isinstance(value, str) and value[:2] == "#/"

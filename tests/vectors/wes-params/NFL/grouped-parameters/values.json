@@ -1,0 +1,5 @@
+{
+  "input": "https://data.example.org/samplesheet.csv",
+  "outdir": "https://data.example.org/results/",
+  "publish_dir_mode": "symlink"
+}
