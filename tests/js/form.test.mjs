@@ -222,6 +222,9 @@ describe("review cases", () => {
     const field = { control: "lines", schema: { type: "array", items: { type: "integer" } } };
     assert.deepEqual(parseValue(field, "0x10\n0b11\n-2e3"), ["0x10", "0b11", -2000]);
     assert.equal(parseValue({ control: "number", schema: {} }, "Infinity"), "Infinity");
+    assert.equal(parseValue({ control: "number", schema: {} }, "1e400"), "1e400");
+    assert.equal(parseValue({ control: "number", schema: {} }, ".5"), 0.5);
+    assert.equal(parseValue({ control: "number", schema: {} }, "+1."), 1);
   });
 
   test("leaves out optional objects at their defaults", () => {
@@ -244,6 +247,25 @@ describe("review cases", () => {
     const untouched = { adv: { flag: false }, req: { flag: false } };
     dropUntouched(fields, untouched);
     assert.deepEqual(untouched, { req: { flag: false } });
+    const nested = {
+      properties: {
+        inputs: {
+          properties: {
+            adv: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                inner: { type: "object", properties: { flag: { type: "boolean", default: false } } },
+              },
+              required: ["name", "inner"],
+            },
+          },
+        },
+      },
+    };
+    const deep = { adv: { inner: { flag: false } }, list: [1] };
+    dropUntouched(describeFields(nested, nested.properties.inputs), deep);
+    assert.deepEqual(deep, { list: [1] });
     const changed = { adv: { flag: true } };
     dropUntouched(fields, changed);
     assert.deepEqual(changed, { adv: { flag: true } });

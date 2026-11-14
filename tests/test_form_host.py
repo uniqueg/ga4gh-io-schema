@@ -373,6 +373,21 @@ def test_host_rejects_bad_bodies(host: str) -> None:
         connection.close()
 
 
+def test_host_rejects_values_nested_too_deeply(
+    host: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that values that parse but are too deep for validation get 400."""
+
+    def too_deep(*args: Any) -> None:
+        raise RecursionError
+
+    monkeypatch.setattr(form_host, "check_values", too_deep)
+    status, _, response = _request(f"{host}/api/params", b"{}", "POST")
+    assert status == 400
+    message = json.loads(response)["errors"][0]["message"]
+    assert message == "The values are nested too deeply."
+
+
 def test_load_schema_from_a_file() -> None:
     """Test that a schema file is read and validated."""
     path = ROOT / "examples" / "demo" / "ga4gh-io.schema.json"

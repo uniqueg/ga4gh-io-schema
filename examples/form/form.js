@@ -216,8 +216,9 @@ export function formatValue(field, value) {
  * @returns {number|string} The number, or the text.
  */
 function toNumber(text) {
-  // JSON numbers only: Number() would also take, e.g., 0x10 and Infinity
-  return /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/.test(text) ? Number(text) : text;
+  // Decimal numbers only: Number() would also take, e.g., 0x10 and Infinity
+  const number = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(text) ? Number(text) : NaN;
+  return Number.isFinite(number) ? number : text;
 }
 
 /**
@@ -228,18 +229,23 @@ function toNumber(text) {
  *
  * @param {Array<object>} fields The fields of an object.
  * @param {object} values The values of the object; changed in place.
+ * @returns {boolean} Whether all members of the object have their defaults.
  */
 export function dropUntouched(fields, values) {
-  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  for (const field of fields) {
-    const value = values?.[field.name];
-    if (!field.children || value === null || typeof value !== "object") continue;
-    dropUntouched(field.children, value);
-    const untouched = Object.entries(value).every(([name, item]) =>
-      same(item, field.children.find((child) => child.name === name)?.defaultValue),
-    );
-    if (!field.required && untouched) delete values[field.name];
+  let untouched = true;
+  for (const [name, item] of Object.entries(values)) {
+    const field = fields.find((candidate) => candidate.name === name);
+    let same;
+    if (field?.children && item !== null && typeof item === "object" && !Array.isArray(item)) {
+      // Decided bottom-up: a required object at its defaults counts as such
+      same = dropUntouched(field.children, item);
+      if (same && !field.required) delete values[name];
+    } else {
+      same = JSON.stringify(item) === JSON.stringify(field?.defaultValue);
+    }
+    untouched &&= same;
   }
+  return untouched;
 }
 
 /**

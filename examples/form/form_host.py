@@ -353,9 +353,12 @@ class FormHandler(BaseHTTPRequestHandler):
             errors = [{"pointer": "", "message": "The values aren't JSON."}]
             self._send_json(HTTPStatus.BAD_REQUEST, {"errors": errors})
             return
-        params, errors = check_values(
-            self.server.schema, values, self.server.allowed_schemes
-        )
+        try:
+            params, errors = check_values(
+                self.server.schema, values, self.server.allowed_schemes
+            )
+        except RecursionError:
+            errors = [{"pointer": "", "message": "The values are nested too deeply."}]
         if errors:
             self._send_json(HTTPStatus.BAD_REQUEST, {"errors": errors})
         else:

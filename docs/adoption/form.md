@@ -116,7 +116,8 @@ What the proof of concept leaves out, on purpose:
   `properties`, and unions other than those with a file reference are text
   areas for JSON. The form follows local `$ref`s (`#/...`) only. A slider
   takes `minimum` and `maximum` (not the exclusive bounds) and the step of
-  `multipleOf`.
+  `multipleOf`, counted from `minimum` as browsers do, so its positions
+  fail validation if `minimum` isn't a multiple of `multipleOf`.
 - **Tests:** the tests cover the host and the logic of the form
   (`form.js`), not the rendering in a browser (`io-schema-form.js`,
   `app.js`), which was checked by hand.
