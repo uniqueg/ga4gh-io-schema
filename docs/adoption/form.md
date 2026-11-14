@@ -1,0 +1,125 @@
+# Form proof of concept
+
+`examples/form/` holds a minimal form and a host for it: an IO schema is
+enough to render a run form, to validate the values with the schema's own
+error messages, and to turn them into the `workflow_params` of a WES run
+request. It depends on nothing but this repository: no Cloud Components, no
+portal, no JavaScript framework, and no build step.
+
+**A proof of concept, not a product:** the form and the host show that the
+profile works on its own. They aren't a reference client, aren't maintained
+like the `ga4gh-io-schema` package, and aren't for deployment: the host has
+no authentication, serves one schema, and submits nothing. Portals adopt the
+profile with their own components (see [Portals and clients](portals.md)).
+
+## Run it
+
+In a checkout of this repository, with the package installed (`pip install
+-e .`), one command starts the host for the schema of the [end-to-end
+demo](demo.md):
+
+```bash
+python examples/form/form_host.py
+```
+
+Then open <http://127.0.0.1:8000/>. The page shows a form for the inputs of
+the demo workflow: a field for the aligned reads, a slider with a number
+field for the minimum mapping quality, and a choice of read filters.
+
+- Enter a mapping quality of 61 and submit: the field shows "The minimum
+  mapping quality is a whole number from 0 to 60", the
+  `x-ga4gh-error-message` of the schema, and the form says that `reads` is
+  required.
+- Enter the values of `examples/demo/values.json` (the URL of the reads, 20,
+  `proper_pairs`) and submit: the page shows the `workflow_params` of
+  [Run it from the command line](demo.md#2-run-it-from-the-command-line),
+  with the names qualified by the WDL entry point.
+
+Options:
+
+- `--schema PATH_OR_URL`: another IO schema, as a file or an `http(s)` URL,
+  e.g., the TRS URL of the file `ga4gh-io.schema.json` of a tool version
+  (`.../tools/{id}/versions/{version_id}/{type}/descriptor/ga4gh-io.schema.json`,
+  see [Discovery by clients](trs.md#discovery-by-clients)); a `FileWrapper`
+  must have the schema in `content`.
+- `--allow-scheme SCHEME` (repeatable): the allow-list of URI schemes of
+  file references, as for [`wes-params`](../tools/wes-params.md); the
+  default is `drs` and `https`.
+- `--host` and `--port`: the address to bind; the default is
+  `127.0.0.1:8000`.
+
+The host validates the schema against the profile when it starts, and
+exits with status 1 if the schema can't be read or doesn't comply.
+
+## How it works
+
+| File | What it is |
+| --- | --- |
+| `form_host.py` | The host: Python standard library and this package. Serves the page and the schema, validates the values and translates them. |
+| `form.js` | The logic of the form, without the DOM: the control of each input, hidden inputs, and how the text of a control becomes a value. |
+| `io-schema-form.js` | `<io-schema-form>`, a plain web component that renders the fields of `form.js` and emits the values. |
+| `index.html`, `app.js`, `form.css` | The page: fetches the schema, renders the form, sends the values to the host and shows the result. |
+
+The steps of the [guide for portals and clients](portals.md#guide-for-portals-and-clients)
+are split between the two:
+
+- **The form** renders the inputs (step 4) with the widgets of [Input
+  widgets](../specification/widgets.md#input-widgets), and falls back to
+  the type, `format` and `enum` of an input for widgets that it doesn't know
+  or that don't fit. Hidden inputs go under "Advanced", except those that
+  users must set; "Advanced" opens when an input in it has an error. Text
+  from the schema is set as text, never as HTML (step 5). Inputs that the
+  user leaves empty are left out of the values; defaults are prefilled.
+- **The host** validates the schema offline (step 3), validates the values
+  against `inputs` with the [Python validator](../tools/validator.md)
+  (step 7), checks the file reference values (step 6) and builds the
+  `workflow_params` with [`wes-params`](../tools/wes-params.md) (step 8).
+  Every failure gets the `x-ga4gh-error-message` that covers it, by the
+  rules of [Error messages](../specification/keywords.md#error-messages),
+  or the validator's message; the form shows each error next to its input,
+  and errors of the values as a whole (e.g., a missing required input)
+  above the button.
+
+The host's API, for the page:
+
+- `GET /api/schema`: the IO schema.
+- `POST /api/params` with the values as JSON: `200` with
+  `{"workflow_params": {...}}`, or `400` with
+  `{"errors": [{"pointer": "/min_mapq", "message": "..."}]}`, where
+  `pointer` is the location of the value in the values (JSON Pointer).
+
+`tests/test_form_host.py` tests the host (values to `workflow_params`, the
+error messages, the HTTP API), and `tests/js/form.test.mjs` the logic of the
+form (controls, hidden inputs, values from the controls); see
+[Development](../development.md#javascript-tests-nodejs).
+
+## Limits
+
+What the proof of concept leaves out, on purpose:
+
+- **No submission:** it shows the `workflow_params` and doesn't build or
+  send a WES run request; the [end-to-end demo](demo.md) submits runs from
+  the command line (`conquest.py`).
+- **No checks of the workflow block** (step 2 of the guide): it doesn't
+  compare `x-ga4gh-workflow` with a TRS tool version or a checksum. The
+  engine binding comes from `x-ga4gh-workflow` only: a schema without a
+  descriptor type (or, for WDL, an entry point) renders, but its values get
+  the error that the binding is unknown, after they have passed validation.
+- **Validation on the host:** the form doesn't validate in the browser; a
+  client without a Python backend would validate with a [JavaScript
+  validator](../tools/javascript.md) instead.
+- **Plain controls:** file references are text fields for a URL or path
+  (no DRS or S3 pickers); `time` and `date-time` are text fields; a colour,
+  once rendered, always has a value; arrays of strings or numbers are text
+  areas with one value per line; arrays of objects, objects without
+  `properties`, and unions other than those with a file reference are text
+  areas for JSON. The form follows local `$ref`s (`#/...`) only.
+- **Descriptions** with `"x-ga4gh-description-format": "markdown"` are shown
+  as plain text, which the guide allows.
+- **Error messages:** the host looks for the message in every branch of the
+  applicators at the location of a failure, not only in those on its
+  evaluation path, and doesn't look through `contains`,
+  `unevaluatedProperties` or `unevaluatedItems`.
+- **Not hardened:** no authentication, no TLS; the host binds to
+  `127.0.0.1` by default. It sends a Content Security Policy that allows
+  only its own files.

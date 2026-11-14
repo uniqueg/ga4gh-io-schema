@@ -128,6 +128,7 @@ nav:
       - WES: adoption/wes.md
       - Portals and clients: adoption/portals.md
       - End-to-end demo: adoption/demo.md
+      - Form proof of concept: adoption/form.md
   - Roadmap: roadmap.md
   - Changelog: changelog.md
   - Versioning and governance: governance.md

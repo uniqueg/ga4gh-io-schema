@@ -46,7 +46,8 @@ them together.
 
 `tests/js/` runs the conformance suite and the examples through JavaScript
 validators (Ajv and @hyperjump/json-schema), offline, as described in
-[JavaScript validators](tools/javascript.md); CI runs it in the job
+[JavaScript validators](tools/javascript.md), and tests the logic of the
+[form proof of concept](adoption/form.md) (`form.test.mjs`); CI runs it in the job
 `Test (JavaScript)`. It needs Node.js 22 or later:
 
 ```bash
