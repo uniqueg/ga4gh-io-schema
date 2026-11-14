@@ -38,6 +38,7 @@ from ga4gh_io_schema.converters.schemas import (
     SchemaConverter,
     check_json,
     file_reference_problem,
+    pointer_reference,
 )
 from ga4gh_io_schema.validator import load_profile
 
@@ -183,6 +184,8 @@ class _Converter(SchemaConverter):
         self.pending: list[tuple[Pointer, str]] = []
         # Places of the keywords that get one note for all places
         self.places: dict[str, list[Pointer]] = {}
+        # Where each sample-sheet schema is converted (the first time)
+        self.attached: dict[str, Pointer] = {}
         # Whether a sample-sheet schema is being converted
         self.in_sheet = False
 
@@ -261,6 +264,25 @@ class _Converter(SchemaConverter):
             pointer: Location of the file reference in the IO schema.
             path: Path of the sample-sheet schema, as the source names it.
         """
+        node: Any = schema
+        for part in pointer:
+            if isinstance(node, list) and isinstance(part, int) and part < len(node):
+                node = node[part]
+            elif isinstance(node, dict) and part in node:
+                node = node[part]
+            else:
+                return  # in a keyword that was dropped (and noted)
+        at: Pointer = (*pointer, "x-ga4gh-tabular-schema")
+        if path in self.attached:
+            node["x-ga4gh-tabular-schema"] = {
+                "$ref": pointer_reference(self.attached[path])
+            }
+            self.note(
+                f"The sample-sheet schema '{path}' is the tabular hint of an "
+                "earlier parameter too: referenced, not converted again.",
+                at,
+            )
+            return
         if path not in self.sheets:
             self.note(
                 f"The sample-sheet schema '{path}' wasn't found (the command "
@@ -269,10 +291,7 @@ class _Converter(SchemaConverter):
                 pointer,
             )
             return
-        node: Any = schema
-        for part in pointer:
-            node = node[part]
-        at: Pointer = (*pointer, "x-ga4gh-tabular-schema")
+        self.attached[path] = at
         self.in_sheet = True
         try:
             self._begin(self.sheets[path], prefix=at, defs_prefix=at)
@@ -464,7 +483,9 @@ class _Converter(SchemaConverter):
         marked = {
             key: value for key, value in result.items() if key not in NOT_ON_FILES
         }
-        marked["x-ga4gh-file"] = self._reference(kind, extras, pointer)
+        marked["x-ga4gh-file"] = self._reference(
+            kind, extras, pointer, "x-ga4gh-tabular-schema" in marked
+        )
         if "pattern" in marked:
             self.places.setdefault("pattern", []).append(pointer)
         return marked
@@ -495,7 +516,7 @@ class _Converter(SchemaConverter):
         return "file"
 
     def _reference(
-        self, kind: str, extras: dict[str, Any], pointer: Pointer
+        self, kind: str, extras: dict[str, Any], pointer: Pointer, hint: bool
     ) -> dict[str, Any]:
         """Build the file reference, with the media type and the sample sheet.
 
@@ -503,6 +524,8 @@ class _Converter(SchemaConverter):
             kind: ``file`` or ``directory``.
             extras: ``mimetype`` and ``schema`` of the schema, if it has them.
             pointer: Location of the schema in the IO schema.
+            hint: Whether the schema has an ``x-ga4gh-tabular-schema``
+                already, which wins over ``schema``.
 
         Returns:
             The value of ``x-ga4gh-file``.
@@ -525,7 +548,12 @@ class _Converter(SchemaConverter):
         sheet = extras.get("schema")
         if sheet is None:
             return reference
-        if kind == "file" and isinstance(sheet, str) and not self.in_sheet:
+        if hint:
+            self.note(
+                "Dropped 'schema': the schema has 'x-ga4gh-tabular-schema'.",
+                pointer,
+            )
+        elif kind == "file" and isinstance(sheet, str) and not self.in_sheet:
             self.pending.append((pointer, sheet))
         else:
             self.note(

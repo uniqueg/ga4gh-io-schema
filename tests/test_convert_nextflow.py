@@ -722,6 +722,70 @@ def test_sample_sheets_only_for_files(schema: dict[str, Any]) -> None:
     assert "Dropped 'schema': only files of parameters" in messages(conversion)[0]
 
 
+def test_tabular_hint_of_the_source_wins() -> None:
+    """Test that a hint of the source is kept, and ``schema`` dropped."""
+    hint = {"type": "array", "title": "Mine"}
+    source = nf_schema(
+        {
+            "input": {
+                "type": "string",
+                "format": "file-path",
+                "schema": SHEET,
+                "x-ga4gh-tabular-schema": hint,
+            }
+        }
+    )
+
+    conversion = to_ga4gh(source, {SHEET: {"type": "array"}})
+
+    assert parameter(conversion, "input")["x-ga4gh-tabular-schema"] == hint
+    assert "Dropped 'schema': the schema has 'x-ga4gh-tabular-schema'." in messages(
+        conversion
+    )
+
+
+def test_sample_sheet_is_converted_once() -> None:
+    """Test that a second parameter with the same sheet references the first."""
+    sheet = {"type": "array", "items": {"$anchor": "row", "type": "object"}}
+    file_param = {"type": "string", "format": "file-path", "schema": SHEET}
+    source = nf_schema({"a": file_param, "b": {"anyOf": [file_param]}})
+
+    conversion = to_ga4gh(source, {SHEET: sheet})
+
+    assert parameter(conversion, "a")["x-ga4gh-tabular-schema"]["items"] == {
+        "$anchor": "row",
+        "type": "object",
+    }
+    assert parameter(conversion, "b")["anyOf"][0]["x-ga4gh-tabular-schema"] == {
+        "$ref": "#/properties/inputs/properties/a/x-ga4gh-tabular-schema"
+    }
+    assert notes_with(conversion, "referenced, not converted again")
+    assert not notes_with(conversion, "points to nothing")
+    validate_schema(conversion.schema)
+
+
+@pytest.mark.parametrize("sheets", [{}, {SHEET: {"type": "array"}}])
+def test_sample_sheet_in_a_dropped_keyword_is_skipped(sheets: dict[str, Any]) -> None:
+    """Test a sheet named in a keyword that file references can't have.
+
+    Args:
+        sheets: The sample-sheet schemas given.
+    """
+    inner = {"type": "string", "format": "file-path", "schema": SHEET}
+    source = nf_schema(
+        {"a": {"type": "string", "format": "file-path", "contentSchema": inner}}
+    )
+
+    conversion = to_ga4gh(source, sheets)
+
+    assert parameter(conversion, "a") == {
+        "type": "string",
+        "x-ga4gh-file": {"kind": "file"},
+    }
+    assert not notes_with(conversion, "sample-sheet schema")
+    assert notes_with(conversion, "Dropped 'contentSchema'")
+
+
 def test_sample_sheets_are_not_nested() -> None:
     """Test that a sample sheet in a sample sheet isn't converted."""
     sheet = {
@@ -869,6 +933,11 @@ def test_cli_notes_a_missing_sample_sheet(
             "directory of the pipeline",
         ),
         (SHEET, {SHEET: "{"}, "Error: Invalid JSON - "),
+        (
+            "a\x00b",
+            {},
+            "Error: The sample-sheet schema 'a\x00b' can't be found: ",
+        ),
     ],
 )
 def test_cli_rejects_bad_sample_sheets(

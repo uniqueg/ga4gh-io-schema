@@ -591,14 +591,7 @@ class SchemaConverter:
             urllib.parse.unquote(part).replace("~1", "/").replace("~0", "~")
             for part in fragment.split("/")[1:]
         ]
-        target = self._map_pointer(segments)
-        return "#" + "".join(
-            "/"
-            + urllib.parse.quote(
-                str(part).replace("~", "~0").replace("/", "~1"), safe=_POINTER_SAFE
-            )
-            for part in target
-        )
+        return pointer_reference(self._map_pointer(segments))
 
     def _map_pointer(self, segments: list[str]) -> Pointer:
         """Map a JSON pointer of the source to the IO schema.
@@ -677,6 +670,24 @@ class SchemaConverter:
             The converted schema.
         """
         return self._schema(sub, pointer, name)
+
+
+def pointer_reference(pointer: Pointer) -> str:
+    """Render a location as a local reference (a JSON pointer fragment).
+
+    Args:
+        pointer: Keys and indexes from the root of the document.
+
+    Returns:
+        The reference, e.g. ``#/$defs/a~1b``.
+    """
+    return "#" + "".join(
+        "/"
+        + urllib.parse.quote(
+            str(part).replace("~", "~0").replace("/", "~1"), safe=_POINTER_SAFE
+        )
+        for part in pointer
+    )
 
 
 def child_name(parent: str | None, child: str) -> str | None:

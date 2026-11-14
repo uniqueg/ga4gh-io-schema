@@ -52,7 +52,13 @@ def load_sample_sheets(source: Any, pipeline_dir: Path) -> dict[str, Any]:
     base = pipeline_dir.resolve()
     sheets: dict[str, Any] = {}
     for path in sample_sheet_paths(source):
-        file = (base / path).resolve()
+        try:
+            file = (base / path).resolve()
+        # ValueError: e.g., a NUL character in the path
+        except (OSError, ValueError) as exc:
+            raise SourceError(
+                f"The sample-sheet schema '{path}' can't be found: {exc}"
+            ) from exc
         if not file.is_relative_to(base):
             raise SourceError(
                 f"The sample-sheet schema '{path}' is outside the directory of "

@@ -74,7 +74,7 @@ With `--json`, the output is one object with the IO schema and the notes:
 | `"format": "path"` (a file or a directory) | `"x-ga4gh-file": {"kind": "file"}`, with a note; `{"kind": "directory"}` if `--directory` names the parameter |
 | `"format": "file-path-pattern"` (a glob) | a plain string, without `format`, with a note: a glob isn't a reference to one file |
 | `mimetype` | `mediaType` of the file reference, if it's a media type (e.g., `text/csv`); dropped with a note otherwise, and on directories |
-| `schema` (the path of a sample-sheet schema) | `x-ga4gh-tabular-schema` of the file reference: the converted schema of the whole sheet (an array of rows), an experimental hint for clients (see [Keywords](../specification/keywords.md#tabular-data-and-cloud-sovereignty)); its columns get file references by the same rules. Dropped with a note on directories, in sample sheets, and if the schema isn't found |
+| `schema` (the path of a sample-sheet schema) | `x-ga4gh-tabular-schema` of the file reference: the converted schema of the whole sheet (an array of rows), an experimental hint for clients (see [Keywords](../specification/keywords.md#tabular-data-and-cloud-sovereignty)); its columns get file references by the same rules. Dropped with a note on directories, in sample sheets, next to an `x-ga4gh-tabular-schema` of the source (which wins), and if the schema isn't found |
 | `pattern` | `pattern`, unchanged (it constrains the value); on file references, one note (see [Limits](#limits)) |
 | `help_text` | appended to `description` after a blank line, with `"x-ga4gh-description-format": "markdown"` (unless the source sets a format) |
 | `hidden` | `x-ga4gh-hidden` |
@@ -152,7 +152,12 @@ from it once it's adopted.
   YAML) isn't part of the schema. Values in sample sheets follow the rules
   of [File references in tabular
   files](../specification/files.md#file-references-in-tabular-files). A
-  sample-sheet schema is converted once per parameter that names it.
+  sample-sheet schema is converted once; other parameters that name it get
+  a `$ref` to the first hint, with a note.
+- **Identifiers:** references in a sample-sheet schema, and those to a
+  shared hint, are JSON pointers from the root of the IO schema; in a group
+  with an `$id` of its own (unusual in nf-core pipelines), they point to
+  nothing, and the converter notes them.
 - **Descriptions:** with `help_text`, the whole description is Markdown,
   including the short description, which is plain text in nf-schema;
   characters that Markdown reads (e.g., `*` or `_`) may render differently.
