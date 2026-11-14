@@ -34,6 +34,7 @@ from ga4gh_io_schema.converters.common import (
 from ga4gh_io_schema.converters.schemas import (
     DATA_KEYWORDS,
     NOT_ON_FILES,
+    SOURCE_NAME_MAPS,
     SchemaConverter,
     check_json,
     file_reference_problem,
@@ -68,17 +69,6 @@ UNIQUE_KEYWORDS = ("uniqueEntries", "unique")
 # Media types, as the profile's mediaType allows them.
 _MEDIA_TYPE = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}$"
-)
-# Keywords of all drafts whose value maps names to schemas.
-_NAME_MAPS = frozenset(
-    {
-        "$defs",
-        "definitions",
-        "dependencies",
-        "dependentSchemas",
-        "patternProperties",
-        "properties",
-    }
 )
 
 
@@ -132,7 +122,7 @@ def sample_sheet_paths(schema: Any) -> list[str]:
             if isinstance(node.get("schema"), str):
                 paths.add(node["schema"])
             stack.extend(
-                (value, key in _NAME_MAPS)
+                (value, key in SOURCE_NAME_MAPS)
                 for key, value in node.items()
                 if key not in DATA_KEYWORDS
             )

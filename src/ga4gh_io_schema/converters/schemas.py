@@ -71,6 +71,9 @@ _APPLICATORS = (
 )
 # Keywords of Draft 2020-12 whose value maps names to schemas.
 _NAME_MAPS = frozenset({"$defs", "dependentSchemas", "patternProperties", "properties"})
+#: Keywords of all drafts (before the upgrade) whose value maps names to
+#: schemas.
+SOURCE_NAME_MAPS = _NAME_MAPS | {"definitions", "dependencies"}
 # Keywords that are kept next to "$ref" of drafts before 2019-09: the
 # reference, annotations and definitions (targets of references). Identifiers
 # are dropped: those drafts ignore them next to "$ref".

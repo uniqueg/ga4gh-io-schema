@@ -13,7 +13,13 @@ import pytest
 from ga4gh_io_schema import cwl
 from ga4gh_io_schema.cli.app import load_commands
 from ga4gh_io_schema.cli.base import ROOT, ErrorKind, read_error
-from ga4gh_io_schema.cli.convert import CONVERT, CONVERT_HELP, conversion_result
+from ga4gh_io_schema.cli.convert import (
+    CONVERT,
+    CONVERT_HELP,
+    add_output_options,
+    conversion_result,
+    output_argument,
+)
 from ga4gh_io_schema.converters import common, snakemake, wdl
 
 
@@ -133,3 +139,71 @@ def test_read_error(exc: OSError | UnicodeDecodeError, message: str) -> None:
 
     assert error.kind == ErrorKind.IO
     assert error.message.startswith(message)
+
+
+@pytest.mark.parametrize(
+    ("output", "schema"),
+    [
+        (
+            common.Output("a", "x.bam"),
+            {"type": "string", "x-ga4gh-file": {"kind": "file"}},
+        ),
+        (
+            common.Output("a", "x.bam", many=True),
+            {
+                "type": "array",
+                "items": {"type": "string", "x-ga4gh-file": {"kind": "file"}},
+            },
+        ),
+        (
+            common.Output("a", "x.bam", kind="directory"),
+            {"type": "string", "x-ga4gh-file": {"kind": "directory"}},
+        ),
+    ],
+)
+def test_output_schema(output: common.Output, schema: dict[str, object]) -> None:
+    """Test the schema of each kind of file output.
+
+    Args:
+        output: The output.
+        schema: Its expected schema, without the glob.
+    """
+    assert output.to_schema() == {**schema, "x-ga4gh-output-glob": "x.bam"}
+
+
+def test_outputs_schema_keeps_order_and_rejects_duplicates() -> None:
+    """Test that outputs keep their order and need different names."""
+    schema = common.outputs_schema([common.Output("b", "b"), common.Output("a", "a")])
+
+    assert schema["type"] == "object"
+    assert list(schema["properties"]) == ["b", "a"]
+    with pytest.raises(common.ConversionError, match="Two outputs named 'a'"):
+        common.outputs_schema([common.Output("a", "x"), common.Output("a", "y")])
+
+
+def test_output_options() -> None:
+    """Test the shared output options and the parsing of NAME=GLOB."""
+    parser = argparse.ArgumentParser()
+    add_output_options(parser, "somewhere")
+
+    args = parser.parse_args(
+        ["--out-dir", "d=out", "--out-file", "f=a=b", "--out-files", "fs=*.bam"]
+    )
+
+    assert args.outputs == [
+        common.Output("d", "out", kind="directory"),
+        common.Output("f", "a=b"),
+        common.Output("fs", "*.bam", many=True),
+    ]
+    assert "relative to somewhere" in parser.format_help()
+
+
+@pytest.mark.parametrize("value", ["name", "=glob", "name="])
+def test_output_argument_needs_name_and_glob(value: str) -> None:
+    """Test that an output option needs both a name and a glob.
+
+    Args:
+        value: The value of the option.
+    """
+    with pytest.raises(argparse.ArgumentTypeError, match="isn't NAME=GLOB"):
+        output_argument(value, kind="file", many=False)

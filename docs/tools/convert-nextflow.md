@@ -81,7 +81,7 @@ With `--json`, the output is one object with the IO schema and the notes:
 | `errorMessage` (a string) | `x-ga4gh-error-message`; an object of messages per keyword is dropped, with a note |
 | `fa_icon` | dropped: the profile has no icon keyword since version 0.3 (see [Roadmap](../roadmap.md#cut)) |
 | `exists` | dropped: Nextflow checks it where the pipeline runs, on the paths that the pipeline sees, and skips it for object-store paths; the profile leaves such checks to the engine (see [Rationale](../rationale.md)) |
-| `meta` (of sample-sheet columns) | dropped: it maps a column to the meta map of the pipeline's channels, which is part of the pipeline, not of its inputs |
+| `meta` | dropped (nf-schema uses it on the columns of sample sheets): it maps a column to the meta map of the pipeline's channels, which is part of the pipeline, not of its inputs |
 | `uniqueEntries` (nf-schema), `unique` (nf-validation) | dropped, with a note: they require the combination of some columns to be unique across the rows, which `uniqueItems` doesn't express (see [Keywords](../specification/keywords.md#leveraging-native-json-schema-what-we-dont-reinvent)) |
 | `format`, `contentMediaType`, `contentEncoding` and `contentSchema` of a file reference | dropped (the last three with a note): file references can't have them (see [File references](../specification/files.md#the-annotation)) |
 | Outputs | the outputs named with `--out-file`, `--out-files` and `--out-dir` (see [Outputs](#outputs)); without them, `"outputs": {"type": "object", "properties": {}}`, with a note |
@@ -104,8 +104,9 @@ schemas with `"format": "file-path"`, `"directory-path"` or `"path"` become
 file references. A file reference must be a flat string schema (`"type":
 "string"`, no in-place applicators such as `anyOf`); a schema with a path
 format that can't be one (e.g., `"type": ["string", "null"]`) keeps its
-`format`, with a note, and loses `mimetype` and `schema`. A schema that has an
-`x-ga4gh-file` already is kept as it is.
+`format`, with a note, and loses `mimetype` and `schema`, with a note each. So
+does a schema that has an `x-ga4gh-file` already (it keeps it); `--directory`
+can't name such parameters.
 
 `format: path` means a file or a directory. nf-core uses it for indexes that
 are a directory or an archive (e.g., `star_index`). The converter marks it as

@@ -321,12 +321,6 @@ def test_outputs_are_added_without_a_note() -> None:
     validate_schema(conversion.schema)
 
 
-def test_outputs_must_have_different_names() -> None:
-    """Test that two outputs can't have the same name."""
-    with pytest.raises(ConversionError, match="Two outputs named 'a'"):
-        to_ga4gh(nf_schema({}), outputs=[Output("a", "x"), Output("a", "y")])
-
-
 # --- Keywords of nf-schema --------------------------------------------------
 
 
@@ -493,8 +487,10 @@ def test_path_format_of_a_parameter_can_be_a_directory() -> None:
 
 def test_path_format_outside_of_parameters_is_a_file() -> None:
     """Test ``format: path`` in a sample sheet, which options can't name."""
-    sheet = {"type": "array", "items": {"properties": {"d": {"format": "path"}}}}
-    sheet["items"]["properties"]["d"]["type"] = "string"
+    sheet = {
+        "type": "array",
+        "items": {"properties": {"d": {"type": "string", "format": "path"}}},
+    }
     source = nf_schema(
         {"input": {"type": "string", "format": "file-path", "schema": SHEET}}
     )
