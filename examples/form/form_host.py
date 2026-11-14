@@ -337,13 +337,19 @@ class FormHandler(BaseHTTPRequestHandler):
         if urllib.parse.urlsplit(self.path).path != "/api/params":
             self._send_json(HTTPStatus.NOT_FOUND, {"msg": "Not found"})
             return
-        length = int(self.headers.get("Content-Length") or 0)
+        header = self.headers.get("Content-Length") or "0"
+        if not (header.isascii() and header.isdigit()):
+            self._send_json(HTTPStatus.BAD_REQUEST, {"msg": "Bad Content-Length"})
+            self.close_connection = True
+            return
+        length = int(header)
         if length > MAX_BODY:
             self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"msg": "Too large"})
+            self.close_connection = True
             return
         try:
             values = json.loads(self.rfile.read(length))
-        except ValueError:
+        except (ValueError, RecursionError):
             errors = [{"pointer": "", "message": "The values aren't JSON."}]
             self._send_json(HTTPStatus.BAD_REQUEST, {"errors": errors})
             return

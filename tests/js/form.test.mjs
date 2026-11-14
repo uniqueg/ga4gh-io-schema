@@ -12,6 +12,7 @@ import { describe, test } from "node:test";
 import {
   controlOf,
   describeFields,
+  dropUntouched,
   fieldForError,
   formatValue,
   parseValue,
@@ -195,6 +196,57 @@ describe("hidden inputs and nested objects", () => {
     });
     const external = { $ref: "https://example.org/x.json" };
     assert.equal(resolve(root, external), external);
+  });
+});
+
+describe("review cases", () => {
+  test("follows references in items and unions", () => {
+    const root = {
+      $defs: { e: { type: "string", enum: ["x", "y"] }, file: { type: "string", "x-ga4gh-file": { kind: "file" } } },
+      properties: {
+        inputs: {
+          properties: {
+            picks: { type: "array", items: { $ref: "#/$defs/e" } },
+            data: { anyOf: [{ $ref: "#/$defs/file" }, { type: "string" }] },
+          },
+        },
+      },
+    };
+    const [picks, data] = describeFields(root, root.properties.inputs);
+    assert.equal(picks.control, "multiselect");
+    assert.deepEqual(parseValue(picks, ["1"]), ["y"]);
+    assert.equal(data.control, "file");
+  });
+
+  test("keeps numbers that aren't JSON numbers as text", () => {
+    const field = { control: "lines", schema: { type: "array", items: { type: "integer" } } };
+    assert.deepEqual(parseValue(field, "0x10\n0b11\n-2e3"), ["0x10", "0b11", -2000]);
+    assert.equal(parseValue({ control: "number", schema: {} }, "Infinity"), "Infinity");
+  });
+
+  test("leaves out optional objects at their defaults", () => {
+    const root = {
+      properties: {
+        inputs: {
+          properties: {
+            adv: {
+              type: "object",
+              properties: { flag: { type: "boolean", default: false }, name: { type: "string" } },
+              required: ["name"],
+            },
+            req: { type: "object", properties: { flag: { type: "boolean", default: false } } },
+          },
+          required: ["req"],
+        },
+      },
+    };
+    const fields = describeFields(root, root.properties.inputs);
+    const untouched = { adv: { flag: false }, req: { flag: false } };
+    dropUntouched(fields, untouched);
+    assert.deepEqual(untouched, { req: { flag: false } });
+    const changed = { adv: { flag: true } };
+    dropUntouched(fields, changed);
+    assert.deepEqual(changed, { adv: { flag: true } });
   });
 });
 

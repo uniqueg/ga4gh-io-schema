@@ -50,14 +50,15 @@ function typeOf(schema) {
  * fallback: a text area for the value as JSON.
  *
  * @param {object} schema The input's schema, with references resolved.
+ * @param {object} [root] The IO schema, for references in `anyOf`.
  * @returns {string} The control.
  */
-export function controlOf(schema) {
+export function controlOf(schema, root = {}) {
   const type = typeOf(schema);
   const widget = schema["x-ga4gh-ui-widget"];
   const file =
     schema["x-ga4gh-file"] !== undefined ||
-    (schema.anyOf ?? []).some((branch) => branch?.["x-ga4gh-file"] !== undefined);
+    (schema.anyOf ?? []).some((branch) => resolve(root, branch)?.["x-ga4gh-file"] !== undefined);
   if (file) return "file";
   // `radio` and `dropdown` fit any type with `enum`
   if (Array.isArray(schema.enum)) return widget === "radio" ? "radio" : "select";
@@ -102,10 +103,11 @@ export function describeFields(root, schema, path = [], defaults = undefined) {
   const required = new Set(object.required ?? []);
   const objectDefaults = object.default ?? defaults;
   return Object.entries(object.properties ?? {}).map(([name, property]) => {
-    const resolved = resolve(root, property);
+    let resolved = resolve(root, property);
+    if (resolved.items !== undefined) resolved = { ...resolved, items: resolve(root, resolved.items) };
     const defaultValue = resolved.default ?? objectDefaults?.[name];
     const isRequired = required.has(name);
-    const control = controlOf(resolved);
+    const control = controlOf(resolved, root);
     const field = {
       name,
       path: [...path, name],
@@ -214,8 +216,30 @@ export function formatValue(field, value) {
  * @returns {number|string} The number, or the text.
  */
 function toNumber(text) {
-  const number = Number(text);
-  return Number.isFinite(number) ? number : text;
+  // JSON numbers only: Number() would also take, e.g., 0x10 and Infinity
+  return /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/.test(text) ? Number(text) : text;
+}
+
+/**
+ * Leave out the optional objects whose members all have their defaults
+ * (e.g., checkboxes, which always have a value), so that an optional object
+ * that the user didn't touch isn't sent, and its required members don't
+ * have to be set.
+ *
+ * @param {Array<object>} fields The fields of an object.
+ * @param {object} values The values of the object; changed in place.
+ */
+export function dropUntouched(fields, values) {
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  for (const field of fields) {
+    const value = values?.[field.name];
+    if (!field.children || value === null || typeof value !== "object") continue;
+    dropUntouched(field.children, value);
+    const untouched = Object.entries(value).every(([name, item]) =>
+      same(item, field.children.find((child) => child.name === name)?.defaultValue),
+    );
+    if (!field.required && untouched) delete values[field.name];
+  }
 }
 
 /**

@@ -356,12 +356,21 @@ def test_host_rejects_bad_bodies(host: str) -> None:
     status, _, response = _request(f"{host}/api/params", b"{", "POST")
     assert status == 400
     assert json.loads(response)["errors"][0]["message"] == "The values aren't JSON."
+    deep = b"[" * 100_000
+    status, _, response = _request(f"{host}/api/params", deep, "POST")
+    assert status == 400
     # Only the announced length counts: the host answers without reading
-    connection = http.client.HTTPConnection(urllib.parse.urlsplit(host).netloc)
-    length = str(form_host.MAX_BODY + 1)
-    connection.request("POST", "/api/params", b"", {"Content-Length": length})
-    assert connection.getresponse().status == 413
-    connection.close()
+    for length, expected in (
+        (str(form_host.MAX_BODY + 1), 413),
+        ("-1", 400),
+        ("abc", 400),
+    ):
+        connection = http.client.HTTPConnection(urllib.parse.urlsplit(host).netloc)
+        connection.putrequest("POST", "/api/params")
+        connection.putheader("Content-Length", length)
+        connection.endheaders()
+        assert connection.getresponse().status == expected
+        connection.close()
 
 
 def test_load_schema_from_a_file() -> None:

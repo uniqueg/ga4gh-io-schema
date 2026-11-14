@@ -9,6 +9,7 @@
 
 import {
   describeFields,
+  dropUntouched,
   fieldForError,
   formatValue,
   parseValue,
@@ -68,6 +69,7 @@ class IoSchemaForm extends HTMLElement {
   get values() {
     const values = {};
     for (const [field, read] of this.#controls) setAt(values, field.path, parseValue(field, read()));
+    dropUntouched(this.#fields, values);
     return values;
   }
 
@@ -90,8 +92,9 @@ class IoSchemaForm extends HTMLElement {
         .filter(Boolean)
         .join("\n");
       // A hidden input with an error is shown
-      const details = target.closest("details");
-      if (details) details.open = true;
+      for (let details = target.closest("details"); details; details = details.parentElement?.closest("details")) {
+        details.open = true;
+      }
     }
   }
 
@@ -186,8 +189,11 @@ class IoSchemaForm extends HTMLElement {
       this.#controls.set(field, () => node.checked);
       return node;
     } else {
-      const type = { number: "number", slider: "number", date: "date", color: "color" }[control] ?? "text";
+      // Numbers in text fields: a number field would report text that
+      // isn't a number as empty, and the value would be left out
+      const type = { date: "date", color: "color" }[control] ?? "text";
       node = element("input", { ...attributes, type });
+      if (control === "number" || control === "slider") node.setAttribute("inputmode", "decimal");
       for (const bound of ["minimum", "maximum"]) {
         if (typeof schema[bound] === "number") node.setAttribute(bound.slice(0, 3), String(schema[bound]));
       }

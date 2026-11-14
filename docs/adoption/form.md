@@ -67,7 +67,8 @@ are split between the two:
   widgets](../specification/widgets.md#input-widgets), and falls back to
   the type, `format` and `enum` of an input for widgets that it doesn't know
   or that don't fit. Hidden inputs go under "Advanced", except those that
-  users must set; "Advanced" opens when an input in it has an error. Text
+  users must set; "Advanced" opens when an input in it has an error. An
+  optional object whose members all have their defaults is left out. Text
   from the schema is set as text, never as HTML (step 5). Inputs that the
   user leaves empty are left out of the values; defaults are prefilled.
 - **The host** validates the schema offline (step 3), validates the values
@@ -124,7 +125,14 @@ What the proof of concept leaves out, on purpose:
 - **Error messages:** the host looks for the message in every branch of the
   applicators at the location of a failure, not only in those on its
   evaluation path, and doesn't look through `contains`,
-  `unevaluatedProperties` or `unevaluatedItems`.
+  `unevaluatedProperties` or `unevaluatedItems`. Of the messages at a
+  location, it takes the first in a breadth-first search from the
+  schemas of the location, which can differ from the outermost on the
+  evaluation path (e.g., a message in an `allOf` of the enclosing object
+  wins over one behind the property's `$ref`); it doesn't follow
+  `$dynamicRef`.
+- **Defaults of file references** are prefilled without the checks of
+  step 6; the host checks them when the values are sent.
 - **Not hardened:** no authentication, no TLS; the host binds to
   `127.0.0.1` by default. It sends a Content Security Policy that allows
   only its own files.
