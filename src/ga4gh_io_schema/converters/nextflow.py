@@ -278,8 +278,8 @@ class _Converter(SchemaConverter):
                 "$ref": pointer_reference(self.attached[path])
             }
             self.note(
-                f"The sample-sheet schema '{path}' is the tabular hint of an "
-                "earlier parameter too: referenced, not converted again.",
+                f"The sample-sheet schema '{path}' is a tabular hint at another "
+                "place too: referenced, not converted again.",
                 at,
             )
             return

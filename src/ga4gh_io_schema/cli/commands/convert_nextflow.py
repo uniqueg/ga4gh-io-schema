@@ -52,19 +52,21 @@ def load_sample_sheets(source: Any, pipeline_dir: Path) -> dict[str, Any]:
     base = pipeline_dir.resolve()
     sheets: dict[str, Any] = {}
     for path in sample_sheet_paths(source):
+        # OSError: e.g., a name too long or a directory without access;
+        # ValueError: e.g., a NUL character in the path
         try:
             file = (base / path).resolve()
-        # ValueError: e.g., a NUL character in the path
+            found = file.is_file()
         except (OSError, ValueError) as exc:
             raise SourceError(
-                f"The sample-sheet schema '{path}' can't be found: {exc}"
+                f"The sample-sheet schema '{path}' isn't a valid path: {exc}"
             ) from exc
         if not file.is_relative_to(base):
             raise SourceError(
                 f"The sample-sheet schema '{path}' is outside the directory of "
                 f"the pipeline ({pipeline_dir})"
             )
-        if file.is_file():
+        if found:
             sheets[path] = load_schema(read_text(file), str(file))
     return sheets
 

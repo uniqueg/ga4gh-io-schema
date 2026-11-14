@@ -936,7 +936,12 @@ def test_cli_notes_a_missing_sample_sheet(
         (
             "a\x00b",
             {},
-            "Error: The sample-sheet schema 'a\x00b' can't be found: ",
+            "Error: The sample-sheet schema 'a\x00b' isn't a valid path: ",
+        ),
+        (
+            "x" * 300,
+            {},
+            f"Error: The sample-sheet schema '{'x' * 300}' isn't a valid path: ",
         ),
     ],
 )
