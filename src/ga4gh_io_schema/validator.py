@@ -123,9 +123,10 @@ def validate_schema(
     validators are cached by the content of the meta-schema and by the state
     of ``schema_dir`` (paths, sizes, times and inodes of its ``*.json``
     files, which are listed on every call), so a meta-schema or a schema
-    directory that changes between calls gets a new validator. Schemas
-    attached to the errors raised (e.g., ``ValidationError.schema``) are
-    shared with the cache: don't change them.
+    directory that changes between calls gets a new validator. The shipped
+    schemas are read once per process. Schemas attached to the errors raised
+    (e.g., ``ValidationError.schema``) are shared with the cache, and are
+    copies of ``meta_schema``, not the object passed: don't change them.
 
     Args:
         target_schema: The JSON schema of the workflow or tool to validate.

@@ -275,7 +275,11 @@ def test_repeated_calls_reuse_the_validator(
         steps, 0
     )
 
-    validate_schema(schema, {"type": "object"}, schema_dir=schema_dir)
+    validate_schema(
+        schema,
+        {"title": "test_repeated_calls_reuse_the_validator"},
+        schema_dir=schema_dir,
+    )
 
     assert steps["_build_validator"].call_count == 1
 

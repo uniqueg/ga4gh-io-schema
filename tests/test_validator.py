@@ -5,6 +5,7 @@
 """Unit tests for the GA4GH IO Schema validator module."""
 
 import json
+import os
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -280,6 +281,17 @@ def test_validate_schema_rereads_changed_schema_dir(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     with pytest.raises(jsonschema.exceptions.ValidationError, match="inputs"):
+        validate_schema({}, meta_schema, schema_dir=tmp_path)
+    # Same size, modification time kept (as by ``cp -p``): the change time
+    # tells the versions apart.
+    times = part.stat()
+    part.write_text(
+        '{"$id": "https://example.org/schemas/part", "type": "object",'
+        ' "required": ["output"]}',
+        encoding="utf-8",
+    )
+    os.utime(part, ns=(times.st_atime_ns, times.st_mtime_ns))
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="output"):
         validate_schema({}, meta_schema, schema_dir=tmp_path)
 
 
