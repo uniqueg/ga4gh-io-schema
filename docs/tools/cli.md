@@ -11,7 +11,7 @@ tool:
 | `convert cwl` | Convert the inputs and outputs of a CWL document to an IO schema (see [CWL converter](cwl.md)). |
 | `convert wdl` | Convert the inputs and outputs of a WDL workflow or task to an IO schema (see [WDL converter](convert-wdl.md)). |
 | `wes-params` | Validate input values against an IO schema and translate them into WES `workflow_params` or a `RunRequest` (see [WES parameters](wes-params.md)). |
-| `wes-validate` | Translate the `workflow_params` of a WES run request back into input values and validate them, as a WES server does (see [WES request validation](wes-validate.md)). |
+| `wes-validate` | Translate the `workflow_params` of a WES run request back into input values and validate them, as a WES server does; errors are located by a JSON Pointer into `workflow_params` (see [WES request validation](wes-validate.md)). |
 | `outputs` | Normalise the outputs of a WES run (see [Output normaliser](outputs.md)). |
 
 `ga4gh-io-schema --help` lists the subcommands, and

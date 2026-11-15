@@ -4,27 +4,19 @@ import argparse
 import json
 from typing import Any
 
-import jsonschema
-
 from ga4gh_io_schema.cli.base import (
     ROOT,
     STDIN,
-    CliError,
     Command,
     CommandResult,
-    ErrorKind,
-    input_name,
     read_json,
 )
-from ga4gh_io_schema.cli.commands.wes_params import add_translation_arguments
-from ga4gh_io_schema.validator import UnresolvableReferenceError, validate_schema
-from ga4gh_io_schema.wes import (
-    DEFAULT_ALLOWED_SCHEMES,
-    TranslationError,
-    error_response,
-    from_workflow_params,
-    get_binding,
+from ga4gh_io_schema.cli.commands.wes_params import (
+    add_translation_arguments,
+    binding_from_arguments,
+    translation_errors,
 )
+from ga4gh_io_schema.wes import DEFAULT_ALLOWED_SCHEMES, from_workflow_params
 
 
 class WesValidateCommand(Command):
@@ -86,29 +78,8 @@ class WesValidateCommand(Command):
             parser.error("only one of --schema and --params can be '-'")
         schema = read_json(args.schema)
         params = read_json(args.params)
-        try:
+        with translation_errors(args.schema, args.params, server=True):
             values = self._translate(args, schema, params)
-        except UnresolvableReferenceError as exc:
-            raise CliError(ErrorKind.META_SCHEMA, exc.message) from exc
-        except RecursionError as exc:
-            raise CliError(
-                ErrorKind.IO,
-                "Too deeply nested to translate - "
-                f"{input_name(args.schema)} or {input_name(args.params)}",
-            ) from exc
-        except jsonschema.exceptions.ValidationError as exc:
-            raise CliError(
-                ErrorKind.VALIDATION,
-                f"The schema doesn't comply with the GA4GH IO Profile: {exc.message}",
-                location=None if exc.json_path == "$" else exc.json_path,
-            ) from exc
-        except TranslationError as exc:
-            raise CliError(
-                ErrorKind.VALIDATION,
-                exc.message,
-                location=exc.pointer if exc.path else None,
-                extra={"errorResponse": error_response(exc)},
-            ) from exc
         return CommandResult(
             text=json.dumps(values, indent=2, ensure_ascii=False), data=values
         )
@@ -133,18 +104,10 @@ class WesValidateCommand(Command):
             TranslationError: If the binding can't be used, or if the request
                 is rejected.
         """
-        # The workflow block is read only from a schema that complies
-        validate_schema(schema)
-        binding = get_binding(
-            schema,
-            descriptor_type=args.descriptor_type,
-            descriptor_type_version=args.type_version,
-            entry_point=args.entry_point,
-        )
         return from_workflow_params(
             schema,
             params,
-            binding,
+            binding_from_arguments(args, schema),
             args.allow_scheme or DEFAULT_ALLOWED_SCHEMES,
             args.allow_absolute_paths,
             args.allow_paths,

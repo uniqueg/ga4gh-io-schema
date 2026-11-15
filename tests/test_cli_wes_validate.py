@@ -13,7 +13,7 @@ from typing import Any
 import pytest
 
 from ga4gh_io_schema.cli import main
-from ga4gh_io_schema.cli.commands import wes_validate as wes_validate_command
+from ga4gh_io_schema.cli.commands import wes_params as wes_params_command
 from ga4gh_io_schema.validator import UnresolvableReferenceError
 
 TESTS_DIR = Path(__file__).resolve().parent
@@ -350,7 +350,7 @@ def test_reports_other_failures(
         """
         raise error
 
-    monkeypatch.setattr(wes_validate_command, "validate_schema", fail)
+    monkeypatch.setattr(wes_params_command, "validate_schema", fail)
 
     assert main(args(WDL)) == 3
     assert capsys.readouterr().err.startswith(f"{kind}: {message}")

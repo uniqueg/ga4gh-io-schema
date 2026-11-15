@@ -1171,12 +1171,40 @@ class _ReverseTranslator:
         Raises:
             WorkflowParamsError: If the request is rejected.
         """
+        self.keys = {}
+        self.files = {}
         if not isinstance(params, dict):
             raise WorkflowParamsError("workflow_params must be a JSON object.")
         try:
             input_keys = self.translator.input_keys()
         except TranslationError as exc:
             raise WorkflowParamsError(exc.message) from exc
+        values = self._match(params, input_keys)
+        try:
+            bound = self.translator.bind(values)
+        except TranslationError as exc:
+            raise self._error(exc.message, exc.path) from exc
+        self._check_keys(bound, input_keys)
+        self._check_files({name: value for name, _, value in bound})
+        return values
+
+    def _match(
+        self, params: dict[str, Any], input_keys: dict[str, str]
+    ) -> dict[str, Any]:
+        """Match the members of ``workflow_params`` with inputs (rules 1 and 2).
+
+        Args:
+            params: The ``workflow_params``.
+            input_keys: The key of each input, by its name.
+
+        Returns:
+            The input values, not yet validated.
+
+        Raises:
+            WorkflowParamsError: If a member matches several inputs, or
+                matches none but has the name of one, or if a CWL object
+                can't be replaced.
+        """
         inputs: dict[str, list[str]] = {}
         for name, key in input_keys.items():
             inputs.setdefault(key, []).append(name)
@@ -1197,18 +1225,39 @@ class _ReverseTranslator:
                 )
             self.keys[name] = key
             values[name] = self._files(value, (name,)) if self.cwl else value
-        try:
-            bound = self.translator.bind(values)
-        except TranslationError as exc:
-            raise self._error(exc.message, exc.path) from exc
-        translated = {}
-        for name, key, value in bound:
+        return values
+
+    def _check_keys(
+        self, bound: list[tuple[str, str, Any]], input_keys: dict[str, str]
+    ) -> None:
+        """Check that each input binds to the key that it came under.
+
+        Args:
+            bound: The members of the values, with their keys for the value
+                (see :meth:`_Translator.bind`).
+            input_keys: The key of each input, by its name.
+
+        Raises:
+            WorkflowParamsError: If an input binds to another key for its
+                value (e.g., through ``anyOf``).
+        """
+        for name, key, _ in bound:
             if name in input_keys and key != self.keys[name]:
                 raise WorkflowParamsError(
                     f"For this value, the input binds to the key '{key}'.",
                     (self.keys[name],),
                 )
-            translated[name] = value
+
+    def _check_files(self, translated: dict[str, Any]) -> None:
+        """Check that each CWL object was at a file reference of its class.
+
+        Args:
+            translated: The values, translated again (by member name).
+
+        Raises:
+            WorkflowParamsError: If no file reference applies at an object,
+                or one of the other kind.
+        """
         for path, (_, kind) in self.files.items():
             target: Any = translated
             for part in path:
@@ -1226,7 +1275,6 @@ class _ReverseTranslator:
                     (*path, "class"),
                     file_field=False,
                 )
-        return values
 
     def _files(self, value: Any, path: Path) -> Any:
         """Replace the CWL ``File`` and ``Directory`` objects in a value.

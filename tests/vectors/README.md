@@ -1,7 +1,8 @@
 # Test vectors
 
 Language-neutral test vectors of the GA4GH IO Schema Profile for request
-builders and WES servers, for any implementation. They are part of the conformance suite.
+builders and WES servers, for any implementation. They are part of the
+conformance suite.
 
 - `file-values/cases.json`: values of file references. Each case has a
   `name`, the `annotation` (`x-ga4gh-file`), the `value` and whether it is
