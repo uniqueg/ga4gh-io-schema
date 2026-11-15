@@ -120,10 +120,12 @@ def validate_schema(
     ECMA-262 patterns.
 
     The validator of a meta-schema is set up once and reused by later calls:
-    validators are cached by the content of the meta-schema and of
-    ``schema_dir`` (names, sizes and modification times of its ``*.json``
-    files), so a meta-schema or a schema directory that changes between calls
-    gets a new validator.
+    validators are cached by the content of the meta-schema and by the state
+    of ``schema_dir`` (paths, sizes, times and inodes of its ``*.json``
+    files, which are listed on every call), so a meta-schema or a schema
+    directory that changes between calls gets a new validator. Schemas
+    attached to the errors raised (e.g., ``ValidationError.schema``) are
+    shared with the cache: don't change them.
 
     Args:
         target_schema: The JSON schema of the workflow or tool to validate.
@@ -208,29 +210,51 @@ def _get_validator(
         return _cached_validator(None, schemas_dir, schema_dir, fingerprint)
     try:
         meta_key = json.dumps(meta_schema)
+        # The validator is built from the JSON text; Python objects that JSON
+        # changes (e.g., a tuple, or keys that aren't strings) must not be.
+        is_json = json.loads(meta_key) == meta_schema
     except (TypeError, ValueError):
+        is_json = False
+    if not is_json:
         # Not JSON (e.g., a set in an unknown keyword): set up on every call.
         return _build_validator(meta_schema, schemas_dir, schema_dir)
     return _cached_validator(meta_key, schemas_dir, schema_dir, fingerprint)
 
 
-def _fingerprint(directory: Path) -> tuple[tuple[str, int, int], ...]:
-    """Return the names, sizes and modification times of a directory's schemas.
+#: The state of one file: path, size, modification and change time, inode.
+_FileState = tuple[str, int, int, int, int]
+
+
+def _fingerprint(directory: Path) -> tuple[_FileState, ...]:
+    """Return the state of the ``*.json`` files of a directory.
+
+    Only the files are listed and their metadata read, not their content;
+    a change that keeps path, size, times and inode goes unnoticed. The
+    change time and the inode can't be kept by copying tools (e.g.,
+    ``cp -p``, ``rsync -a``), unlike the modification time.
 
     Args:
         directory: The directory to search recursively for ``*.json`` files.
 
     Returns:
-        One entry per file; a file that can't be read has size and time -1.
+        One entry per file; a file that can't be read has -1 for each value.
     """
     entries = []
     for path in directory.rglob("*.json"):
         try:
             stat = path.stat()
         except OSError:
-            entries.append((str(path), -1, -1))
+            entries.append((str(path), -1, -1, -1, -1))
         else:
-            entries.append((str(path), stat.st_size, stat.st_mtime_ns))
+            entries.append(
+                (
+                    str(path),
+                    stat.st_size,
+                    stat.st_mtime_ns,
+                    stat.st_ctime_ns,
+                    stat.st_ino,
+                )
+            )
     return tuple(sorted(entries))
 
 
@@ -239,7 +263,7 @@ def _cached_validator(
     meta_key: str | None,
     schemas_dir: Path,
     schema_dir: Path | None,
-    fingerprint: tuple[tuple[str, int, int], ...],
+    fingerprint: tuple[_FileState, ...],
 ) -> Validator:
     """Set up the validator of a meta-schema once per meta-schema and directory.
 

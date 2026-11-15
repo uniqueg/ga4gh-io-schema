@@ -230,35 +230,54 @@ def test_varlociraptor_conversion_validates_in_time() -> None:
         validate_schema(schema)
 
 
-def test_repeated_calls_reuse_the_validator(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("with_schema_dir", [False, True])
+def test_repeated_calls_reuse_the_validator(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, with_schema_dir: bool
+) -> None:
     """Test that repeated calls don't set up meta-schema validation again.
 
     Loading the profile, building the registry, checking the profile against
     Draft 2020-12 and building the validator are done once per meta-schema
-    (issue #66); before, they took about half the time of validating a small
-    schema, on every call. The test counts the setup steps instead of timing
-    them, so that it catches a regression of the cache on any machine.
+    and schema directory (issue #66); before, they took about half the time
+    of validating a small schema, on every call. The test counts the setup
+    steps instead of timing them, so that it catches a regression of the
+    cache on any machine.
 
     Args:
         monkeypatch: Pytest fixture for patching module attributes.
+        tmp_path: Pytest fixture providing a temporary directory.
+        with_schema_dir: Whether to pass a schema directory.
     """
+    schema_dir = tmp_path if with_schema_dir else None
+    (tmp_path / "other.json").write_text(
+        '{"$id": "https://example.org/schemas/other"}', encoding="utf-8"
+    )
     schema = io_schema(nested_records(2, 2))
-    validate_schema(schema)  # Warm-up: set up validation against the profile
+    validate_schema(schema, schema_dir=schema_dir)  # Warm-up: set up validation
     steps = {
         name: Mock(wraps=getattr(validator, name))
-        for name in ["build_registry", "load_json", "validator_for"]
+        for name in [
+            "build_registry",
+            "load_json",
+            "validator_for",
+            "_build_validator",
+        ]
     }
     for name, step in steps.items():
         monkeypatch.setattr(validator, name, step)
 
     for _ in range(3):
-        validate_schema(schema)
+        validate_schema(schema, schema_dir=schema_dir)
         with pytest.raises(jsonschema.ValidationError, match="x-ga4gh-unknown"):
-            validate_schema(schema | {"x-ga4gh-unknown": True})
+            validate_schema(schema | {"x-ga4gh-unknown": True}, schema_dir=schema_dir)
 
     assert {name: step.call_count for name, step in steps.items()} == dict.fromkeys(
         steps, 0
     )
+
+    validate_schema(schema, {"type": "object"}, schema_dir=schema_dir)
+
+    assert steps["_build_validator"].call_count == 1
 
 
 def test_nested_schema_errors_are_found_in_time() -> None:

@@ -155,7 +155,8 @@ needs no update; describe new conventions or exit codes in
 `validate_schema()` sets up the validation against a meta-schema once per
 process (profile, registry of the local schemas, check of the meta-schema,
 validator) and reuses it; validators are cached by the content of the
-meta-schema and of `schema_dir`. `tests/test_performance.py` checks that
+meta-schema and by the state of the files in `schema_dir`, which is listed
+on every call. `tests/test_performance.py` checks that
 validation takes time linear in the size of a schema (#47), and that
 repeated calls don't set up the validation again (#66).
 
@@ -172,9 +173,11 @@ validate_schema; s = load_json('tests/conformance/schema-documents/valid/annotat
 validate_schema(s)" "validate_schema(s)"
 ```
 
-On a laptop, the four test files take about 4 s, a small schema validates
-in about 13 ms after the first call, and `import jsonschema` takes about
-0.8 s, almost all of it in `rfc3987_syntax`. That import is accepted: the
+For example, on one laptop (Python 3.13), the four test files took about
+4 s, a small schema validated in about 13 ms after the first call, and
+`import jsonschema` took about 0.8 s, almost all of it in `rfc3987_syntax`.
+
+The time of that import is accepted: the
 `format-nongpl` extra of `jsonschema`, which the validator needs to check
 `format` (e.g., `uri`), installs `rfc3987_syntax`, and `jsonschema` imports
 it, and builds its grammar, as soon as it is imported itself, to check the
