@@ -11,6 +11,7 @@ implementations run them with their own runner (see
 """
 
 import copy
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -1143,6 +1144,27 @@ def test_every_binding_of_an_input_is_matched() -> None:
     assert reject(schema, {"n1": "https://e.org/x"}).pointer == "/n1"
 
 
+def test_bindings_from_unevaluated_properties() -> None:
+    """Test that keys of bindings in ``unevaluatedProperties`` are matched."""
+    schema = make_schema({}, NFL)
+    schema["properties"]["inputs"] = {
+        "type": "object",
+        "anyOf": [{"properties": {"a": {"type": "integer"}}}, {"properties": {}}],
+        "unevaluatedProperties": {
+            **file_ref(),
+            "x-ga4gh-parameter": {"name": "bam"},
+        },
+        "required": ["a"],
+    }
+
+    assert to_workflow_params(schema, {"a": "drs://e.org/y"}) == {
+        "bam": "drs://e.org/y"
+    }
+    assert from_workflow_params(schema, {"bam": "drs://e.org/y"}) == {
+        "a": "drs://e.org/y"
+    }
+
+
 def test_first_binding_decides_between_inputs() -> None:
     """Test that a key is matched with the input that binds to it first."""
     schema = make_schema(
@@ -1249,13 +1271,35 @@ def test_error_message_of_the_first_branch() -> None:
     )
 
 
-def test_schemes_of_values_are_not_repeated() -> None:
-    """Test that a scheme that isn't forbidden isn't repeated in the message."""
-    schema = make_schema({"reads": file_ref()}, NFL)
+@pytest.mark.parametrize(
+    ("annotation", "message"),
+    [
+        ({}, "{} isn't on the allow-list of the deployment."),
+        (
+            {"schemes": ["https"]},
+            "{} isn't one of the schemes of this file reference (https).",
+        ),
+    ],
+)
+def test_schemes_of_values_are_named_only_for_clients(
+    annotation: dict[str, Any], message: str
+) -> None:
+    """Test that servers name a scheme only if it is forbidden.
 
-    error = reject(schema, {"reads": "secrettoken123:x"})
+    Args:
+        annotation: Keys of ``x-ga4gh-file`` besides ``kind``.
+        message: Expected message, with ``{}`` for the scheme.
+    """
+    schema = make_schema({"reads": file_ref(**annotation)}, NFL)
 
-    assert "secrettoken123" not in error_response(error)["msg"]
+    server = reject(schema, {"reads": "secrettoken123:x"})
+    with pytest.raises(TranslationError) as client:
+        to_workflow_params(schema, {"reads": "secrettoken123:x"})
+
+    assert server.message == message.format("The scheme of the value")
+    assert client.value.message == message.format("The scheme 'secrettoken123'")
+    forbidden = reject(schema, {"reads": "file:///etc/passwd"})
+    assert forbidden.message == "File references can't use the scheme 'file'."
 
 
 def test_deep_nesting_rejects_the_request() -> None:
@@ -1266,7 +1310,7 @@ def test_deep_nesting_rejects_the_request() -> None:
         **{"$defs": {"n": {"type": "array", "items": {"$ref": "#/$defs/n"}}}},
     )
     nested: list[Any] = []
-    for _ in range(2000):
+    for _ in range(sys.getrecursionlimit()):
         nested = [nested]
 
     error = reject(schema, {"a": nested})

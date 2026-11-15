@@ -639,6 +639,8 @@ class _Translator:
         """
         self.binding = binding
         self.server = server
+        # Subschemas applied in place to a value, by schema and value
+        self._in_place_cache: dict[tuple[int, int, int], tuple[Any, list[_Scope]]] = {}
         self.allowed = _allow_list(allowed_schemes)
         self.allow_absolute_paths = allow_absolute_paths
         uri = schema["$id"] if isinstance(schema.get("$id"), str) else _DOCUMENT_URI
@@ -682,6 +684,7 @@ class _Translator:
             TranslationError: If the values can't be translated, or if the
                 schema has a reference that can't be resolved locally.
         """
+        self._in_place_cache.clear()
         with _fail_closed():
             return self._bind(values)
 
@@ -711,7 +714,7 @@ class _Translator:
             )
             keys: dict[str, list[str]] = {}
             for name in names:
-                scopes = self._closure(self._children(inputs, name, None))
+                scopes = self._closure(self._children(inputs, name, None, None))
                 bound = [
                     scope.schema["x-ga4gh-parameter"]["name"]
                     for scope in scopes
@@ -1007,7 +1010,7 @@ class _Translator:
         scopes: Iterable[_Scope],
         key: str | int,
         item: Any,
-        parent: Any = None,
+        parent: Any,
     ) -> list[_Scope]:
         """Collect the subschemas of a member of an object or an array.
 
@@ -1019,8 +1022,9 @@ class _Translator:
             scopes: Subschemas that apply to the object or array.
             key: Key of the member, or index of the item.
             item: Value of the member or item.
-            parent: The object or array; if ``None``, the subschemas applied
-                in place are those of any value.
+            parent: The object or array; or ``None`` for any value, for which
+                ``unevaluatedProperties`` and ``unevaluatedItems`` always
+                apply (to collect every subschema that may apply).
 
         Returns:
             The subschemas of the member or item.
@@ -1029,28 +1033,46 @@ class _Translator:
             referencing.exceptions.Unresolvable: If a reference can't be
                 resolved locally.
         """
+        keyword = (
+            "unevaluatedItems" if isinstance(key, int) else "unevaluatedProperties"
+        )
         children: list[_Scope] = []
         for scope in scopes:
             children.extend(self._evaluating(scope, key, item))
-            keyword = (
-                "unevaluatedItems"
-                if isinstance(key, int)
-                else ("unevaluatedProperties")
-            )
             if keyword not in scope.schema:
                 continue
-            inner = (
-                self._closure([scope])
-                if parent is None
-                else self._expand([scope], parent)
-            )
-            if not any(
+            if parent is None or not any(
                 self._evaluating(other, key, item)
                 or (other is not scope and keyword in other.schema)
-                for other in inner
+                for other in self._in_place(scope, parent)
             ):
                 children.append(self._descend(scope, scope.schema[keyword]))
         return children
+
+    def _in_place(self, scope: _Scope, parent: Any) -> list[_Scope]:
+        """Get the subschemas that a schema applies in place to a value.
+
+        Cached for the members of one object or array, so that the cost
+        doesn't grow with the square of their number.
+
+        Args:
+            scope: The schema.
+            parent: The object or array.
+
+        Returns:
+            The subschemas (see :meth:`_expand`).
+
+        Raises:
+            referencing.exceptions.Unresolvable: If a reference can't be
+                resolved locally.
+        """
+        cache_key = (id(scope.schema), id(scope.resolver), id(parent))
+        cached = self._in_place_cache.get(cache_key)
+        # The cache keeps the value, so its id isn't reused while cached
+        if cached is None:
+            cached = (parent, self._expand([scope], parent))
+            self._in_place_cache[cache_key] = cached
+        return cached[1]
 
     def _evaluating(self, scope: _Scope, key: str | int, item: Any) -> list[_Scope]:
         """Collect the subschemas of a member or item that a schema names.

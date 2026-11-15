@@ -25,9 +25,12 @@ The command:
 2. takes the engine binding from the schema's `x-ga4gh-workflow`;
 3. matches each member of `workflow_params` with the input whose key it is
    (for WDL, `<entry_point>.<name>`), and checks that the input binds to
-   that key for its value (an input with several `x-ga4gh-parameter`
-   bindings, e.g., in the branches of `anyOf`, matches each of them); a member that matches no input keeps
-   its name, so that the schema decides whether it is allowed (e.g., with
+   that key for its value. An input can bind to several keys: those of its
+   `x-ga4gh-parameter` bindings (e.g., in the branches of `anyOf`) and its
+   own name. If several inputs can bind to a key, the one whose first
+   binding in the schema it is wins; if that doesn't decide, the request is
+   rejected. A member that matches no input keeps its name, so that the
+   schema decides whether it is allowed (e.g., with
    `"additionalProperties": false`, it is rejected). A member whose name is
    that of an input bound to another key (e.g., a WDL key without the
    prefix) is rejected;
@@ -123,7 +126,11 @@ these `workflow_params`:
 
 An error of the request as a whole (e.g., a missing input, or a member that
 `"additionalProperties": false` rejects) has no location; its `msg` starts
-with `workflow_params:`.
+with `workflow_params:`. So has the error for `workflow_params` too deeply
+nested to validate, which is rejected like any other request (exit status
+1); servers limit the size and depth of requests before (see [Regular
+expressions and size
+limits](../security.md#regular-expressions-and-size-limits)).
 
 ## Python API
 

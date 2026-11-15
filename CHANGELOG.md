@@ -245,7 +245,11 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `workflow_params`, messages that don't repeat the value, and the body of
   the WES `ErrorResponse` (`error_response()`). Language-neutral test
   vectors in `tests/vectors/wes-requests/`; the valid vectors of
-  `wes-params/` are checked to translate back to their values. (#67)
+  `wes-params/` are checked to translate back to their values. In both
+  directions, `unevaluatedProperties` and `unevaluatedItems` now apply per
+  subschema, as in JSON Schema: before, a file reference in them was skipped
+  when a sibling subschema (e.g., another branch of `allOf`) evaluated the
+  member. (#67)
 
 ### Fixed
 

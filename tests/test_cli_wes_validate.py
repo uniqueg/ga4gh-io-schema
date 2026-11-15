@@ -297,6 +297,32 @@ def test_reads_params_from_standard_input(
     assert json.loads(capsys.readouterr().out) == read(WDL / "values.json")
 
 
+def test_reports_deep_nesting_as_a_rejected_request(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that parameters too deep to validate are a rejected request.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    schema = read(WDL / "schema.json")
+    schema["properties"]["inputs"]["properties"]["deep"] = {"$ref": "#/$defs/n"}
+    schema["$defs"] = {"n": {"type": "array", "items": {"$ref": "#/$defs/n"}}}
+    nested: list[Any] = []
+    for _ in range(sys.getrecursionlimit() // 2):
+        nested = [nested]
+    params = {**read(WDL / "workflow_params.json"), "variant_calling.deep": nested}
+    command = ["wes-validate", "--schema", str(write(tmp_path / "s.json", schema))]
+
+    status = main([*command, "--params", str(write(tmp_path / "p.json", params))])
+
+    assert status == 1
+    assert capsys.readouterr().err.startswith(
+        "Validation Error: workflow_params are too deeply nested to validate."
+    )
+
+
 def test_schema_and_params_not_both_from_standard_input(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

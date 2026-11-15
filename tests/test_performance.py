@@ -10,7 +10,8 @@ tests validate deeply nested schemas within a time budget that is generous
 for linear time and far too short for exponential time. They need SIGALRM
 to stop a slow run early, and are skipped where it is missing (e.g., on
 Windows); ``test_packaging.py`` checks the structure that keeps validation
-fast on every platform, without timing it.
+fast on every platform, without timing it. The translation of large values
+between input values and WES ``workflow_params`` is timed the same way.
 """
 
 import signal
@@ -25,6 +26,7 @@ import pytest
 
 from ga4gh_io_schema.converters.snakemake import load_schema, to_ga4gh
 from ga4gh_io_schema.validator import load_profile, validate_schema
+from ga4gh_io_schema.wes import from_workflow_params, to_workflow_params
 
 #: Seconds that validating one of the schemas below may take. They take
 #: about 0.2 s or less each on a laptop; before the fix of issue #47, each
@@ -241,6 +243,46 @@ def test_nested_schema_errors_are_found_in_time() -> None:
         pytest.raises(jsonschema.ValidationError, match="x-ga4gh-unknown"),
     ):
         validate_schema(io_schema(inner))
+
+
+@pytest.mark.parametrize(
+    ("parameter", "value"),
+    [
+        (
+            {
+                "type": "array",
+                "if": {"items": {"type": "string"}},
+                "unevaluatedItems": {"type": "string"},
+            },
+            ["v"] * 4000,
+        ),
+        (
+            {
+                "type": "object",
+                "anyOf": [{"propertyNames": {"maxLength": 64}}],
+                "unevaluatedProperties": {"type": "string"},
+            },
+            {f"k{index}": "v" for index in range(4000)},
+        ),
+    ],
+)
+def test_translation_of_large_containers(parameter: dict[str, Any], value: Any) -> None:
+    """Test that ``unevaluated*`` next to conditions cost linear time.
+
+    Whether ``unevaluated*`` applies to a member depends on the subschemas
+    applied to the whole container; computing them once per member took
+    time quadratic in the number of members (over a minute for these).
+
+    Args:
+        parameter: The schema of the input.
+        value: A large value of the input.
+    """
+    schema = io_schema(parameter)
+    schema["x-ga4gh-workflow"] = {"descriptor_type": "NFL"}
+
+    with time_budget(BUDGET * 5):
+        params = to_workflow_params(schema, {"parameter": value})
+        assert from_workflow_params(schema, params) == {"parameter": value}
 
 
 def test_time_budget_stops_slow_blocks() -> None:
