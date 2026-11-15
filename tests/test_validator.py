@@ -5,12 +5,15 @@
 """Unit tests for the GA4GH IO Schema validator module."""
 
 import json
+import os
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import jsonschema
 import pytest
 
+from ga4gh_io_schema import validator
 from ga4gh_io_schema.validator import (
     build_registry,
     load_json,
@@ -208,6 +211,127 @@ def test_build_registry_skips_unusable_files(tmp_path: Path) -> None:
 def test_validate_schema_accepts_boolean_meta_schema() -> None:
     """Test that a boolean meta-schema (valid JSON Schema) is supported."""
     validate_schema({}, True)
+
+
+@pytest.fixture
+def empty_cache() -> Iterator[None]:
+    """Empty the caches of validators, before and after the test.
+
+    Yields:
+        Nothing; the test runs with empty caches.
+    """
+    validator._cached_validator.cache_clear()
+    validator._cached_profile.cache_clear()
+    yield
+    validator._cached_validator.cache_clear()
+    validator._cached_profile.cache_clear()
+
+
+@pytest.mark.usefixtures("empty_cache")
+def test_validate_schema_uses_own_validator_per_meta_schema() -> None:
+    """Test that each meta-schema, and each change of it, gets its validator.
+
+    Validators are cached by the content of the meta-schema, so a meta-schema
+    changed in place between calls is used as it is now, and an equal one is
+    taken from the cache.
+    """
+    meta_schema: dict[str, Any] = {"type": "object", "required": ["inputs"]}
+
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="inputs"):
+        validate_schema({}, meta_schema)
+    validate_schema({}, True)
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        validate_schema({}, False)
+    meta_schema["required"] = []
+    validate_schema({}, meta_schema)
+    assert validator._cached_validator.cache_info()[:2] == (0, 4)  # hits, misses
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="inputs"):
+        validate_schema({}, {"type": "object", "required": ["inputs"]})
+    assert validator._cached_validator.cache_info()[:2] == (1, 4)
+
+
+@pytest.mark.usefixtures("empty_cache")
+def test_validate_schema_rereads_changed_schema_dir(tmp_path: Path) -> None:
+    """Test that schemas changed in ``schema_dir`` between calls are used.
+
+    A file that can't be read (here, a dangling link) is skipped.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+    """
+    meta_schema: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$ref": "https://example.org/schemas/part",
+    }
+    part = tmp_path / "part.json"
+    (tmp_path / "dangling.json").symlink_to(tmp_path / "missing.json")
+
+    with pytest.raises(
+        jsonschema.exceptions.ValidationError, match="directory of the meta-schema"
+    ):
+        validate_schema({}, meta_schema, schema_dir=tmp_path)
+    part.write_text(
+        '{"$id": "https://example.org/schemas/part", "type": "object"}',
+        encoding="utf-8",
+    )
+    validate_schema({}, meta_schema, schema_dir=tmp_path)
+    part.write_text(
+        '{"$id": "https://example.org/schemas/part", "type": "object",'
+        ' "required": ["inputs"]}',
+        encoding="utf-8",
+    )
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="inputs"):
+        validate_schema({}, meta_schema, schema_dir=tmp_path)
+    # Same size, modification time kept (as by ``cp -p``): the change time
+    # tells the versions apart.
+    times = part.stat()
+    part.write_text(
+        '{"$id": "https://example.org/schemas/part", "type": "object",'
+        ' "required": ["output"]}',
+        encoding="utf-8",
+    )
+    os.utime(part, ns=(times.st_atime_ns, times.st_mtime_ns))
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="output"):
+        validate_schema({}, meta_schema, schema_dir=tmp_path)
+
+
+@pytest.mark.usefixtures("empty_cache")
+def test_validate_schema_accepts_meta_schema_that_isnt_json() -> None:
+    """Test that a meta-schema that JSON can't encode is used without cache.
+
+    Validators are cached by the JSON text of the meta-schema; one that holds
+    other Python objects (e.g., a set in an unknown keyword) is still used.
+    """
+    meta_schema: dict[str, Any] = {"maxProperties": 0, "x-extra": {1, 2}}
+
+    validate_schema({}, meta_schema)
+    with pytest.raises(
+        jsonschema.exceptions.ValidationError, match="expected to be empty"
+    ):
+        validate_schema({"inputs": {}}, meta_schema)
+    assert validator._cached_validator.cache_info().currsize == 0
+
+
+@pytest.mark.usefixtures("empty_cache")
+def test_validate_schema_uses_meta_schema_that_json_would_change() -> None:
+    """Test that a meta-schema that JSON would change is used as it is.
+
+    A tuple isn't a JSON array for ``jsonschema``, so this meta-schema is
+    malformed; its JSON text, with a list, would be a valid one. Keys that
+    aren't strings would become strings, so two keys could become one.
+    """
+    malformed: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "enum": ("a", "b"),
+    }
+
+    for _ in range(2):
+        with pytest.raises(jsonschema.exceptions.SchemaError, match="not of type"):
+            validate_schema({}, malformed)
+    validate_schema({}, {1: "a", "maxProperties": 0})
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="empty"):
+        validate_schema({"inputs": {}}, {1: "a", "maxProperties": 0})
+    assert validator._cached_validator.cache_info().currsize == 0
 
 
 def _schema_with_schemes(schemes: list[str]) -> dict[str, Any]:

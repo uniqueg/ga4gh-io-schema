@@ -247,6 +247,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   error that `ga4gh-io-schema validate` reports can differ). The
   conformance suite has a new positive case with deeply nested parameters,
   `nested.schema.json`. (#47)
+- `validate_schema()` sets up the validation against a meta-schema once and
+  reuses it: loading the profile, finding the local schemas, checking the
+  meta-schema against its dialect and building the validator no longer
+  happen on every call. Validating a small schema takes about 13 ms after
+  the first call instead of 32 ms. A meta-schema, or a `schema_dir`, that
+  changes between calls still gets a new validator. (#66)
 - The meta-schema no longer requires `$schema` (it still checks its value),
   so that @hyperjump/json-schema, which removes `$schema` from a schema
   before it checks the schema against its dialect, accepts IO schemas with

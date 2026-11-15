@@ -8,6 +8,7 @@ IO schemas against the GA4GH IO Profile meta-schema.
 """
 
 import copy
+import functools
 import json
 from pathlib import Path
 from typing import Any
@@ -118,6 +119,15 @@ def validate_schema(
     ``uri``) are enforced, except ``regex``, because Python can't parse all
     ECMA-262 patterns.
 
+    The validator of a meta-schema is set up once and reused by later calls:
+    validators are cached by the content of the meta-schema and by the state
+    of ``schema_dir`` (paths, sizes, times and inodes of its ``*.json``
+    files, which are listed on every call), so a meta-schema or a schema
+    directory that changes between calls gets a new validator. The shipped
+    schemas are read once per process. Schemas attached to the errors raised
+    (e.g., ``ValidationError.schema``) are shared with the cache, and are
+    copies of ``meta_schema``, not the object passed: don't change them.
+
     Args:
         target_schema: The JSON schema of the workflow or tool to validate.
         meta_schema: Optional meta-schema to use instead of the GA4GH IO
@@ -128,31 +138,20 @@ def validate_schema(
         jsonschema.exceptions.ValidationError: If the schema violates the rules.
         jsonschema.exceptions.SchemaError: If the meta-schema itself is malformed.
     """
-    # Auto-discover local schemas for offline/local resolution
-    search_dirs = [get_schemas_dir()]
-    if schema_dir and schema_dir.exists():
-        search_dirs.append(schema_dir)
-
-    registry = build_registry(search_dirs)
-
+    schemas_dir = get_schemas_dir()
     if meta_schema is None:
-        meta_schema = load_profile()
+        meta = _cached_profile(schemas_dir)
         name = "the GA4GH IO Profile meta-schema"
     else:
+        meta = meta_schema
         name = "the meta-schema"
 
     if not isinstance(target_schema, dict):
         raise jsonschema.exceptions.ValidationError("The schema must be a JSON object.")
-    if isinstance(meta_schema, dict) and "$id" in meta_schema:
-        _check_schema_keyword(target_schema, meta_schema["$id"], name)
+    if isinstance(meta, dict) and "$id" in meta:
+        _check_schema_keyword(target_schema, meta["$id"], name)
 
-    validator_cls = validator_for(meta_schema)
-    validator_cls.check_schema(meta_schema)
-    validator = validator_cls(
-        meta_schema,
-        registry=registry,
-        format_checker=_format_checker(validator_cls),
-    )
+    validator = _get_validator(meta_schema, schemas_dir, schema_dir)
     try:
         validator.validate(target_schema)
     except Unresolvable as exc:
@@ -169,6 +168,151 @@ def load_profile() -> dict[str, Any]:
         The meta-schema.
     """
     return load_json(get_schemas_dir() / PROFILE_FILE)
+
+
+@functools.cache
+def _cached_profile(schemas_dir: Path) -> dict[str, Any]:
+    """Load the GA4GH IO Profile meta-schema once per schemas directory.
+
+    The result is shared between calls; unlike ``load_profile()``, callers
+    must not change it.
+
+    Args:
+        schemas_dir: The directory that contains the meta-schema.
+
+    Returns:
+        The meta-schema.
+    """
+    return load_json(schemas_dir / PROFILE_FILE)
+
+
+def _get_validator(
+    meta_schema: dict[str, Any] | bool | None,
+    schemas_dir: Path,
+    schema_dir: Path | None,
+) -> Validator:
+    """Return the validator of a meta-schema, from the cache if possible.
+
+    Args:
+        meta_schema: The meta-schema, or ``None`` for the GA4GH IO Profile.
+        schemas_dir: The directory of the shipped schemas.
+        schema_dir: Optional directory to search for local schema references.
+
+    Returns:
+        A validator for the meta-schema.
+
+    Raises:
+        jsonschema.exceptions.SchemaError: If the meta-schema is malformed.
+    """
+    if not (schema_dir and schema_dir.is_dir()):
+        schema_dir = None
+    fingerprint = _fingerprint(schema_dir) if schema_dir else ()
+    if meta_schema is None:
+        return _cached_validator(None, schemas_dir, schema_dir, fingerprint)
+    try:
+        meta_key = json.dumps(meta_schema)
+        # The validator is built from the JSON text; Python objects that JSON
+        # changes (e.g., a tuple, or keys that aren't strings) must not be.
+        is_json = json.loads(meta_key) == meta_schema
+    except (TypeError, ValueError):
+        is_json = False
+    if not is_json:
+        # Not JSON (e.g., a set in an unknown keyword): set up on every call.
+        return _build_validator(meta_schema, schemas_dir, schema_dir)
+    return _cached_validator(meta_key, schemas_dir, schema_dir, fingerprint)
+
+
+#: The state of one file: path, size, modification and change time, inode.
+_FileState = tuple[str, int, int, int, int]
+
+
+def _fingerprint(directory: Path) -> tuple[_FileState, ...]:
+    """Return the state of the ``*.json`` files of a directory.
+
+    Only the files are listed and their metadata read, not their content;
+    a change that keeps path, size, times and inode goes unnoticed. The
+    change time and the inode can't be kept by copying tools (e.g.,
+    ``cp -p``, ``rsync -a``), unlike the modification time.
+
+    Args:
+        directory: The directory to search recursively for ``*.json`` files.
+
+    Returns:
+        One entry per file; a file that can't be read has -1 for each value.
+    """
+    entries = []
+    for path in directory.rglob("*.json"):
+        try:
+            stat = path.stat()
+        except OSError:
+            entries.append((str(path), -1, -1, -1, -1))
+        else:
+            entries.append(
+                (
+                    str(path),
+                    stat.st_size,
+                    stat.st_mtime_ns,
+                    stat.st_ctime_ns,
+                    stat.st_ino,
+                )
+            )
+    return tuple(sorted(entries))
+
+
+@functools.lru_cache(maxsize=32)
+def _cached_validator(
+    meta_key: str | None,
+    schemas_dir: Path,
+    schema_dir: Path | None,
+    fingerprint: tuple[_FileState, ...],
+) -> Validator:
+    """Set up the validator of a meta-schema once per meta-schema and directory.
+
+    Args:
+        meta_key: The meta-schema as JSON text, or ``None`` for the GA4GH IO
+            Profile.
+        schemas_dir: The directory of the shipped schemas.
+        schema_dir: Optional directory to search for local schema references.
+        fingerprint: The state of ``schema_dir`` (see ``_fingerprint()``);
+            part of the key of the cache only.
+
+    Returns:
+        A validator for the meta-schema.
+    """
+    meta_schema = (
+        _cached_profile(schemas_dir) if meta_key is None else json.loads(meta_key)
+    )
+    return _build_validator(meta_schema, schemas_dir, schema_dir)
+
+
+def _build_validator(
+    meta_schema: dict[str, Any] | bool,
+    schemas_dir: Path,
+    schema_dir: Path | None,
+) -> Validator:
+    """Set up the validator of a meta-schema.
+
+    Args:
+        meta_schema: The meta-schema.
+        schemas_dir: The directory of the shipped schemas.
+        schema_dir: Optional directory to search for local schema references.
+
+    Returns:
+        A validator for the meta-schema.
+
+    Raises:
+        jsonschema.exceptions.SchemaError: If the meta-schema is malformed.
+    """
+    # Auto-discover local schemas for offline/local resolution
+    search_dirs = [schemas_dir] if schema_dir is None else [schemas_dir, schema_dir]
+    registry = build_registry(search_dirs)
+    validator_cls = validator_for(meta_schema)
+    validator_cls.check_schema(meta_schema)
+    return validator_cls(
+        meta_schema,
+        registry=registry,
+        format_checker=_format_checker(validator_cls),
+    )
 
 
 def _check_schema_keyword(

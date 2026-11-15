@@ -150,6 +150,41 @@ when the documentation is built (`docs_hooks/cli_reference.py`), so it
 needs no update; describe new conventions or exit codes in
 `docs/tools/cli.md`.
 
+## Performance
+
+`validate_schema()` sets up the validation against a meta-schema once per
+process (profile, registry of the local schemas, check of the meta-schema,
+validator) and reuses it; validators are cached by the content of the
+meta-schema and by the state of the files in `schema_dir`, which is listed
+on every call. `tests/test_performance.py` checks that
+validation takes time linear in the size of a schema (#47), and that
+repeated calls don't set up the validation again (#66).
+
+To measure the time of validation, run the tests of the validator without
+coverage, which almost triples their time, and time single steps in Python
+(take the best of several calls after the first):
+
+```bash
+pytest --no-cov --durations=10 tests/test_meta_schema.py \
+  tests/test_validator.py tests/test_conformance.py tests/test_performance.py
+python -X importtime -c "import jsonschema" 2>&1 | sort -t'|' -k2 -n | tail -5
+python -m timeit -s "from ga4gh_io_schema.validator import load_json, \
+validate_schema; s = load_json('tests/conformance/schema-documents/valid/annotated.schema.json'); \
+validate_schema(s)" "validate_schema(s)"
+```
+
+For example, on one laptop (Python 3.13), the four test files took about
+4 s, a small schema validated in about 13 ms after the first call, and
+`import jsonschema` took about 0.8 s, almost all of it in `rfc3987_syntax`.
+
+The time of that import is accepted: the
+`format-nongpl` extra of `jsonschema`, which the validator needs to check
+`format` (e.g., `uri`), installs `rfc3987_syntax`, and `jsonschema` imports
+it, and builds its grammar, as soon as it is imported itself, to check the
+`iri` and `iri-reference` formats. Avoiding it would mean dropping or
+replacing the extra, which changes the formats that are checked. The time
+of the command-line tool (about 1 s per run) is mostly this import.
+
 ## Code quality (Ruff)
 
 The codebase uses `Ruff` to enforce strict formatting, linting, and Google-style docstrings.
