@@ -2,7 +2,8 @@
 
 import argparse
 import json
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from typing import Any
 
 import jsonschema
@@ -22,15 +23,17 @@ from ga4gh_io_schema.wes import (
     DEFAULT_ALLOWED_SCHEMES,
     DESCRIPTOR_TYPES,
     FORBIDDEN_SCHEMES,
+    EngineBinding,
     TranslationError,
     build_run_request,
+    error_response,
     get_binding,
     to_workflow_params,
     trs_descriptor_url,
 )
 
 
-def _scheme(value: str) -> str:
+def allowed_scheme(value: str) -> str:
     """Parse a scheme of ``--allow-scheme``.
 
     Args:
@@ -46,6 +49,139 @@ def _scheme(value: str) -> str:
     if scheme in FORBIDDEN_SCHEMES:
         raise argparse.ArgumentTypeError(f"the scheme '{scheme}' can't be allowed")
     return scheme
+
+
+def add_translation_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add the arguments of the engine binding and of file references.
+
+    Shared by ``wes-params`` and ``wes-validate``: the fields of the binding
+    that the schema lacks, the allow-list of URI schemes and whether absolute
+    paths are allowed.
+
+    Args:
+        parser: Parser of the command.
+    """
+    parser.add_argument(
+        "--descriptor-type",
+        choices=DESCRIPTOR_TYPES,
+        metavar="TYPE",
+        help=(
+            f"Descriptor type ({', '.join(DESCRIPTOR_TYPES)}), if the schema "
+            "has no x-ga4gh-workflow.descriptor_type; must match it otherwise."
+        ),
+    )
+    parser.add_argument(
+        "--type-version",
+        metavar="VERSION",
+        help=(
+            "Version of the workflow language (descriptor_type_version, "
+            "e.g., from TRS), if the schema has none; must match it "
+            "otherwise."
+        ),
+    )
+    parser.add_argument(
+        "--entry-point",
+        metavar="NAME",
+        help=(
+            "Entry point of the engine, if the schema has none; must match "
+            "it otherwise."
+        ),
+    )
+    parser.add_argument(
+        "--allow-scheme",
+        action="append",
+        type=allowed_scheme,
+        metavar="SCHEME",
+        help=(
+            "URI scheme of the deployment's allow-list for file references; "
+            "repeat for several. Default: "
+            f"{', '.join(DEFAULT_ALLOWED_SCHEMES)}."
+        ),
+    )
+    parser.add_argument(
+        "--allow-absolute-paths",
+        action="store_true",
+        help=(
+            "Allow absolute paths as file references (only for deployments "
+            "with a shared file system)."
+        ),
+    )
+
+
+def binding_from_arguments(args: argparse.Namespace, schema: Any) -> EngineBinding:
+    """Validate the schema and get its binding, filled in from the arguments.
+
+    Args:
+        args: Parsed arguments, with those of :func:`add_translation_arguments`.
+        schema: IO schema.
+
+    Returns:
+        The engine binding.
+
+    Raises:
+        jsonschema.exceptions.ValidationError: If the schema doesn't comply.
+        TranslationError: If the binding can't be used, or if an argument
+            differs from the schema.
+    """
+    # The workflow block is read only from a schema that complies
+    validate_schema(schema)
+    return get_binding(
+        schema,
+        descriptor_type=args.descriptor_type,
+        descriptor_type_version=args.type_version,
+        entry_point=args.entry_point,
+    )
+
+
+@contextmanager
+def translation_errors(
+    schema: str, document: str, server: bool = False
+) -> Iterator[None]:
+    """Report the failures of a translation as errors of the command.
+
+    Args:
+        schema: Path of the schema, or ``-`` for standard input.
+        document: Path of the translated document, or ``-``.
+        server: Whether the document is the ``workflow_params`` of a
+            request: errors are located by their JSON Pointer, and carry the
+            WES ``ErrorResponse`` as ``errorResponse``; otherwise, errors are
+            located by the JSON path in the input values.
+
+    Yields:
+        Nothing; the translation runs inside.
+
+    Raises:
+        CliError: If the translation fails.
+    """
+    try:
+        yield
+    except UnresolvableReferenceError as exc:
+        raise CliError(ErrorKind.META_SCHEMA, exc.message) from exc
+    except RecursionError as exc:
+        raise CliError(
+            ErrorKind.IO,
+            "Too deeply nested to translate - "
+            f"{input_name(schema)} or {input_name(document)}",
+        ) from exc
+    except jsonschema.exceptions.ValidationError as exc:
+        raise CliError(
+            ErrorKind.VALIDATION,
+            f"The schema doesn't comply with the GA4GH IO Profile: {exc.message}",
+            location=None if exc.json_path == "$" else exc.json_path,
+        ) from exc
+    except TranslationError as exc:
+        if not server:
+            raise CliError(
+                ErrorKind.VALIDATION,
+                exc.message,
+                location=exc.json_path if exc.path else None,
+            ) from exc
+        raise CliError(
+            ErrorKind.VALIDATION,
+            exc.message,
+            location=exc.pointer if exc.path else None,
+            extra={"errorResponse": error_response(exc)},
+        ) from exc
 
 
 class WesParamsCommand(Command):
@@ -76,51 +212,7 @@ class WesParamsCommand(Command):
                 "inputs of the schema), or '-' for standard input."
             ),
         )
-        parser.add_argument(
-            "--descriptor-type",
-            choices=DESCRIPTOR_TYPES,
-            metavar="TYPE",
-            help=(
-                f"Descriptor type ({', '.join(DESCRIPTOR_TYPES)}), if the schema "
-                "has no x-ga4gh-workflow.descriptor_type; must match it otherwise."
-            ),
-        )
-        parser.add_argument(
-            "--type-version",
-            metavar="VERSION",
-            help=(
-                "Version of the workflow language (descriptor_type_version, "
-                "e.g., from TRS), if the schema has none; must match it "
-                "otherwise."
-            ),
-        )
-        parser.add_argument(
-            "--entry-point",
-            metavar="NAME",
-            help=(
-                "Entry point of the engine, if the schema has none; must match "
-                "it otherwise."
-            ),
-        )
-        parser.add_argument(
-            "--allow-scheme",
-            action="append",
-            type=_scheme,
-            metavar="SCHEME",
-            help=(
-                "URI scheme of the deployment's allow-list for file references; "
-                "repeat for several. Default: "
-                f"{', '.join(DEFAULT_ALLOWED_SCHEMES)}."
-            ),
-        )
-        parser.add_argument(
-            "--allow-absolute-paths",
-            action="store_true",
-            help=(
-                "Allow absolute paths as file references (only for deployments "
-                "with a shared file system)."
-            ),
-        )
+        add_translation_arguments(parser)
         parser.add_argument(
             "--request",
             action="store_true",
@@ -174,28 +266,8 @@ class WesParamsCommand(Command):
         schema = read_json(args.schema)
         values = read_json(args.values)
         allowed = args.allow_scheme or DEFAULT_ALLOWED_SCHEMES
-        try:
+        with translation_errors(args.schema, args.values):
             result = self._translate(args, schema, values, allowed)
-        except UnresolvableReferenceError as exc:
-            raise CliError(ErrorKind.META_SCHEMA, exc.message) from exc
-        except RecursionError as exc:
-            raise CliError(
-                ErrorKind.IO,
-                "Too deeply nested to translate - "
-                f"{input_name(args.schema)} or {input_name(args.values)}",
-            ) from exc
-        except jsonschema.exceptions.ValidationError as exc:
-            raise CliError(
-                ErrorKind.VALIDATION,
-                f"The schema doesn't comply with the GA4GH IO Profile: {exc.message}",
-                location=None if exc.json_path == "$" else exc.json_path,
-            ) from exc
-        except TranslationError as exc:
-            raise CliError(
-                ErrorKind.VALIDATION,
-                exc.message,
-                location=exc.json_path if exc.path else None,
-            ) from exc
         return CommandResult(
             text=json.dumps(result, indent=2, ensure_ascii=False), data=result
         )
@@ -223,14 +295,7 @@ class WesParamsCommand(Command):
                 comply.
             TranslationError: If the values can't be translated.
         """
-        # The workflow block is read only from a schema that complies
-        validate_schema(schema)
-        binding = get_binding(
-            schema,
-            descriptor_type=args.descriptor_type,
-            descriptor_type_version=args.type_version,
-            entry_point=args.entry_point,
-        )
+        binding = binding_from_arguments(args, schema)
         if not args.request:
             return to_workflow_params(
                 schema, values, binding, allowed, args.allow_absolute_paths

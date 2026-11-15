@@ -74,10 +74,16 @@ class CliError(Exception):
         kind: Kind of the error.
         message: Description of the error.
         location: JSON path of the offending value, if any.
+        extra: Further members of the error with ``--json``, next to
+            ``error`` (e.g., the ``errorResponse`` of ``wes-validate``).
     """
 
     def __init__(
-        self, kind: ErrorKind, message: str, location: str | None = None
+        self,
+        kind: ErrorKind,
+        message: str,
+        location: str | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> None:
         """Initialise the error.
 
@@ -85,11 +91,13 @@ class CliError(Exception):
             kind: Kind of the error.
             message: Description of the error.
             location: JSON path of the offending value, if any.
+            extra: Further members of the error with ``--json``.
         """
         super().__init__(message)
         self.kind = kind
         self.message = message
         self.location = location
+        self.extra = extra or {}
 
     @property
     def exit_code(self) -> ExitCode:
@@ -109,7 +117,8 @@ class CliError(Exception):
         """Render the error as a JSON object on one line.
 
         Returns:
-            An object with the kind, message, location and exit code.
+            An object with the kind, message, location and exit code, and the
+            extra members.
         """
         return json.dumps(
             {
@@ -118,6 +127,7 @@ class CliError(Exception):
                     "message": self.message,
                     "location": self.location,
                 },
+                **self.extra,
                 "exitCode": int(self.exit_code),
             }
         )

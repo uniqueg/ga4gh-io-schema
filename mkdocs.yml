@@ -122,6 +122,7 @@ nav:
       - CWL converter: tools/cwl.md
       - WDL converter: tools/convert-wdl.md
       - WES parameters: tools/wes-params.md
+      - WES request validation: tools/wes-validate.md
       - Output normaliser: tools/outputs.md
   - Adoption:
       - adoption/index.md

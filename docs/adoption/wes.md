@@ -80,3 +80,6 @@ the submission).
    `ErrorResponse` whose `msg` names the JSON Pointer into `workflow_params`
    and the rule that failed (see above); otherwise, pass the request on to
    the engine.
+
+The [`wes-validate`](../tools/wes-validate.md) tool, and its Python API,
+do steps 3 to 5 (except the HTTP response, whose body it builds).

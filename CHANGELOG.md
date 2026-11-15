@@ -236,6 +236,28 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   every character but the unreserved ones of RFC 3986. (#19) The vectors of
   Sapporo, WESkit, Toil and Cromwell are captured from real runs of these
   servers. (#55)
+- The subcommand `ga4gh-io-schema wes-validate` and the function
+  `from_workflow_params()` of `ga4gh_io_schema.wes`, the server side of the
+  engine bindings: translate the `workflow_params` of a WES run request back
+  into input values (keys matched with inputs, CWL `File` and `Directory`
+  objects at file references turned into their `location`), validate them
+  and check every file value, with errors located by a JSON Pointer into
+  `workflow_params`, messages that don't repeat the value, and the body of
+  the WES `ErrorResponse` (`error_response()`). Language-neutral test
+  vectors in `tests/vectors/wes-requests/`; the valid vectors of
+  `wes-params/` are checked to translate back to their values. In both
+  directions, `unevaluatedProperties` and `unevaluatedItems` now apply per
+  subschema, as in JSON Schema: before, a file reference in them was skipped
+  when a sibling subschema (e.g., another branch of `allOf`) evaluated the
+  member. The rules for servers in "From `workflow_params` back to input
+  values" now decide what they left open: a member whose name is that of
+  an input bound to another key is rejected; of several inputs that can
+  bind to a key, the one whose first binding it is matches, and otherwise
+  the request is rejected; CWL `File` and `Directory` objects with fields
+  other than `class` and `location` (or `path`) are rejected, as are
+  those of the wrong `class`. "File references" now says, like the engine
+  bindings, that a branch of `anyOf` or `oneOf` that a value isn't valid
+  against doesn't make it a file value. (#67)
 
 ### Fixed
 

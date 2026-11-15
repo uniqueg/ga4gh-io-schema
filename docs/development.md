@@ -27,8 +27,9 @@ conformance suite for this package: it checks every case against the
 Python API, without error messages, as other implementations do.
 `tests/test_wes.py` runs the [test
 vectors](specification/engine-bindings.md#test-vectors) of `tests/vectors/`
-against the library, and `tests/test_cli_wes.py` tests the `wes-params`
-subcommand; a change of the engine bindings comes with new or changed
+against the library, and `tests/test_cli_wes.py` and
+`tests/test_cli_wes_validate.py` test the `wes-params` and `wes-validate`
+subcommands; a change of the engine bindings comes with new or changed
 vectors. `tests/test_cli_framework.py` tests the shared conventions of all
 subcommands (standard input, `--output`, `--json`, exit codes) and the
 subcommand registry.

@@ -1,0 +1,4 @@
+{
+  "input": "https://data.example.org/reads.fq.gz",
+  "outdri": "results"
+}
