@@ -30,7 +30,7 @@ from ga4gh_io_schema.wes import (
 )
 
 
-def _scheme(value: str) -> str:
+def allowed_scheme(value: str) -> str:
     """Parse a scheme of ``--allow-scheme``.
 
     Args:
@@ -46,6 +46,63 @@ def _scheme(value: str) -> str:
     if scheme in FORBIDDEN_SCHEMES:
         raise argparse.ArgumentTypeError(f"the scheme '{scheme}' can't be allowed")
     return scheme
+
+
+def add_translation_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add the arguments of the engine binding and of file references.
+
+    Shared by ``wes-params`` and ``wes-validate``: the fields of the binding
+    that the schema lacks, the allow-list of URI schemes and whether absolute
+    paths are allowed.
+
+    Args:
+        parser: Parser of the command.
+    """
+    parser.add_argument(
+        "--descriptor-type",
+        choices=DESCRIPTOR_TYPES,
+        metavar="TYPE",
+        help=(
+            f"Descriptor type ({', '.join(DESCRIPTOR_TYPES)}), if the schema "
+            "has no x-ga4gh-workflow.descriptor_type; must match it otherwise."
+        ),
+    )
+    parser.add_argument(
+        "--type-version",
+        metavar="VERSION",
+        help=(
+            "Version of the workflow language (descriptor_type_version, "
+            "e.g., from TRS), if the schema has none; must match it "
+            "otherwise."
+        ),
+    )
+    parser.add_argument(
+        "--entry-point",
+        metavar="NAME",
+        help=(
+            "Entry point of the engine, if the schema has none; must match "
+            "it otherwise."
+        ),
+    )
+    parser.add_argument(
+        "--allow-scheme",
+        action="append",
+        type=allowed_scheme,
+        metavar="SCHEME",
+        help=(
+            "URI scheme of the deployment's allow-list for file references; "
+            "repeat for several. Default: "
+            f"{', '.join(DEFAULT_ALLOWED_SCHEMES)}."
+        ),
+    )
+    parser.add_argument(
+        "--allow-absolute-paths",
+        action="store_true",
+        help=(
+            "Allow absolute paths as file references (only for deployments "
+            "with a shared file system)."
+        ),
+    )
 
 
 class WesParamsCommand(Command):
@@ -76,51 +133,7 @@ class WesParamsCommand(Command):
                 "inputs of the schema), or '-' for standard input."
             ),
         )
-        parser.add_argument(
-            "--descriptor-type",
-            choices=DESCRIPTOR_TYPES,
-            metavar="TYPE",
-            help=(
-                f"Descriptor type ({', '.join(DESCRIPTOR_TYPES)}), if the schema "
-                "has no x-ga4gh-workflow.descriptor_type; must match it otherwise."
-            ),
-        )
-        parser.add_argument(
-            "--type-version",
-            metavar="VERSION",
-            help=(
-                "Version of the workflow language (descriptor_type_version, "
-                "e.g., from TRS), if the schema has none; must match it "
-                "otherwise."
-            ),
-        )
-        parser.add_argument(
-            "--entry-point",
-            metavar="NAME",
-            help=(
-                "Entry point of the engine, if the schema has none; must match "
-                "it otherwise."
-            ),
-        )
-        parser.add_argument(
-            "--allow-scheme",
-            action="append",
-            type=_scheme,
-            metavar="SCHEME",
-            help=(
-                "URI scheme of the deployment's allow-list for file references; "
-                "repeat for several. Default: "
-                f"{', '.join(DEFAULT_ALLOWED_SCHEMES)}."
-            ),
-        )
-        parser.add_argument(
-            "--allow-absolute-paths",
-            action="store_true",
-            help=(
-                "Allow absolute paths as file references (only for deployments "
-                "with a shared file system)."
-            ),
-        )
+        add_translation_arguments(parser)
         parser.add_argument(
             "--request",
             action="store_true",
