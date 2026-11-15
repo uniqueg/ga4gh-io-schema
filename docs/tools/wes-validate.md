@@ -24,7 +24,9 @@ The command:
 1. validates the schema against the GA4GH IO Profile;
 2. takes the engine binding from the schema's `x-ga4gh-workflow`;
 3. matches each member of `workflow_params` with the input whose key it is
-   (for WDL, `<entry_point>.<name>`); a member that matches no input keeps
+   (for WDL, `<entry_point>.<name>`), and checks that the input binds to
+   that key for its value (an input with several `x-ga4gh-parameter`
+   bindings, e.g., in the branches of `anyOf`, matches each of them); a member that matches no input keeps
    its name, so that the schema decides whether it is allowed (e.g., with
    `"additionalProperties": false`, it is rejected). A member whose name is
    that of an input bound to another key (e.g., a WDL key without the
@@ -87,7 +89,10 @@ first segment is the key of the member (e.g., `/variant_calling.input_bam`),
 and that of a CWL file value ends with `/location`. The message is the
 schema's `x-ga4gh-error-message` that covers the failure (see [Error
 messages](../specification/keywords.md#error-messages)), or else is built
-from the keyword that failed; it doesn't repeat the value. With `--json`,
+from the keyword that failed (for a failed `anyOf` or `oneOf`, the
+message of its first branch that has one). It doesn't repeat the value, nor
+the scheme of a value (unless it is one of the forbidden schemes) or the
+names of the fields of a CWL object. With `--json`,
 the error also has the body of the WES `ErrorResponse` that a server
 returns with `HTTP 400 Bad Request`, as `errorResponse`. For example, with
 these `workflow_params`:

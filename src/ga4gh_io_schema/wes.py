@@ -403,7 +403,13 @@ def from_workflow_params(
     translator = _Translator(
         schema, binding, allowed_schemes, allow_absolute_paths, server=True
     )
-    return _ReverseTranslator(translator, allow_paths).translate(workflow_params)
+    try:
+        return _ReverseTranslator(translator, allow_paths).translate(workflow_params)
+    except RecursionError as exc:
+        # Servers limit the depth of requests before; this is the backstop
+        raise WorkflowParamsError(
+            "workflow_params are too deeply nested to validate."
+        ) from exc
 
 
 def error_response(error: TranslationError) -> dict[str, Any]:
@@ -525,6 +531,7 @@ def _check_file_value(
     allowed: frozenset[str],
     allow_absolute_paths: bool,
     path: Path,
+    server: bool = False,
 ) -> None:
     """Check a value of a file reference (see :func:`check_file_value`).
 
@@ -534,6 +541,8 @@ def _check_file_value(
         allowed: URI schemes of the allow-list, in lowercase.
         allow_absolute_paths: Whether absolute paths are allowed.
         path: Location of the value in the input values.
+        server: Whether the value comes from a request to a server, whose
+            messages name only forbidden schemes, not any part of the value.
 
     Raises:
         TranslationError: If the value breaks a rule.
@@ -549,19 +558,21 @@ def _check_file_value(
     match = _SCHEME.match(value)
     if match:
         scheme = match.group(1).lower()
+        # A scheme that isn't forbidden may be any text before a colon
+        named = "The scheme of the value" if server else f"The scheme '{scheme}'"
         if scheme in FORBIDDEN_SCHEMES:
             raise TranslationError(
                 f"File references can't use the scheme '{scheme}'.", path
             )
         if isinstance(declared, list) and scheme not in declared:
             raise TranslationError(
-                f"The scheme '{scheme}' isn't one of the schemes of this file "
+                f"{named} isn't one of the schemes of this file "
                 f"reference ({', '.join(declared)}).",
                 path,
             )
         if scheme not in allowed:
             raise TranslationError(
-                f"The scheme '{scheme}' isn't on the allow-list of the deployment.",
+                f"{named} isn't on the allow-list of the deployment.",
                 path,
             )
         return
@@ -674,16 +685,17 @@ class _Translator:
         with _fail_closed():
             return self._bind(values)
 
-    def input_keys(self) -> dict[str, str]:
-        """Get the keys in ``workflow_params`` of the properties of ``inputs``.
+    def input_keys(self) -> dict[str, list[str]]:
+        """Get the keys in ``workflow_params`` that the inputs can bind to.
 
         Collects the properties that any subschema of ``inputs`` declares,
-        and the binding of each from its own schema and the subschemas that
-        it refers to, whatever the value; :meth:`bind` gives the binding for
-        a given value.
+        and for each the keys that it can bind to, whatever the value: every
+        ``x-ga4gh-parameter.name`` of its subschemas, and its own name.
+        :meth:`bind` gives the key for a given value.
 
         Returns:
-            The key of each property of ``inputs``, by its name.
+            The keys of each property of ``inputs``, by its name; the first
+            is the key of the first binding in the schema.
 
         Raises:
             TranslationError: If the schema has a reference that can't be
@@ -697,12 +709,19 @@ class _Translator:
                 if isinstance(scope.schema.get("properties"), dict)
                 for name in scope.schema["properties"]
             )
-            return {
-                name: self._qualify(
-                    self._name(self._closure(self._children(inputs, name, None)), name)
-                )
-                for name in names
-            }
+            keys: dict[str, list[str]] = {}
+            for name in names:
+                scopes = self._closure(self._children(inputs, name, None))
+                bound = [
+                    scope.schema["x-ga4gh-parameter"]["name"]
+                    for scope in scopes
+                    if isinstance(scope.schema.get("x-ga4gh-parameter"), dict)
+                    and isinstance(scope.schema["x-ga4gh-parameter"].get("name"), str)
+                ]
+                keys[name] = [
+                    self._qualify(key) for key in dict.fromkeys([*bound, name])
+                ]
+            return keys
 
     def _bind(self, values: Any) -> list[tuple[str, str, Any]]:
         """Validate and translate the input values, member by member.
@@ -725,7 +744,7 @@ class _Translator:
         bound: list[tuple[str, str, Any]] = []
         names: set[str] = set()
         for key, value in values.items():
-            scopes = self._expand(self._children(inputs, key, value), value)
+            scopes = self._expand(self._children(inputs, key, value, values), value)
             name = self._qualify(self._name(scopes, key))
             if name in names:
                 raise TranslationError(
@@ -783,13 +802,20 @@ class _Translator:
         if keyword is None:
             # The schema `false`, which has no keywords
             return "The schema doesn't allow a value here."
+        if keyword in ("anyOf", "oneOf") and error.context:
+            # No branch accepts the value: the first branch with a message
+            # covers the failure
+            for branch in error.validator_value:
+                custom = _error_message(branch)
+                if custom is not None:
+                    return custom
         if keyword == "required" and isinstance(error.instance, dict):
             missing = next(
                 name for name in error.validator_value if name not in error.instance
             )
             if not error.absolute_path:
                 # A property of `inputs`: name its key in `workflow_params`
-                missing = self.input_keys().get(missing, missing)
+                missing = self.input_keys().get(missing, [missing])[0]
             return f"The required member '{missing}' is missing."
         return f"The value fails the keyword '{keyword}' of the schema."
 
@@ -977,57 +1003,98 @@ class _Translator:
         return found
 
     def _children(
-        self, scopes: Iterable[_Scope], key: str | int, item: Any
+        self,
+        scopes: Iterable[_Scope],
+        key: str | int,
+        item: Any,
+        parent: Any = None,
     ) -> list[_Scope]:
         """Collect the subschemas of a member of an object or an array.
 
-        ``unevaluatedProperties`` and ``unevaluatedItems`` apply only if no
-        other keyword of any of the subschemas (which include the in-place
-        applicators, such as ``allOf``) evaluates the member or item.
+        The ``unevaluatedProperties`` or ``unevaluatedItems`` of a subschema
+        apply only if neither the subschema nor the subschemas that it applies
+        in place (e.g., through ``allOf``) evaluate the member or item.
 
         Args:
             scopes: Subschemas that apply to the object or array.
             key: Key of the member, or index of the item.
             item: Value of the member or item.
+            parent: The object or array; if ``None``, the subschemas applied
+                in place are those of any value.
 
         Returns:
             The subschemas of the member or item.
+
+        Raises:
+            referencing.exceptions.Unresolvable: If a reference can't be
+                resolved locally.
         """
         children: list[_Scope] = []
-        unevaluated: list[_Scope] = []
         for scope in scopes:
-            schema = scope.schema
-            if isinstance(key, int):
-                prefix = schema.get("prefixItems")
-                if isinstance(prefix, list) and key < len(prefix):
-                    children.append(self._descend(scope, prefix[key]))
-                elif "items" in schema:
-                    children.append(self._descend(scope, schema["items"]))
-                if "contains" in schema:
-                    contains = self._descend(scope, schema["contains"])
-                    if self._validator(contains).is_valid(item):
-                        children.append(contains)
-                if "unevaluatedItems" in schema:
-                    unevaluated.append(self._descend(scope, schema["unevaluatedItems"]))
+            children.extend(self._evaluating(scope, key, item))
+            keyword = (
+                "unevaluatedItems"
+                if isinstance(key, int)
+                else ("unevaluatedProperties")
+            )
+            if keyword not in scope.schema:
                 continue
-            matched = False
-            properties = schema.get("properties")
-            if isinstance(properties, dict) and key in properties:
-                children.append(self._descend(scope, properties[key]))
+            inner = (
+                self._closure([scope])
+                if parent is None
+                else self._expand([scope], parent)
+            )
+            if not any(
+                self._evaluating(other, key, item)
+                or (other is not scope and keyword in other.schema)
+                for other in inner
+            ):
+                children.append(self._descend(scope, scope.schema[keyword]))
+        return children
+
+    def _evaluating(self, scope: _Scope, key: str | int, item: Any) -> list[_Scope]:
+        """Collect the subschemas of a member or item that a schema names.
+
+        Covers ``prefixItems``, ``items`` and ``contains`` (if the item is
+        valid against it) of arrays, and ``properties``,
+        ``patternProperties`` and ``additionalProperties`` of objects; not
+        the in-place applicators or the ``unevaluated*`` keywords.
+
+        Args:
+            scope: Schema of the object or array.
+            key: Key of the member, or index of the item.
+            item: Value of the member or item.
+
+        Returns:
+            The subschemas.
+        """
+        schema = scope.schema
+        children: list[_Scope] = []
+        if isinstance(key, int):
+            prefix = schema.get("prefixItems")
+            if isinstance(prefix, list) and key < len(prefix):
+                children.append(self._descend(scope, prefix[key]))
+            elif "items" in schema:
+                children.append(self._descend(scope, schema["items"]))
+            if "contains" in schema:
+                contains = self._descend(scope, schema["contains"])
+                if self._validator(contains).is_valid(item):
+                    children.append(contains)
+            return children
+        matched = False
+        properties = schema.get("properties")
+        if isinstance(properties, dict) and key in properties:
+            children.append(self._descend(scope, properties[key]))
+            matched = True
+        patterns = schema.get("patternProperties")
+        # The values passed validation, which compiled the same patterns
+        for pattern, sub in patterns.items() if isinstance(patterns, dict) else ():
+            if re.search(pattern, key):
+                children.append(self._descend(scope, sub))
                 matched = True
-            patterns = schema.get("patternProperties")
-            # The values passed validation, which compiled the same patterns
-            for pattern, sub in patterns.items() if isinstance(patterns, dict) else ():
-                if re.search(pattern, key):
-                    children.append(self._descend(scope, sub))
-                    matched = True
-            if not matched and "additionalProperties" in schema:
-                children.append(self._descend(scope, schema["additionalProperties"]))
-            if "unevaluatedProperties" in schema:
-                unevaluated.append(
-                    self._descend(scope, schema["unevaluatedProperties"])
-                )
-        return children or unevaluated
+        if not matched and "additionalProperties" in schema:
+            children.append(self._descend(scope, schema["additionalProperties"]))
+        return children
 
     @staticmethod
     def _descend(scope: _Scope, schema: Any) -> _Scope:
@@ -1063,7 +1130,9 @@ class _Translator:
         if isinstance(value, list):
             return [
                 self._value(
-                    self._children(applicable, index, item), item, (*path, index)
+                    self._children(applicable, index, item, value),
+                    item,
+                    (*path, index),
                 )
                 for index, item in enumerate(value)
             ]
@@ -1080,7 +1149,7 @@ class _Translator:
                 )
             return {
                 key: self._value(
-                    self._children(applicable, key, item), item, (*path, key)
+                    self._children(applicable, key, item, value), item, (*path, key)
                 )
                 for key, item in value.items()
             }
@@ -1096,7 +1165,12 @@ class _Translator:
         # Every file reference that applies must accept the value
         for annotation in annotations:
             _check_file_value(
-                annotation, value, self.allowed, self.allow_absolute_paths, path
+                annotation,
+                value,
+                self.allowed,
+                self.allow_absolute_paths,
+                path,
+                self.server,
             )
         kinds = {annotation.get("kind") for annotation in annotations}
         if len(kinds) > 1:
@@ -1189,13 +1263,13 @@ class _ReverseTranslator:
         return values
 
     def _match(
-        self, params: dict[str, Any], input_keys: dict[str, str]
+        self, params: dict[str, Any], input_keys: dict[str, list[str]]
     ) -> dict[str, Any]:
         """Match the members of ``workflow_params`` with inputs (rules 1 and 2).
 
         Args:
             params: The ``workflow_params``.
-            input_keys: The key of each input, by its name.
+            input_keys: The keys of each input, by its name.
 
         Returns:
             The input values, not yet validated.
@@ -1206,11 +1280,16 @@ class _ReverseTranslator:
                 can't be replaced.
         """
         inputs: dict[str, list[str]] = {}
-        for name, key in input_keys.items():
-            inputs.setdefault(key, []).append(name)
+        for name, keys in input_keys.items():
+            for key in keys:
+                inputs.setdefault(key, []).append(name)
         values: dict[str, Any] = {}
         for key, value in params.items():
             matched = inputs.get(key, [])
+            if len(matched) > 1:
+                # The input whose first binding is the key, if only one
+                first = [name for name in matched if input_keys[name][0] == key]
+                matched = first if len(first) == 1 else matched
             if len(matched) > 1:
                 raise WorkflowParamsError(
                     f"Several inputs bind to the key '{key}'.", (key,)
@@ -1220,7 +1299,7 @@ class _ReverseTranslator:
                 # Under its own name, it would be taken for that input
                 raise WorkflowParamsError(
                     "This member matches no input: the input of this name binds "
-                    f"to the key '{input_keys[name]}'.",
+                    f"to the key '{input_keys[name][0]}'.",
                     (key,),
                 )
             self.keys[name] = key
@@ -1228,14 +1307,14 @@ class _ReverseTranslator:
         return values
 
     def _check_keys(
-        self, bound: list[tuple[str, str, Any]], input_keys: dict[str, str]
+        self, bound: list[tuple[str, str, Any]], input_keys: dict[str, list[str]]
     ) -> None:
         """Check that each input binds to the key that it came under.
 
         Args:
             bound: The members of the values, with their keys for the value
                 (see :meth:`_Translator.bind`).
-            input_keys: The key of each input, by its name.
+            input_keys: The keys of each input, by its name.
 
         Raises:
             WorkflowParamsError: If an input binds to another key for its
@@ -1320,7 +1399,7 @@ class _ReverseTranslator:
         if others:
             # E.g., `secondaryFiles` or `listing` would carry more files
             raise self._error(
-                f"The field '{others[0]}' of CWL {kind} objects isn't accepted.",
+                f"This field of CWL {kind} objects isn't accepted.",
                 (*path, others[0]),
                 file_field=False,
             )

@@ -923,13 +923,13 @@ def test_unmatched_member_takes_the_key_of_an_input() -> None:
         (
             {"class": "File", "location": "https://e.org/x", "secondaryFiles": []},
             "/reads/secondaryFiles",
-            "'secondaryFiles'",
+            "This field",
         ),
         ({"class": "File", "location": 1}, "/reads/location", "must be a string"),
         (
             {"class": "File", "location": "https://e.org/x", "path": "x"},
             "/reads/path",
-            "'path'",
+            "This field",
         ),
         ({"class": "File"}, "/reads", "'location' or 'path'"),
     ],
@@ -1117,3 +1117,158 @@ def test_keys_of_inputs_with_shared_subschemas() -> None:
     )
 
     assert from_workflow_params(schema, {"b": 1}) == {"a": 1}
+
+
+def test_every_binding_of_an_input_is_matched() -> None:
+    """Test that a key of any binding of an input is checked as that input."""
+    schema = make_schema(
+        {
+            "a": {
+                "anyOf": [
+                    {"type": "integer", "x-ga4gh-parameter": {"name": "n1"}},
+                    {**file_ref(), "x-ga4gh-parameter": {"name": "n2"}},
+                ]
+            }
+        },
+        NFL,
+    )
+    values = {"a": "https://e.org/x"}
+
+    params = to_workflow_params(schema, values)
+
+    assert params == {"n2": "https://e.org/x"}
+    assert from_workflow_params(schema, params) == values
+    assert reject(schema, {"n2": "file:///etc/passwd"}).pointer == "/n2"
+    # The key of another binding for this value
+    assert reject(schema, {"n1": "https://e.org/x"}).pointer == "/n1"
+
+
+def test_first_binding_decides_between_inputs() -> None:
+    """Test that a key is matched with the input that binds to it first."""
+    schema = make_schema(
+        {
+            "p": {"type": "integer", "x-ga4gh-parameter": {"name": "q"}},
+            "q": {"type": "integer", "x-ga4gh-parameter": {"name": "p"}},
+        },
+        NFL,
+    )
+
+    assert from_workflow_params(schema, {"p": 1, "q": 2}) == {"q": 1, "p": 2}
+
+
+@pytest.mark.parametrize("descriptor_type", ["NFL", "CWL"])
+def test_unevaluated_keywords_of_sibling_subschemas(descriptor_type: str) -> None:
+    """Test that ``unevaluated*`` don't see what sibling subschemas evaluate.
+
+    Args:
+        descriptor_type: Descriptor type of the schema.
+    """
+    schema = make_schema({}, {"descriptor_type": descriptor_type})
+    schema["properties"]["inputs"] = {
+        "allOf": [
+            {"properties": {"x": {"type": "string"}, "y": {"type": "array"}}},
+            {"properties": {"y": True}, "unevaluatedProperties": file_ref()},
+            {
+                "properties": {
+                    "y": {
+                        "allOf": [
+                            {"prefixItems": [{"type": "string"}]},
+                            {"unevaluatedItems": file_ref()},
+                        ]
+                    }
+                }
+            },
+        ]
+    }
+    bad = "file:///etc/passwd"
+    good = "https://e.org/x"
+    cwl = descriptor_type == "CWL"
+
+    def file(value: str) -> Any:
+        """Give a file value as ``workflow_params`` take it.
+
+        Args:
+            value: The file reference.
+
+        Returns:
+            The value, as a CWL ``File`` object for CWL.
+        """
+        return {"class": "File", "location": value} if cwl else value
+
+    assert reject(schema, {"x": file(bad)}).pointer == ("/x/location" if cwl else "/x")
+    assert reject(schema, {"y": [file(bad)]}).pointer == (
+        "/y/0/location" if cwl else "/y/0"
+    )
+    assert from_workflow_params(schema, {"x": file(good), "y": [file(good)]}) == {
+        "x": good,
+        "y": [good],
+    }
+
+
+def test_nested_unevaluated_keywords_evaluate_everything() -> None:
+    """Test that ``unevaluated*`` of an in-place subschema evaluate the member."""
+    schema = make_schema(
+        {
+            "rec": {
+                "allOf": [{"unevaluatedProperties": {"type": "string"}}],
+                "unevaluatedProperties": file_ref(),
+            }
+        },
+        NFL,
+    )
+
+    assert from_workflow_params(schema, {"rec": {"a": "plain"}}) == {
+        "rec": {"a": "plain"}
+    }
+
+
+def test_error_message_of_the_first_branch() -> None:
+    """Test that the first branch with a message covers a failed ``anyOf``."""
+    schema = make_schema(
+        {
+            "c": {
+                "anyOf": [
+                    {"enum": [1]},
+                    {"enum": [2], "x-ga4gh-error-message": "First"},
+                    {"enum": [3], "x-ga4gh-error-message": "Second"},
+                ]
+            },
+            "d": {"oneOf": [{"type": "integer"}, {"type": "number"}]},
+            "e": {"anyOf": [{"type": "integer"}, {"type": "boolean"}]},
+        },
+        NFL,
+    )
+
+    assert reject(schema, {"c": 4}).message == "First"
+    assert reject(schema, {"e": "x"}).message == (
+        "The value fails the keyword 'anyOf' of the schema."
+    )
+    # Valid against both branches: no branch failed
+    assert reject(schema, {"d": 1}).message == (
+        "The value fails the keyword 'oneOf' of the schema."
+    )
+
+
+def test_schemes_of_values_are_not_repeated() -> None:
+    """Test that a scheme that isn't forbidden isn't repeated in the message."""
+    schema = make_schema({"reads": file_ref()}, NFL)
+
+    error = reject(schema, {"reads": "secrettoken123:x"})
+
+    assert "secrettoken123" not in error_response(error)["msg"]
+
+
+def test_deep_nesting_rejects_the_request() -> None:
+    """Test that ``workflow_params`` too deep to validate are rejected."""
+    schema = make_schema(
+        {"a": {"$ref": "#/$defs/n"}},
+        NFL,
+        **{"$defs": {"n": {"type": "array", "items": {"$ref": "#/$defs/n"}}}},
+    )
+    nested: list[Any] = []
+    for _ in range(2000):
+        nested = [nested]
+
+    error = reject(schema, {"a": nested})
+
+    assert "too deeply nested" in error.message
