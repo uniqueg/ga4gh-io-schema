@@ -249,7 +249,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   directions, `unevaluatedProperties` and `unevaluatedItems` now apply per
   subschema, as in JSON Schema: before, a file reference in them was skipped
   when a sibling subschema (e.g., another branch of `allOf`) evaluated the
-  member. (#67)
+  member. The rules for servers in "From `workflow_params` back to input
+  values" now decide what they left open: a member whose name is that of
+  an input bound to another key is rejected; of several inputs that can
+  bind to a key, the one whose first binding it is matches, and otherwise
+  the request is rejected; CWL `File` and `Directory` objects with fields
+  other than `class` and `location` (or `path`) are rejected, as are
+  those of the wrong `class`. "File references" now says, like the engine
+  bindings, that a branch of `anyOf` or `oneOf` that a value isn't valid
+  against doesn't make it a file value. (#67)
 
 ### Fixed
 

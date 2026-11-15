@@ -121,9 +121,14 @@ with two slashes or backslashes (`//host/…`, `\\host\…`), which name a host
 (a network-path reference or a UNC path), not a path.
 
 A value is checked as a file reference if a file reference schema applies at
-its location, also as one branch of `anyOf` or `oneOf`: a string that would
-pass through a plain `{"type": "string"}` branch next to it is still checked
-as a file reference, because the engine may treat it as one.
+its location, also as a branch of `anyOf` or `oneOf` that the value is valid
+against: such a string is checked as a file reference even if a plain
+`{"type": "string"}` branch next to it would accept it too, because the
+engine may treat it as one. A branch that the value isn't valid against
+(e.g., by the branch's `pattern`) doesn't apply, as in JSON Schema; the
+value is then checked only by the branches that accept it (see rule 5 of
+[From input values to
+`workflow_params`](engine-bindings.md#from-input-values-to-workflow_params)).
 
 Clients SHOULD check values against these rules before they submit a run, and
 servers that validate requests MUST check them (see [Security

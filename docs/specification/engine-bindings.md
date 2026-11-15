@@ -200,18 +200,37 @@ A WES server that validates requests (see [WES](../adoption/wes.md))
 reverses the binding of the request's `workflow_type` before it validates
 the values against `inputs`:
 
-1. For each member of `workflow_params`, it finds the input whose key
-   (rule 2 above) is the member's key; for `WDL`, a key without the prefix
-   `<entry_point>.` matches no input. A member that matches no input stays
-   under its own name, so that the schema's `additionalProperties` decides
-   whether it is allowed.
-2. For `CWL`, a `File` or `Directory` object at the location of a file
+1. For each member of `workflow_params`, it finds the input that binds to
+   the member's key (rule 2 above). An input can bind to several keys: the
+   key of each `x-ga4gh-parameter` in its schema and the subschemas that
+   apply to it in place (e.g., in the branches of `anyOf`), and its own
+   name. Its *first* binding is the one that rule 2 uses when the schema
+   doesn't depend on the value: the `x-ga4gh-parameter` nearest to the
+   property's schema (of equally near ones, the first in the document), or
+   else the name of the property. If several inputs can bind to the key,
+   the member matches the input whose first binding it is; if that doesn't
+   decide (none or several), the server MUST reject the request. For `WDL`,
+   a key without the prefix `<entry_point>.` matches no input. After the
+   values are validated, the input MUST bind to the member's key for its
+   value (rule 2 above); otherwise, the server MUST reject the request.
+2. A member that matches no input stays under its own name, so that the
+   schema (e.g., its `additionalProperties`) decides whether it is allowed;
+   but if its name is the name of an input, which binds to another key
+   (e.g., a `WDL` key without the prefix, or the name of an input renamed
+   with `x-ga4gh-parameter`), the server MUST reject the request: under its
+   own name, the member would be validated as that input, which the engine
+   doesn't receive under this key.
+3. For `CWL`, a `File` or `Directory` object at the location of a file
    reference becomes its `location`; an object without `location` is
    invalid (it MAY take `path` instead, where the deployment accepts paths).
-   The server checks the other fields of the object (e.g., `secondaryFiles`
-   or `contents`) by its own rules; `contents`, which carries the data of a
-   file in the request, SHOULD be rejected.
-3. Errors name the location in `workflow_params`, not in the input values:
+   The server MUST reject objects with any other field, e.g., `contents`,
+   which carries the data of a file in the request, `secondaryFiles` or
+   `listing`, which carry more files past the checks of file references, or
+   `basename`, which names the staged file; it MUST reject objects whose
+   `class` doesn't match the `kind` of the file reference (`File` for
+   `file`, `Directory` for `directory`), and objects at locations where no
+   file reference applies.
+4. Errors name the location in `workflow_params`, not in the input values:
    the first segment of the JSON Pointer is the key of the member in
    `workflow_params` (e.g., `/variant_calling.input_bam`), and the pointer of
    a CWL file value ends with `/location`.
@@ -266,7 +285,4 @@ tests/vectors/
 Error messages are not part of the vectors. The package runs them with
 `tests/test_wes.py` against the Python API ([request
 builders](../tools/wes-params.md#python-api), [WES
-servers](../tools/wes-validate.md#python-api)). The cases of `wes-requests`
-that reject CWL objects with fields other than `class` and `location` (or
-`path`) follow the rules of this package; rule 2 leaves such fields, except
-`contents`, to the server.
+servers](../tools/wes-validate.md#python-api)).

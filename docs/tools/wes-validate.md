@@ -28,8 +28,10 @@ The command:
    that key for its value. An input can bind to several keys: those of its
    `x-ga4gh-parameter` bindings (e.g., in the branches of `anyOf`) and its
    own name. If several inputs can bind to a key, the one whose first
-   binding in the schema it is wins; if that doesn't decide, the request is
-   rejected. A member that matches no input keeps its name, so that the
+   binding it is wins; if that doesn't decide, the request is rejected (see
+   rule 1 of [From `workflow_params` back to input
+   values](../specification/engine-bindings.md#from-workflow_params-back-to-input-values)).
+   A member that matches no input keeps its name, so that the
    schema decides whether it is allowed (e.g., with
    `"additionalProperties": false`, it is rejected). A member whose name is
    that of an input bound to another key (e.g., a WDL key without the
@@ -78,11 +80,12 @@ Options:
 
 CWL `File` and `Directory` objects are accepted only at file references
 (their `class` must match the `kind`), and only with `class` and `location`
-(or `path`): an object without them is invalid; `contents`, which would
-carry the data of a file in the request, is rejected, and so are other
-fields (e.g., `secondaryFiles` or `listing`, which would carry more files
-past the checks; the runner finds secondary files next to the file). For
-the other descriptor types, such objects are ordinary objects.
+(or `path`), as rule 3 of [From `workflow_params` back to input
+values](../specification/engine-bindings.md#from-workflow_params-back-to-input-values)
+requires: an object without them is invalid, and objects with other fields
+(e.g., `contents`, `secondaryFiles` or `listing`) are rejected; the runner
+finds secondary files next to the file. For the other descriptor types,
+such objects are ordinary objects.
 
 Errors follow the [conventions](cli.md#conventions) of the command-line
 interface (a rejected request exits with status 1), except that the
