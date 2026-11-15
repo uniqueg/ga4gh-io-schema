@@ -19,10 +19,12 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+from unittest.mock import Mock
 
 import jsonschema
 import pytest
 
+from ga4gh_io_schema import validator
 from ga4gh_io_schema.converters.snakemake import load_schema, to_ga4gh
 from ga4gh_io_schema.validator import load_profile, validate_schema
 
@@ -226,6 +228,37 @@ def test_varlociraptor_conversion_validates_in_time() -> None:
 
     with time_budget(1.0):
         validate_schema(schema)
+
+
+def test_repeated_calls_reuse_the_validator(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that repeated calls don't set up meta-schema validation again.
+
+    Loading the profile, building the registry, checking the profile against
+    Draft 2020-12 and building the validator are done once per meta-schema
+    (issue #66); before, they took about half the time of validating a small
+    schema, on every call. The test counts the setup steps instead of timing
+    them, so that it catches a regression of the cache on any machine.
+
+    Args:
+        monkeypatch: Pytest fixture for patching module attributes.
+    """
+    schema = io_schema(nested_records(2, 2))
+    validate_schema(schema)  # Warm-up: set up validation against the profile
+    steps = {
+        name: Mock(wraps=getattr(validator, name))
+        for name in ["build_registry", "load_json", "validator_for"]
+    }
+    for name, step in steps.items():
+        monkeypatch.setattr(validator, name, step)
+
+    for _ in range(3):
+        validate_schema(schema)
+        with pytest.raises(jsonschema.ValidationError, match="x-ga4gh-unknown"):
+            validate_schema(schema | {"x-ga4gh-unknown": True})
+
+    assert {name: step.call_count for name, step in steps.items()} == dict.fromkeys(
+        steps, 0
+    )
 
 
 def test_nested_schema_errors_are_found_in_time() -> None:
