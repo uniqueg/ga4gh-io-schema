@@ -1,0 +1,7 @@
+{
+  "input_bam": "https://data.example.org/sample.bam",
+  "sample_names": [
+    "NA12878"
+  ],
+  "caller_threads": 8
+}

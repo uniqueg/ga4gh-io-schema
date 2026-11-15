@@ -1,21 +1,25 @@
 # SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud / GA4GH Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-"""Translation of input values into the parameters of WES run requests.
+"""Translation between input values and the parameters of WES run requests.
 
 Implements the engine bindings of the profile (see the page "Engine
 bindings" of the specification): input values that are valid against the
 ``inputs`` of an IO schema become the ``workflow_params`` of a GA4GH
 Workflow Execution Service (WES) run request, in the shape that the engine
 of the schema's descriptor type expects, and, with the fields that come from
-the Tool Registry Service (TRS), a full ``RunRequest``.
+the Tool Registry Service (TRS), a full ``RunRequest``. In the other
+direction, a WES server translates the ``workflow_params`` of a request back
+into input values and validates them, with errors located in
+``workflow_params``.
 """
 
 from __future__ import annotations
 
 import re
 from collections import deque
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, unquote
@@ -69,6 +73,26 @@ _UNSUPPORTED = ("$dynamicRef",)
 _DOCUMENT_URI = "urn:ga4gh-io-schema:document"
 # Members of JSON Path that need no quotes (as in jsonschema's `json_path`)
 _PLAIN_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# Classes of CWL objects for files and directories
+_CWL_CLASSES = ("File", "Directory")
+# Applicators along the evaluation path of a failure, by whether their
+# subschemas apply to the same location as the schema itself, and by whether
+# the schema path names one of several subschemas (by key or index) or the
+# only one
+_SAME_LOCATION_NAMED = ("allOf", "anyOf", "oneOf", "dependentSchemas")
+_SAME_LOCATION_SINGLE = ("not", "if", "then", "else")
+_NEW_LOCATION_NAMED = ("properties", "patternProperties", "prefixItems")
+_NEW_LOCATION_SINGLE = (
+    "items",
+    "additionalProperties",
+    "contains",
+    "unevaluatedItems",
+    "unevaluatedProperties",
+    "propertyNames",
+)
+# References followed in a row while searching the evaluation path of a
+# failure; a cycle of references stops here
+_MAX_REFERENCES = 32
 
 #: A location in the input values: keys of objects and indexes of arrays.
 Path = tuple[str | int, ...]
@@ -119,6 +143,19 @@ class TranslationError(ValueError):
             else:
                 parts.append("[" + repr(part) + "]")
         return "".join(parts)
+
+
+class WorkflowParamsError(TranslationError):
+    """The ``workflow_params`` of a WES run request are rejected.
+
+    Raised by :func:`from_workflow_params`. Unlike in the parent class, the
+    location of the error is in ``workflow_params``, not in the input
+    values: its first segment is the key of a member of ``workflow_params``
+    (e.g., ``/variant_calling.input_bam``), and the location of a CWL file
+    value ends with ``location`` (or ``path``). The message is the schema's
+    ``x-ga4gh-error-message`` where it covers the failure, or else one built
+    from the keyword that failed; it doesn't repeat the value.
+    """
 
 
 @dataclass(frozen=True)
@@ -308,6 +345,86 @@ def build_run_request(
     }
 
 
+def from_workflow_params(
+    schema: dict[str, Any],
+    workflow_params: Any,
+    binding: EngineBinding | None = None,
+    allowed_schemes: Iterable[str] = DEFAULT_ALLOWED_SCHEMES,
+    allow_absolute_paths: bool = False,
+    allow_paths: bool = False,
+) -> dict[str, Any]:
+    """Translate the ``workflow_params`` of a WES request back into input values.
+
+    Validates the schema against the GA4GH IO Profile, reverses the engine
+    binding (see "From ``workflow_params`` back to input values" of the
+    page "Engine bindings"), then validates the input values against
+    ``inputs`` and checks every file value, as :func:`to_workflow_params`
+    does. Nothing is fetched over the network: references of the schema that
+    can't be resolved locally are rejected.
+
+    Each member of ``workflow_params`` is matched with the input that binds
+    to its key; a member that matches no input keeps its name, so that the
+    schema decides whether it is allowed (e.g., by
+    ``additionalProperties``), unless its name is that of an input, which
+    binds to another key. For ``CWL``, a ``File`` or ``Directory`` object at
+    a file reference becomes its ``location`` (or its ``path``, if
+    ``allow_paths``); objects with ``contents`` or other fields, objects of
+    the wrong class, and objects where no file reference applies are
+    rejected.
+
+    Args:
+        schema: IO schema, from a trusted source.
+        workflow_params: The ``workflow_params`` of the request, parsed.
+        binding: Engine binding; by default, that of the schema's
+            ``x-ga4gh-workflow``. A server builds it from the request's
+            ``workflow_type`` and ``workflow_type_version`` with
+            :func:`get_binding`.
+        allowed_schemes: URI schemes of the deployment's allow-list, which
+            values of file references may use.
+        allow_absolute_paths: Whether values of file references may be
+            absolute paths (only for deployments with a shared file system).
+        allow_paths: Whether a CWL ``File`` or ``Directory`` object may give
+            its file as ``path`` instead of ``location``.
+
+    Returns:
+        The input values, an instance of ``inputs``.
+
+    Raises:
+        jsonschema.exceptions.ValidationError: If the schema doesn't comply
+            with the profile.
+        WorkflowParamsError: If the request is rejected; see
+            :func:`error_response` for the body of the response.
+        ValueError: If ``allowed_schemes`` names a forbidden scheme.
+    """
+    try:
+        binding = _prepare(schema, binding)
+    except TranslationError as exc:
+        raise WorkflowParamsError(exc.message) from exc
+    translator = _Translator(
+        schema, binding, allowed_schemes, allow_absolute_paths, server=True
+    )
+    return _ReverseTranslator(translator, allow_paths).translate(workflow_params)
+
+
+def error_response(error: TranslationError) -> dict[str, Any]:
+    """Build the body of a WES ``ErrorResponse`` for a rejected request.
+
+    The ``msg`` names the location of the error as a JSON Pointer, followed
+    by the message (e.g., ``/condition: Condition must be control or
+    treatment``); an error of the request as a whole (an empty pointer) is
+    named ``workflow_params``.
+
+    Args:
+        error: The error, typically a :class:`WorkflowParamsError`, whose
+            location is in ``workflow_params``.
+
+    Returns:
+        The body: ``msg`` and ``status_code`` 400.
+    """
+    location = error.pointer if error.path else "workflow_params"
+    return {"msg": f"{location}: {error.message}", "status_code": 400}
+
+
 def _prepare(schema: dict[str, Any], binding: EngineBinding | None) -> EngineBinding:
     """Validate the schema and get its engine binding.
 
@@ -493,6 +610,7 @@ class _Translator:
         binding: EngineBinding,
         allowed_schemes: Iterable[str],
         allow_absolute_paths: bool,
+        server: bool = False,
     ) -> None:
         """Prepare the translation.
 
@@ -501,11 +619,15 @@ class _Translator:
             binding: Engine binding.
             allowed_schemes: URI schemes of the deployment's allow-list.
             allow_absolute_paths: Whether absolute paths are allowed.
+            server: Whether the values come from a request to a server,
+                whose error messages must not repeat the value (see
+                :func:`from_workflow_params`).
 
         Raises:
             ValueError: If ``allowed_schemes`` names a forbidden scheme.
         """
         self.binding = binding
+        self.server = server
         self.allowed = _allow_list(allowed_schemes)
         self.allow_absolute_paths = allow_absolute_paths
         uri = schema["$id"] if isinstance(schema.get("$id"), str) else _DOCUMENT_URI
@@ -533,23 +655,63 @@ class _Translator:
             TranslationError: If the values can't be translated, or if the
                 schema has a reference that can't be resolved locally.
         """
-        try:
-            return self._translate(values)
-        except Unresolvable as exc:
-            # Fail closed: IO schemas must be bundled
-            raise TranslationError(
-                f"The schema references '{exc.ref}', which can't be resolved "
-                "locally; IO schemas must be bundled."
-            ) from exc
+        return {name: value for _, name, value in self.bind(values)}
 
-    def _translate(self, values: Any) -> dict[str, Any]:
-        """Validate and translate the input values.
+    def bind(self, values: Any) -> list[tuple[str, str, Any]]:
+        """Validate and translate the input values, member by member.
 
         Args:
             values: Input values.
 
         Returns:
-            The ``workflow_params``.
+            For each member of the values, its name in the values, its key in
+            ``workflow_params`` and its translated value.
+
+        Raises:
+            TranslationError: If the values can't be translated, or if the
+                schema has a reference that can't be resolved locally.
+        """
+        with _fail_closed():
+            return self._bind(values)
+
+    def input_keys(self) -> dict[str, str]:
+        """Get the keys in ``workflow_params`` of the properties of ``inputs``.
+
+        Collects the properties that any subschema of ``inputs`` declares,
+        and the binding of each from its own schema and the subschemas that
+        it refers to, whatever the value; :meth:`bind` gives the binding for
+        a given value.
+
+        Returns:
+            The key of each property of ``inputs``, by its name.
+
+        Raises:
+            TranslationError: If the schema has a reference that can't be
+                resolved locally.
+        """
+        with _fail_closed():
+            inputs = self._closure([self.inputs])
+            names = dict.fromkeys(
+                name
+                for scope in inputs
+                if isinstance(scope.schema.get("properties"), dict)
+                for name in scope.schema["properties"]
+            )
+            return {
+                name: self._qualify(
+                    self._name(self._closure(self._children(inputs, name, None)), name)
+                )
+                for name in names
+            }
+
+    def _bind(self, values: Any) -> list[tuple[str, str, Any]]:
+        """Validate and translate the input values, member by member.
+
+        Args:
+            values: Input values.
+
+        Returns:
+            For each member, its name, its key and its translated value.
 
         Raises:
             TranslationError: If the values can't be translated.
@@ -560,16 +722,18 @@ class _Translator:
         if not isinstance(values, dict):
             raise TranslationError("The input values must be a JSON object.")
         inputs = self._expand([self.inputs], values)
-        params: dict[str, Any] = {}
+        bound: list[tuple[str, str, Any]] = []
+        names: set[str] = set()
         for key, value in values.items():
             scopes = self._expand(self._children(inputs, key, value), value)
             name = self._qualify(self._name(scopes, key))
-            if name in params:
+            if name in names:
                 raise TranslationError(
                     f"Two inputs bind to the engine parameter '{name}'.", (key,)
                 )
-            params[name] = self._value(scopes, value, (key,))
-        return params
+            names.add(name)
+            bound.append((key, name, self._value(scopes, value, (key,))))
+        return bound
 
     def _validate(self, scope: _Scope, values: Any) -> None:
         """Validate the input values against ``inputs``.
@@ -586,13 +750,107 @@ class _Translator:
         error = jsonschema.exceptions.best_match(validator.iter_errors(values))
         if error is None:
             return
-        custom = (
-            error.schema.get("x-ga4gh-error-message")
-            if isinstance(error.schema, dict)
-            else None
-        )
-        message = custom if isinstance(custom, str) else error.message
+        if self.server:
+            message = self._server_message(scope, error)
+        else:
+            custom = _error_message(error.schema)
+            message = custom if custom is not None else error.message
         raise TranslationError(message, tuple(error.absolute_path))
+
+    def _server_message(
+        self, scope: _Scope, error: jsonschema.exceptions.ValidationError
+    ) -> str:
+        """Build the message of a failure for a server.
+
+        Args:
+            scope: Schema that the values were validated against.
+            error: The failure.
+
+        Returns:
+            The ``x-ga4gh-error-message`` that covers the failure, or else a
+            message built from the keyword that failed, without the value.
+
+        Raises:
+            referencing.exceptions.Unresolvable: If a reference of the schema
+                can't be resolved locally.
+        """
+        chain = self._evaluation_path(scope, error)
+        for schema in chain if chain is not None else [error.schema]:
+            custom = _error_message(schema)
+            if custom is not None:
+                return custom
+        keyword = error.validator
+        if keyword is None:
+            # The schema `false`, which has no keywords
+            return "The schema doesn't allow a value here."
+        if keyword == "required" and isinstance(error.instance, dict):
+            missing = next(
+                name for name in error.validator_value if name not in error.instance
+            )
+            if not error.absolute_path:
+                # A property of `inputs`: name its key in `workflow_params`
+                missing = self.input_keys().get(missing, missing)
+            return f"The required member '{missing}' is missing."
+        return f"The value fails the keyword '{keyword}' of the schema."
+
+    def _evaluation_path(
+        self, scope: _Scope, error: jsonschema.exceptions.ValidationError
+    ) -> list[Any] | None:
+        """Find the schemas that a failure passed at its own location.
+
+        Follows the schema path of the failure from the schema that was
+        validated, through references, to the schema with the keyword that
+        failed. The schemas are those since the last keyword that moved to
+        another location (e.g., ``properties``); the first of them with an
+        ``x-ga4gh-error-message`` covers the failure (see "Error messages"
+        in "Keywords").
+
+        Args:
+            scope: Schema that the values were validated against.
+            error: The failure.
+
+        Returns:
+            The schemas, outermost first, or ``None`` if the path can't be
+            followed.
+
+        Raises:
+            referencing.exceptions.Unresolvable: If a reference of the schema
+                can't be resolved locally.
+        """
+        path = list(error.absolute_schema_path)
+        last = len(path) - 1
+        # Depth first: the subschema that the path names, or the target of
+        # `$ref` next to it
+        stack: list[tuple[_Scope, int, tuple[Any, ...], int]] = [
+            (scope, 0, (scope.schema,), 0)
+        ]
+        while stack:
+            current, index, chain, references = stack.pop()
+            schema = current.schema
+            if not isinstance(schema, dict):
+                continue
+            if index == last and schema is error.schema:
+                return list(chain)
+            if isinstance(schema.get("$ref"), str) and references < _MAX_REFERENCES:
+                resolved = current.resolver.lookup(schema["$ref"])
+                target = _Scope(resolved.contents, resolved.resolver)
+                stack.append((target, index, (*chain, target.schema), references + 1))
+            if index >= last:
+                continue
+            step = _step(schema, path, index)
+            if step is None:
+                continue
+            sub, consumed, moves = step
+            child = self._descend(current, sub)
+            stack.append(
+                (
+                    child,
+                    index + consumed,
+                    (child.schema,) if moves else (*chain, child.schema),
+                    0,
+                )
+            )
+        return None
 
     def _validator(self, scope: _Scope) -> Draft202012Validator:
         """Get a validator of a subschema.
@@ -672,6 +930,50 @@ class _Translator:
                     branch = self._descend(scope, sub)
                     if self._validator(branch).is_valid(value):
                         queue.append(branch)
+        return found
+
+    def _closure(self, scopes: Iterable[_Scope]) -> list[_Scope]:
+        """Collect the subschemas that may apply at one location, for any value.
+
+        Follows ``$ref`` and every in-place applicator (``allOf``, ``anyOf``,
+        ``oneOf``, ``if``, ``then``, ``else`` and ``dependentSchemas``),
+        whatever the value.
+
+        Args:
+            scopes: Subschemas at the location.
+
+        Returns:
+            The subschemas, in the order of the schema.
+
+        Raises:
+            referencing.exceptions.Unresolvable: If a reference can't be
+                resolved locally.
+        """
+        found: list[_Scope] = []
+        seen: set[int] = set()
+        queue = deque(scopes)
+        while queue:
+            scope = queue.popleft()
+            schema = scope.schema
+            if not isinstance(schema, dict) or id(schema) in seen:
+                continue
+            seen.add(id(schema))
+            found.append(scope)
+            if isinstance(schema.get("$ref"), str):
+                resolved = scope.resolver.lookup(schema["$ref"])
+                queue.append(_Scope(resolved.contents, resolved.resolver))
+            for keyword in ("allOf", "anyOf", "oneOf"):
+                queue.extend(
+                    self._descend(scope, sub) for sub in _subschemas(schema, keyword)
+                )
+            queue.extend(
+                self._descend(scope, schema[keyword])
+                for keyword in ("if", "then", "else")
+                if keyword in schema
+            )
+            dependent = schema.get("dependentSchemas")
+            if isinstance(dependent, dict):
+                queue.extend(self._descend(scope, sub) for sub in dependent.values())
         return found
 
     def _children(
@@ -766,9 +1068,9 @@ class _Translator:
                 for index, item in enumerate(value)
             ]
         if isinstance(value, dict):
-            if self.binding.descriptor_type == "CWL" and value.get("class") in (
-                "File",
-                "Directory",
+            if (
+                self.binding.descriptor_type == "CWL"
+                and value.get("class") in _CWL_CLASSES
             ):
                 # The runner would stage it, unchecked
                 raise TranslationError(
@@ -835,6 +1137,238 @@ class _Translator:
         if self.binding.descriptor_type == "WDL":
             return f"{self.binding.entry_point}.{name}"
         return name
+
+
+class _ReverseTranslator:
+    """Translates ``workflow_params`` back into input values, and validates them."""
+
+    def __init__(self, translator: _Translator, allow_paths: bool) -> None:
+        """Prepare the translation.
+
+        Args:
+            translator: Translator of the schema, for servers.
+            allow_paths: Whether CWL objects may give ``path`` instead of
+                ``location``.
+        """
+        self.translator = translator
+        self.cwl = translator.binding.descriptor_type == "CWL"
+        self.allow_paths = allow_paths
+        # Key in `workflow_params` of each member of the values
+        self.keys: dict[str, str] = {}
+        # Location in the values of each CWL object that became a string,
+        # with the field that held the string and the class of the object
+        self.files: dict[Path, tuple[str, str]] = {}
+
+    def translate(self, params: Any) -> dict[str, Any]:
+        """Translate and validate ``workflow_params``.
+
+        Args:
+            params: The ``workflow_params``.
+
+        Returns:
+            The input values.
+
+        Raises:
+            WorkflowParamsError: If the request is rejected.
+        """
+        if not isinstance(params, dict):
+            raise WorkflowParamsError("workflow_params must be a JSON object.")
+        try:
+            input_keys = self.translator.input_keys()
+        except TranslationError as exc:
+            raise WorkflowParamsError(exc.message) from exc
+        inputs: dict[str, list[str]] = {}
+        for name, key in input_keys.items():
+            inputs.setdefault(key, []).append(name)
+        values: dict[str, Any] = {}
+        for key, value in params.items():
+            matched = inputs.get(key, [])
+            if len(matched) > 1:
+                raise WorkflowParamsError(
+                    f"Several inputs bind to the key '{key}'.", (key,)
+                )
+            name = matched[0] if matched else key
+            if not matched and name in input_keys:
+                # Under its own name, it would be taken for that input
+                raise WorkflowParamsError(
+                    "This member matches no input: the input of this name binds "
+                    f"to the key '{input_keys[name]}'.",
+                    (key,),
+                )
+            self.keys[name] = key
+            values[name] = self._files(value, (name,)) if self.cwl else value
+        try:
+            bound = self.translator.bind(values)
+        except TranslationError as exc:
+            raise self._error(exc.message, exc.path) from exc
+        translated = {}
+        for name, key, value in bound:
+            if name in input_keys and key != self.keys[name]:
+                raise WorkflowParamsError(
+                    f"For this value, the input binds to the key '{key}'.",
+                    (self.keys[name],),
+                )
+            translated[name] = value
+        for path, (_, kind) in self.files.items():
+            target: Any = translated
+            for part in path:
+                target = target[part]
+            if not isinstance(target, dict):
+                raise self._error(
+                    f"CWL {kind} objects are accepted only where the schema has "
+                    "a file reference.",
+                    path,
+                    file_field=False,
+                )
+            if target["class"] != kind:
+                raise self._error(
+                    f"The file reference takes a {target['class']}, not a {kind}.",
+                    (*path, "class"),
+                    file_field=False,
+                )
+        return values
+
+    def _files(self, value: Any, path: Path) -> Any:
+        """Replace the CWL ``File`` and ``Directory`` objects in a value.
+
+        Args:
+            value: Value of a member of ``workflow_params``.
+            path: Location of the value in the input values.
+
+        Returns:
+            The value, with each object replaced by its ``location`` (or
+            ``path``).
+
+        Raises:
+            WorkflowParamsError: If an object can't be replaced.
+        """
+        if isinstance(value, list):
+            return [
+                self._files(item, (*path, index)) for index, item in enumerate(value)
+            ]
+        if not isinstance(value, dict):
+            return value
+        kind = value.get("class")
+        if kind not in _CWL_CLASSES:
+            return {key: self._files(item, (*path, key)) for key, item in value.items()}
+        if "contents" in value:
+            # The data of the file would bypass the checks of file references
+            raise self._error(
+                f"CWL {kind} objects with 'contents' aren't accepted: give a file "
+                "reference.",
+                (*path, "contents"),
+                file_field=False,
+            )
+        if "location" in value:
+            field = "location"
+        elif "path" in value and self.allow_paths:
+            field = "path"
+        else:
+            accepted = "'location' or 'path'" if self.allow_paths else "'location'"
+            raise self._error(
+                f"A CWL {kind} object needs {accepted}.", path, file_field=False
+            )
+        others = sorted(set(value) - {"class", field})
+        if others:
+            # E.g., `secondaryFiles` or `listing` would carry more files
+            raise self._error(
+                f"The field '{others[0]}' of CWL {kind} objects isn't accepted.",
+                (*path, others[0]),
+                file_field=False,
+            )
+        if not isinstance(value[field], str):
+            raise self._error(
+                f"The {field} of a CWL {kind} object must be a string.",
+                (*path, field),
+                file_field=False,
+            )
+        self.files[path] = (field, kind)
+        return value[field]
+
+    def _error(
+        self, message: str, path: Sequence[str | int], file_field: bool = True
+    ) -> WorkflowParamsError:
+        """Locate an error of the input values in ``workflow_params``.
+
+        Args:
+            message: Description of the error.
+            path: Location of the error in the input values.
+            file_field: Whether a location at a CWL object that became a
+                string gets the field that held the string.
+
+        Returns:
+            The error, located in ``workflow_params``.
+        """
+        if not path:
+            return WorkflowParamsError(message)
+        located: list[str | int] = [self.keys[str(path[0])], *path[1:]]
+        if file_field and tuple(path) in self.files:
+            located.append(self.files[tuple(path)][0])
+        return WorkflowParamsError(message, located)
+
+
+@contextmanager
+def _fail_closed() -> Iterator[None]:
+    """Reject schemas with references that can't be resolved locally.
+
+    Yields:
+        Nothing; the block runs inside.
+
+    Raises:
+        TranslationError: If the block meets such a reference.
+    """
+    try:
+        yield
+    except Unresolvable as exc:
+        # Fail closed: IO schemas must be bundled
+        raise TranslationError(
+            f"The schema references '{exc.ref}', which can't be resolved "
+            "locally; IO schemas must be bundled."
+        ) from exc
+
+
+def _error_message(schema: Any) -> str | None:
+    """Get the ``x-ga4gh-error-message`` of a schema.
+
+    Args:
+        schema: The schema.
+
+    Returns:
+        The message, or ``None`` if the schema has none.
+    """
+    message = schema.get("x-ga4gh-error-message") if isinstance(schema, dict) else None
+    return message if isinstance(message, str) else None
+
+
+def _step(
+    schema: dict[str, Any], path: list[Any], index: int
+) -> tuple[Any, int, bool] | None:
+    """Follow a schema path into a subschema.
+
+    Args:
+        schema: Schema at the current position of the path.
+        path: Schema path of a failure.
+        index: Current position in the path.
+
+    Returns:
+        The subschema that the path names, how many segments of the path it
+        takes, and whether the subschema applies at another location of the
+        instance; or ``None`` if the path doesn't name a subschema of the
+        schema.
+    """
+    keyword = path[index]
+    if keyword not in schema:
+        return None
+    if keyword in _SAME_LOCATION_SINGLE or keyword in _NEW_LOCATION_SINGLE:
+        return schema[keyword], 1, keyword in _NEW_LOCATION_SINGLE
+    if keyword in _SAME_LOCATION_NAMED or keyword in _NEW_LOCATION_NAMED:
+        container = schema[keyword]
+        name = path[index + 1]
+        if isinstance(container, dict) and name in container:
+            return container[name], 2, keyword in _NEW_LOCATION_NAMED
+        if isinstance(container, list) and isinstance(name, int):
+            return container[name], 2, keyword in _NEW_LOCATION_NAMED
+    return None
 
 
 def _subschemas(schema: dict[str, Any], keyword: str) -> list[Any]:

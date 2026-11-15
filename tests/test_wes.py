@@ -2,11 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Tests of the translation of input values into WES ``workflow_params``.
+"""Tests of the translation between input values and WES ``workflow_params``.
 
-The language-neutral test vectors of ``tests/vectors/wes-params/`` are run
-against the library here; other implementations run them with their own
-runner (see ``docs/specification/engine-bindings.md``).
+The language-neutral test vectors of ``tests/vectors/wes-params/`` and
+``tests/vectors/wes-requests/`` are run against the library here; other
+implementations run them with their own runner (see
+``docs/specification/engine-bindings.md``).
 """
 
 import copy
@@ -22,8 +23,11 @@ from ga4gh_io_schema.wes import (
     DESCRIPTOR_TYPES,
     EngineBinding,
     TranslationError,
+    WorkflowParamsError,
     build_run_request,
     check_file_value,
+    error_response,
+    from_workflow_params,
     get_binding,
     to_workflow_params,
     trs_descriptor_url,
@@ -31,6 +35,8 @@ from ga4gh_io_schema.wes import (
 
 VECTORS_DIR = Path(__file__).resolve().parent / "vectors" / "wes-params"
 VECTORS = sorted(path.parent for path in VECTORS_DIR.glob("*/*/schema.json"))
+REQUESTS_DIR = VECTORS_DIR.parent / "wes-requests"
+REQUESTS = sorted(path.parent for path in REQUESTS_DIR.glob("*/*/schema.json"))
 FILE_VALUES = load_json(VECTORS_DIR.parent / "file-values" / "cases.json")
 PROFILE = (
     "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/"
@@ -651,3 +657,463 @@ def test_trs_descriptor_url() -> None:
         "%23workflow%2Fexample.org%2Fvariant-calling/versions/1.2.0/PLAIN_WDL/"
         "descriptor"
     )
+
+
+def run_request(path: Path) -> dict[str, Any]:
+    """Translate the ``workflow_params`` of a request vector with its options.
+
+    Args:
+        path: Directory of the vector.
+
+    Returns:
+        The input values.
+    """
+    options_path = path / "options.json"
+    options = load_json(options_path) if options_path.exists() else {}
+    return from_workflow_params(
+        load_json(path / "schema.json"),
+        load_json(path / "workflow_params.json"),
+        allowed_schemes=options.get("allowedSchemes", DEFAULT_ALLOWED_SCHEMES),
+        allow_absolute_paths=options.get("allowAbsolutePaths", False),
+        allow_paths=options.get("allowPaths", False),
+    )
+
+
+def test_request_vectors_cover_every_descriptor_type() -> None:
+    """Test that there are request vectors for every descriptor type."""
+    assert {path.parent.name for path in REQUESTS} == set(DESCRIPTOR_TYPES)
+
+
+@pytest.mark.parametrize(
+    "path", REQUESTS, ids=lambda path: f"{path.parent.name}/{path.name}"
+)
+def test_request_vector_files(path: Path) -> None:
+    """Test that a request vector has the expected files, and one result.
+
+    Args:
+        path: Directory of the vector.
+    """
+    names = {child.name for child in path.iterdir()}
+    assert names <= VECTOR_FILES
+    assert {"schema.json", "workflow_params.json"} <= names
+    assert len(names & {"values.json", "error.json"}) == 1
+
+
+@pytest.mark.parametrize(
+    "path", REQUESTS, ids=lambda path: f"{path.parent.name}/{path.name}"
+)
+def test_request_vector(path: Path) -> None:
+    """Test that a request vector gives its input values, or its error.
+
+    Args:
+        path: Directory of the vector.
+    """
+    assert load_json(path / "schema.json")["x-ga4gh-workflow"]["descriptor_type"] == (
+        path.parent.name
+    )
+    if (path / "values.json").exists():
+        assert run_request(path) == load_json(path / "values.json")
+        return
+    with pytest.raises(WorkflowParamsError) as info:
+        run_request(path)
+    assert info.value.pointer == load_json(path / "error.json")["pointer"]
+
+
+@pytest.mark.parametrize(
+    "path",
+    [path for path in VECTORS if (path / "workflow_params.json").exists()],
+    ids=lambda path: f"{path.parent.name}/{path.name}",
+)
+def test_round_trip(path: Path) -> None:
+    """Test that the ``workflow_params`` of a vector translate back to its values.
+
+    Args:
+        path: Directory of a valid vector of ``wes-params``.
+    """
+    options_path = path / "options.json"
+    options = load_json(options_path) if options_path.exists() else {}
+
+    assert from_workflow_params(
+        load_json(path / "schema.json"),
+        load_json(path / "workflow_params.json"),
+        allowed_schemes=options.get("allowedSchemes", DEFAULT_ALLOWED_SCHEMES),
+        allow_absolute_paths=options.get("allowAbsolutePaths", False),
+    ) == load_json(path / "values.json")
+
+
+def reject(schema: dict[str, Any], params: Any, **options: Any) -> WorkflowParamsError:
+    """Translate ``workflow_params`` that must be rejected.
+
+    Args:
+        schema: IO schema.
+        params: The ``workflow_params``.
+        **options: Options of :func:`from_workflow_params`.
+
+    Returns:
+        The error.
+    """
+    with pytest.raises(WorkflowParamsError) as info:
+        from_workflow_params(schema, params, **options)
+    return info.value
+
+
+CWL = {"descriptor_type": "CWL"}
+WDL = {"descriptor_type": "WDL", "entry_point": "wf"}
+
+
+def test_error_response_names_the_pointer_and_the_message() -> None:
+    """Test the ``ErrorResponse`` of the vector with an error message."""
+    path = REQUESTS_DIR / "WDL" / "error-message"
+
+    with pytest.raises(WorkflowParamsError) as info:
+        run_request(path)
+
+    assert error_response(info.value) == {
+        "msg": (
+            "/variant_calling.condition: Condition must be either control or treatment"
+        ),
+        "status_code": 400,
+    }
+
+
+def test_error_response_of_the_request_as_a_whole() -> None:
+    """Test that an error without a location names ``workflow_params``."""
+    error = reject(make_schema({}, NFL), ["a"])
+
+    assert error.pointer == ""
+    assert error_response(error) == {
+        "msg": "workflow_params: workflow_params must be a JSON object.",
+        "status_code": 400,
+    }
+
+
+def test_outermost_error_message_covers_the_failure() -> None:
+    """Test that the message of the property wins over that of a definition."""
+    schema = make_schema(
+        {"condition": {"$ref": "#/$defs/c", "x-ga4gh-error-message": "Outer"}},
+        NFL,
+        **{"$defs": {"c": {"enum": ["a"], "x-ga4gh-error-message": "Inner"}}},
+    )
+
+    assert reject(schema, {"condition": "b"}).message == "Outer"
+
+
+def test_error_message_of_a_definition() -> None:
+    """Test that the message of a definition covers its failures."""
+    schema = make_schema(
+        {"condition": {"allOf": [{"$ref": "#/$defs/c"}]}},
+        NFL,
+        **{"$defs": {"c": {"enum": ["a"], "x-ga4gh-error-message": "Inner"}}},
+    )
+
+    assert reject(schema, {"condition": "b"}).message == "Inner"
+
+
+def test_error_message_does_not_cover_other_locations() -> None:
+    """Test that the message of an array doesn't cover its items."""
+    schema = make_schema(
+        {
+            "names": {
+                "type": "array",
+                "items": {"type": "string"},
+                "x-ga4gh-error-message": "Names must be a list",
+            }
+        },
+        NFL,
+    )
+
+    error = reject(schema, {"names": ["a", 1]})
+
+    assert error.pointer == "/names/1"
+    assert error.message == "The value fails the keyword 'type' of the schema."
+
+
+def test_messages_do_not_repeat_the_value() -> None:
+    """Test that a failure without error message is described by its keyword."""
+    schema = make_schema({"condition": {"enum": ["control", "treatment"]}}, NFL)
+
+    error = reject(schema, {"condition": "secret-value"})
+
+    assert error.message == "The value fails the keyword 'enum' of the schema."
+    assert "secret-value" not in error_response(error)["msg"]
+
+
+def test_missing_input_is_named_by_its_key() -> None:
+    """Test that a missing input is named by its key in ``workflow_params``."""
+    schema = make_schema(
+        {"reads": file_ref(), "rec": {"type": "object", "required": ["inner"]}}, WDL
+    )
+    schema["properties"]["inputs"]["required"] = ["reads"]
+
+    assert reject(schema, {}).message == "The required member 'wf.reads' is missing."
+    nested = reject(schema, {"wf.reads": "https://e.org/x", "wf.rec": {}})
+    assert nested.pointer == "/wf.rec"
+    assert nested.message == "The required member 'inner' is missing."
+
+
+def test_binding_errors_are_request_errors() -> None:
+    """Test that a binding that can't be used rejects the request."""
+    error = reject(make_schema({}, {"descriptor_type": "GALAXY"}), {})
+
+    assert error.pointer == ""
+    assert "'GALAXY' has no engine binding" in error.message
+
+
+def test_binding_from_the_request() -> None:
+    """Test a binding built from the request's ``workflow_type``."""
+    schema = make_schema({"a": {"type": "integer"}})
+    binding = get_binding(schema, descriptor_type="WDL", entry_point="wf")
+
+    assert from_workflow_params(schema, {"wf.a": 1}, binding) == {"a": 1}
+
+
+def test_several_inputs_bind_to_one_key() -> None:
+    """Test that a key that several inputs bind to is rejected."""
+    schema = make_schema(
+        {
+            "a": {"type": "integer", "x-ga4gh-parameter": {"name": "b"}},
+            "b": {"type": "integer"},
+        },
+        NFL,
+    )
+
+    error = reject(schema, {"b": 1})
+
+    assert error.pointer == "/b"
+    assert "Several inputs" in error.message
+
+
+def test_binding_that_depends_on_the_value() -> None:
+    """Test that the key must be the one that the value binds to."""
+    schema = make_schema(
+        {
+            "a": {
+                "anyOf": [
+                    {"type": "integer", "x-ga4gh-parameter": {"name": "x"}},
+                    {"type": "string", "x-ga4gh-parameter": {"name": "y"}},
+                ]
+            }
+        },
+        NFL,
+    )
+
+    assert from_workflow_params(schema, {"x": 1}) == {"a": 1}
+    error = reject(schema, {"x": "text"})
+    assert error.pointer == "/x"
+    assert "'y'" in error.message
+
+
+def test_unmatched_member_takes_the_key_of_an_input() -> None:
+    """Test that a member that matches no input can't collide with one."""
+    schema = make_schema(
+        {"a": {"type": "integer", "x-ga4gh-parameter": {"name": "x"}}},
+        WDL,
+    )
+    schema["properties"]["inputs"]["additionalProperties"] = {"type": "integer"}
+
+    # The member `x` stays under its name, and binds to `wf.x` like `a`
+    error = reject(schema, {"wf.x": 1, "x": 2})
+
+    assert error.pointer == "/x"
+
+
+@pytest.mark.parametrize(
+    ("reads", "pointer", "message"),
+    [
+        (
+            {"class": "File", "location": "https://e.org/x", "secondaryFiles": []},
+            "/reads/secondaryFiles",
+            "'secondaryFiles'",
+        ),
+        ({"class": "File", "location": 1}, "/reads/location", "must be a string"),
+        (
+            {"class": "File", "location": "https://e.org/x", "path": "x"},
+            "/reads/path",
+            "'path'",
+        ),
+        ({"class": "File"}, "/reads", "'location' or 'path'"),
+    ],
+)
+def test_fields_of_cwl_objects(reads: Any, pointer: str, message: str) -> None:
+    """Test the fields of CWL objects that are rejected, with paths allowed.
+
+    Args:
+        reads: The CWL object.
+        pointer: Expected location of the error.
+        message: Expected part of the message.
+    """
+    schema = make_schema({"reads": file_ref()}, CWL)
+
+    error = reject(schema, {"reads": reads}, allow_paths=True)
+
+    assert error.pointer == pointer
+    assert message in error.message
+
+
+def test_cwl_objects_in_free_form_objects() -> None:
+    """Test that a CWL object where no file reference applies is rejected."""
+    schema = make_schema({"rec": {"type": "object"}}, CWL)
+
+    error = reject(schema, {"rec": {"inner": {"class": "File", "location": "x"}}})
+
+    assert error.pointer == "/rec/inner"
+
+
+def test_cwl_directory_with_path() -> None:
+    """Test a CWL ``Directory`` object with ``path``."""
+    directory = {"type": "string", "x-ga4gh-file": {"kind": "directory"}}
+    schema = make_schema({"index": directory}, CWL)
+
+    assert from_workflow_params(
+        schema,
+        {"index": {"class": "Directory", "path": "inputs/index"}},
+        allow_paths=True,
+    ) == {"index": "inputs/index"}
+
+
+def test_cwl_objects_are_plain_objects_for_other_engines() -> None:
+    """Test that other descriptor types take CWL objects as plain objects."""
+    schema = make_schema({"rec": {"type": "object"}}, NFL)
+    params = {"rec": {"class": "File", "location": "file:///etc/passwd"}}
+
+    assert from_workflow_params(schema, params) == params
+
+
+def test_workflow_params_are_not_changed() -> None:
+    """Test that the translation doesn't change ``workflow_params``."""
+    path = REQUESTS_DIR / "CWL" / "file-objects"
+    params = load_json(path / "workflow_params.json")
+    before = copy.deepcopy(params)
+
+    from_workflow_params(load_json(path / "schema.json"), params)
+
+    assert params == before
+
+
+@pytest.mark.parametrize(
+    "inputs",
+    [
+        # Met when the keys of the inputs are collected
+        {"a": {"$ref": "https://example.org/elsewhere.json"}},
+        # Met only when the values are validated
+        {"a": {"type": "object", "properties": {"b": {"$ref": "#/$defs/missing"}}}},
+    ],
+)
+def test_unresolvable_references_reject_the_request(inputs: dict[str, Any]) -> None:
+    """Test that references that can't be resolved locally fail closed.
+
+    Args:
+        inputs: Properties of ``inputs``.
+    """
+    error = reject(make_schema(inputs, NFL), {"a": {"b": 1}})
+
+    assert error.pointer == ""
+    assert "can't be resolved locally" in error.message
+
+
+def test_dynamic_references_reject_the_request() -> None:
+    """Test that ``$dynamicRef`` at a file reference fails closed."""
+    schema = make_schema(
+        {"reads": {"$dynamicRef": "#file"}},
+        CWL,
+        **{"$defs": {"file": {"$dynamicAnchor": "file", **file_ref()}}},
+    )
+
+    error = reject(schema, {"reads": {"class": "File", "location": "file:///x"}})
+
+    assert "'$dynamicRef'" in error.message
+
+
+def test_forbidden_schemes_can_not_be_allowed_on_servers() -> None:
+    """Test that the allow-list of a server can't contain a forbidden scheme."""
+    with pytest.raises(ValueError, match="file"):
+        from_workflow_params(make_schema({}, NFL), {}, allowed_schemes=["file"])
+
+
+@pytest.mark.parametrize(
+    "condition",
+    [
+        # The failing keyword is in the target of `$ref`, not next to it
+        {"$ref": "#/$defs/c", "properties": {"other": {}}},
+        {"$ref": "#/$defs/c", "allOf": [{}]},
+    ],
+)
+def test_error_message_behind_a_reference_with_siblings(
+    condition: dict[str, Any],
+) -> None:
+    """Test that the search for the message follows ``$ref`` past its siblings.
+
+    Args:
+        condition: Schema of the input, with a reference and siblings.
+    """
+    schema = make_schema(
+        {"condition": condition},
+        NFL,
+        **{
+            "$defs": {
+                "c": {
+                    "properties": {"level": {"allOf": [{"enum": ["a"]}]}},
+                    "allOf": [{"required": ["level"]}],
+                    "x-ga4gh-error-message": "Level must be a",
+                }
+            }
+        },
+    )
+
+    error = reject(schema, {"condition": {"level": "b"}})
+    assert error.pointer == "/condition/level"
+    assert error.message == "The value fails the keyword 'enum' of the schema."
+    assert reject(schema, {"condition": {}}).message == "Level must be a"
+
+
+@pytest.mark.parametrize(
+    ("inputs", "pointer"),
+    [
+        # jsonschema reports no instance location for a `false` property
+        ({"a": False}, ""),
+        ({"a": {"$ref": "#/$defs/never"}}, "/a"),
+    ],
+)
+def test_message_of_the_false_schema(inputs: dict[str, Any], pointer: str) -> None:
+    """Test the message for a value that the schema ``false`` rejects.
+
+    Args:
+        inputs: Properties of ``inputs``.
+        pointer: Expected location of the error.
+    """
+    schema = make_schema(inputs, NFL, **{"$defs": {"never": False}})
+
+    error = reject(schema, {"a": 1})
+
+    assert error.pointer == pointer
+    assert error.message == "The schema doesn't allow a value here."
+
+
+def test_error_message_behind_a_dynamic_reference() -> None:
+    """Test the message of a failure that the search can't follow."""
+    schema = make_schema(
+        {"a": {"$dynamicRef": "#c"}},
+        NFL,
+        **{
+            "$defs": {
+                "c": {
+                    "$dynamicAnchor": "c",
+                    "enum": [1],
+                    "x-ga4gh-error-message": "Must be 1",
+                }
+            }
+        },
+    )
+
+    assert reject(schema, {"a": 2}).message == "Must be 1"
+
+
+def test_keys_of_inputs_with_shared_subschemas() -> None:
+    """Test that subschemas reached twice, and boolean ones, are collected once."""
+    schema = make_schema(
+        {"a": {"allOf": [True, {"$ref": "#/$defs/n"}, {"$ref": "#/$defs/n"}]}},
+        NFL,
+        **{"$defs": {"n": {"x-ga4gh-parameter": {"name": "b"}}}},
+    )
+
+    assert from_workflow_params(schema, {"b": 1}) == {"a": 1}

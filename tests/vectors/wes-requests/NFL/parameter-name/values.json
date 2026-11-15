@@ -1,0 +1,4 @@
+{
+  "reads": "https://data.example.org/reads.fq.gz",
+  "outdir": "results"
+}
