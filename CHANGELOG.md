@@ -236,6 +236,16 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   every character but the unreserved ones of RFC 3986. (#19) The vectors of
   Sapporo, WESkit, Toil and Cromwell are captured from real runs of these
   servers. (#55)
+- The subcommand `ga4gh-io-schema wes-validate` and the function
+  `from_workflow_params()` of `ga4gh_io_schema.wes`, the server side of the
+  engine bindings: translate the `workflow_params` of a WES run request back
+  into input values (keys matched with inputs, CWL `File` and `Directory`
+  objects at file references turned into their `location`), validate them
+  and check every file value, with errors located by a JSON Pointer into
+  `workflow_params`, messages that don't repeat the value, and the body of
+  the WES `ErrorResponse` (`error_response()`). Language-neutral test
+  vectors in `tests/vectors/wes-requests/`; the valid vectors of
+  `wes-params/` are checked to translate back to their values. (#67)
 
 ### Fixed
 

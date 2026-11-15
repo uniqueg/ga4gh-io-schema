@@ -53,6 +53,14 @@ Turn input values into the `workflow_params` of a WES run request (see
 ga4gh-io-schema wes-params --schema path/to/your-schema.json --values values.json
 ```
 
+WES servers translate the `workflow_params` of a request back into input
+values and validate them (see
+[WES request validation](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/wes-validate/)):
+
+```bash
+ga4gh-io-schema wes-validate --schema path/to/your-schema.json --params workflow_params.json
+```
+
 `ga4gh-io-schema --help` lists the subcommands; see the
 [command-line interface](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/cli/)
 for input from standard input, `--output`, `--json` and the exit codes.

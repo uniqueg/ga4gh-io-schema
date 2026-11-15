@@ -5,7 +5,8 @@ The `wes-params` subcommand of the [command-line interface](cli.md), and the
 of a GA4GH WES run request, or into a full `RunRequest`, by the rules of
 [Engine bindings](../specification/engine-bindings.md). They implement the
 conformance class [Request builder](../specification/conformance.md#request-builder)
-for the translation; submitting the request is left to the caller.
+for the translation; submitting the request is left to the caller. The
+reverse, for WES servers, is [WES request validation](wes-validate.md).
 
 ## Command-line interface
 

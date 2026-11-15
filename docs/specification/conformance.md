@@ -318,9 +318,12 @@ tests/conformance/
   test the class [Request builder](#request-builder): the translation of
   input values into `workflow_params` for each descriptor type
   (`wes-params/`), and the checks of file reference values (schemes,
-  compact DRS identifiers, paths; `file-values/`). Their format is described
-  in [Engine bindings](engine-bindings.md#test-vectors); this package runs
-  them with `tests/test_wes.py`.
+  compact DRS identifiers, paths; `file-values/`), and the class [WES
+  server](#wes-server): the translation of `workflow_params` back into input
+  values and the location of errors in `workflow_params`
+  (`wes-requests/`). Their format is described in [Engine
+  bindings](engine-bindings.md#test-vectors); this package runs them with
+  `tests/test_wes.py`.
 - **Outputs of runs** test the class [Output normaliser](#output-normaliser):
   the cases of `tests/vectors/wes-outputs/` (described in its `README.md`)
   give a schema document, a WES run log and options, and the normalised
@@ -359,6 +362,7 @@ that they implement or plan to implement:
 | ----- | ----- | ----- | ----- |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Validator | Available (`ga4gh-io-schema validate`); passes the conformance suite |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Request builder (translation and checks; submission is left to the caller) | Available (`ga4gh-io-schema wes-params`); passes the test vectors |
+| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | WES server (translation and validation; HTTP is left to the server) | Available (`ga4gh-io-schema wes-validate`); passes the `wes-requests` test vectors |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Output normaliser | Available (`ga4gh-io-schema outputs`); passes the `wes-outputs` test vectors |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Producer | Planned (converters) |
 | [ELIXIR Cloud Components](https://github.com/elixir-cloud-aai/cloud-components) | TypeScript | Form renderer, Request builder, Output normaliser | Planned |

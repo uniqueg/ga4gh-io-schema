@@ -11,6 +11,7 @@ tool:
 | `convert cwl` | Convert the inputs and outputs of a CWL document to an IO schema (see [CWL converter](cwl.md)). |
 | `convert wdl` | Convert the inputs and outputs of a WDL workflow or task to an IO schema (see [WDL converter](convert-wdl.md)). |
 | `wes-params` | Validate input values against an IO schema and translate them into WES `workflow_params` or a `RunRequest` (see [WES parameters](wes-params.md)). |
+| `wes-validate` | Translate the `workflow_params` of a WES run request back into input values and validate them, as a WES server does (see [WES request validation](wes-validate.md)). |
 | `outputs` | Normalise the outputs of a WES run (see [Output normaliser](outputs.md)). |
 
 `ga4gh-io-schema --help` lists the subcommands, and
@@ -57,6 +58,10 @@ All subcommands share these conventions; the shared options (`--output`,
     {"error": {"kind": "validation", "message": "'inputs' is a required property", "location": "$.properties"}, "exitCode": 1}
     ```
 
+    `ga4gh-io-schema wes-validate` reports the location of an error as a
+    JSON Pointer into `workflow_params`, and adds the body of the WES
+    `ErrorResponse` as `errorResponse` (see [WES request
+    validation](wes-validate.md#command-line-interface)).
     `ga4gh-io-schema validate --json` writes
     `{"valid": true, "schema": "<path>", "metaSchema": null}` on success
     (`metaSchema` is the `--meta-schema` path, if given). Wrong arguments are

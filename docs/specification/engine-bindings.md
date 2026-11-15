@@ -230,24 +230,43 @@ implementations in other languages (e.g., TypeScript) can run the same cases:
 ```text
 tests/vectors/
 ├── file-values/cases.json           # values of file references
-└── wes-params/<descriptor type>/<case>/
+├── wes-params/<descriptor type>/<case>/
+│   ├── schema.json                  # an IO schema
+│   ├── values.json                  # input values
+│   ├── workflow_params.json         # the expected workflow_params, or
+│   ├── error.json                   # {"pointer": …}: the values are rejected
+│   └── options.json                 # optional: allowedSchemes, allowAbsolutePaths
+└── wes-requests/<descriptor type>/<case>/
     ├── schema.json                  # an IO schema
-    ├── values.json                  # input values
-    ├── workflow_params.json         # the expected workflow_params, or
-    ├── error.json                   # {"pointer": …}: the values are rejected
-    └── options.json                 # optional: allowedSchemes, allowAbsolutePaths
+    ├── workflow_params.json         # workflow_params of a request
+    ├── values.json                  # the expected input values, or
+    ├── error.json                   # {"pointer": …}: the request is rejected
+    └── options.json                 # optional: also allowPaths
 ```
 
 - **`wes-params`:** a request builder MUST produce `workflow_params.json`
   from `schema.json` and `values.json` (compared as JSON, not as text), or
   reject the values of a case with `error.json`; if it reports a location,
   it is the JSON Pointer `pointer` into the input values.
+- **`wes-requests`:** a WES server MUST translate `workflow_params.json`
+  back into `values.json` with the binding of the schema, or reject the
+  request of a case with `error.json`; if it reports a location, it is the
+  JSON Pointer `pointer` into `workflow_params`. Each valid case of
+  `wes-params` is also a case of this direction: its `workflow_params.json`
+  translates back into its `values.json`.
 - **`file-values`:** each case has an `annotation` (`x-ga4gh-file`), a
   `value` and whether it is `valid`; a request builder MUST accept the
   valid values and reject the others.
 - `options.json` and the cases of `file-values` can set the deployment's
   allow-list (`allowedSchemes`, default `["drs", "https"]`) and whether
-  absolute paths are allowed (`allowAbsolutePaths`, default `false`).
+  absolute paths are allowed (`allowAbsolutePaths`, default `false`); for
+  `wes-requests`, also whether CWL `File` and `Directory` objects may give
+  `path` instead of `location` (`allowPaths`, default `false`).
 
 Error messages are not part of the vectors. The package runs them with
-`tests/test_wes.py` against the [Python API](../tools/wes-params.md#python-api).
+`tests/test_wes.py` against the Python API ([request
+builders](../tools/wes-params.md#python-api), [WES
+servers](../tools/wes-validate.md#python-api)). The cases of `wes-requests`
+that reject CWL objects with fields other than `class` and `location` (or
+`path`) follow the rules of this package; rule 2 leaves such fields, except
+`contents`, to the server.
