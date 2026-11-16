@@ -5,6 +5,7 @@
 """Tests for the packaging, schema identifiers and documentation of the project."""
 
 import re
+import tomllib
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,7 @@ SCHEMAS_DIR = REPO_ROOT / "schemas"
 DATA_DIR = REPO_ROOT / "tests" / "data"
 SUITE_DIR = REPO_ROOT / "tests" / "conformance"
 VECTORS_DIR = REPO_ROOT / "tests" / "vectors"
+EXAMPLES_DIR = REPO_ROOT / "examples"
 PROFILE_PATH = SCHEMAS_DIR / "ga4gh-io-profile.schema.json"
 # Docs that show CLI usage; mkdocs build --strict checks the links of docs/.
 USAGE_DOCS = [
@@ -73,6 +75,7 @@ def test_schema_ids_share_one_release_tag() -> None:
         *DATA_DIR.rglob("*.json"),
         *SUITE_DIR.rglob("*.json"),
         *VECTORS_DIR.rglob("*.json"),
+        *EXAMPLES_DIR.rglob("*.json"),
     ]:
         text = path.read_text(encoding="utf-8")
         assert "/main/" not in text, path
@@ -83,6 +86,21 @@ def test_schema_ids_share_one_release_tag() -> None:
     )
     assert len(tags) == 1, tags
     assert re.fullmatch(r"v\d+\.\d+\.\d+", tags.pop())
+
+
+def test_package_version_matches_schema_tag() -> None:
+    """Test that the package version is the release tag of the schemas.
+
+    The package is released from the same tag as the profile (see
+    ``docs/governance.md``), so ``version`` in ``pyproject.toml`` must be
+    bumped with the tag in the schema URLs.
+    """
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text("utf-8"))
+    profile_id = load_json(PROFILE_PATH)["$id"]
+    tag = re.search(r"/ga4gh-io-schema/([^/]+)/schemas/", profile_id)
+
+    assert tag is not None
+    assert f"v{pyproject['project']['version']}" == tag.group(1)
 
 
 def test_examples_reference_the_meta_schema() -> None:

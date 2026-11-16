@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ga4gh-io-schema"
-version = "0.1.0"
+version = "0.3.0"
 description = "GA4GH standard profile for workflow and tool inputs and outputs"
 readme = "README.md"
 # Keep in sync with the CI test matrix and ruff's target-version.
