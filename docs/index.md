@@ -25,6 +25,8 @@ The profile is designed for the GA4GH APIs for federated analysis (TRS, WES, DRS
 - [Tools](tools/index.md): the validator (CLI and Python API) and converters.
 - [Adoption](adoption/index.md): the adoption path and guides for TRS, WES,
   and portals and clients.
+- [Prototype](adoption/prototype.md): try it on a laptop, from a workflow
+  in TRS to a form and a WES run request, with one Docker Compose command.
 - [Roadmap](roadmap.md): next steps, open questions and the history of this
   proposal.
 - [Changelog](changelog.md): the changes of each version, including the
