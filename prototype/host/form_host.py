@@ -21,6 +21,7 @@ http://127.0.0.1:8000/.
 
 import argparse
 import json
+import posixpath
 import re
 import sys
 import urllib.error
@@ -70,6 +71,10 @@ DOCUMENT_URI = "urn:ga4gh-io-schema:form"
 IN_PLACE = ("not", "if", "then", "else")
 IN_PLACE_LISTS = ("allOf", "anyOf", "oneOf")
 
+#: Name of the IO schema file next to the primary descriptor in TRS.
+SCHEMA_NAME = "ga4gh-io.schema.json"
+#: Error of a request for the schema when no workflow is picked.
+PICK_A_WORKFLOW = "Pick a workflow: the host serves no default schema."
 #: Names of the host in requests that are accepted, besides its address.
 LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1"})
 #: Error of valid values for which the host knows no workflow URL.
@@ -115,6 +120,115 @@ def load_schema(source: str) -> dict[str, Any]:
         document = json.loads(Path(source).read_text(encoding="utf-8"))
     validate_schema(document)
     return document
+
+
+def list_workflows(trs_url: str) -> list[dict[str, str]]:
+    """List the workflows of a TRS: its tool versions, per descriptor type.
+
+    Args:
+        trs_url: Base URL of the TRS API.
+
+    Returns:
+        The workflows, each with ``tool_id``, ``version_id``,
+        ``descriptor_type`` and the ``name`` of the tool.
+
+    Raises:
+        OSError: If the TRS can't be reached or fails (also
+            ``urllib.error.HTTPError``).
+        ValueError: If the answer isn't a list of tools.
+    """
+    tools = _fetch_json(urllib.request.Request(f"{trs_url.rstrip('/')}/tools"))
+    if not isinstance(tools, list):
+        raise ValueError("The TRS answer isn't a list of tools.")
+    workflows = []
+    try:
+        for tool in tools:
+            tool_id = tool["id"]
+            for version in tool["versions"]:
+                for descriptor_type in version.get("descriptor_type") or []:
+                    workflows.append(
+                        {
+                            "tool_id": tool_id,
+                            "version_id": version["id"],
+                            "descriptor_type": descriptor_type,
+                            "name": tool.get("name") or tool_id,
+                        }
+                    )
+    except (KeyError, TypeError, AttributeError) as exc:
+        raise ValueError("The TRS answer isn't a list of tools.") from exc
+    return workflows
+
+
+def load_trs_schema(
+    trs_url: str, tool_id: str, version_id: str, descriptor_type: str
+) -> tuple[dict[str, Any], str]:
+    """Load the IO schema of a tool version from TRS, as a client does.
+
+    The schema is the file ``ga4gh-io.schema.json`` of type ``OTHER`` in the
+    directory of the primary descriptor (see "Publishing convention" in
+    ``docs/adoption/trs.md``). It must name the tool version and the
+    descriptor type that it was fetched for, where it names them (step 2 of
+    the guide for portals and clients, without the checksum).
+
+    Args:
+        trs_url: Base URL of the TRS API.
+        tool_id: Id of the tool.
+        version_id: Id of the tool version.
+        descriptor_type: TRS descriptor type, e.g., ``WDL``.
+
+    Returns:
+        The schema, valid against the profile, and the ``workflow_url`` of
+        run requests: the TRS URL of the plain primary descriptor.
+
+    Raises:
+        OSError: If the TRS can't be reached or fails (also
+            ``urllib.error.HTTPError``).
+        ValueError: If an id is empty, ``.`` or ``..``, the tool version
+            has no IO schema, or the schema isn't JSON or names another tool
+            version or descriptor type.
+        jsonschema.exceptions.ValidationError: If the schema doesn't comply
+            with the profile.
+    """
+    if {tool_id, version_id, descriptor_type} & {"", ".", ".."}:
+        raise ValueError("Empty ids and the ids . and .. aren't allowed.")
+    version = (
+        f"{trs_url.rstrip('/')}/tools/{urllib.parse.quote(tool_id, safe='')}"
+        f"/versions/{urllib.parse.quote(version_id, safe='')}"
+        f"/{urllib.parse.quote(descriptor_type, safe='')}"
+    )
+    files = _fetch_json(urllib.request.Request(f"{version}/files"))
+    try:
+        # path and file_type are optional in TRS: skip entries without them
+        primary = next(
+            f["path"] for f in files if f.get("file_type") == "PRIMARY_DESCRIPTOR"
+        )
+        path = posixpath.join(posixpath.dirname(primary), SCHEMA_NAME)
+        # Entries may have more fields, e.g., checksum
+        found = any(
+            f.get("path") == path and f.get("file_type") == "OTHER" for f in files
+        )
+    except (KeyError, TypeError, AttributeError, StopIteration):
+        found = False
+    if not found:
+        raise ValueError(
+            f"The tool version has no IO schema ({SCHEMA_NAME} of type OTHER "
+            "next to the primary descriptor)."
+        )
+    schema = load_schema(f"{version}/descriptor/{urllib.parse.quote(path, safe='')}")
+    block = schema.get("x-ga4gh-workflow") or {}
+    expected = {
+        "trs_tool_id": tool_id,
+        "trs_version_id": version_id,
+        "descriptor_type": descriptor_type,
+    }
+    for key, value in expected.items():
+        if key in block and block[key] != value:
+            raise ValueError(
+                f"The schema is for another workflow: x-ga4gh-workflow.{key} is "
+                f"{block[key]!r}, not {value!r}."
+            )
+    url = trs_descriptor_url(trs_url, tool_id, version_id, descriptor_type)
+    return schema, url
 
 
 def workflow_url(schema: dict[str, Any], trs_url: str | None = None) -> str | None:
@@ -399,38 +513,47 @@ def _children(scopes: Iterable[Scope], key: str | int) -> list[Scope]:
 
 
 class FormHost(ThreadingHTTPServer):
-    """HTTP server of the form, for one IO schema.
+    """HTTP server of the form, for a default IO schema or those of a TRS.
 
     Attributes:
-        schema: The IO schema.
+        schema: The default IO schema, if any.
         allowed_schemes: URI schemes of the deployment's allow-list.
-        workflow_url: The ``workflow_url`` of run requests.
+        workflow_url: The ``workflow_url`` of run requests for the default
+            schema.
         wes_url: Base URL of the WES API to submit runs to, if any.
+        trs_url: Base URL of the TRS API to pick workflows from, if any;
+            their schemas are loaded again for each request, so changes in
+            the TRS show at once.
     """
 
     def __init__(
         self,
         address: tuple[str, int],
-        schema: dict[str, Any],
+        schema: dict[str, Any] | None,
         allowed_schemes: Iterable[str] = DEFAULT_ALLOWED_SCHEMES,
         workflow_url: str | None = None,
         wes_url: str | None = None,
+        trs_url: str | None = None,
     ) -> None:
         """Bind the server.
 
         Args:
             address: Host and port; port 0 picks a free one.
-            schema: The IO schema, valid against the profile.
+            schema: The default IO schema, valid against the profile; with
+                ``trs_url``, it may be ``None``.
             allowed_schemes: URI schemes of the deployment's allow-list.
-            workflow_url: The ``workflow_url`` of run requests.
+            workflow_url: The ``workflow_url`` of run requests for the
+                default schema.
             wes_url: Base URL of the WES API to submit runs to; without it,
                 nothing is sent.
+            trs_url: Base URL of a TRS API whose workflows users can pick.
         """
         super().__init__(address, FormHandler)
         self.schema = schema
         self.allowed_schemes = tuple(allowed_schemes)
         self.workflow_url = workflow_url
         self.wes_url = wes_url
+        self.trs_url = trs_url
 
 
 class FormHandler(BaseHTTPRequestHandler):
@@ -441,14 +564,21 @@ class FormHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 - name defined by http.server
         """Serve a file of the form, the schema or the configuration.
 
-        ``/api/schema`` is the schema, ``/api/config`` says whether runs can
-        be submitted to a WES (``{"wes": true}``).
+        ``/api/schema`` is the schema: of the workflow picked in the TRS
+        with the query ``tool``, ``version`` and ``type``, or else the
+        default one. ``/api/config`` says whether runs can be submitted to a
+        WES (``{"wes": true}``) and, with a TRS, lists its ``workflows`` (see
+        :func:`list_workflows`), or gives ``trs_error``.
         """
         path = urllib.parse.urlsplit(self.path).path
-        if path == "/api/schema":
-            self._send_json(HTTPStatus.OK, self.server.schema)
+        if path.startswith("/api/") and not self._same_origin():
+            self._send_json(HTTPStatus.FORBIDDEN, {"msg": "Foreign host or origin"})
+        elif path == "/api/schema":
+            selected = self._selected()
+            if selected is not None:
+                self._send_json(HTTPStatus.OK, selected[0])
         elif path == "/api/config":
-            self._send_json(HTTPStatus.OK, {"wes": self.server.wes_url is not None})
+            self._send_json(HTTPStatus.OK, self._config())
         elif path in STATIC:
             name, media_type = STATIC[path]
             self._send(HTTPStatus.OK, media_type, (HERE / name).read_bytes())
@@ -498,12 +628,12 @@ class FormHandler(BaseHTTPRequestHandler):
             errors = [{"pointer": "", "message": "The values aren't JSON."}]
             self._send_json(HTTPStatus.BAD_REQUEST, {"errors": errors})
             return
+        selected = self._selected()
+        if selected is None:
+            return
         try:
             request, errors = check_values(
-                self.server.schema,
-                values,
-                self.server.allowed_schemes,
-                self.server.workflow_url,
+                selected[0], values, self.server.allowed_schemes, selected[1]
             )
         except RecursionError:
             errors = [{"pointer": "", "message": "The values are nested too deeply."}]
@@ -513,6 +643,49 @@ class FormHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, {"run_request": request})
         else:
             self._submit(request)
+
+    def _config(self) -> dict[str, Any]:
+        """Build the configuration for the page.
+
+        Returns:
+            Whether a WES is configured and, with a TRS, its workflows.
+        """
+        config: dict[str, Any] = {"wes": self.server.wes_url is not None}
+        trs_url = self.server.trs_url
+        if trs_url is not None:
+            try:
+                config["workflows"] = list_workflows(trs_url)
+            except (OSError, ValueError) as exc:
+                config["workflows"] = []
+                config["trs_error"] = f"Can't list the workflows of {trs_url}: {exc}"
+        return config
+
+    def _selected(self) -> tuple[dict[str, Any], str | None] | None:
+        """Find the schema of a request, or send an error.
+
+        Returns:
+            The schema and the ``workflow_url`` of the workflow picked in
+            the TRS (query ``tool``, ``version`` and ``type``), or else of
+            the default schema; ``None`` if there is none, after sending
+            404, or if the workflow can't be loaded, after sending 502.
+        """
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+        keys = ("tool", "version", "type")
+        trs_url = self.server.trs_url
+        if trs_url is not None and all(key in query for key in keys):
+            key = (query["tool"][0], query["version"][0], query["type"][0])
+            try:
+                return load_trs_schema(trs_url, *key)
+            except (OSError, ValueError, jsonschema.exceptions.ValidationError) as exc:
+                message = f"Can't load the workflow from {trs_url}: {exc}"
+                error = {"pointer": "", "message": message}
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"errors": [error]})
+                return None
+        if self.server.schema is None:
+            error = {"pointer": "", "message": PICK_A_WORKFLOW}
+            self._send_json(HTTPStatus.NOT_FOUND, {"errors": [error]})
+            return None
+        return self.server.schema, self.server.workflow_url
 
     def _same_origin(self) -> bool:
         """Check that a request comes from a page of the host itself.
@@ -587,9 +760,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--schema",
-        default=str(DEMO_SCHEMA),
-        help="path or http(s) URL of the IO schema, e.g., its TRS URL "
-        "(default: the schema of the end-to-end demo)",
+        help="path or http(s) URL of the default IO schema, e.g., its TRS URL "
+        "(default: none with --trs-url, where users pick workflows in the TRS; "
+        "else the schema of the end-to-end demo)",
     )
     parser.add_argument(
         "--host", default="127.0.0.1", help="address to bind (default: 127.0.0.1)"
@@ -608,16 +781,17 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--trs-url",
         type=_http_url,
-        help="base URL of the TRS API that serves the workflow, for the "
-        "workflow_url of run requests, e.g., http://127.0.0.1:8080/ga4gh/trs/v2 "
-        "(default: the path of the primary descriptor)",
+        help="base URL of a TRS API, e.g., http://127.0.0.1:8080/ga4gh/trs/v2: "
+        "users pick its workflows, and run requests name the workflow by its "
+        "TRS URL (default: no TRS; the workflow_url of the default schema is "
+        "the path of its primary descriptor)",
     )
     parser.add_argument(
         "--wes-url",
-        type=_http_url,
+        type=_optional_http_url,
         help="base URL of a WES API to submit runs to, e.g., "
-        "http://127.0.0.1:8081/ga4gh/wes/v1 (default: none; run requests are "
-        "shown, not sent)",
+        "http://127.0.0.1:8081/ga4gh/wes/v1 (default, or if empty: none; run "
+        "requests are shown, not sent)",
     )
     return parser
 
@@ -640,6 +814,18 @@ def _http_url(value: str) -> str:
     return value
 
 
+def _optional_http_url(value: str) -> str | None:
+    """Check that an argument is empty or an ``http(s)`` URL.
+
+    Args:
+        value: The argument.
+
+    Returns:
+        The URL, or ``None`` if the argument is empty.
+    """
+    return _http_url(value) if value else None
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Start the host and serve until interrupted.
 
@@ -655,21 +841,30 @@ def main(argv: Sequence[str] | None = None) -> int:
     forbidden = sorted({scheme.lower() for scheme in schemes} & FORBIDDEN_SCHEMES)
     if forbidden:
         parser.error(f"these schemes can't be allowed: {', '.join(forbidden)}")
-    try:
-        schema = load_schema(args.schema)
-    except (OSError, ValueError, jsonschema.exceptions.ValidationError) as exc:
-        print(f"Can't use the schema {args.schema}: {exc}", file=sys.stderr)
-        return 1
-    url = workflow_url(schema, args.trs_url)
-    if args.wes_url and not (url or "").startswith(("http://", "https://")):
-        parser.error(
-            "--wes-url needs a workflow URL that a WES can fetch: give --trs-url "
-            "and a schema that names its TRS tool version"
-        )
-    server = FormHost((args.host, args.port), schema, schemes, url, args.wes_url)
+    schema = url = None
+    if args.schema is not None or args.trs_url is None:
+        source = args.schema or str(DEMO_SCHEMA)
+        try:
+            schema = load_schema(source)
+        except (OSError, ValueError, jsonschema.exceptions.ValidationError) as exc:
+            print(f"Can't use the schema {source}: {exc}", file=sys.stderr)
+            return 1
+        url = workflow_url(schema, args.trs_url)
+        if args.wes_url and not (url or "").startswith(("http://", "https://")):
+            parser.error(
+                "--wes-url needs a workflow URL that a WES can fetch: give "
+                "--trs-url and a schema that names its TRS tool version"
+            )
+    server = FormHost(
+        (args.host, args.port), schema, schemes, url, args.wes_url, args.trs_url
+    )
     host, port = server.server_address[:2]
     print(f"Serving the form on http://{host}:{port}/ (Ctrl+C stops)")
-    print(f"  workflow URL: {url}")
+    if args.trs_url:
+        print(f"  Workflows are picked from {args.trs_url}")
+    if schema is not None:
+        print(f"  Default schema: {schema.get('title', '(no title)')}")
+        print(f"  workflow URL: {url}")
     if args.wes_url:
         print(f"  Run requests are sent to {args.wes_url} on request.")
     else:

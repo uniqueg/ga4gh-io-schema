@@ -52,6 +52,13 @@ dev = [
     "reuse>=3.0.2",
     "ruff>=0.4.0",
 ]
+# The end-to-end tests of the prototype (tests/test_prototype_e2e.py); the
+# browser test also needs Chromium (`playwright install chromium`).
+e2e = [
+    "pytest>=8.1.1",
+    "pytest-cov>=5.0.0",
+    "playwright>=1.40",
+]
 # `ga4gh-io-schema convert snakemake` reads YAML schemas with PyYAML, as
 # Snakemake does; JSON schemas need no extra.
 snakemake = [
@@ -87,6 +94,7 @@ pythonpath = ["examples/demo", "prototype/host", "prototype/trs-stub"]
 addopts = "-v --cov --cov-report=term-missing"
 markers = [
     "wheel: builds and installs the wheel (needs network access)",
+    "e2e: tests the running prototype (needs PROTOTYPE_URL; see tests/test_prototype_e2e.py)",
 ]
 
 [tool.coverage.run]
