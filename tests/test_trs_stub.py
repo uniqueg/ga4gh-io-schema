@@ -277,6 +277,8 @@ def test_stub_serves_the_schema(stub: str) -> None:
         "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/PLAIN_WDL/files",
         "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/PLAIN_CWL/descriptor",
         "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/descriptor/x.wdl",
+        "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/descriptor/..%2Fdemo.wdl",
+        "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/",
         "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/containerfile",
         "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/tests",
     ],
@@ -345,3 +347,9 @@ def test_main_reports_a_stub_that_cant_start(
     """Test that ``main`` exits with 1 if the stub can't start."""
     assert trs_stub.main(["--port", "0", "--workflow", str(DEMO)] * 2) == 1
     assert "Can't start the stub: Two workflows" in capsys.readouterr().err
+
+
+def test_stub_ignores_query_parameters(stub: str) -> None:
+    """Test that query parameters, e.g., ``format=zip``, are ignored."""
+    for path in ("/tools", f"/tools/{TOOL}/versions/{VERSION}/WDL/files"):
+        assert get_json(f"{stub}{path}?format=zip") == get_json(f"{stub}{path}")
