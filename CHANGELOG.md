@@ -290,6 +290,28 @@ First tagged release of the profile and the `ga4gh-io-schema` package.
   Clients that use hyperjump no longer need a copy of the IO schema that
   names Draft 2020-12 to validate values, unless an embedded resource of
   the IO schema names the profile. (#61)
+- Values are matched against `pattern`, `patternProperties` and the names
+  that `additionalProperties` and `unevaluatedProperties` check with
+  ECMA-262 semantics in Unicode mode (regress, a new dependency), as
+  JavaScript clients match them, in `wes-params`, `wes-validate`, `outputs`
+  and the form proof of concept: `$` no longer matches before a trailing
+  newline (`^[a-z]+$` rejected `"abc\n"` in clients but not on servers),
+  and patterns such as `\p{L}`, which Python's `re` can't parse, work
+  instead of failing with an unexpected error. `\w` and `\d` match ASCII
+  only, as in ECMA-262. A new test vector, `NFL/pattern-trailing-newline`,
+  covers the newline. (#77)
+- `validate` checks the `regex` format of `pattern` and of the names in
+  `patternProperties` as ECMA-262 in Unicode mode, so a schema with an
+  invalid pattern (e.g., `(`, or `\-` outside a character class, which
+  Python accepted) no longer passes and then fails on the first request
+  that sets the input. Before, the format wasn't checked. (#77)
+- `convert cwl` leaves out default files and directories with a forbidden
+  scheme (e.g., `javascript:`), with a note, instead of copying them into
+  the IO schema. (#77)
+- The messages for missing extras name the extra and how to install it
+  from a clone, instead of a package on PyPI, which doesn't exist. (#77)
+- The wheel declares its licence (`Apache-2.0`) and ships the licence
+  texts. (#77)
 
 ## v0.2 (2026-10-13)
 
