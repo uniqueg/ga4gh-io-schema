@@ -8,13 +8,25 @@ repository, apart from the specification, the package and its tools.
 
 **A proof of concept, not a product:** the parts implement only what the
 demonstration needs, aren't maintained like the `ga4gh-io-schema` package,
-and aren't for deployment: no authentication, no TLS, no persistence.
+and aren't for deployment: no authentication, no TLS, no persistence (see
+[What it doesn't do](#what-it-doesnt-do)).
+
+## Prerequisites
+
+- Git, and Docker with Docker Compose v2 (`docker compose`).
+- Ports `8000` and `8080` free on `127.0.0.1`.
+- A web browser.
+- Network access for the first build only: it pulls `python:3.13-alpine`
+  and installs this package with its dependencies from PyPI. Nothing else
+  leaves the laptop; no account, token or outside service is needed.
 
 ## Run it
 
-With Docker and Docker Compose, in a clone of this repository:
+One command, in a fresh clone of this repository:
 
 ```bash
+git clone https://github.com/uniqueg/ga4gh-io-schema.git
+cd ga4gh-io-schema
 docker compose -f prototype/compose.yaml up --build
 ```
 
@@ -25,22 +37,89 @@ Compose builds one small image and starts two services:
 | `trs-stub` | `127.0.0.1:8080` | The [TRS stub](#trs-stub), with the demo workflow (`examples/demo/`) and its IO schema. |
 | `host` | `127.0.0.1:8000` | The [host of the form](form.md), which picks workflows from the stub (`--trs-url http://trs-stub:8080/ga4gh/trs/v2`). |
 
-Then open <http://127.0.0.1:8000/>:
+When both are healthy, open <http://127.0.0.1:8000/>. `Ctrl+C` stops the
+stack; `docker compose -f prototype/compose.yaml down` removes its
+containers.
 
-1. **Pick the workflow** "I/O Schema demo 1.0.0 (WDL)": the list comes from
-   `GET /tools` of the stub. The host finds the IO schema in the files of
-   the tool version (`ga4gh-io.schema.json` of type `OTHER` next to the
-   primary descriptor), checks it against the profile and checks that it
-   names that tool version and descriptor type.
-2. **Fill in the form** that the schema renders, e.g., with the values of
-   `examples/demo/values.json`. Wrong values get the messages of the
-   schema (`x-ga4gh-error-message`).
-3. **See the WES run request**: `workflow_params` in the shape of the WDL
-   engine, `workflow_type`, `workflow_type_version`, and the TRS URL of the
-   primary descriptor as `workflow_url`. Nothing in the portal is specific
-   to the workflow or its language.
+## Walkthrough
 
-`docker compose -f prototype/compose.yaml down` stops it.
+The page plays the portal: it knows a TRS and, optionally, a WES, and
+nothing about any workflow. Each step uses only what the IO schema and
+the GA4GH APIs give it.
+
+### 1. Pick a workflow in TRS
+
+![The page lists the workflows of the TRS stub; no form is shown before a
+pick.](../assets/prototype/pick.png)
+
+The list "Workflow in TRS" comes from `GET /tools` of the stub: one entry
+per tool version and descriptor type. Pick "I/O Schema demo 1.0.0 (WDL)".
+The host then lists the files of that tool version, finds the IO schema
+(`ga4gh-io.schema.json` of type `OTHER`, next to the primary descriptor),
+fetches it, validates it against the profile, and checks that its
+`x-ga4gh-workflow` names this tool version and descriptor type.
+
+**What it shows:** a client finds the schema of any tool version through
+the plain TRS API, by the [publishing convention](trs.md#publishing-convention)
+alone; TRS needs no extension, and the schema says which workflow it
+describes ([identity](../specification/identity.md#the-workflow-block)),
+so a schema can't be applied to the wrong workflow by mistake.
+
+### 2. Fill in the form
+
+![The form of the demo, with a mapping quality of 61 and the schema's
+error message under the field.](../assets/prototype/form-errors.png)
+
+The form is rendered from the schema: titles, descriptions, the required
+mark, a file reference, a slider with its bounds, a
+choice as radio buttons, and defaults. Enter the reads of
+`examples/demo/values.json` and a mapping quality of 61, and submit: the
+schema's own message for the field appears ("The minimum mapping quality is
+a whole number from 0 to 60"), and no run request is built.
+
+**What it shows:** one generic form renders any workflow's inputs, with
+[widgets](../specification/widgets.md) and messages
+(`x-ga4gh-error-message`) chosen by the workflow's author, not by the
+portal; values are checked against the schema, including the [rules for
+file references](../specification/files.md), before anything is sent.
+
+### 3. See the WES run request
+
+![The form with valid values, and the WES run request under
+it.](../assets/prototype/run-request.png)
+
+Set the mapping quality to 20, pick `proper_pairs` and submit. The page
+shows the run request that a WES gets:
+
+```json
+{
+  "workflow_params": {
+    "io_schema_demo.reads": "https://raw.githubusercontent.com/nf-core/test-datasets/3e548a3b34994380db1602506e0721fadbad6de1/data/genomics/sarscov2/illumina/bam/test.paired_end.bam",
+    "io_schema_demo.min_mapq": 20,
+    "io_schema_demo.read_filter": "proper_pairs"
+  },
+  "workflow_type": "WDL",
+  "workflow_type_version": "1.1",
+  "workflow_url": "http://trs-stub:8080/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/PLAIN_WDL/descriptor"
+}
+```
+
+**What it shows:** the [engine binding](../specification/engine-bindings.md)
+turns the values into `workflow_params` in the shape that the WDL engine
+expects (names qualified with the workflow name), and the schema gives
+`workflow_type`, `workflow_type_version` and, with TRS, the `workflow_url`.
+The user never chooses a workflow type or writes engine parameters, and
+the portal has no code for this workflow or for WDL.
+
+### 4. Send it to a WES (optional)
+
+With `WES_URL` set (see below), a button "Send to WES" appears under a
+valid run request. The host posts the request to `POST /runs` of the WES
+and shows the run id and its state. Without `WES_URL`, nothing is ever
+sent; the banner at the top of the page says so.
+
+**What it shows:** the request is a plain WES `RunRequest`; any WES that
+can fetch the `workflow_url` can run it.
 
 ### Point it at a real TRS or WES
 
@@ -63,6 +142,10 @@ TRS_URL=https://trs.example.org/ga4gh/trs/v2 \
   docker compose -f prototype/compose.yaml up --build
 ```
 
+With the stub, the `workflow_url` names the stub inside the stack
+(`http://trs-stub:8080/...`), which no WES outside can fetch: that is why
+the stack sends nothing by default.
+
 Without Docker, run the two parts directly (Python 3.11 or later, with this
 package installed: `pip install -e .`), each in its own terminal:
 
@@ -71,7 +154,25 @@ python prototype/trs-stub/trs_stub.py
 python prototype/host/form_host.py --trs-url http://127.0.0.1:8080/ga4gh/trs/v2
 ```
 
-### Test it
+## What it doesn't do
+
+- **No outputs:** it stops at the run request (or the run id and state);
+  it doesn't follow a run or show its outputs. The [end-to-end
+  demo](demo.md) normalises the outputs of a run with the [output
+  normaliser](../tools/outputs.md).
+- **One workflow, one language:** the stub serves the WDL demo only
+  (`--workflow` adds more); the host also builds run requests for CWL,
+  Nextflow and Snakemake workflows, but the stack doesn't show them.
+- **No checksum check:** the host checks that the schema names the tool
+  version, but not the descriptor's checksum against
+  `x-ga4gh-workflow.checksum` (step 3 of the [guide for portals and
+  clients](portals.md#guide-for-portals-and-clients)).
+- **No security:** no authentication, no TLS, no credentials sent to a TRS
+  or WES; the ports are bound to `127.0.0.1`. Keep it there.
+- **No persistence and no service registry:** the TRS and the WES are
+  given by URL; nothing is stored.
+
+## Test it
 
 CI's job "End-to-end test" starts the stack and runs
 `tests/test_prototype_e2e.py`, which takes the path above twice: over the
@@ -92,7 +193,7 @@ skips the browser test (in CI, `PROTOTYPE_REQUIRE_BROWSER=1` makes that a
 failure). `PROTOTYPE_BROWSER_CHANNEL=chrome` uses an
 installed Chrome instead of Playwright's Chromium.
 
-### Layout
+## Layout
 
 All parts are in `prototype/` (see its `README.md`): the TRS stub in
 `trs-stub/`, the host of the form and the page in `host/` ([Form proof of

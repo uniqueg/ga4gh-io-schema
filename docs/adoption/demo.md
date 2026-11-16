@@ -10,7 +10,9 @@ endpoint or engine parameters.
 
 **Experimental:** the demo follows version 0.3 of the profile, which may
 still change, and depends on servers outside this repository (see [Known
-limits](#known-limits)).
+limits](#known-limits)). To try the same workflow on a laptop, without
+outside servers, from TRS to the WES run request, run the
+[prototype](prototype.md).
 
 ## The demo files
 
@@ -71,9 +73,9 @@ the samtools image is `quay.io/biocontainers/samtools:1.24--h9dcdb79_1`.
   TRS-Filer and Conquest (e.g., in a service registry), and builds run
   requests with Conquest's engine parameters, such as Krini with the form of
   ELIXIR Cloud Components. These are under development; until they are
-  deployed, the [command-line path](#2-run-it-from-the-command-line) is the demo,
-  and the [form proof of concept](form.md) shows the form of step 3 locally,
-  up to the WES run request, which it submits only to a WES given to it.
+  deployed, the [command-line path](#2-run-it-from-the-command-line) is the
+  demo, and the [prototype](prototype.md) shows steps 1 and 2 of [Run it
+  from a portal](#3-run-it-from-a-portal) locally.
 
 The commands below are for Bash; set the URLs of the deployments first:
 
