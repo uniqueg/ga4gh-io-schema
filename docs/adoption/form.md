@@ -49,8 +49,8 @@ Options:
   file references, as for [`wes-params`](../tools/wes-params.md); the
   default is `drs` and `https`.
 - `--trs-url URL`: the base URL of the TRS API that serves the workflow
-  (e.g., `http://127.0.0.1:8080/ga4gh/trs/v2` for the TRS
-  stub of the prototype). The `workflow_url` of the run request is
+  (e.g., `http://127.0.0.1:8080/ga4gh/trs/v2` for the [TRS
+  stub](prototype.md#trs-stub)). The `workflow_url` of the run request is
   then the TRS URL of the plain primary descriptor of the tool version that
   `x-ga4gh-workflow` names (`trs_tool_id`, `trs_version_id`). Without it,
   or if the schema names no tool version, the `workflow_url` is
@@ -63,7 +63,9 @@ Options:
   request to `POST /runs` of the WES, as `multipart/form-data` without
   attachments, and shows the run id and the state from
   `GET /runs/{run_id}/status`. Without it, nothing is ever sent. The WES
-  must be able to fetch the `workflow_url` and the input files.
+  must be able to fetch the `workflow_url` and the input files, so
+  `--wes-url` needs `--trs-url` and a schema that names its TRS tool
+  version; the host refuses to start otherwise.
 - `--host` and `--port`: the address to bind; the default is
   `127.0.0.1:8000`.
 
@@ -119,8 +121,9 @@ The host's API, for the page:
   error of the request as a whole (`pointer` `""`).
 
 `tests/test_form_host.py` tests the host (values to the run request, the
-error messages, the HTTP API, and the submission to a local fake WES), and `tests/js/form.test.mjs` the logic of the
-form (controls, hidden inputs, values from the controls); see
+error messages, the HTTP API, and the submission to a local fake WES), and
+`tests/js/form.test.mjs` the logic of the form (controls, hidden inputs,
+values from the controls); see
 [Development](../development.md#javascript-tests-nodejs).
 
 ## Known limits
@@ -169,4 +172,8 @@ What the proof of concept leaves out, on purpose:
   step 6; the host checks them when the values are sent.
 - **Not hardened:** no authentication, no TLS; the host binds to
   `127.0.0.1` by default. It sends a Content Security Policy that allows
-  only its own files.
+  only its own files. It takes values only as JSON (`Content-Type:
+  application/json`) and only from its own pages, opened under a loopback
+  name (`localhost`, `127.0.0.1`, `::1`) or the address that it binds
+  (`Host` and `Origin` headers), so that other web pages can't make it
+  submit runs; other requests get `415` or `403`.

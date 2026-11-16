@@ -70,6 +70,8 @@ DOCUMENT_URI = "urn:ga4gh-io-schema:form"
 IN_PLACE = ("not", "if", "then", "else")
 IN_PLACE_LISTS = ("allOf", "anyOf", "oneOf")
 
+#: Names of the host in requests that are accepted, besides its address.
+LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1"})
 #: Error of valid values for which the host knows no workflow URL.
 NO_WORKFLOW_URL = (
     "The host knows no workflow URL: the schema names no primary descriptor "
@@ -460,7 +462,11 @@ class FormHandler(BaseHTTPRequestHandler):
         ``{"run_request": …, "run_id": …, "state": …}``. Invalid values get
         status 400 and ``{"errors": [{"pointer": …, "message": …}]}``;
         ``/api/runs`` without a WES gets 404, and a failure of the WES 502,
-        each with a request-level error.
+        each with a request-level error. Only JSON bodies (``Content-Type:
+        application/json``) are taken, from a page served by the host under a
+        loopback name or its own address (``Host``, ``Origin``): other web
+        pages that the user opens can't make the host submit runs (no CSRF,
+        no DNS rebinding).
         """
         path = urllib.parse.urlsplit(self.path).path
         if path not in ("/api/params", "/api/runs"):
@@ -474,6 +480,15 @@ class FormHandler(BaseHTTPRequestHandler):
         length = int(header)
         if length > MAX_BODY:
             self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"msg": "Too large"})
+            self.close_connection = True
+            return
+        media_type = (self.headers.get("Content-Type") or "").split(";")[0]
+        if media_type.strip().lower() != "application/json":
+            self._send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"msg": "Not JSON"})
+            self.close_connection = True
+            return
+        if not self._same_origin():
+            self._send_json(HTTPStatus.FORBIDDEN, {"msg": "Foreign host or origin"})
             self.close_connection = True
             return
         try:
@@ -497,6 +512,21 @@ class FormHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, {"run_request": request})
         else:
             self._submit(request)
+
+    def _same_origin(self) -> bool:
+        """Check that a request comes from a page of the host itself.
+
+        Returns:
+            Whether the ``Host`` header names the host by a loopback name or
+            its own address, and the ``Origin`` header, if any, is the same.
+        """
+        host = self.headers.get("Host") or ""
+        name = urllib.parse.urlsplit(f"//{host}").hostname or ""
+        bound = str(self.server.server_address[0])
+        if name not in LOOPBACK_NAMES and name != bound:
+            return False
+        origin = self.headers.get("Origin")
+        return origin is None or urllib.parse.urlsplit(origin).netloc == host
 
     def _submit(self, request: Any) -> None:
         """Submit a run request to the WES, if there is one, and respond.
@@ -630,6 +660,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Can't use the schema {args.schema}: {exc}", file=sys.stderr)
         return 1
     url = workflow_url(schema, args.trs_url)
+    if args.wes_url and not (url or "").startswith(("http://", "https://")):
+        parser.error(
+            "--wes-url needs a workflow URL that a WES can fetch: give --trs-url "
+            "and a schema that names its TRS tool version"
+        )
     server = FormHost((args.host, args.port), schema, schemes, url, args.wes_url)
     host, port = server.server_address[:2]
     print(f"Serving the form on http://{host}:{port}/ (Ctrl+C stops)")

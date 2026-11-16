@@ -24,13 +24,19 @@ document.querySelector("#wes").textContent = config.wes
   : "No WES is configured: the run request is shown, not sent.";
 form.schema = schema;
 
+// Posts JSON to the host; a failure (network, or an answer that isn't JSON)
+// becomes an error of the request as a whole.
 async function post(path, body) {
-  const answer = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return answer.json();
+  try {
+    const answer = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return await answer.json();
+  } catch (error) {
+    return { errors: [{ pointer: "", message: `The host failed: ${error}` }] };
+  }
 }
 
 form.addEventListener("io-schema-form-submit", async (event) => {

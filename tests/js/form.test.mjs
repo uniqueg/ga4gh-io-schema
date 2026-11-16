@@ -3,8 +3,8 @@
 
 // Tests the logic of the form proof of concept (prototype/host/form.js),
 // without a browser: the controls that inputs get, hidden inputs, and how
-// the text of the controls becomes the values that the host turns into
-// `workflow_params` (tests/test_form_host.py tests the host).
+// the text of the controls becomes the values that the host turns into a
+// WES run request (tests/test_form_host.py tests the host).
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
