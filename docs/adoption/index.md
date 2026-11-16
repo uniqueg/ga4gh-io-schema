@@ -10,6 +10,8 @@ The profile is independent of workflow engines. Its integration with the GA4GH A
   its IO schema and run on Conquest, from a portal or the command line.
 * [Form proof of concept](form.md): a minimal form and host in this
   repository, from an IO schema to `workflow_params`.
+* [Prototype](prototype.md): the parts of the proof of concept that run on
+  a single laptop, without outside services, starting with a TRS stub.
 
 ## The end-to-end GA4GH lifecycle (summary)
 

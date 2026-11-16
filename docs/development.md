@@ -33,6 +33,8 @@ subcommands; a change of the engine bindings comes with new or changed
 vectors. `tests/test_cli_framework.py` tests the shared conventions of all
 subcommands (standard input, `--output`, `--json`, exit codes) and the
 subcommand registry.
+`tests/test_trs_stub.py` tests the TRS stub of the
+[prototype](adoption/prototype.md) (`prototype/trs-stub/`) over HTTP.
 
 `tests/test_wheel.py` builds the wheel, installs it into a fresh virtual
 environment and runs the command-line tool on the examples. It needs network
