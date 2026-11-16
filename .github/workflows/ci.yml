@@ -170,11 +170,48 @@ jobs:
       - name: Build documentation
         run: mkdocs build --strict
 
+  # The prototype (prototype/compose.yaml) as a user runs it: the stack is
+  # built and started with Docker Compose, and tests/test_prototype_e2e.py
+  # follows the path from the TRS stub to the WES run request.
+  e2e:
+    name: End-to-end test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Start the prototype
+        run: docker compose -f prototype/compose.yaml up --detach --build --wait
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      # The test needs pytest only; pytest-cov for the options of
+      # pyproject.toml
+      - name: Install test dependencies
+        run: pip install pytest pytest-cov
+
+      - name: Run end-to-end tests
+        env:
+          PROTOTYPE_URL: http://127.0.0.1:8000
+          PROTOTYPE_TRS_URL: http://127.0.0.1:8080/ga4gh/trs/v2
+        run: pytest -m e2e --no-cov tests/test_prototype_e2e.py
+
+      - name: Show the logs of the prototype
+        if: failure()
+        run: docker compose -f prototype/compose.yaml logs
+
+      - name: Stop the prototype
+        if: always()
+        run: docker compose -f prototype/compose.yaml down
+
   # The only required check: fails unless every job succeeded (a skipped or
   # cancelled job fails it too).
   passed:
     name: CI passed
-    needs: [lint, test, test-js, docs]
+    needs: [lint, test, test-js, docs, e2e]
     if: always()
     runs-on: ubuntu-latest
     steps:

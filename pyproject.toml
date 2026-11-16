@@ -87,6 +87,7 @@ pythonpath = ["examples/demo", "prototype/host", "prototype/trs-stub"]
 addopts = "-v --cov --cov-report=term-missing"
 markers = [
     "wheel: builds and installs the wheel (needs network access)",
+    "e2e: tests the running prototype (needs PROTOTYPE_URL; see tests/test_prototype_e2e.py)",
 ]
 
 [tool.coverage.run]
