@@ -1,6 +1,9 @@
 # Development
 
-This project enforces a strict "full defense" CI/CD pipeline. All code must pass comprehensive unit tests, static analysis, and licensing checks before being merged.
+CI (`.github/workflows/ci.yml`) runs the checks below on every pull request:
+lint (REUSE, Markdown, Ruff, meta-schema syntax), the Python tests on every
+supported version, the JavaScript tests and the strict documentation build.
+Run them locally before you open a pull request.
 
 To install the package with all development dependencies, see
 [Installation](tools/validator.md#installation).
@@ -64,11 +67,28 @@ The versions of the validators are pinned in `package.json` and
 ## Schema versions
 
 The `$id`s of the schemas in `schemas/`, and the `$schema` of the examples in
-`tests/data/`, of the cases in `tests/conformance/` and `tests/vectors/` and
-of the snippet in the
+`tests/data/` and `examples/`, of the cases in `tests/conformance/` and
+`tests/vectors/` and of the snippet in the
 meta-schema documentation, name the release tag of the profile (e.g.,
-`v0.3.0`). For a new release, change the tag in all of them at once (the
-tests check that they agree), and push the tag so that the URLs resolve.
+`v0.3.0`), and `version` in `pyproject.toml` is that tag without the `v`
+(e.g., `0.3.0`). For a new release, change the tag in all of them at once
+(the tests check that they agree), and push the tag so that the URLs resolve.
+
+## Releases
+
+A release (see [Versioning and governance](governance.md#releases)) is
+prepared by a pull request that:
+
+1. sets the release tag in the schema versions above and the version in
+   `pyproject.toml`;
+2. turns "Unreleased" in `CHANGELOG.md` into a section for the version and
+   its date, and adds a new, empty "Unreleased" section;
+3. adds the version and its date to the document history in
+   `docs/roadmap.md`.
+
+Once it is merged into `main` and CI passed there, the maintainer creates
+the signed tag `vMAJOR.MINOR.PATCH` on that commit and a GitHub release from
+it (a pre-release before 1.0.0). Tags are never moved or deleted.
 
 ## Changelog and conformance suite
 

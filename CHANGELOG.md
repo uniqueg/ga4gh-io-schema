@@ -12,6 +12,10 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## v0.3.0 (2026-11-16)
+
+First tagged release of the profile and the `ga4gh-io-schema` package.
+
 ### Breaking changes
 
 - Widgets of `x-ga4gh-ui-widget` must fit their schema: the meta-schema
