@@ -9,8 +9,8 @@ prefixes, ``$import`` and ``SchemaDefRequirement``; this module maps the
 resolved types to JSON Schema and file references (see the CWL rows of
 ``docs/specification/files.md``).
 
-``cwl-utils`` is an optional dependency (``pip install
-'ga4gh-io-schema[cwl]'``); importing this module without it raises
+``cwl-utils`` is an optional dependency (the extra ``cwl``, e.g.,
+``pip install '.[cwl]'`` in a clone); importing this module without it raises
 :class:`ImportError`.
 
 JavaScript expressions are never evaluated. Where an expression, or another
@@ -50,6 +50,7 @@ from ga4gh_io_schema.converters.common import (
 )
 from ga4gh_io_schema.converters.common import notes_as_dicts as notes_as_dicts
 from ga4gh_io_schema.validator import load_profile
+from ga4gh_io_schema.wes import FORBIDDEN_SCHEMES
 
 #: Classes of CWL documents that have inputs and outputs.
 PROCESS_CLASSES = frozenset(
@@ -985,11 +986,12 @@ def _file_location(class_: str, location: Any) -> str:
 
     Returns:
         The location, if it is an absolute URI with a scheme other than
-        ``file``.
+        ``file`` and the forbidden schemes of file references.
 
     Raises:
         _UnconvertibleDefault: If the location is missing (e.g., a file
-            literal), relative, or a local file.
+            literal), relative, a local file, or has a forbidden scheme
+            (e.g., ``javascript``).
     """
     if not isinstance(location, str) or not _URI_SCHEME.match(location):
         raise _UnconvertibleDefault(f"a {class_} without an absolute location")
@@ -997,6 +999,9 @@ def _file_location(class_: str, location: Any) -> str:
         raise _UnconvertibleDefault(
             f"a {class_} next to the CWL document, {Path(location).name!r}"
         )
+    scheme = location.split(":", 1)[0].lower()
+    if scheme in FORBIDDEN_SCHEMES:
+        raise _UnconvertibleDefault(f"a {class_} with the forbidden scheme {scheme!r}")
     return location
 
 
