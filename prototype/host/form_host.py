@@ -74,8 +74,9 @@ IN_PLACE_LISTS = ("allOf", "anyOf", "oneOf")
 LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1"})
 #: Error of valid values for which the host knows no workflow URL.
 NO_WORKFLOW_URL = (
-    "The host knows no workflow URL: the schema names no primary descriptor "
-    "(x-ga4gh-workflow.primary_descriptor_path)."
+    "The host knows no workflow URL: the schema names neither its TRS tool "
+    "version (x-ga4gh-workflow.trs_tool_id and trs_version_id, with --trs-url) "
+    "nor its primary descriptor (x-ga4gh-workflow.primary_descriptor_path)."
 )
 
 #: A subschema with the resolver of its base URI.

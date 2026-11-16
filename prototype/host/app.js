@@ -14,9 +14,15 @@ const submit = document.querySelector("#submit-run");
 const run = document.querySelector("#run");
 let values = null;
 
-const [schema, config] = await Promise.all(
-  ["api/schema", "api/config"].map(async (path) => (await fetch(path)).json()),
-);
+let schema, config;
+try {
+  [schema, config] = await Promise.all(
+    ["api/schema", "api/config"].map(async (path) => (await fetch(path)).json()),
+  );
+} catch (error) {
+  document.querySelector("#wes").textContent = `The host failed: ${error}`;
+  throw error;
+}
 document.querySelector("#title").textContent = schema.title ?? "IO schema";
 document.querySelector("#description").textContent = schema.description ?? "";
 document.querySelector("#wes").textContent = config.wes

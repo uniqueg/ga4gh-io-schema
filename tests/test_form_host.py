@@ -596,7 +596,8 @@ def test_host_accepts_its_own_address() -> None:
     """Test that a host bound to an address takes requests for that address."""
     server = form_host.FormHost(("127.0.0.1", 0), DEMO_SCHEMA, ["https"], "x")
     port = server.server_address[1]
-    # As if bound to an address of the network, e.g., with --host 192.0.2.1
+    # Stands in for --host 192.0.2.1: binding an address of the network
+    # isn't possible everywhere tests run
     server.server_address = ("192.0.2.1", port)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()

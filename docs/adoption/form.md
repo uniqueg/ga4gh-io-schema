@@ -176,4 +176,6 @@ What the proof of concept leaves out, on purpose:
   application/json`) and only from its own pages, opened under a loopback
   name (`localhost`, `127.0.0.1`, `::1`) or the address that it binds
   (`Host` and `Origin` headers), so that other web pages can't make it
-  submit runs; other requests get `415` or `403`.
+  submit runs; other requests get `415` or `403`. This guards against
+  browsers only and is no access control: anyone who can reach the host
+  can use it, so keep it on a loopback address.
