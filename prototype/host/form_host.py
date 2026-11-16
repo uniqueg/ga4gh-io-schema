@@ -138,10 +138,10 @@ def list_workflows(trs_url: str) -> list[dict[str, str]]:
         ValueError: If the answer isn't a list of tools.
     """
     tools = _fetch_json(urllib.request.Request(f"{trs_url.rstrip('/')}/tools"))
+    if not isinstance(tools, list):
+        raise ValueError("The TRS answer isn't a list of tools.")
     workflows = []
     try:
-        if not isinstance(tools, list):
-            raise TypeError
         for tool in tools:
             tool_id = tool["id"]
             for version in tool["versions"]:
@@ -183,11 +183,14 @@ def load_trs_schema(
     Raises:
         OSError: If the TRS can't be reached or fails (also
             ``urllib.error.HTTPError``).
-        ValueError: If the tool version has no IO schema, or the schema
-            isn't JSON or names another tool version or descriptor type.
+        ValueError: If an id is empty, ``.`` or ``..``, the tool version
+            has no IO schema, or the schema isn't JSON or names another tool
+            version or descriptor type.
         jsonschema.exceptions.ValidationError: If the schema doesn't comply
             with the profile.
     """
+    if {tool_id, version_id, descriptor_type} & {"", ".", ".."}:
+        raise ValueError("Empty ids and the ids . and .. aren't allowed.")
     version = (
         f"{trs_url.rstrip('/')}/tools/{urllib.parse.quote(tool_id, safe='')}"
         f"/versions/{urllib.parse.quote(version_id, safe='')}"
@@ -199,8 +202,11 @@ def load_trs_schema(
             f["path"] for f in files if f["file_type"] == "PRIMARY_DESCRIPTOR"
         )
         path = posixpath.join(posixpath.dirname(primary), SCHEMA_NAME)
-        found = {"path": path, "file_type": "OTHER"} in files
-    except (KeyError, TypeError, StopIteration):
+        # Entries may have more fields, e.g., checksum
+        found = any(
+            f.get("path") == path and f.get("file_type") == "OTHER" for f in files
+        )
+    except (KeyError, TypeError, AttributeError, StopIteration):
         found = False
     if not found:
         raise ValueError(
@@ -514,9 +520,9 @@ class FormHost(ThreadingHTTPServer):
         workflow_url: The ``workflow_url`` of run requests for the default
             schema.
         wes_url: Base URL of the WES API to submit runs to, if any.
-        trs_url: Base URL of the TRS API to pick workflows from, if any.
-        picked: The schemas and workflow URLs of the workflows picked from
-            the TRS, by tool id, version id and descriptor type.
+        trs_url: Base URL of the TRS API to pick workflows from, if any;
+            their schemas are loaded again for each request, so changes in
+            the TRS show at once.
     """
 
     def __init__(
@@ -547,7 +553,6 @@ class FormHost(ThreadingHTTPServer):
         self.workflow_url = workflow_url
         self.wes_url = wes_url
         self.trs_url = trs_url
-        self.picked: dict[tuple[str, str, str], tuple[dict[str, Any], str]] = {}
 
 
 class FormHandler(BaseHTTPRequestHandler):
@@ -565,7 +570,9 @@ class FormHandler(BaseHTTPRequestHandler):
         :func:`list_workflows`), or gives ``trs_error``.
         """
         path = urllib.parse.urlsplit(self.path).path
-        if path == "/api/schema":
+        if path.startswith("/api/") and not self._same_origin():
+            self._send_json(HTTPStatus.FORBIDDEN, {"msg": "Foreign host or origin"})
+        elif path == "/api/schema":
             selected = self._selected()
             if selected is not None:
                 self._send_json(HTTPStatus.OK, selected[0])
@@ -666,19 +673,13 @@ class FormHandler(BaseHTTPRequestHandler):
         trs_url = self.server.trs_url
         if trs_url is not None and all(key in query for key in keys):
             key = (query["tool"][0], query["version"][0], query["type"][0])
-            if key not in self.server.picked:
-                try:
-                    self.server.picked[key] = load_trs_schema(trs_url, *key)
-                except (
-                    OSError,
-                    ValueError,
-                    jsonschema.exceptions.ValidationError,
-                ) as exc:
-                    message = f"Can't load the workflow from {trs_url}: {exc}"
-                    error = {"pointer": "", "message": message}
-                    self._send_json(HTTPStatus.BAD_GATEWAY, {"errors": [error]})
-                    return None
-            return self.server.picked[key]
+            try:
+                return load_trs_schema(trs_url, *key)
+            except (OSError, ValueError, jsonschema.exceptions.ValidationError) as exc:
+                message = f"Can't load the workflow from {trs_url}: {exc}"
+                error = {"pointer": "", "message": message}
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"errors": [error]})
+                return None
         if self.server.schema is None:
             error = {"pointer": "", "message": PICK_A_WORKFLOW}
             self._send_json(HTTPStatus.NOT_FOUND, {"errors": [error]})
@@ -786,10 +787,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--wes-url",
-        type=_http_url,
+        type=_optional_http_url,
         help="base URL of a WES API to submit runs to, e.g., "
-        "http://127.0.0.1:8081/ga4gh/wes/v1 (default: none; run requests are "
-        "shown, not sent)",
+        "http://127.0.0.1:8081/ga4gh/wes/v1 (default, or if empty: none; run "
+        "requests are shown, not sent)",
     )
     return parser
 
@@ -810,6 +811,18 @@ def _http_url(value: str) -> str:
     if parts.scheme not in ("http", "https") or not parts.netloc:
         raise argparse.ArgumentTypeError(f"not an http(s) URL: {value}")
     return value
+
+
+def _optional_http_url(value: str) -> str | None:
+    """Check that an argument is empty or an ``http(s)`` URL.
+
+    Args:
+        value: The argument.
+
+    Returns:
+        The URL, or ``None`` if the argument is empty.
+    """
+    return _http_url(value) if value else None
 
 
 def main(argv: Sequence[str] | None = None) -> int:

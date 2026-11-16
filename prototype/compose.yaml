@@ -49,7 +49,7 @@ services:
     command: >-
       python prototype/host/form_host.py --host 0.0.0.0
       --trs-url ${TRS_URL:-http://trs-stub:8080/ga4gh/trs/v2}
-      ${WES_URL:+--wes-url ${WES_URL}}
+      --wes-url=${WES_URL:-}
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:

@@ -75,9 +75,11 @@ Options:
   request to `POST /runs` of the WES, as `multipart/form-data` without
   attachments, and shows the run id and the state from
   `GET /runs/{run_id}/status`. Without it, nothing is ever sent. The WES
-  must be able to fetch the `workflow_url` and the input files, so
-  `--wes-url` needs `--trs-url` and a schema that names its TRS tool
-  version; the host refuses to start otherwise.
+  must be able to fetch the `workflow_url` and the input files, so with a
+  default schema, `--wes-url` needs `--trs-url` and a schema that names its
+  TRS tool version; the host refuses to start otherwise. Workflows picked
+  in the TRS always have a TRS `workflow_url`. An empty `--wes-url` is the
+  same as none.
 - `--host` and `--port`: the address to bind; the default is
   `127.0.0.1:8000`.
 
@@ -194,6 +196,7 @@ What the proof of concept leaves out, on purpose:
   application/json`) and only from its own pages, opened under a loopback
   name (`localhost`, `127.0.0.1`, `::1`) or the address that it binds
   (`Host` and `Origin` headers), so that other web pages can't make it
-  submit runs; other requests get `415` or `403`. This guards against
+  submit runs; other requests get `415` or `403`. It answers the reads of
+  its API (`GET /api/...`) under those names only, too. This guards against
   browsers only and is no access control: anyone who can reach the host
   can use it, so keep it on a loopback address.

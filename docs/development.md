@@ -38,7 +38,7 @@ subcommand registry.
 `prototype/` counts towards the coverage of `pytest`, but isn't part of
 the package. `tests/test_prototype_e2e.py` tests the running prototype
 (Docker Compose) end to end; `pytest` skips it unless `PROTOTYPE_URL` is
-set, and CI runs it in the job `End-to-end test` (see
+set, and CI runs it in the job "End-to-end test" (see
 [Prototype](adoption/prototype.md#test-it)).
 
 `tests/test_wheel.py` builds the wheel, installs it into a fresh virtual

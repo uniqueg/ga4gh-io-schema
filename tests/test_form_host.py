@@ -92,12 +92,12 @@ def host() -> Iterator[str]:
 
 @contextlib.contextmanager
 def serve(
-    schema: dict[str, Any], allowed: Sequence[str] = ("https",), **options: Any
+    schema: dict[str, Any] | None, allowed: Sequence[str] = ("https",), **options: Any
 ) -> Iterator[str]:
     """Run a host on a free port.
 
     Args:
-        schema: The IO schema.
+        schema: The default IO schema, if any.
         allowed: URI schemes of the allow-list.
         **options: Further arguments of :class:`form_host.FormHost`.
 
@@ -201,7 +201,20 @@ def trs() -> Iterator[str]:
     Yields:
         The base URL of its TRS API.
     """
-    workflows = [trs_stub.load_workflow(ROOT / "examples" / "demo")]
+    with run_stub([trs_stub.load_workflow(ROOT / "examples" / "demo")]) as url:
+        yield url
+
+
+@contextlib.contextmanager
+def run_stub(workflows: Sequence[trs_stub.Workflow]) -> Iterator[str]:
+    """Run the TRS stub of the prototype on a free port.
+
+    Args:
+        workflows: The workflows that it serves.
+
+    Yields:
+        The base URL of its TRS API.
+    """
     server = trs_stub.TrsStub(("127.0.0.1", 0), workflows)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -754,6 +767,11 @@ def test_main_rejects_urls_that_arent_http(option: str) -> None:
     assert exc.value.code == 2
 
 
+def test_empty_wes_url_is_no_wes() -> None:
+    """Test that an empty WES URL (as Docker Compose passes it) means none."""
+    assert form_host._parser().parse_args(["--wes-url", ""]).wes_url is None
+
+
 def test_main_rejects_bad_schemas(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -803,22 +821,40 @@ def test_load_trs_schema(trs: str) -> None:
     )
 
 
-def test_load_trs_schema_checks_the_workflow_block(tmp_path: Path) -> None:
+def test_load_trs_schema_checks_the_workflow_block() -> None:
     """Test that a schema of another tool version or type is rejected."""
     demo = trs_stub.load_workflow(ROOT / "examples" / "demo")
     other = trs_stub.Workflow(**{**demo.__dict__, "tool_id": "other"})
-    server = trs_stub.TrsStub(("127.0.0.1", 0), [other])
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        base = f"http://127.0.0.1:{server.server_address[1]}{trs_stub.API}"
+    with run_stub([other]) as base:
         with pytest.raises(ValueError, match="trs_tool_id"):
             form_host.load_trs_schema(base, "other", "1.0.0", "WDL")
         with pytest.raises(OSError):
             form_host.load_trs_schema(base, "other", "1.0.0", "CWL")
-    finally:
-        server.shutdown()
-        server.server_close()
+
+
+def test_load_trs_schema_takes_entries_with_more_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that file entries with a checksum are matched by path and type."""
+    checksum = [{"checksum": "0" * 64, "type": "sha-256"}]
+    files = [
+        {"path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR", "checksum": checksum},
+        {"path": "ga4gh-io.schema.json", "file_type": "OTHER", "checksum": checksum},
+    ]
+    monkeypatch.setattr(form_host, "_fetch_json", lambda *args: files)
+    sources = []
+    monkeypatch.setattr(form_host, "load_schema", lambda s: sources.append(s) or {})
+    form_host.load_trs_schema("http://trs", "t", "v", "WDL")
+    assert sources == [
+        "http://trs/tools/t/versions/v/WDL/descriptor/ga4gh-io.schema.json"
+    ]
+
+
+@pytest.mark.parametrize("ids", [("..", "v", "WDL"), ("t", ".", "WDL"), ("t", "v", "")])
+def test_load_trs_schema_rejects_dot_ids(ids: tuple[str, str, str]) -> None:
+    """Test that ids that would change the path of the TRS URL are rejected."""
+    with pytest.raises(ValueError, match="aren't allowed"):
+        form_host.load_trs_schema("http://trs", *ids)
 
 
 def test_load_trs_schema_needs_a_schema(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -830,9 +866,13 @@ def test_load_trs_schema_needs_a_schema(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(form_host, "_fetch_json", lambda *args: files)
     with pytest.raises(ValueError, match="no IO schema"):
         form_host.load_trs_schema("http://trs", "t", "v", "WDL")
-    monkeypatch.setattr(form_host, "_fetch_json", lambda *args: {"x": 1})
-    with pytest.raises(ValueError, match="no IO schema"):
-        form_host.load_trs_schema("http://trs", "t", "v", "WDL")
+    for answer in (
+        {"x": 1},
+        [{"path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR"}, 1],
+    ):
+        monkeypatch.setattr(form_host, "_fetch_json", lambda *a, answer=answer: answer)
+        with pytest.raises(ValueError, match="no IO schema"):
+            form_host.load_trs_schema("http://trs", "t", "v", "WDL")
 
 
 def test_host_picks_a_workflow_from_trs(trs: str) -> None:
@@ -854,9 +894,6 @@ def test_host_picks_a_workflow_from_trs(trs: str) -> None:
             "workflow_url": f"{trs}/tools/ga4gh-io-schema-demo/versions/1.0.0"
             "/PLAIN_WDL/descriptor",
         }
-        # A second request takes the schema from the cache
-        status, _, _ = _request(f"{host}/api/params?{DEMO_PICK}", body, "POST")
-        assert status == 200
         status, _, _ = _request(f"{host}/api/params", body, "POST")
         assert status == 404
 
@@ -877,6 +914,14 @@ def test_host_reports_failures_of_the_trs(trs: str) -> None:
     config = json.loads(response)
     assert config["workflows"] == []
     assert config["trs_error"].startswith("Can't list the workflows")
+
+
+def test_host_answers_api_reads_for_its_own_pages_only(host: str) -> None:
+    """Test that other hosts (DNS rebinding) can't read the API."""
+    headers = {"Host": "attacker.example"}
+    for path in ("/api/config", "/api/schema"):
+        assert _request(f"{host}{path}", headers=headers)[0] == 403
+    assert _request(f"{host}/", headers=headers)[0] == 200
 
 
 def test_host_without_trs_has_no_picker(host: str) -> None:

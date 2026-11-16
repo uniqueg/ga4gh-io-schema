@@ -74,29 +74,32 @@ python prototype/host/form_host.py --trs-url http://127.0.0.1:8080/ga4gh/trs/v2
 ### Test it
 
 CI's job "End-to-end test" starts the stack and runs
-`tests/test_prototype_e2e.py`, which takes the path above over the host's
-HTTP API, as the page does. Locally:
+`tests/test_prototype_e2e.py`, which takes the path above twice: over the
+host's HTTP API, as the page does, and in a browser (Chromium, driven by
+Playwright), as a user does. Locally:
 
 ```bash
+pip install -e ".[e2e]"
+playwright install chromium
 docker compose -f prototype/compose.yaml up --detach --build --wait
 PROTOTYPE_URL=http://127.0.0.1:8000 \
-  PROTOTYPE_TRS_URL=http://127.0.0.1:8080/ga4gh/trs/v2 \
   pytest -m e2e --no-cov tests/test_prototype_e2e.py
 docker compose -f prototype/compose.yaml down
 ```
 
-Without `PROTOTYPE_URL`, `pytest` skips these tests. The page itself (the
-DOM) is not tested automatically.
+Without `PROTOTYPE_URL`, `pytest` skips these tests; without Playwright, it
+skips the browser test. `PROTOTYPE_BROWSER_CHANNEL=chrome` uses an
+installed Chrome instead of Playwright's Chromium.
 
 ### Layout
 
-| Path | What it is |
-| --- | --- |
-| `prototype/trs-stub/` | The TRS stub. |
-| `prototype/host/` | The host of the form and the page ([Form proof of concept](form.md)). |
-| `prototype/Dockerfile` | One image for both, from `python:3.13-alpine`, with this package installed; it runs as an unprivileged user. |
-| `prototype/compose.yaml` | The stack: read-only containers without capabilities, ports bound to `127.0.0.1`. |
-| `.dockerignore` | Keeps the build context to the files that the image needs. |
+All parts are in `prototype/` (see its `README.md`): the TRS stub in
+`trs-stub/`, the host of the form and the page in `host/` ([Form proof of
+concept](form.md)), and `Dockerfile` and `compose.yaml`. The image, from
+`python:3.13-alpine` with this package installed, runs as an unprivileged
+user; the containers are read-only, without capabilities, and their ports
+are bound to `127.0.0.1`. The root `.dockerignore` keeps the build context
+to the files that the image needs.
 
 ## TRS stub
 

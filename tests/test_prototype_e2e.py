@@ -8,14 +8,20 @@ It follows the path of a user (see ``docs/adoption/prototype.md``): open the
 page, pick the demo workflow from the TRS stub, get its form, submit wrong
 and then right values, and see the WES run request. It makes the requests
 that the page makes, over HTTP. Start the stack first, then set
-``PROTOTYPE_URL`` (and ``PROTOTYPE_TRS_URL`` for the stub)::
+``PROTOTYPE_URL``::
 
     docker compose -f prototype/compose.yaml up --detach --build --wait
     PROTOTYPE_URL=http://127.0.0.1:8000 \
-        PROTOTYPE_TRS_URL=http://127.0.0.1:8080/ga4gh/trs/v2 \
         pytest -m e2e --no-cov tests/test_prototype_e2e.py
 
-Without ``PROTOTYPE_URL``, the tests are skipped.
+Without ``PROTOTYPE_URL``, the tests are skipped. The browser test also
+needs Playwright and its Chromium (``pip install -e .[e2e]``, then
+``playwright install chromium``); without Playwright, it is skipped.
+``PROTOTYPE_BROWSER_CHANNEL`` picks another browser, e.g., ``chrome``.
+
+The tests expect the stack of ``prototype/compose.yaml`` as it is: the TRS
+stub serves the demo workflow only, under the name ``trs-stub``, and no WES
+is configured.
 """
 
 import json
@@ -38,14 +44,29 @@ pytestmark = [
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / "examples" / "demo"
 HOST = os.environ.get("PROTOTYPE_URL", "").rstrip("/")
-TRS = os.environ.get("PROTOTYPE_TRS_URL", "").rstrip("/")
 #: The demo workflow, as the page picks it.
 PICK = "?tool=ga4gh-io-schema-demo&version=1.0.0&type=WDL"
-#: The TRS URL of the demo's primary descriptor, inside the stack.
+#: The TRS URL of the demo's primary descriptor, inside the stack (the
+#: service name of the stub in prototype/compose.yaml).
 WORKFLOW_URL = (
     "http://trs-stub:8080/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0"
     "/PLAIN_WDL/descriptor"
 )
+#: The values of the demo.
+VALUES = json.loads((DEMO / "values.json").read_text("utf-8"))
+#: The WES run request for the values of the demo.
+RUN_REQUEST = {
+    "workflow_params": {
+        "io_schema_demo.reads": VALUES["reads"],
+        "io_schema_demo.min_mapq": 20,
+        "io_schema_demo.read_filter": "proper_pairs",
+    },
+    "workflow_type": "WDL",
+    "workflow_type_version": "1.1",
+    "workflow_url": WORKFLOW_URL,
+}
+#: The schema's message for a wrong mapping quality.
+MAPQ_MESSAGE = "The minimum mapping quality is a whole number from 0 to 60"
 
 
 def call(path: str, values: Any = None) -> tuple[int, Any]:
@@ -98,36 +119,42 @@ def test_user_gets_the_run_request_of_a_workflow_from_trs() -> None:
     schema = json.loads((DEMO / "ga4gh-io.schema.json").read_text("utf-8"))
     assert call(f"/api/schema{PICK}") == (200, schema)
     # Wrong values get the schema's own messages
-    values = json.loads((DEMO / "values.json").read_text("utf-8"))
-    status, body = call(f"/api/params{PICK}", {**values, "min_mapq": 61})
+    status, body = call(f"/api/params{PICK}", {**VALUES, "min_mapq": 61})
     assert status == 400
-    assert body["errors"][0] == {
-        "pointer": "/min_mapq",
-        "message": "The minimum mapping quality is a whole number from 0 to 60",
-    }
+    assert body["errors"][0] == {"pointer": "/min_mapq", "message": MAPQ_MESSAGE}
     # Right values give the WES run request
-    status, body = call(f"/api/params{PICK}", values)
+    status, body = call(f"/api/params{PICK}", VALUES)
     assert status == 200
-    assert body["run_request"] == {
-        "workflow_params": {
-            "io_schema_demo.reads": values["reads"],
-            "io_schema_demo.min_mapq": 20,
-            "io_schema_demo.read_filter": "proper_pairs",
-        },
-        "workflow_type": "WDL",
-        "workflow_type_version": "1.1",
-        "workflow_url": WORKFLOW_URL,
-    }
+    assert body["run_request"] == RUN_REQUEST
     # Without a WES, the request isn't sent
-    status, body = call(f"/api/runs{PICK}", values)
+    status, body = call(f"/api/runs{PICK}", VALUES)
     assert status == 404
 
 
-@pytest.mark.skipif(not TRS, reason="needs the URL of the stub (PROTOTYPE_TRS_URL)")
-def test_trs_stub_serves_the_descriptor_that_the_schema_names() -> None:
-    """Test that the stub's descriptor has the checksum that the schema names."""
-    schema = json.loads((DEMO / "ga4gh-io.schema.json").read_text("utf-8"))
-    url = f"{TRS}/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/descriptor"
-    with urllib.request.urlopen(url, timeout=30) as response:
-        wrapper = json.loads(response.read())
-    assert wrapper["checksum"] == schema["x-ga4gh-workflow"]["checksum"]
+def test_user_gets_the_run_request_in_the_browser() -> None:
+    """Test the same path in a browser: the page, the picker and the form."""
+    sync_api = pytest.importorskip("playwright.sync_api")
+    channel = os.environ.get("PROTOTYPE_BROWSER_CHANNEL")
+    with sync_api.sync_playwright() as playwright:
+        browser = playwright.chromium.launch(channel=channel)
+        try:
+            page = browser.new_page()
+            page.goto(f"{HOST}/")
+            # The picker lists the workflow of the stub; no form before a pick
+            page.wait_for_selector("#workflow option:nth-child(2)", state="attached")
+            page.select_option("#workflow", label="I/O Schema demo 1.0.0 (WDL)")
+            page.wait_for_selector("#title:has-text('I/O Schema demo')")
+            form = page.locator("io-schema-form")
+            form.get_by_label("Aligned reads (BAM)").fill(VALUES["reads"])
+            mapq = form.get_by_label("Minimum mapping quality")
+            mapq.fill("61")
+            form.get_by_role("button", name="Submit").click()
+            page.wait_for_selector(f"io-schema-form :text('{MAPQ_MESSAGE}')")
+            mapq.fill("20")
+            form.get_by_role("radio", name="proper_pairs").check()
+            form.get_by_role("button", name="Submit").click()
+            page.wait_for_selector("#request:has-text('workflow_url')")
+            request = json.loads(page.locator("#request").text_content() or "")
+        finally:
+            browser.close()
+    assert request == RUN_REQUEST

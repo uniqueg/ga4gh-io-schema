@@ -172,7 +172,8 @@ jobs:
 
   # The prototype (prototype/compose.yaml) as a user runs it: the stack is
   # built and started with Docker Compose, and tests/test_prototype_e2e.py
-  # follows the path from the TRS stub to the WES run request.
+  # follows the path from the TRS stub to the WES run request, over the
+  # host's API and in a browser.
   e2e:
     name: End-to-end test
     runs-on: ubuntu-latest
@@ -188,16 +189,16 @@ jobs:
         with:
           python-version: "3.13"
 
-      # The test needs pytest only; pytest-cov for the options of
-      # pyproject.toml
       - name: Install test dependencies
-        run: pip install pytest pytest-cov
+        run: |
+          pip install -e ".[e2e]"
+          playwright install --with-deps chromium
 
+      # -rs names skipped tests in the log
       - name: Run end-to-end tests
         env:
           PROTOTYPE_URL: http://127.0.0.1:8000
-          PROTOTYPE_TRS_URL: http://127.0.0.1:8080/ga4gh/trs/v2
-        run: pytest -m e2e --no-cov tests/test_prototype_e2e.py
+        run: pytest -m e2e --no-cov -rs tests/test_prototype_e2e.py
 
       - name: Show the logs of the prototype
         if: failure()
