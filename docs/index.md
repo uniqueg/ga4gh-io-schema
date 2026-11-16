@@ -10,6 +10,18 @@ Today, the inputs and outputs of a workflow are described in the language of its
 
 The profile is designed for the GA4GH APIs for federated analysis (TRS, WES, DRS) and for workflows in the life sciences. Whether it also suits other kinds of workloads, such as machine learning pipelines, is an [open question](roadmap.md#open-questions).
 
+## Prototype
+
+A [prototype](adoption/prototype.md) runs the profile on a single laptop
+with one Docker Compose command: a portal picks a workflow in a TRS stub,
+renders the form of its IO schema and builds the WES run request, with no
+code for the workflow or its language. Its
+[evaluation](adoption/prototype-evaluation.md) concludes that the schema
+was enough for that flow and that TRS needed no change; the gaps it found
+are at the edges of the profile: matching TRS file entries, the imports of
+multi-file workflows in the `workflow_url`, whether a WES can fetch that
+URL, and a helper for checking the workflow block.
+
 ## Contents
 
 - [Motivation](motivation.md): the usability gap, goals, non-goals and the
