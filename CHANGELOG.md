@@ -78,6 +78,10 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A TRS stub for the laptop prototype in `prototype/trs-stub/`, documented
+  on the page "Prototype": it serves the end-to-end demo and its IO schema
+  over the read-only TRS v2 endpoints that a client needs, from files in
+  the repository, with no database. (#70)
 - A proof of concept of a form in `examples/form/`, documented on the page
   "Form proof of concept". A plain web component renders the inputs of an
   IO schema. A small Python host (`python examples/form/form_host.py`)
