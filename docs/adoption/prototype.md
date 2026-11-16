@@ -24,12 +24,14 @@ python prototype/trs-stub/trs_stub.py
 Then open <http://127.0.0.1:8080/ga4gh/trs/v2/tools>. Options:
 
 - `--workflow DIR` (repeatable): a directory with an IO schema,
-  `ga4gh-io.schema.json`, and the primary descriptor, under the file name
-  of `primary_descriptor_path` of the schema's [workflow
-  block](../specification/identity.md#the-workflow-block); the default is
-  `examples/demo/`. The block gives the ids of the tool and the version
-  (`trs_tool_id`, `trs_version_id`), the descriptor type and its version.
-  Versions of the same tool id are served as one tool.
+  `ga4gh-io.schema.json`, and the primary descriptor, at the
+  `primary_descriptor_path` of the schema's [workflow
+  block](../specification/identity.md#the-workflow-block), which must be a
+  file name (no directories); the default is `examples/demo/`. The block
+  gives the ids of the tool and the version (`trs_tool_id`,
+  `trs_version_id`), the descriptor type and its version. Versions of the
+  same tool id are served as one tool; two directories for the same tool
+  version are an error.
 - `--host` and `--port`: the address to bind; the default is
   `127.0.0.1:8080`.
 
@@ -42,18 +44,20 @@ It implements these requests, under `/ga4gh/trs/v2`:
 | `GET /tools/{id}/versions` | The versions of a tool. |
 | `GET /tools/{id}/versions/{version_id}` | One version, with its descriptor type and version. |
 | `GET .../{version_id}/{type}/files` | The primary descriptor (`PRIMARY_DESCRIPTOR`) and the IO schema (`OTHER`), with their paths. |
-| `GET .../{version_id}/{type}/descriptor` | The primary descriptor as a `FileWrapper`, with its SHA-256 checksum, the one that `x-ga4gh-workflow.checksum` names. |
+| `GET .../{version_id}/{type}/descriptor` | The primary descriptor as a `FileWrapper`, with the SHA-256 checksum of the file (for the demo, the one that `x-ga4gh-workflow.checksum` names). |
 | `GET .../{version_id}/{type}/descriptor/{relative_path}` | A file by its path, e.g., `ga4gh-io.schema.json`, as a `FileWrapper`. |
 | `GET .../{version_id}/PLAIN_{type}/descriptor[/{relative_path}]` | The same files as plain text. |
 
-Anything else is `404` with a TRS `Error`. The stub doesn't implement the
-other read endpoints of TRS (service info, tool classes, filters and
-paging of `/tools`, containerfiles, tests, `?format=zip` of `files`), any
-writes, or more than one descriptor type per tool version. It serves the
-files as they are, without checking the schema against the profile or the
-checksum against the descriptor: that is the client's job (step 2 and 3 of
-the [guide for portals and clients](portals.md#guide-for-portals-and-clients)).
-The `url` fields are built from the `Host` header of the request.
+Any other `GET` is `404` with a TRS `Error`; other methods get the default
+error pages of Python's `http.server`. The stub doesn't implement the other
+read endpoints of TRS (service info, tool classes, containerfiles, tests),
+query parameters (filters and paging of `/tools`, `?format=zip` of `files`:
+they are ignored), any writes, or more than one descriptor type per tool
+version. It serves the files byte for byte, without checking the schema
+against the profile or the checksum against the descriptor: that is the
+client's job (steps 2 and 3 of the [guide for portals and
+clients](portals.md#guide-for-portals-and-clients)). The `url` fields are
+built from the `Host` header of the request.
 
 The host of the [form proof of concept](form.md) loads the schema from the
 stub:

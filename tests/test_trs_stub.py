@@ -9,12 +9,15 @@ against a local stub that serves the end-to-end demo, and that the host
 loads the demo schema from the stub.
 """
 
+import contextlib
+import copy
 import hashlib
+import http.client
 import json
 import threading
 import urllib.error
 import urllib.request
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -30,19 +33,57 @@ TOOL = "ga4gh-io-schema-demo"
 VERSION = "1.0.0"
 
 
-@pytest.fixture
-def stub() -> Iterator[str]:
-    """Run the stub for the demo workflow on a free port.
+@contextlib.contextmanager
+def serve(workflows: Sequence[trs_stub.Workflow]) -> Iterator[str]:
+    """Run the stub on a free port.
+
+    Args:
+        workflows: The workflows to serve.
 
     Yields:
         The base URL of the TRS API of the stub.
     """
-    server = trs_stub.TrsStub(("127.0.0.1", 0), [trs_stub.load_workflow(DEMO)])
+    server = trs_stub.TrsStub(("127.0.0.1", 0), workflows)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    yield f"http://127.0.0.1:{server.server_address[1]}{trs_stub.API}"
-    server.shutdown()
-    server.server_close()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}{trs_stub.API}"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+@pytest.fixture
+def stub() -> Iterator[str]:
+    """Run the stub for the demo workflow.
+
+    Yields:
+        The base URL of the TRS API of the stub.
+    """
+    with serve([trs_stub.load_workflow(DEMO)]) as url:
+        yield url
+
+
+def make_workflow(
+    directory: Path,
+    change: Callable[[dict[str, Any]], Any] = lambda block: None,
+    descriptor: bytes = DEMO_WDL.encode("utf-8"),
+) -> Path:
+    """Write a copy of the demo workflow with a changed workflow block.
+
+    Args:
+        directory: Directory to write to.
+        change: Changes the block (``x-ga4gh-workflow``) in place.
+        descriptor: Content of the primary descriptor.
+
+    Returns:
+        The directory.
+    """
+    schema = copy.deepcopy(DEMO_SCHEMA)
+    change(schema["x-ga4gh-workflow"])
+    (directory / "ga4gh-io.schema.json").write_text(json.dumps(schema), "utf-8")
+    (directory / "demo.wdl").write_bytes(descriptor)
+    return directory
 
 
 def get(url: str) -> tuple[int, str, bytes]:
@@ -97,6 +138,7 @@ def test_load_workflow_reads_the_demo() -> None:
         "WDL",
         "1.1",
     )
+    assert workflow.primary == "demo.wdl"
     assert workflow.files == {
         "demo.wdl": ("PRIMARY_DESCRIPTOR", DEMO_WDL),
         "ga4gh-io.schema.json": (
@@ -106,40 +148,44 @@ def test_load_workflow_reads_the_demo() -> None:
     }
 
 
-def test_load_workflow_puts_the_schema_next_to_the_primary_descriptor(
-    tmp_path: Path,
-) -> None:
-    """Test a primary descriptor in a subdirectory, and a schema without title."""
-    schema = json.loads(json.dumps(DEMO_SCHEMA))
+def test_load_workflow_names_the_tool_by_id_without_title(tmp_path: Path) -> None:
+    """Test that a schema without title names the tool by its id."""
+    schema = copy.deepcopy(DEMO_SCHEMA)
     del schema["title"]
-    schema["x-ga4gh-workflow"]["primary_descriptor_path"] = "wdl/main.wdl"
+    make_workflow(tmp_path)
     (tmp_path / "ga4gh-io.schema.json").write_text(json.dumps(schema), "utf-8")
-    (tmp_path / "main.wdl").write_text(DEMO_WDL, "utf-8")
-    workflow = trs_stub.load_workflow(tmp_path)
-    assert workflow.name == TOOL
-    assert sorted(workflow.files) == ["wdl/ga4gh-io.schema.json", "wdl/main.wdl"]
+    assert trs_stub.load_workflow(tmp_path).name == TOOL
+
+
+def test_load_workflow_keeps_the_bytes(tmp_path: Path) -> None:
+    """Test that line ends are kept, so that the checksum of the file holds."""
+    raw = DEMO_WDL.replace("\n", "\r\n").encode("utf-8")
+    workflow = trs_stub.load_workflow(make_workflow(tmp_path, descriptor=raw))
+    assert workflow.files["demo.wdl"][1].encode("utf-8") == raw
 
 
 @pytest.mark.parametrize(
     ("change", "message"),
     [
-        (lambda s: s.pop("x-ga4gh-workflow"), "x-ga4gh-workflow"),
-        (lambda s: s["x-ga4gh-workflow"].pop("trs_version_id"), "trs_version_id"),
-        (
-            lambda s: s["x-ga4gh-workflow"].update(descriptor_type_version=1),
-            "descriptor_type_version",
-        ),
+        (lambda b: b.pop("trs_version_id"), "trs_version_id"),
+        (lambda b: b.update(descriptor_type_version=1), "descriptor_type_version"),
+        (lambda b: b.update(primary_descriptor_path="wdl/demo.wdl"), "file name"),
+        (lambda b: b.update(primary_descriptor_path="./demo.wdl"), "file name"),
+        (lambda b: b.update(primary_descriptor_path=".."), "file name"),
     ],
 )
 def test_load_workflow_needs_the_workflow_block(
-    tmp_path: Path, change: Any, message: str
+    tmp_path: Path, change: Callable[[dict[str, Any]], Any], message: str
 ) -> None:
-    """Test that a schema without the parts of the block that TRS needs fails."""
-    schema = json.loads(json.dumps(DEMO_SCHEMA))
-    change(schema)
-    (tmp_path / "ga4gh-io.schema.json").write_text(json.dumps(schema), "utf-8")
-    (tmp_path / "demo.wdl").write_text(DEMO_WDL, "utf-8")
+    """Test that a block without what TRS needs, or a nested path, fails."""
     with pytest.raises(ValueError, match=message):
+        trs_stub.load_workflow(make_workflow(tmp_path, change))
+
+
+def test_load_workflow_needs_a_workflow_block(tmp_path: Path) -> None:
+    """Test that a schema without ``x-ga4gh-workflow`` fails."""
+    (tmp_path / "ga4gh-io.schema.json").write_text("[]", "utf-8")
+    with pytest.raises(ValueError, match="x-ga4gh-workflow"):
         trs_stub.load_workflow(tmp_path)
 
 
@@ -165,6 +211,18 @@ def test_stub_serves_the_tool_version(stub: str) -> None:
     assert version["descriptor_type_version"] == {"WDL": ["1.1"]}
 
 
+def test_stub_builds_urls_from_the_host_header(stub: str) -> None:
+    """Test that the ``url`` fields name the host that the client used."""
+    origin = stub.removesuffix(trs_stub.API).removeprefix("http://")
+    connection = http.client.HTTPConnection(origin, timeout=10)
+    try:
+        connection.request("GET", f"{trs_stub.API}/tools", headers={"Host": "trs"})
+        tools = json.loads(connection.getresponse().read())
+    finally:
+        connection.close()
+    assert tools[0]["url"] == f"http://trs{trs_stub.API}/tools/{TOOL}"
+
+
 def test_stub_lists_the_files(stub: str) -> None:
     """Test ``GET .../{type}/files``: the descriptor and the IO schema."""
     files = get_json(f"{version_url(stub)}/WDL/files")
@@ -177,13 +235,15 @@ def test_stub_lists_the_files(stub: str) -> None:
 def test_stub_serves_the_primary_descriptor(stub: str) -> None:
     """Test the descriptor as ``FileWrapper`` and as plain text.
 
-    The checksum of the ``FileWrapper`` is the one that the schema's workflow
-    block names, so a client can check that the schema fits the descriptor.
+    For the demo, the checksum of the ``FileWrapper`` is the one that the
+    schema's workflow block names, so a client can check that the schema
+    fits the descriptor.
     """
-    wrapper = get_json(f"{version_url(stub)}/WDL/descriptor")
-    assert wrapper["content"] == DEMO_WDL
-    assert wrapper["checksum"] == DEMO_SCHEMA["x-ga4gh-workflow"]["checksum"]
-    assert wrapper["url"] == f"{version_url(stub)}/PLAIN_WDL/descriptor"
+    for path in ("WDL/descriptor", "WDL/descriptor/demo.wdl"):
+        wrapper = get_json(f"{version_url(stub)}/{path}")
+        assert wrapper["content"] == DEMO_WDL
+        assert wrapper["checksum"] == DEMO_SCHEMA["x-ga4gh-workflow"]["checksum"]
+        assert wrapper["url"] == f"{version_url(stub)}/PLAIN_WDL/descriptor"
     status, media_type, body = get(f"{version_url(stub)}/PLAIN_WDL/descriptor")
     assert (status, media_type) == (200, "text/plain; charset=utf-8")
     assert body.decode("utf-8") == DEMO_WDL
@@ -195,30 +255,11 @@ def test_stub_serves_the_schema(stub: str) -> None:
     assert json.loads(wrapper["content"]) == DEMO_SCHEMA
     digest = hashlib.sha256(wrapper["content"].encode("utf-8")).hexdigest()
     assert wrapper["checksum"] == [{"type": "sha-256", "checksum": digest}]
-    status, _, body = get(
-        f"{version_url(stub)}/PLAIN_WDL/descriptor/ga4gh-io.schema.json"
-    )
+    plain = f"{version_url(stub)}/PLAIN_WDL/descriptor/ga4gh-io.schema.json"
+    assert wrapper["url"] == plain
+    status, _, body = get(plain)
     assert status == 200
     assert json.loads(body) == DEMO_SCHEMA
-
-
-def test_stub_decodes_relative_paths(tmp_path: Path) -> None:
-    """Test a relative path in subdirectories, as segments or percent-encoded."""
-    schema = json.loads(json.dumps(DEMO_SCHEMA))
-    schema["x-ga4gh-workflow"]["primary_descriptor_path"] = "wdl/main.wdl"
-    (tmp_path / "ga4gh-io.schema.json").write_text(json.dumps(schema), "utf-8")
-    (tmp_path / "main.wdl").write_text(DEMO_WDL, "utf-8")
-    server = trs_stub.TrsStub(("127.0.0.1", 0), [trs_stub.load_workflow(tmp_path)])
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        base = version_url(f"http://127.0.0.1:{server.server_address[1]}/ga4gh/trs/v2")
-        for path in ("wdl/main.wdl", "wdl%2Fmain.wdl"):
-            status, _, body = get(f"{base}/PLAIN_WDL/descriptor/{path}")
-            assert (status, body.decode("utf-8")) == (200, DEMO_WDL)
-    finally:
-        server.shutdown()
-        server.server_close()
 
 
 @pytest.mark.parametrize(
@@ -228,8 +269,12 @@ def test_stub_decodes_relative_paths(tmp_path: Path) -> None:
         "/ga4gh/trs/v2",
         "/ga4gh/trs/v2/toolClasses",
         "/ga4gh/trs/v2/tools/unknown",
+        "/ga4gh/trs/v2/tools/unknown/versions",
+        "/ga4gh/trs/v2/tools/unknown/versions/1.0.0",
         "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/0.0.0",
+        "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL",
         "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/CWL/files",
+        "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/PLAIN_WDL/files",
         "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/PLAIN_CWL/descriptor",
         "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/descriptor/x.wdl",
         "/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/containerfile",
@@ -237,7 +282,7 @@ def test_stub_decodes_relative_paths(tmp_path: Path) -> None:
     ],
 )
 def test_stub_answers_404_with_a_trs_error(stub: str, path: str) -> None:
-    """Test that anything else is ``404`` with a TRS ``Error`` body."""
+    """Test that any other GET is ``404`` with a TRS ``Error`` body."""
     origin = stub.removesuffix(trs_stub.API)
     status, media_type, body = get(f"{origin}{path}")
     assert (status, media_type) == (404, "application/json")
@@ -246,21 +291,18 @@ def test_stub_answers_404_with_a_trs_error(stub: str, path: str) -> None:
 
 def test_stub_merges_versions_of_one_tool(tmp_path: Path) -> None:
     """Test that two versions of one tool are listed under one tool."""
-    schema = json.loads(json.dumps(DEMO_SCHEMA))
-    schema["x-ga4gh-workflow"]["trs_version_id"] = "2.0.0"
-    (tmp_path / "ga4gh-io.schema.json").write_text(json.dumps(schema), "utf-8")
-    (tmp_path / "demo.wdl").write_text(DEMO_WDL, "utf-8")
-    workflows = [trs_stub.load_workflow(DEMO), trs_stub.load_workflow(tmp_path)]
-    server = trs_stub.TrsStub(("127.0.0.1", 0), workflows)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        base = f"http://127.0.0.1:{server.server_address[1]}{trs_stub.API}"
-        tools = get_json(f"{base}/tools")
-        assert [v["id"] for v in tools[0]["versions"]] == ["1.0.0", "2.0.0"]
-    finally:
-        server.shutdown()
-        server.server_close()
+    other = make_workflow(tmp_path, lambda b: b.update(trs_version_id="2.0.0"))
+    workflows = [trs_stub.load_workflow(DEMO), trs_stub.load_workflow(other)]
+    with serve(workflows) as url:
+        tools = get_json(f"{url}/tools")
+    assert [v["id"] for v in tools[0]["versions"]] == ["1.0.0", "2.0.0"]
+
+
+def test_stub_rejects_duplicate_versions() -> None:
+    """Test that two workflows can't be the same tool version."""
+    workflow = trs_stub.load_workflow(DEMO)
+    with pytest.raises(ValueError, match="Two workflows"):
+        trs_stub.TrsStub(("127.0.0.1", 0), [workflow, workflow])
 
 
 def test_host_loads_the_schema_from_the_stub(stub: str) -> None:
@@ -282,6 +324,7 @@ def test_main_serves_until_interrupted(
     monkeypatch.setattr(trs_stub.TrsStub, "serve_forever", interrupt)
     assert trs_stub.main(["--port", "0"]) == 0
     out = capsys.readouterr().out
+    assert "proof of concept" in out
     assert "Serving TRS on http://127.0.0.1:" in out
     assert f"/ga4gh/trs/v2/tools/{TOOL}/versions/{VERSION}" in out
 
@@ -294,3 +337,11 @@ def test_main_rejects_bad_workflows(
     assert "Can't serve the workflow" in capsys.readouterr().err
     (tmp_path / "ga4gh-io.schema.json").write_text("{", "utf-8")
     assert trs_stub.main(["--workflow", str(tmp_path)]) == 1
+
+
+def test_main_reports_a_stub_that_cant_start(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Test that ``main`` exits with 1 if the stub can't start."""
+    assert trs_stub.main(["--port", "0", "--workflow", str(DEMO)] * 2) == 1
+    assert "Can't start the stub: Two workflows" in capsys.readouterr().err

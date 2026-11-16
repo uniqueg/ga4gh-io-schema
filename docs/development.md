@@ -34,7 +34,7 @@ vectors. `tests/test_cli_framework.py` tests the shared conventions of all
 subcommands (standard input, `--output`, `--json`, exit codes) and the
 subcommand registry.
 `tests/test_trs_stub.py` tests the TRS stub of the
-[prototype](adoption/prototype.md) (`prototype/trs-stub/`) over HTTP.
+[prototype](adoption/prototype.md) (`prototype/trs-stub/`) over HTTP; `prototype/` counts towards the coverage of `pytest`, but isn't part of the package.
 
 `tests/test_wheel.py` builds the wheel, installs it into a fresh virtual
 environment and runs the command-line tool on the examples. It needs network

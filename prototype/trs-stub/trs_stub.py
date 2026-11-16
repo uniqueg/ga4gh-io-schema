@@ -22,7 +22,6 @@ http://127.0.0.1:8080/ga4gh/trs/v2/tools.
 import argparse
 import hashlib
 import json
-import posixpath
 import sys
 import urllib.parse
 from collections.abc import Iterable, Sequence
@@ -58,6 +57,7 @@ class Workflow:
         description: Description of the tool, from the schema.
         descriptor_type: TRS descriptor type, e.g., ``WDL``.
         descriptor_type_version: Version of the workflow language.
+        primary: Relative path of the primary descriptor, a file name.
         files: The files by relative path: file type and content.
     """
 
@@ -67,21 +67,20 @@ class Workflow:
     description: str
     descriptor_type: str
     descriptor_type_version: str
+    primary: str
     files: dict[str, tuple[str, str]]
-
-    @property
-    def primary(self) -> str:
-        """The relative path of the primary descriptor."""
-        return next(p for p, (t, _) in self.files.items() if t == "PRIMARY_DESCRIPTOR")
 
 
 def load_workflow(directory: Path) -> Workflow:
     """Read a workflow from a directory.
 
     The directory holds the IO schema (``ga4gh-io.schema.json``) and the
-    primary descriptor under the file name of its path in the schema's
-    ``x-ga4gh-workflow`` block. In TRS, the schema is at the path
-    ``ga4gh-io.schema.json`` in the directory of the primary descriptor.
+    primary descriptor, at the ``primary_descriptor_path`` of the schema's
+    ``x-ga4gh-workflow`` block, which must be a file name: the stub serves
+    both files at the top level of the tool version (the publishing
+    convention of the profile puts the schema in the directory of the
+    primary descriptor). The files are served as they are, byte for byte,
+    so that their checksums match.
 
     Args:
         directory: The directory.
@@ -91,11 +90,12 @@ def load_workflow(directory: Path) -> Workflow:
 
     Raises:
         OSError: If a file can't be read.
-        ValueError: If the schema isn't JSON, or its workflow block lacks
-            the TRS ids, the descriptor type and its version, or the path
-            of the primary descriptor.
+        ValueError: If a file isn't UTF-8, the schema isn't JSON, or its
+            workflow block lacks the TRS ids, the descriptor type and its
+            version, or the path of the primary descriptor, or that path
+            isn't a file name.
     """
-    text = (directory / SCHEMA_NAME).read_text(encoding="utf-8")
+    text = (directory / SCHEMA_NAME).read_bytes().decode("utf-8")
     schema = json.loads(text)
     block = schema.get("x-ga4gh-workflow") if isinstance(schema, dict) else None
     if not isinstance(block, dict):
@@ -111,7 +111,11 @@ def load_workflow(directory: Path) -> Workflow:
         if not isinstance(block.get(key), str):
             raise ValueError(f"x-ga4gh-workflow has no {key}: {directory}")
     primary = block["primary_descriptor_path"]
-    descriptor = (directory / posixpath.basename(primary)).read_text(encoding="utf-8")
+    if "/" in primary or primary in ("", ".", "..", SCHEMA_NAME):
+        raise ValueError(
+            f"primary_descriptor_path must be a file name, not {primary!r}: {directory}"
+        )
+    descriptor = (directory / primary).read_bytes().decode("utf-8")
     return Workflow(
         tool_id=block["trs_tool_id"],
         version_id=block["trs_version_id"],
@@ -119,9 +123,10 @@ def load_workflow(directory: Path) -> Workflow:
         description=schema.get("description") or "",
         descriptor_type=block["descriptor_type"],
         descriptor_type_version=block["descriptor_type_version"],
+        primary=primary,
         files={
             primary: ("PRIMARY_DESCRIPTOR", descriptor),
-            posixpath.join(posixpath.dirname(primary), SCHEMA_NAME): ("OTHER", text),
+            SCHEMA_NAME: ("OTHER", text),
         },
     )
 
@@ -139,12 +144,21 @@ class TrsStub(ThreadingHTTPServer):
         Args:
             address: Host and port; port 0 picks a free one.
             workflows: The tool versions to serve.
+
+        Raises:
+            ValueError: If two workflows have the same tool and version id.
+            OSError: If the address can't be bound.
         """
-        super().__init__(address, TrsHandler)
         self.workflows: dict[str, dict[str, Workflow]] = {}
         for workflow in workflows:
             versions = self.workflows.setdefault(workflow.tool_id, {})
+            if workflow.version_id in versions:
+                raise ValueError(
+                    f"Two workflows are version {workflow.version_id} of "
+                    f"{workflow.tool_id}."
+                )
             versions[workflow.version_id] = workflow
+        super().__init__(address, TrsHandler)
 
 
 class TrsHandler(BaseHTTPRequestHandler):
@@ -226,7 +240,8 @@ class TrsHandler(BaseHTTPRequestHandler):
         else:
             self._not_found()
 
-    def _tool(self, base: str, versions: dict[str, Workflow]) -> dict[str, Any]:
+    @staticmethod
+    def _tool(base: str, versions: dict[str, Workflow]) -> dict[str, Any]:
         """Build a TRS ``Tool``.
 
         Args:
@@ -244,7 +259,7 @@ class TrsHandler(BaseHTTPRequestHandler):
             "description": first.description,
             "organization": "I/O Schema prototype",
             "toolclass": TOOLCLASS,
-            "versions": [self._version(base, w) for w in versions.values()],
+            "versions": [TrsHandler._version(base, w) for w in versions.values()],
         }
 
     @staticmethod
@@ -307,8 +322,8 @@ def _parser() -> argparse.ArgumentParser:
         The parser.
     """
     parser = argparse.ArgumentParser(
-        description="Serve workflows and their IO schemas over TRS v2 "
-        "(a stub for the prototype)."
+        description="Serve workflows and their IO schemas over TRS v2: a stub "
+        "for the prototype, a proof of concept, not a TRS implementation."
     )
     parser.add_argument(
         "--workflow",
@@ -334,7 +349,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         argv: Command-line arguments; by default, those of the process.
 
     Returns:
-        Exit status: 0 when interrupted, 1 if a workflow can't be read.
+        Exit status: 0 when interrupted, 1 if a workflow can't be read or
+        the stub can't start.
     """
     args = _parser().parse_args(argv)
     workflows = []
@@ -344,8 +360,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         except (OSError, ValueError) as exc:
             print(f"Can't serve the workflow {directory}: {exc}", file=sys.stderr)
             return 1
-    server = TrsStub((args.host, args.port), workflows)
+    try:
+        server = TrsStub((args.host, args.port), workflows)
+    except (OSError, ValueError) as exc:
+        print(f"Can't start the stub: {exc}", file=sys.stderr)
+        return 1
     host, port = server.server_address[:2]
+    print("TRS stub of the prototype (a proof of concept, not a TRS)")
     print(f"Serving TRS on http://{host}:{port}{API}/tools (Ctrl+C stops)")
     for workflow in workflows:
         print(f"  {API}/tools/{workflow.tool_id}/versions/{workflow.version_id}")
