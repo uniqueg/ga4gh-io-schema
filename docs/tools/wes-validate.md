@@ -161,8 +161,9 @@ except TranslationError as error:
 `get_binding()` raises a `TranslationError` for a binding that can't be
 used (e.g., a `workflow_type` that differs from the schema, or `GALAXY`);
 `from_workflow_params()` raises a `WorkflowParamsError`, a subclass, for
-a request that it rejects. `error_response()` builds the body for both. A `WorkflowParamsError` names
-the location of the offending value in `workflow_params` as `pointer`. A
+a request that it rejects. `error_response()` builds the body for both.
+A `WorkflowParamsError` names the location of the offending value in
+`workflow_params` as `pointer`. A
 schema that doesn't comply with the profile raises
 `jsonschema.exceptions.ValidationError`: it is an error of the deployment,
 not of the request. The [test

@@ -1361,6 +1361,26 @@ def test_pattern_properties_are_ecma_262() -> None:
         from_workflow_params(schema, {"labels": {"1": 1}})
 
 
+def test_unevaluated_properties_are_ecma_262() -> None:
+    r"""Test that ``unevaluatedProperties`` matches names as ECMA-262.
+
+    A name with a trailing newline doesn't match ``^[a-z]+$``, so it is
+    unevaluated; ``\p{L}`` works.
+    """
+    options = {
+        "type": "object",
+        "patternProperties": {"^[a-z]+$": {"type": "string"}, r"^\p{Lu}$": {}},
+        "unevaluatedProperties": False,
+    }
+    schema = make_schema({"opts": options}, NFL)
+
+    assert to_workflow_params(schema, {"opts": {"abc": "x", "Ä": 1}}) == {
+        "opts": {"abc": "x", "Ä": 1}
+    }
+    with pytest.raises(TranslationError, match="Unevaluated properties"):
+        to_workflow_params(schema, {"opts": {"abc\n": "x"}})
+
+
 @pytest.mark.parametrize(
     "inputs",
     [
@@ -1368,18 +1388,18 @@ def test_pattern_properties_are_ecma_262() -> None:
         {
             "x": {
                 "type": "object",
-                "patternProperties": {r"^\p{L}$": True},
+                "patternProperties": {"(": True},
                 "unevaluatedProperties": False,
             }
         },
     ],
 )
-def test_patterns_that_cant_be_matched_fail_closed(inputs: dict[str, Any]) -> None:
-    """Test that patterns that can't be matched are errors of the schema.
+def test_invalid_patterns_fail_closed(inputs: dict[str, Any]) -> None:
+    """Test that invalid patterns are errors of the schema.
 
-    An invalid pattern, or one that ``unevaluatedProperties`` matches with
-    Python's ``re``, which can't parse it, gives a translation error, not
-    an unexpected exception (a server would answer 500).
+    The ``regex`` format of the meta-schema rejects an invalid pattern of
+    ``pattern`` or ``patternProperties`` before any value is matched, as for
+    any schema that doesn't comply with the profile.
 
     Args:
         inputs: Properties of ``inputs`` with such a pattern.
@@ -1387,7 +1407,7 @@ def test_patterns_that_cant_be_matched_fail_closed(inputs: dict[str, Any]) -> No
     schema = make_schema(inputs, NFL)
     value = "a" if inputs["x"]["type"] == "string" else {"a": 1}
 
-    with pytest.raises(TranslationError, match="pattern"):
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="regex"):
         to_workflow_params(schema, {"x": value})
-    with pytest.raises(WorkflowParamsError, match="pattern"):
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="regex"):
         from_workflow_params(schema, {"x": value})

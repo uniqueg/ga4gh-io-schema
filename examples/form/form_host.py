@@ -20,7 +20,6 @@ http://127.0.0.1:8000/.
 
 import argparse
 import json
-import re
 import sys
 import urllib.parse
 import urllib.request
@@ -129,10 +128,6 @@ def check_values(
         return None, [{"pointer": "", "message": message}]
     except PatternError as exc:
         return None, [{"pointer": "", "message": str(exc)}]
-    except re.error as exc:
-        # `unevaluatedProperties` matches `patternProperties` with Python's re
-        message = f"The schema has a pattern that can't be matched: {exc}."
-        return None, [{"pointer": "", "message": message}]
     if errors:
         return None, errors
     try:

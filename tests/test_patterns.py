@@ -6,9 +6,10 @@
 
 from typing import Any
 
+import jsonschema
 import pytest
 
-from ga4gh_io_schema.patterns import PatternError, ValuesValidator, search
+from ga4gh_io_schema.patterns import PatternError, ValuesValidator, is_pattern, search
 
 
 def errors(schema: dict[str, Any], instance: Any) -> list[str]:
@@ -99,3 +100,131 @@ def test_additional_properties_keyword(
     assert len(messages) == len(expected)
     for message, part in zip(messages, expected, strict=True):
         assert part in message
+
+
+#: Schemas and instances on which :data:`ValuesValidator` must give the same
+#: errors as jsonschema's validator: ASCII patterns, no trailing newlines.
+SAME_AS_JSONSCHEMA: list[tuple[Any, Any]] = [
+    ({"pattern": "^[a-z]+$"}, "Abc"),
+    ({"additionalProperties": False}, {"a": 1}),
+    ({"additionalProperties": False}, {"a": 1, "b": 2}),
+    ({"patternProperties": {"^x": {}}, "additionalProperties": False}, {"y": 1}),
+    (
+        {"patternProperties": {"^x": {}}, "additionalProperties": False},
+        {"y": 1, "z": 2},
+    ),
+    ({"additionalProperties": {"type": "integer"}}, {"a": "x"}),
+    ({"unevaluatedProperties": False}, {"a": 1, "b": 2}),
+    ({"unevaluatedProperties": False}, {"a": 1}),
+    ({"unevaluatedProperties": {"type": "integer"}}, {"a": "x", "b": 1}),
+    ({"unevaluatedProperties": {"type": "integer"}}, {"a": "x", "b": "y"}),
+    ({"unevaluatedProperties": False}, ["a"]),
+    (
+        {
+            "properties": {"a": {}},
+            "patternProperties": {"^b": {}},
+            "unevaluatedProperties": False,
+        },
+        {"a": 1, "b1": 2, "c": 3},
+    ),
+    (
+        {"additionalProperties": {"type": "integer"}, "unevaluatedProperties": False},
+        {"a": 1, "b": "x"},
+    ),
+    (
+        {"allOf": [{"properties": {"a": {}}}], "unevaluatedProperties": False},
+        {"a": 1, "b": 2},
+    ),
+    (
+        {
+            "anyOf": [
+                {"properties": {"a": {"type": "string"}}},
+                {"patternProperties": {"^b": {}}},
+            ],
+            "unevaluatedProperties": False,
+        },
+        {"a": 1, "b": 2, "c": 3},
+    ),
+    (
+        {
+            "oneOf": [{"properties": {"a": {}}, "required": ["a"]}],
+            "unevaluatedProperties": False,
+        },
+        {"a": 1, "c": 3},
+    ),
+    (
+        {
+            "dependentSchemas": {
+                "a": {"properties": {"b": {}}},
+                "x": {"properties": {"y": {}}},
+            },
+            "unevaluatedProperties": False,
+        },
+        {"a": 1, "b": 2, "y": 3},
+    ),
+    (
+        {
+            "if": {"properties": {"a": {"const": 1}}, "required": ["a"]},
+            "then": {"properties": {"b": {}}},
+            "else": {"properties": {"c": {}}},
+            "unevaluatedProperties": False,
+        },
+        {"a": 1, "b": 2, "c": 3},
+    ),
+    (
+        {
+            "if": {"properties": {"a": {"const": 1}}, "required": ["a"]},
+            "then": {"properties": {"b": {}}},
+            "else": {"properties": {"c": {}}},
+            "unevaluatedProperties": False,
+        },
+        {"a": 2, "b": 2, "c": 3},
+    ),
+    (
+        {"if": {"required": ["a"]}, "unevaluatedProperties": False},
+        {"a": 1},
+    ),
+    (
+        {
+            "$defs": {"d": {"properties": {"a": {}}}},
+            "$ref": "#/$defs/d",
+            "unevaluatedProperties": False,
+        },
+        {"a": 1, "b": 2},
+    ),
+    ({"allOf": [True], "unevaluatedProperties": False}, {"a": 1}),
+]
+
+
+@pytest.mark.parametrize(("schema", "instance"), SAME_AS_JSONSCHEMA)
+def test_messages_are_those_of_jsonschema(schema: Any, instance: Any) -> None:
+    """Test that the keywords give the errors of jsonschema's own keywords.
+
+    Args:
+        schema: The schema.
+        instance: The instance.
+    """
+    expected = sorted(
+        error.message
+        for error in jsonschema.Draft202012Validator(schema).iter_errors(instance)
+    )
+
+    assert sorted(errors(schema, instance)) == expected
+
+
+def test_unevaluated_properties_match_names_as_ecma_262() -> None:
+    """Test that a name with a trailing newline is unevaluated."""
+    schema = {"patternProperties": {"^[a-z]+$": {}}, "unevaluatedProperties": False}
+
+    assert errors(schema, {"abc": 1}) == []
+    assert errors(schema, {"abc\n": 1}) == [
+        "Unevaluated properties are not allowed ('abc\\n' was unexpected)"
+    ]
+
+
+def test_is_pattern() -> None:
+    r"""Test the ``regex`` format: ECMA-262 in Unicode mode, strings only."""
+    assert is_pattern(r"^\p{L}+$")
+    assert is_pattern(1)
+    assert not is_pattern("(")
+    assert not is_pattern(r"^a\-b$")

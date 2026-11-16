@@ -720,20 +720,18 @@ def test_patterns_are_ecma_262() -> None:
         (
             {
                 "type": "object",
-                "patternProperties": {r"^\p{L}$": True},
+                "patternProperties": {"(": True},
                 "unevaluatedProperties": False,
             },
             {"a": 1},
         ),
     ],
 )
-def test_patterns_that_cant_be_matched_raise(
-    schema: dict[str, Any], value: Any
-) -> None:
-    """Test that a pattern that can't be matched raises a normalisation error.
+def test_invalid_patterns_raise(schema: dict[str, Any], value: Any) -> None:
+    """Test that an invalid pattern is an error of the schema.
 
-    An invalid pattern, or one that ``unevaluatedProperties`` matches with
-    Python's ``re``, which can't parse it, is an error of the schema.
+    The ``regex`` format of the meta-schema rejects an invalid pattern of
+    ``pattern`` or ``patternProperties``.
 
     Args:
         schema: The schema of the output.
@@ -743,5 +741,5 @@ def test_patterns_that_cant_be_matched_raise(
     io_schema["properties"]["outputs"]["properties"]["tag"] = schema
     log = {"state": "CANCELED", "outputs": {"tag": value}}
 
-    with pytest.raises(NormalisationError, match="pattern"):
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="regex"):
         normalise_outputs(io_schema, log)

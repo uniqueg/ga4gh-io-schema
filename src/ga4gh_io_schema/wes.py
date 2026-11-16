@@ -30,7 +30,7 @@ from referencing import Registry
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
-from ga4gh_io_schema.patterns import PatternError, ValuesValidator, search
+from ga4gh_io_schema.patterns import ValuesValidator, search
 from ga4gh_io_schema.validator import (
     _format_checker,
     build_registry,
@@ -1465,8 +1465,7 @@ def _fail_closed() -> Iterator[None]:
         Nothing; the block runs inside.
 
     Raises:
-        TranslationError: If the block meets such a reference, or a pattern
-            that can't be matched.
+        TranslationError: If the block meets such a reference.
     """
     try:
         yield
@@ -1475,13 +1474,6 @@ def _fail_closed() -> Iterator[None]:
         raise TranslationError(
             f"The schema references '{exc.ref}', which can't be resolved "
             "locally; IO schemas must be bundled."
-        ) from exc
-    except PatternError as exc:
-        raise TranslationError(str(exc)) from exc
-    except re.error as exc:
-        # `unevaluatedProperties` matches `patternProperties` with Python's re
-        raise TranslationError(
-            f"The schema has a pattern that can't be matched: {exc}."
         ) from exc
 
 

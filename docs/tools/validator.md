@@ -17,7 +17,9 @@ pip install -e ".[dev]"
 To install only the validator, run `pip install .` in the cloned repository
 instead. The package supports Python 3.11 and later. It ships the meta-schema
 and its vocabularies, so the validator works offline and outside the
-repository.
+repository. Its dependencies are jsonschema and referencing, and regress for
+the [patterns of values](#patterns-of-values); the converters need the
+extras `cwl`, `wdl` and `snakemake` (see [Converters](converters.md)).
 
 ## Command-line interface
 
@@ -60,9 +62,10 @@ the result and errors as JSON objects (see [Conventions](cli.md#conventions)).
 The validator checks the `format` keywords of the meta-schema, for example
 that `$id` is a URI reference and that `x-ga4gh-ontology` is a URI. It uses
 the `format-nongpl` extra of `jsonschema`, which avoids GPL-licensed
-dependencies. It doesn't check the `regex` format of `pattern` keywords,
-because patterns are ECMA-262 regular expressions, which Python can't always
-parse (e.g., `\p{L}`).
+dependencies. It checks the `regex` format of `pattern` and of the names in
+`patternProperties` as ECMA-262 regular expressions in Unicode mode (the
+`u` flag), with the engine that matches values (see [Patterns of
+values](#patterns-of-values)), not with Python's `re`.
 
 These checks apply to the IO schema itself, not to the input values that a
 WES request sends later. File references don't use `"format": "uri"`, which
@@ -74,16 +77,24 @@ references](../specification/files.md#values).
 ## Patterns of values
 
 Input and output values are matched with ECMA-262 semantics, as JavaScript
-clients match them: `wes-params`, `wes-validate`, `outputs` and the
-[form proof of concept](../adoption/form.md) match `pattern`,
-`patternProperties` and the names that `additionalProperties` checks with
-[regress](https://github.com/Julian/regress), an ECMA-262 engine with
-Unicode semantics. So `\p{L}` works, and `$` doesn't match before a
-trailing newline (Python's `re` accepts `"abc\n"` for `^[a-z]+$`). A
-pattern that isn't valid ECMA-262, or one of `patternProperties` that
-`unevaluatedProperties` has to match and that Python can't parse, is an
-error of the schema: the translation fails instead of matching it
-differently.
+clients with Unicode-mode regular expressions (e.g., Ajv) match them:
+`wes-params`, `wes-validate`, `outputs` and the [form proof of
+concept](../adoption/form.md) match `pattern`, `patternProperties` and the
+names that `additionalProperties` and `unevaluatedProperties` check with
+[regress](https://github.com/Julian/regress), an ECMA-262 engine, in Unicode
+mode. Where this differs from Python's `re`:
+
+- `\p{L}` and other Unicode property escapes work.
+- `$` doesn't match before a trailing newline: `^[a-z]+$` rejects
+  `"abc\n"`, which `re` accepts.
+- `\w`, `\d` and `\s` are as in ECMA-262: `\w` and `\d` match ASCII only
+  (`^\w+$` rejects `"Zürich"`; use `\p{L}`).
+- Escapes that Unicode mode doesn't allow are errors, e.g., `\-` outside a
+  character class, `\_`, or `{,3}` as a quantifier.
+
+A schema with a pattern that isn't valid in Unicode mode doesn't comply with
+the profile: `validate` rejects it (the `regex` format), and so do the
+subcommands that read a schema, before any value is matched.
 
 ## Python API
 

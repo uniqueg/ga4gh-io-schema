@@ -467,18 +467,18 @@ def test_patterns_are_ecma_262() -> None:
         (
             {
                 "type": "object",
-                "patternProperties": {r"^\p{L}$": True},
+                "patternProperties": {"(": True},
                 "unevaluatedProperties": False,
             },
             {"a": 1},
-            "pattern that can't be matched",
+            "isn't a valid ECMA-262",
         ),
     ],
 )
-def test_pattern_that_cant_be_matched_is_an_error(
+def test_invalid_pattern_is_an_error(
     tag: dict[str, Any], value: Any, message: str
 ) -> None:
-    """Test that a pattern that can't be matched is reported, not raised.
+    """Test that an invalid pattern is reported, not raised.
 
     Args:
         tag: The schema of the input.
