@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Build context of the prototype's image (prototype/Dockerfile): only the
+# files that it copies; everything else, secrets included, stays out.
+*
+!pyproject.toml
+!README.md
+!LICENSE
+!LICENSES/
+!schemas/
+!src/
+!examples/demo/
+!prototype/
+
+# Never, even inside the directories above
+**/.env
+**/.env.*
+**/__pycache__
+**/*.pyc
+examples/demo/data/
