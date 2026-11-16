@@ -81,21 +81,21 @@ packages = ["src/ga4gh_io_schema"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # The demo scripts import each other as top-level modules; the tests import
-# them, the host of the form (examples/form/) and the TRS stub of the
+# them, the host of the form (prototype/host/) and the TRS stub of the
 # prototype (prototype/trs-stub/), by module name.
-pythonpath = ["examples/demo", "examples/form", "prototype/trs-stub"]
+pythonpath = ["examples/demo", "prototype/host", "prototype/trs-stub"]
 addopts = "-v --cov --cov-report=term-missing"
 markers = [
     "wheel: builds and installs the wheel (needs network access)",
 ]
 
 [tool.coverage.run]
-# The demo scripts (examples/demo/), the host of the form (examples/form/) and
-# the TRS stub of the prototype (prototype/trs-stub/) are tested too.
+# The demo scripts (examples/demo/), and the host of the form and the TRS
+# stub of the prototype (prototype/) are tested too.
 source = [
     "ga4gh_io_schema",
     "examples/demo",
-    "examples/form",
+    "prototype/host",
     "prototype/trs-stub",
 ]
 branch = true

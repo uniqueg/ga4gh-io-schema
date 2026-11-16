@@ -10,11 +10,12 @@ validates the IO schema once, at the start, and serves the form
 sends the values that the user enters; the host validates them against
 ``inputs`` with the Python validator, with the messages of
 ``x-ga4gh-error-message`` (see "Error messages" in
-``docs/specification/keywords.md``), and turns valid values into
-``workflow_params`` with :func:`ga4gh_io_schema.wes.to_workflow_params`. It
-submits nothing.
+``docs/specification/keywords.md``), and turns valid values into a WES run
+request with :func:`ga4gh_io_schema.wes.build_run_request`. It shows the
+request; only if it is given the URL of a WES, it also submits it there on
+request and shows the run id and state.
 
-Run it with ``python examples/form/form_host.py`` and open
+Run it with ``python prototype/host/form_host.py`` and open
 http://127.0.0.1:8000/.
 """
 
@@ -22,8 +23,10 @@ import argparse
 import json
 import re
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from collections import deque
 from collections.abc import Iterable, Sequence
 from http import HTTPStatus
@@ -42,12 +45,13 @@ from ga4gh_io_schema.wes import (
     DEFAULT_ALLOWED_SCHEMES,
     FORBIDDEN_SCHEMES,
     TranslationError,
-    to_workflow_params,
+    build_run_request,
+    trs_descriptor_url,
 )
 
 HERE = Path(__file__).resolve().parent
 #: The schema of the end-to-end demo, the default.
-DEMO_SCHEMA = HERE.parent / "demo" / "ga4gh-io.schema.json"
+DEMO_SCHEMA = HERE.parents[1] / "examples" / "demo" / "ga4gh-io.schema.json"
 #: Files of the form, by URL path: file name and media type.
 STATIC = {
     "/": ("index.html", "text/html; charset=utf-8"),
@@ -65,6 +69,15 @@ DOCUMENT_URI = "urn:ga4gh-io-schema:form"
 #: Applicators whose subschemas apply to the same value.
 IN_PLACE = ("not", "if", "then", "else")
 IN_PLACE_LISTS = ("allOf", "anyOf", "oneOf")
+
+#: Names of the host in requests that are accepted, besides its address.
+LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1"})
+#: Error of valid values for which the host knows no workflow URL.
+NO_WORKFLOW_URL = (
+    "The host knows no workflow URL: the schema names neither its TRS tool "
+    "version (x-ga4gh-workflow.trs_tool_id and trs_version_id, with --trs-url) "
+    "nor its primary descriptor (x-ga4gh-workflow.primary_descriptor_path)."
+)
 
 #: A subschema with the resolver of its base URI.
 Scope = tuple[Any, Any]
@@ -104,22 +117,46 @@ def load_schema(source: str) -> dict[str, Any]:
     return document
 
 
+def workflow_url(schema: dict[str, Any], trs_url: str | None = None) -> str | None:
+    """Find the ``workflow_url`` of the run request for a schema.
+
+    Args:
+        schema: IO schema.
+        trs_url: Base URL of the TRS API that serves the workflow, if any.
+
+    Returns:
+        The TRS URL of the plain primary descriptor, if a TRS URL is given
+        and the workflow block names the tool version; else the path of the
+        primary descriptor, which WES resolves against the files attached to
+        the request; else ``None``.
+    """
+    block = schema.get("x-ga4gh-workflow") or {}
+    ids = [block.get(key) for key in ("trs_tool_id", "trs_version_id")]
+    if trs_url and all(isinstance(value, str) for value in ids):
+        return trs_descriptor_url(trs_url, *ids, block["descriptor_type"])
+    path = block.get("primary_descriptor_path")
+    return path if isinstance(path, str) else None
+
+
 def check_values(
     schema: dict[str, Any],
     values: Any,
     allowed_schemes: Iterable[str] = DEFAULT_ALLOWED_SCHEMES,
+    url: str | None = None,
 ) -> tuple[dict[str, Any] | None, list[dict[str, str]]]:
-    """Validate input values and turn them into ``workflow_params``.
+    """Validate input values and turn them into a WES run request.
 
     Args:
         schema: IO schema, valid against the profile.
         values: Input values from the form.
         allowed_schemes: URI schemes of the deployment's allow-list.
+        url: The ``workflow_url`` of the request (see :func:`workflow_url`).
 
     Returns:
-        The ``workflow_params`` and no errors; or ``None`` and the errors,
-        each with the location of the value (``pointer``, a JSON Pointer
-        into the values) and its ``message``.
+        The run request (``workflow_params``, ``workflow_type``,
+        ``workflow_type_version`` and ``workflow_url``) and no errors; or
+        ``None`` and the errors, each with the location of the value
+        (``pointer``, a JSON Pointer into the values) and its ``message``.
     """
     try:
         errors = validation_errors(schema, values)
@@ -128,11 +165,86 @@ def check_values(
         return None, [{"pointer": "", "message": message}]
     if errors:
         return None, errors
+    if url is None:
+        return None, [{"pointer": "", "message": NO_WORKFLOW_URL}]
     try:
-        params = to_workflow_params(schema, values, allowed_schemes=allowed_schemes)
+        request = build_run_request(
+            schema, values, url, allowed_schemes=allowed_schemes
+        )
     except TranslationError as exc:
         return None, [{"pointer": exc.pointer, "message": exc.message}]
-    return params, []
+    return request, []
+
+
+def submit_run(wes_url: str, request: dict[str, Any]) -> tuple[str, str | None]:
+    """Submit a run request to a WES and read the state of the run.
+
+    The request is posted as ``multipart/form-data``, as WES defines it,
+    with ``workflow_params`` as JSON text; no files are attached.
+
+    Args:
+        wes_url: Base URL of the WES API, e.g.,
+            ``https://wes.example.org/ga4gh/wes/v1``.
+        request: The run request.
+
+    Returns:
+        The run id, and the state of the run, or ``None`` if it can't be
+        read.
+
+    Raises:
+        OSError: If the WES can't be reached or rejects the request (also
+            ``urllib.error.HTTPError``).
+        ValueError: If the answer isn't JSON or has no ``run_id``.
+    """
+    base = wes_url.rstrip("/")
+    boundary = uuid.uuid4().hex
+    parts = []
+    for name, value in request.items():
+        text = value if isinstance(value, str) else json.dumps(value)
+        parts.append(
+            f"--{boundary}\r\nContent-Disposition: form-data; "
+            f'name="{name}"\r\n\r\n{text}\r\n'
+        )
+    body = "".join(parts) + f"--{boundary}--\r\n"
+    answer = _fetch_json(
+        urllib.request.Request(
+            f"{base}/runs",
+            data=body.encode("utf-8"),
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            method="POST",
+        )
+    )
+    run_id = answer.get("run_id") if isinstance(answer, dict) else None
+    if not isinstance(run_id, str):
+        raise ValueError("The answer has no run_id.")
+    try:
+        status = _fetch_json(
+            urllib.request.Request(
+                f"{base}/runs/{urllib.parse.quote(run_id, safe='')}/status"
+            )
+        )
+    except (OSError, ValueError):
+        return run_id, None
+    state = status.get("state") if isinstance(status, dict) else None
+    return run_id, state if isinstance(state, str) else None
+
+
+def _fetch_json(request: urllib.request.Request) -> Any:
+    """Send a request and parse the JSON answer.
+
+    Args:
+        request: The request.
+
+    Returns:
+        The parsed answer.
+
+    Raises:
+        OSError: If the request fails (also ``urllib.error.HTTPError``).
+        ValueError: If the answer isn't JSON.
+    """
+    request.add_header("Accept", "application/json")
+    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        return json.loads(response.read())
 
 
 def validation_errors(schema: dict[str, Any], values: Any) -> list[dict[str, str]]:
@@ -292,6 +404,8 @@ class FormHost(ThreadingHTTPServer):
     Attributes:
         schema: The IO schema.
         allowed_schemes: URI schemes of the deployment's allow-list.
+        workflow_url: The ``workflow_url`` of run requests.
+        wes_url: Base URL of the WES API to submit runs to, if any.
     """
 
     def __init__(
@@ -299,6 +413,8 @@ class FormHost(ThreadingHTTPServer):
         address: tuple[str, int],
         schema: dict[str, Any],
         allowed_schemes: Iterable[str] = DEFAULT_ALLOWED_SCHEMES,
+        workflow_url: str | None = None,
+        wes_url: str | None = None,
     ) -> None:
         """Bind the server.
 
@@ -306,22 +422,33 @@ class FormHost(ThreadingHTTPServer):
             address: Host and port; port 0 picks a free one.
             schema: The IO schema, valid against the profile.
             allowed_schemes: URI schemes of the deployment's allow-list.
+            workflow_url: The ``workflow_url`` of run requests.
+            wes_url: Base URL of the WES API to submit runs to; without it,
+                nothing is sent.
         """
         super().__init__(address, FormHandler)
         self.schema = schema
         self.allowed_schemes = tuple(allowed_schemes)
+        self.workflow_url = workflow_url
+        self.wes_url = wes_url
 
 
 class FormHandler(BaseHTTPRequestHandler):
-    """Requests to the host: the form, the schema and the values."""
+    """Requests to the host: the form, the schema, the values and runs."""
 
     server: FormHost
 
     def do_GET(self) -> None:  # noqa: N802 - name defined by http.server
-        """Serve a file of the form, or the schema (``/api/schema``)."""
+        """Serve a file of the form, the schema or the configuration.
+
+        ``/api/schema`` is the schema, ``/api/config`` says whether runs can
+        be submitted to a WES (``{"wes": true}``).
+        """
         path = urllib.parse.urlsplit(self.path).path
         if path == "/api/schema":
             self._send_json(HTTPStatus.OK, self.server.schema)
+        elif path == "/api/config":
+            self._send_json(HTTPStatus.OK, {"wes": self.server.wes_url is not None})
         elif path in STATIC:
             name, media_type = STATIC[path]
             self._send(HTTPStatus.OK, media_type, (HERE / name).read_bytes())
@@ -329,12 +456,21 @@ class FormHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.NOT_FOUND, {"msg": "Not found"})
 
     def do_POST(self) -> None:  # noqa: N802 - name defined by http.server
-        """Turn the values of the form into ``workflow_params`` (``/api/params``).
+        """Turn the values of the form into a run request, or submit it.
 
-        Responds with ``{"workflow_params": …}``, or with status 400 and
-        ``{"errors": [{"pointer": …, "message": …}]}``.
+        ``/api/params`` responds with ``{"run_request": …}``; ``/api/runs``
+        also submits the request to the WES and responds with
+        ``{"run_request": …, "run_id": …, "state": …}``. Invalid values get
+        status 400 and ``{"errors": [{"pointer": …, "message": …}]}``;
+        ``/api/runs`` without a WES gets 404, and a failure of the WES 502,
+        each with a request-level error. Only JSON bodies (``Content-Type:
+        application/json``) are taken, from a page served by the host under a
+        loopback name or its own address (``Host``, ``Origin``): other web
+        pages that the user opens can't make the host submit runs (no CSRF,
+        no DNS rebinding).
         """
-        if urllib.parse.urlsplit(self.path).path != "/api/params":
+        path = urllib.parse.urlsplit(self.path).path
+        if path not in ("/api/params", "/api/runs"):
             self._send_json(HTTPStatus.NOT_FOUND, {"msg": "Not found"})
             return
         header = self.headers.get("Content-Length") or "0"
@@ -347,6 +483,15 @@ class FormHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"msg": "Too large"})
             self.close_connection = True
             return
+        media_type = (self.headers.get("Content-Type") or "").split(";")[0]
+        if media_type.strip().lower() != "application/json":
+            self._send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"msg": "Not JSON"})
+            self.close_connection = True
+            return
+        if not self._same_origin():
+            self._send_json(HTTPStatus.FORBIDDEN, {"msg": "Foreign host or origin"})
+            self.close_connection = True
+            return
         try:
             values = json.loads(self.rfile.read(length))
         except (ValueError, RecursionError):
@@ -354,15 +499,55 @@ class FormHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.BAD_REQUEST, {"errors": errors})
             return
         try:
-            params, errors = check_values(
-                self.server.schema, values, self.server.allowed_schemes
+            request, errors = check_values(
+                self.server.schema,
+                values,
+                self.server.allowed_schemes,
+                self.server.workflow_url,
             )
         except RecursionError:
             errors = [{"pointer": "", "message": "The values are nested too deeply."}]
         if errors:
             self._send_json(HTTPStatus.BAD_REQUEST, {"errors": errors})
+        elif path == "/api/params":
+            self._send_json(HTTPStatus.OK, {"run_request": request})
         else:
-            self._send_json(HTTPStatus.OK, {"workflow_params": params})
+            self._submit(request)
+
+    def _same_origin(self) -> bool:
+        """Check that a request comes from a page of the host itself.
+
+        Returns:
+            Whether the ``Host`` header names the host by a loopback name or
+            its own address, and the ``Origin`` header, if any, is the same.
+        """
+        host = self.headers.get("Host") or ""
+        name = urllib.parse.urlsplit(f"//{host}").hostname or ""
+        bound = str(self.server.server_address[0])
+        if name not in LOOPBACK_NAMES and name != bound:
+            return False
+        origin = self.headers.get("Origin")
+        return origin is None or urllib.parse.urlsplit(origin).netloc == host
+
+    def _submit(self, request: Any) -> None:
+        """Submit a run request to the WES, if there is one, and respond.
+
+        Args:
+            request: The run request.
+        """
+        wes_url = self.server.wes_url
+        if wes_url is None:
+            error = {"pointer": "", "message": "No WES is configured."}
+            self._send_json(HTTPStatus.NOT_FOUND, {"errors": [error]})
+            return
+        try:
+            run_id, state = submit_run(wes_url, request)
+        except (OSError, ValueError) as exc:
+            error = {"pointer": "", "message": f"The WES at {wes_url} failed: {exc}"}
+            self._send_json(HTTPStatus.BAD_GATEWAY, {"errors": [error]})
+            return
+        body = {"run_request": request, "run_id": run_id, "state": state}
+        self._send_json(HTTPStatus.OK, body)
 
     def _send_json(self, status: HTTPStatus, body: Any) -> None:
         """Send a JSON response.
@@ -420,7 +605,39 @@ def _parser() -> argparse.ArgumentParser:
         help="URI scheme that file references may use (repeatable; "
         f"default: {', '.join(DEFAULT_ALLOWED_SCHEMES)})",
     )
+    parser.add_argument(
+        "--trs-url",
+        type=_http_url,
+        help="base URL of the TRS API that serves the workflow, for the "
+        "workflow_url of run requests, e.g., http://127.0.0.1:8080/ga4gh/trs/v2 "
+        "(default: the path of the primary descriptor)",
+    )
+    parser.add_argument(
+        "--wes-url",
+        type=_http_url,
+        help="base URL of a WES API to submit runs to, e.g., "
+        "http://127.0.0.1:8081/ga4gh/wes/v1 (default: none; run requests are "
+        "shown, not sent)",
+    )
     return parser
+
+
+def _http_url(value: str) -> str:
+    """Check that an argument is an ``http(s)`` URL.
+
+    Args:
+        value: The argument.
+
+    Returns:
+        The URL.
+
+    Raises:
+        argparse.ArgumentTypeError: If it isn't an ``http(s)`` URL.
+    """
+    parts = urllib.parse.urlsplit(value)
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        raise argparse.ArgumentTypeError(f"not an http(s) URL: {value}")
+    return value
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -443,9 +660,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, ValueError, jsonschema.exceptions.ValidationError) as exc:
         print(f"Can't use the schema {args.schema}: {exc}", file=sys.stderr)
         return 1
-    server = FormHost((args.host, args.port), schema, schemes)
+    url = workflow_url(schema, args.trs_url)
+    if args.wes_url and not (url or "").startswith(("http://", "https://")):
+        parser.error(
+            "--wes-url needs a workflow URL that a WES can fetch: give --trs-url "
+            "and a schema that names its TRS tool version"
+        )
+    server = FormHost((args.host, args.port), schema, schemes, url, args.wes_url)
     host, port = server.server_address[:2]
-    print(f"Serving the form on http://{host}:{port}/ (Ctrl+C stops)", flush=True)
+    print(f"Serving the form on http://{host}:{port}/ (Ctrl+C stops)")
+    print(f"  workflow URL: {url}")
+    if args.wes_url:
+        print(f"  Run requests are sent to {args.wes_url} on request.")
+    else:
+        print("  No WES configured: run requests are shown, not sent.")
+    sys.stdout.flush()
     try:
         server.serve_forever()
     except KeyboardInterrupt:

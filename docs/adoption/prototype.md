@@ -63,7 +63,7 @@ The host of the [form proof of concept](form.md) loads the schema from the
 stub:
 
 ```bash
-python examples/form/form_host.py --schema \
+python prototype/host/form_host.py --schema \
   http://127.0.0.1:8080/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/descriptor/ga4gh-io.schema.json
 ```
 
