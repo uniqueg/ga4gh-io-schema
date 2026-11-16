@@ -25,6 +25,7 @@ from referencing import Registry, Resource
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
+from ga4gh_io_schema.patterns import PatternError, ValuesValidator
 from ga4gh_io_schema.validator import validate_schema
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -988,7 +989,7 @@ def _check_file_value(
 
 
 _OutputsValidator = jsonschema.validators.extend(
-    jsonschema.Draft202012Validator, {"x-ga4gh-file": _check_file_value}
+    ValuesValidator, {"x-ga4gh-file": _check_file_value}
 )
 
 
@@ -1025,6 +1026,13 @@ def _validate(schema: dict[str, Any], state: str, result: NormalisedOutputs) -> 
     except Unresolvable as exc:
         raise NormalisationError(
             f"The IO schema references '{exc.ref}', which can't be resolved locally."
+        ) from exc
+    except PatternError as exc:
+        raise NormalisationError(str(exc)) from exc
+    except re.error as exc:
+        # `unevaluatedProperties` matches `patternProperties` with Python's re
+        raise NormalisationError(
+            f"The IO schema has a pattern that can't be matched: {exc}."
         ) from exc
     for error in errors:
         output = str(error.path[0]) if error.path else None

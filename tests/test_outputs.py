@@ -697,3 +697,51 @@ def test_filesystem_with_other_keys_is_by_name() -> None:
     result = normalise_outputs(WORKFLOW, log)
 
     assert result.undeclared == {"filesystem": ["a"], "x": 1}
+
+
+def test_patterns_are_ecma_262() -> None:
+    r"""Test that output patterns are ECMA-262: ``\p{L}``, trailing newlines."""
+    schema = copy.deepcopy(WORKFLOW)
+    outputs = schema["properties"]["outputs"]["properties"]
+    outputs["name"] = {"type": "string", "pattern": r"^\p{L}+$"}
+    outputs["tag"] = {"type": "string", "pattern": "^[a-z]+$"}
+    log = {"state": "CANCELED", "outputs": {"name": "äbc", "tag": "abc\n"}}
+
+    result = normalise_outputs(schema, log)
+
+    assert result.outputs == {"name": "äbc"}
+    assert result.removed == {"tag": "abc\n"}
+
+
+@pytest.mark.parametrize(
+    ("schema", "value"),
+    [
+        ({"type": "string", "pattern": "("}, "a"),
+        (
+            {
+                "type": "object",
+                "patternProperties": {r"^\p{L}$": True},
+                "unevaluatedProperties": False,
+            },
+            {"a": 1},
+        ),
+    ],
+)
+def test_patterns_that_cant_be_matched_raise(
+    schema: dict[str, Any], value: Any
+) -> None:
+    """Test that a pattern that can't be matched raises a normalisation error.
+
+    An invalid pattern, or one that ``unevaluatedProperties`` matches with
+    Python's ``re``, which can't parse it, is an error of the schema.
+
+    Args:
+        schema: The schema of the output.
+        value: The value of the output.
+    """
+    io_schema = copy.deepcopy(WORKFLOW)
+    io_schema["properties"]["outputs"]["properties"]["tag"] = schema
+    log = {"state": "CANCELED", "outputs": {"tag": value}}
+
+    with pytest.raises(NormalisationError, match="pattern"):
+        normalise_outputs(io_schema, log)

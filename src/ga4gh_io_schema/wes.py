@@ -30,6 +30,7 @@ from referencing import Registry
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
+from ga4gh_io_schema.patterns import PatternError, ValuesValidator, search
 from ga4gh_io_schema.validator import (
     _format_checker,
     build_registry,
@@ -649,7 +650,7 @@ class _Translator:
         )
         root = _Scope(schema, registry.resolver(base_uri=uri))
         self.inputs = self._descend(root, schema["properties"]["inputs"])
-        self.validator = Draft202012Validator(
+        self.validator: Draft202012Validator = ValuesValidator(
             schema,
             registry=registry,
             format_checker=_format_checker(Draft202012Validator),
@@ -1111,7 +1112,7 @@ class _Translator:
         patterns = schema.get("patternProperties")
         # The values passed validation, which compiled the same patterns
         for pattern, sub in patterns.items() if isinstance(patterns, dict) else ():
-            if re.search(pattern, key):
+            if search(pattern, key):
                 children.append(self._descend(scope, sub))
                 matched = True
         if not matched and "additionalProperties" in schema:
@@ -1464,7 +1465,8 @@ def _fail_closed() -> Iterator[None]:
         Nothing; the block runs inside.
 
     Raises:
-        TranslationError: If the block meets such a reference.
+        TranslationError: If the block meets such a reference, or a pattern
+            that can't be matched.
     """
     try:
         yield
@@ -1473,6 +1475,13 @@ def _fail_closed() -> Iterator[None]:
         raise TranslationError(
             f"The schema references '{exc.ref}', which can't be resolved "
             "locally; IO schemas must be bundled."
+        ) from exc
+    except PatternError as exc:
+        raise TranslationError(str(exc)) from exc
+    except re.error as exc:
+        # `unevaluatedProperties` matches `patternProperties` with Python's re
+        raise TranslationError(
+            f"The schema has a pattern that can't be matched: {exc}."
         ) from exc
 
 

@@ -71,6 +71,20 @@ because the part after the colon isn't a port number; the meta-schema rejects
 `format` on them. Their values follow the rules of [File
 references](../specification/files.md#values).
 
+## Patterns of values
+
+Input and output values are matched with ECMA-262 semantics, as JavaScript
+clients match them: `wes-params`, `wes-validate`, `outputs` and the
+[form proof of concept](../adoption/form.md) match `pattern`,
+`patternProperties` and the names that `additionalProperties` checks with
+[regress](https://github.com/Julian/regress), an ECMA-262 engine with
+Unicode semantics. So `\p{L}` works, and `$` doesn't match before a
+trailing newline (Python's `re` accepts `"abc\n"` for `^[a-z]+$`). A
+pattern that isn't valid ECMA-262, or one of `patternProperties` that
+`unevaluatedProperties` has to match and that Python can't parse, is an
+error of the schema: the translation fails instead of matching it
+differently.
+
 ## Python API
 
 Reference of the Python API, generated from its docstrings.

@@ -443,3 +443,54 @@ def test_main_rejects_forbidden_schemes() -> None:
     with pytest.raises(SystemExit) as exc:
         form_host.main(["--allow-scheme", "JavaScript"])
     assert exc.value.code == 2
+
+
+def test_patterns_are_ecma_262() -> None:
+    r"""Test ECMA-262 patterns: ``\p{L}`` works, ``$`` rejects a newline."""
+    schema = copy.deepcopy(SAMPLES_SCHEMA)
+    inputs = schema["properties"]["inputs"]
+    inputs["properties"] = {
+        "name": {"type": "string", "pattern": r"^\p{L}+$"},
+        "tag": {"type": "string", "pattern": "^[a-z]+$"},
+    }
+    inputs.pop("required", None)
+
+    _, errors = form_host.check_values(schema, {"name": "äbc", "tag": "abc\n"})
+
+    assert [error["pointer"] for error in errors] == ["/tag"]
+
+
+@pytest.mark.parametrize(
+    ("tag", "value", "message"),
+    [
+        ({"type": "string", "pattern": "("}, "a", "isn't a valid ECMA-262"),
+        (
+            {
+                "type": "object",
+                "patternProperties": {r"^\p{L}$": True},
+                "unevaluatedProperties": False,
+            },
+            {"a": 1},
+            "pattern that can't be matched",
+        ),
+    ],
+)
+def test_pattern_that_cant_be_matched_is_an_error(
+    tag: dict[str, Any], value: Any, message: str
+) -> None:
+    """Test that a pattern that can't be matched is reported, not raised.
+
+    Args:
+        tag: The schema of the input.
+        value: The value of the input.
+        message: Part of the expected message.
+    """
+    schema = copy.deepcopy(SAMPLES_SCHEMA)
+    inputs = schema["properties"]["inputs"]
+    inputs["properties"] = {"tag": tag}
+    inputs.pop("required", None)
+
+    _, errors = form_host.check_values(schema, {"tag": value})
+
+    assert errors[0]["pointer"] == ""
+    assert message in errors[0]["message"]
