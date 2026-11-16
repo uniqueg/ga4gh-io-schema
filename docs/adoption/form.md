@@ -15,6 +15,9 @@ profile with their own components (see [Portals and clients](portals.md)).
 
 ## Run it
 
+To run it with the TRS stub, as the whole prototype with Docker Compose, see
+[Prototype](prototype.md#run-it).
+
 In a checkout of this repository, with the package installed (`pip install
 -e .`), one command starts the host for the schema of the [end-to-end
 demo](demo.md):
@@ -40,20 +43,29 @@ field for the minimum mapping quality, and a choice of read filters.
 
 Options:
 
-- `--schema PATH_OR_URL`: another IO schema, as a file or an `http(s)` URL,
-  e.g., the TRS URL of the file `ga4gh-io.schema.json` of a tool version
+- `--schema PATH_OR_URL`: another default IO schema, as a file or an
+  `http(s)` URL, e.g., the TRS URL of the file `ga4gh-io.schema.json` of a
+  tool version
   (`.../tools/{id}/versions/{version_id}/{type}/descriptor/ga4gh-io.schema.json`,
   see [Discovery by clients](trs.md#discovery-by-clients)); a `FileWrapper`
-  must have the schema in `content`.
+  must have the schema in `content`. With `--trs-url` and without
+  `--schema`, there is no default schema: users pick a workflow.
 - `--allow-scheme SCHEME` (repeatable): the allow-list of URI schemes of
   file references, as for [`wes-params`](../tools/wes-params.md); the
   default is `drs` and `https`.
-- `--trs-url URL`: the base URL of the TRS API that serves the workflow
-  (e.g., `http://127.0.0.1:8080/ga4gh/trs/v2` for the [TRS
-  stub](prototype.md#trs-stub)). The `workflow_url` of the run request is
-  then the TRS URL of the plain primary descriptor of the tool version that
-  `x-ga4gh-workflow` names (`trs_tool_id`, `trs_version_id`). Without it,
-  or if the schema names no tool version, the `workflow_url` is
+- `--trs-url URL`: the base URL of a TRS API (e.g.,
+  `http://127.0.0.1:8080/ga4gh/trs/v2` for the [TRS
+  stub](prototype.md#trs-stub)). The page lists its tool versions, per
+  descriptor type, and users pick one: the host takes the IO schema from
+  the files of the tool version (`ga4gh-io.schema.json` of type `OTHER`
+  in the directory of the primary descriptor), validates it against the
+  profile, and rejects it if its `x-ga4gh-workflow` names another tool,
+  version or descriptor type (step 2 of the guide, without the checksum).
+  The `workflow_url` of the run request is the TRS URL of the plain
+  primary descriptor. For the default schema, the `workflow_url` is the
+  same URL for the tool version that `x-ga4gh-workflow` names
+  (`trs_tool_id`, `trs_version_id`). Without `--trs-url`, or if the
+  schema names no tool version, the `workflow_url` is
   `primary_descriptor_path`, which a WES resolves against files attached
   to the request; the host attaches none. Without either, valid values get
   an error that no workflow URL is known.
@@ -108,7 +120,13 @@ The host's API, for the page:
 
 - `GET /api/schema`: the IO schema.
 - `GET /api/config`: `{"wes": true}` if a WES is configured, else
-  `{"wes": false}`.
+  `{"wes": false}`; with a TRS, also its `workflows` (`tool_id`,
+  `version_id`, `descriptor_type`, `name`), or an empty list and
+  `trs_error` if they can't be listed.
+- With a TRS, the query `?tool=...&version=...&type=...` picks a workflow
+  for `/api/schema`, `/api/params` and `/api/runs`; a workflow that can't
+  be loaded gets `502`, and a request without a pick and without a
+  default schema gets `404`.
 - `POST /api/params` with the values as JSON: `200` with
   `{"run_request": {"workflow_params": {...}, "workflow_type": "WDL",
   "workflow_type_version": "1.1", "workflow_url": "..."}}`, or `400` with
