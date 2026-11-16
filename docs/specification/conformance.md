@@ -364,7 +364,7 @@ that they implement or plan to implement:
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Request builder (translation and checks; submission is left to the caller) | Available (`ga4gh-io-schema wes-params`); passes the test vectors |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | WES server (translation and validation; HTTP is left to the server) | Available (`ga4gh-io-schema wes-validate`); passes the `wes-requests` test vectors |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Output normaliser | Available (`ga4gh-io-schema outputs`); passes the `wes-outputs` test vectors |
-| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Producer | Planned (converters) |
+| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Producer | Available (`ga4gh-io-schema convert cwl`, `nextflow`, `snakemake` and `wdl`); their outputs pass the validator |
 | [ELIXIR Cloud Components](https://github.com/elixir-cloud-aai/cloud-components) | TypeScript | Form renderer, Request builder, Output normaliser | Planned |
 
 Further implementations are welcome: propose an entry for this table with a

@@ -42,9 +42,14 @@ pip install .
 ga4gh-io-schema validate path/to/your-schema.json
 ```
 
-To convert CWL documents, install the `cwl` extra (`pip install ".[cwl]"`)
-and see the
-[CWL converter](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/cwl/).
+The package isn't published on PyPI yet (see
+[Versioning and governance](https://ga4gh-io-schema.readthedocs.io/en/latest/governance/#releases)).
+
+Convert the input descriptions of CWL, Nextflow (nf-schema), Snakemake and WDL
+workflows into IO schemas with `ga4gh-io-schema convert cwl|nextflow|snakemake|wdl`;
+the CWL, Snakemake and WDL converters need the extras `cwl`, `snakemake` and
+`wdl` (e.g., `pip install ".[cwl]"`). See
+[Converters](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/converters/).
 
 Turn input values into the `workflow_params` of a WES run request (see
 [WES parameters](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/wes-params/)):
@@ -64,6 +69,8 @@ ga4gh-io-schema wes-validate --schema path/to/your-schema.json --params workflow
 `ga4gh-io-schema --help` lists the subcommands; see the
 [command-line interface](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/cli/)
 for input from standard input, `--output`, `--json` and the exit codes.
+`ga4gh-io-schema outputs` normalises the outputs of a WES run (see
+[Outputs](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/outputs/)).
 
 ## Contribute
 
