@@ -2,14 +2,15 @@
 
 `prototype/host/` holds a minimal form and a host for it: an IO schema is
 enough to render a run form, to validate the values with the schema's own
-error messages, and to turn them into the `workflow_params` of a WES run
-request. It depends on nothing but this repository: no Cloud Components, no
-portal, no JavaScript framework, and no build step.
+error messages, and to turn them into a WES run request. It depends on
+nothing but this repository: no Cloud Components, no portal, no JavaScript
+framework, and no build step.
 
 **A proof of concept, not a product:** the form and the host show that the
 profile works on its own. They aren't a reference client, aren't maintained
 like the `ga4gh-io-schema` package, and aren't for deployment: the host has
-no authentication, serves one schema, and submits nothing. Portals adopt the
+no authentication, serves one schema, and submits a run only if it is
+given the URL of a WES and the user asks for it. Portals adopt the
 profile with their own components (see [Portals and clients](portals.md)).
 
 ## Run it
@@ -31,9 +32,11 @@ field for the minimum mapping quality, and a choice of read filters.
   `x-ga4gh-error-message` of the schema, and the form says that `reads` is
   required.
 - Enter the values of `examples/demo/values.json` (the URL of the reads, 20,
-  `proper_pairs`) and submit: the page shows the `workflow_params` of
-  [Run it from the command line](demo.md#2-run-it-from-the-command-line),
-  with the names qualified by the WDL entry point.
+  `proper_pairs`) and submit: the page shows the WES run request, with the
+  `workflow_params` of [Run it from the command
+  line](demo.md#2-run-it-from-the-command-line) (the names qualified by the
+  WDL entry point), `workflow_type` `WDL`, `workflow_type_version` `1.1`
+  and the `workflow_url` (see `--trs-url`).
 
 Options:
 
@@ -45,20 +48,37 @@ Options:
 - `--allow-scheme SCHEME` (repeatable): the allow-list of URI schemes of
   file references, as for [`wes-params`](../tools/wes-params.md); the
   default is `drs` and `https`.
+- `--trs-url URL`: the base URL of the TRS API that serves the workflow
+  (e.g., `http://127.0.0.1:8080/ga4gh/trs/v2` for the TRS
+  stub of the prototype). The `workflow_url` of the run request is
+  then the TRS URL of the plain primary descriptor of the tool version that
+  `x-ga4gh-workflow` names (`trs_tool_id`, `trs_version_id`). Without it,
+  or if the schema names no tool version, the `workflow_url` is
+  `primary_descriptor_path`, which a WES resolves against files attached
+  to the request; the host attaches none. Without either, valid values get
+  an error that no workflow URL is known.
+- `--wes-url URL`: the base URL of a WES API (e.g.,
+  `https://wes.example.org/ga4gh/wes/v1`). With it, the page shows a
+  button "Send to WES" under a valid run request: the host posts the
+  request to `POST /runs` of the WES, as `multipart/form-data` without
+  attachments, and shows the run id and the state from
+  `GET /runs/{run_id}/status`. Without it, nothing is ever sent. The WES
+  must be able to fetch the `workflow_url` and the input files.
 - `--host` and `--port`: the address to bind; the default is
   `127.0.0.1:8000`.
 
 The host validates the schema against the profile when it starts, and
-exits with status 1 if the schema can't be read or doesn't comply.
+exits with status 1 if the schema can't be read or doesn't comply. It
+prints the `workflow_url` that it uses and whether a WES is configured.
 
 ## How it works
 
 | File | What it is |
 | --- | --- |
-| `form_host.py` | The host: Python standard library and this package. Serves the page and the schema, validates the values and translates them. |
+| `form_host.py` | The host: Python standard library and this package. Serves the page and the schema, validates the values, builds the run request and, if configured, submits it. |
 | `form.js` | The logic of the form, without the DOM: the control of each input, hidden inputs, and how the text of a control becomes a value. |
 | `io-schema-form.js` | `<io-schema-form>`, a plain web component that renders the fields of `form.js` and emits the values. |
-| `index.html`, `app.js`, `form.css` | The page: fetches the schema, renders the form, sends the values to the host and shows the result. |
+| `index.html`, `app.js`, `form.css` | The page: fetches the schema, renders the form, sends the values to the host and shows the run request, the run, or the errors. |
 
 The steps of the [guide for portals and clients](portals.md#guide-for-portals-and-clients)
 are split between the two:
@@ -74,7 +94,8 @@ are split between the two:
 - **The host** validates the schema offline (step 3), validates the values
   against `inputs` with the [Python validator](../tools/validator.md)
   (step 7), checks the file reference values (step 6) and builds the
-  `workflow_params` with [`wes-params`](../tools/wes-params.md) (step 8).
+  run request with [`wes-params --request`](../tools/wes-params.md)
+  (step 8).
   Every failure gets the `x-ga4gh-error-message` that covers it, by the
   rules of [Error messages](../specification/keywords.md#error-messages),
   or the validator's message; the form shows each error next to its input,
@@ -84,13 +105,21 @@ are split between the two:
 The host's API, for the page:
 
 - `GET /api/schema`: the IO schema.
+- `GET /api/config`: `{"wes": true}` if a WES is configured, else
+  `{"wes": false}`.
 - `POST /api/params` with the values as JSON: `200` with
-  `{"workflow_params": {...}}`, or `400` with
+  `{"run_request": {"workflow_params": {...}, "workflow_type": "WDL",
+  "workflow_type_version": "1.1", "workflow_url": "..."}}`, or `400` with
   `{"errors": [{"pointer": "/min_mapq", "message": "..."}]}`, where
   `pointer` is the location of the value in the values (JSON Pointer).
+- `POST /api/runs` with the values as JSON: as `/api/params`, and submits
+  the request to the WES: `200` with `{"run_request": {...}, "run_id":
+  "...", "state": "QUEUED"}` (`state` is `null` if it can't be read),
+  `404` if no WES is configured, or `502` if the WES fails, each with an
+  error of the request as a whole (`pointer` `""`).
 
-`tests/test_form_host.py` tests the host (values to `workflow_params`, the
-error messages, the HTTP API), and `tests/js/form.test.mjs` the logic of the
+`tests/test_form_host.py` tests the host (values to the run request, the
+error messages, the HTTP API, and the submission to a local fake WES), and `tests/js/form.test.mjs` the logic of the
 form (controls, hidden inputs, values from the controls); see
 [Development](../development.md#javascript-tests-nodejs).
 
@@ -98,9 +127,13 @@ form (controls, hidden inputs, values from the controls); see
 
 What the proof of concept leaves out, on purpose:
 
-- **No submission:** it shows the `workflow_params` and doesn't build or
-  send a WES run request; the [end-to-end demo](demo.md) submits runs from
-  the command line (`conquest.py`).
+- **Minimal submission:** it sends the four fields of the run request
+  and nothing else: no `tags`, no `workflow_engine_parameters`, no
+  attachments, and no authentication, so it works only with a WES that
+  accepts anonymous runs and can fetch the `workflow_url`; it reads the
+  state once and doesn't follow the run. The [end-to-end demo](demo.md)
+  submits runs to Conquest from the command line (`conquest.py`), with the
+  engine parameters that Conquest needs.
 - **No checks of the workflow block** (step 2 of the guide): it doesn't
   compare `x-ga4gh-workflow` with a TRS tool version or a checksum. The
   engine binding comes from `x-ga4gh-workflow` only: a schema without a

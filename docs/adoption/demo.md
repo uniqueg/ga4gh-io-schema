@@ -73,7 +73,7 @@ the samtools image is `quay.io/biocontainers/samtools:1.24--h9dcdb79_1`.
   ELIXIR Cloud Components. These are under development; until they are
   deployed, the [command-line path](#2-run-it-from-the-command-line) is the demo,
   and the [form proof of concept](form.md) shows the form of step 3 locally,
-  up to the `workflow_params`, without submitting them.
+  up to the WES run request, which it submits only to a WES given to it.
 
 The commands below are for Bash; set the URLs of the deployments first:
 
