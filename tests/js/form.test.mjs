@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud / GA4GH Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-// Tests the logic of the form proof of concept (examples/form/form.js),
+// Tests the logic of the form proof of concept (prototype/host/form.js),
 // without a browser: the controls that inputs get, hidden inputs, and how
 // the text of the controls becomes the values that the host turns into
 // `workflow_params` (tests/test_form_host.py tests the host).
@@ -19,7 +19,7 @@ import {
   pointerOf,
   resolve,
   setAt,
-} from "../../examples/form/form.js";
+} from "../../prototype/host/form.js";
 import { readJson } from "./helpers.mjs";
 
 const DEMO = readJson(new URL("../../examples/demo/ga4gh-io.schema.json", import.meta.url));

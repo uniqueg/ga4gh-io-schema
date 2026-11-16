@@ -78,9 +78,9 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- A proof of concept of a form in `examples/form/`, documented on the page
+- A proof of concept of a form in `prototype/host/`, documented on the page
   "Form proof of concept". A plain web component renders the inputs of an
-  IO schema. A small Python host (`python examples/form/form_host.py`)
+  IO schema. A small Python host (`python prototype/host/form_host.py`)
   validates the values with the schema's error messages and shows the
   `workflow_params`. (#63)
 - An end-to-end demo in `examples/demo/`, documented on the page

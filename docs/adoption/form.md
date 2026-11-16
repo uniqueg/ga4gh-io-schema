@@ -1,6 +1,6 @@
 # Form proof of concept
 
-`examples/form/` holds a minimal form and a host for it: an IO schema is
+`prototype/host/` holds a minimal form and a host for it: an IO schema is
 enough to render a run form, to validate the values with the schema's own
 error messages, and to turn them into the `workflow_params` of a WES run
 request. It depends on nothing but this repository: no Cloud Components, no
@@ -19,7 +19,7 @@ In a checkout of this repository, with the package installed (`pip install
 demo](demo.md):
 
 ```bash
-python examples/form/form_host.py
+python prototype/host/form_host.py
 ```
 
 Then open <http://127.0.0.1:8000/>. The page shows a form for the inputs of

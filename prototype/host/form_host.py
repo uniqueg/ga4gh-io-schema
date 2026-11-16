@@ -14,7 +14,7 @@ sends the values that the user enters; the host validates them against
 ``workflow_params`` with :func:`ga4gh_io_schema.wes.to_workflow_params`. It
 submits nothing.
 
-Run it with ``python examples/form/form_host.py`` and open
+Run it with ``python prototype/host/form_host.py`` and open
 http://127.0.0.1:8000/.
 """
 
@@ -47,7 +47,7 @@ from ga4gh_io_schema.wes import (
 
 HERE = Path(__file__).resolve().parent
 #: The schema of the end-to-end demo, the default.
-DEMO_SCHEMA = HERE.parent / "demo" / "ga4gh-io.schema.json"
+DEMO_SCHEMA = HERE.parents[1] / "examples" / "demo" / "ga4gh-io.schema.json"
 #: Files of the form, by URL path: file name and media type.
 STATIC = {
     "/": ("index.html", "text/html; charset=utf-8"),

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Tests of the host of the form proof of concept (``examples/form/``).
+"""Tests of the host of the form proof of concept (``prototype/host/``).
 
 They cover the path from the values of the form to ``workflow_params``, and
 the messages of failed validation, over HTTP against a local host.
