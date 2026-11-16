@@ -48,3 +48,7 @@ pre {
   overflow-x: auto;
   padding: 0.5rem;
 }
+
+.run {
+  white-space: pre-line;
+}

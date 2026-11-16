@@ -15,13 +15,15 @@ SPDX-License-Identifier: Apache-2.0
     <main>
       <p class="poc">
         Proof of concept of the GA4GH I/O Schema proposal, not a product.
-        Nothing is submitted to a WES server.
+        <span id="wes"></span>
       </p>
       <h1 id="title"></h1>
       <p id="description"></p>
       <io-schema-form></io-schema-form>
-      <h2><code>workflow_params</code></h2>
-      <pre id="params">(submit the form)</pre>
+      <h2>WES run request</h2>
+      <pre id="request">(submit the form)</pre>
+      <button type="button" id="submit-run" hidden>Send to WES</button>
+      <p id="run" class="run"></p>
     </main>
   </body>
 </html>

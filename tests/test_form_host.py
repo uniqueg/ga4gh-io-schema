@@ -4,18 +4,23 @@
 
 """Tests of the host of the form proof of concept (``prototype/host/``).
 
-They cover the path from the values of the form to ``workflow_params``, and
-the messages of failed validation, over HTTP against a local host.
+They cover the path from the values of the form to the WES run request,
+the messages of failed validation, and the optional submission to a WES
+(a local fake), over HTTP against a local host.
 """
 
+import contextlib
 import copy
+import email.parser
+import email.policy
 import http.client
 import json
 import threading
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +36,16 @@ DEMO_VALUES = json.loads(
 )
 PROFILE = DEMO_SCHEMA["$schema"]
 MAPQ_MESSAGE = "The minimum mapping quality is a whole number from 0 to 60"
+DEMO_REQUEST = {
+    "workflow_params": {
+        "io_schema_demo.reads": DEMO_VALUES["reads"],
+        "io_schema_demo.min_mapq": 20,
+        "io_schema_demo.read_filter": "proper_pairs",
+    },
+    "workflow_type": "WDL",
+    "workflow_type_version": "1.1",
+    "workflow_url": "demo.wdl",
+}
 # The example of "Error messages" in docs/specification/keywords.md
 SAMPLES_SCHEMA: dict[str, Any] = {
     "$schema": PROFILE,
@@ -70,12 +85,97 @@ def host() -> Iterator[str]:
     Yields:
         The base URL of the host.
     """
-    server = form_host.FormHost(("127.0.0.1", 0), DEMO_SCHEMA, ["https", "s3"])
+    with serve(DEMO_SCHEMA, ["https", "s3"], workflow_url="demo.wdl") as url:
+        yield url
+
+
+@contextlib.contextmanager
+def serve(
+    schema: dict[str, Any], allowed: Sequence[str] = ("https",), **options: Any
+) -> Iterator[str]:
+    """Run a host on a free port.
+
+    Args:
+        schema: The IO schema.
+        allowed: URI schemes of the allow-list.
+        **options: Further arguments of :class:`form_host.FormHost`.
+
+    Yields:
+        The base URL of the host.
+    """
+    server = form_host.FormHost(("127.0.0.1", 0), schema, allowed, **options)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    yield f"http://127.0.0.1:{server.server_address[1]}"
-    server.shutdown()
-    server.server_close()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+class FakeWes(BaseHTTPRequestHandler):
+    """A fake WES: records ``POST /runs`` and answers with fixed responses.
+
+    The class attributes configure the answers and record the requests.
+    """
+
+    #: Status of ``POST /runs``, and of ``GET /runs/{id}/status``.
+    run_status = 200
+    status_status = 200
+    #: The form fields of the last ``POST /runs``.
+    fields: dict[str, str] = {}
+
+    def do_POST(self) -> None:  # noqa: N802 - name defined by http.server
+        """Record a run request and answer with a run id."""
+        body = self.rfile.read(int(self.headers["Content-Length"]))
+        head = f"Content-Type: {self.headers['Content-Type']}\r\n\r\n".encode()
+        message = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(
+            head + body
+        )
+        FakeWes.fields = {
+            part.get_param("name", header="content-disposition"): part.get_content()
+            for part in message.iter_parts()
+        }
+        assert self.path == "/ga4gh/wes/v1/runs"
+        self._answer(self.run_status, {"run_id": "run-1"})
+
+    def do_GET(self) -> None:  # noqa: N802 - name defined by http.server
+        """Answer with the state of the run."""
+        assert self.path == "/ga4gh/wes/v1/runs/run-1/status"
+        self._answer(self.status_status, {"run_id": "run-1", "state": "QUEUED"})
+
+    def _answer(self, status: int, body: Any) -> None:
+        """Send a JSON response.
+
+        Args:
+            status: HTTP status.
+            body: The body, unless the status is an error.
+        """
+        data = json.dumps(body if status == 200 else {"msg": "fail"}).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+
+@pytest.fixture
+def wes() -> Iterator[str]:
+    """Run a fake WES on a free port.
+
+    Yields:
+        The base URL of its WES API.
+    """
+    FakeWes.run_status = FakeWes.status_status = 200
+    FakeWes.fields = {}
+    server = ThreadingHTTPServer(("127.0.0.1", 0), FakeWes)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}/ga4gh/wes/v1"
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def _request(
@@ -99,21 +199,51 @@ def _request(
         return exc.code, dict(exc.headers), exc.read()
 
 
-def test_demo_values_become_workflow_params() -> None:
-    """Test that the values of the demo give the params of the demo docs."""
-    params, errors = form_host.check_values(DEMO_SCHEMA, DEMO_VALUES, ["https", "s3"])
+def test_demo_values_become_a_run_request() -> None:
+    """Test that the values of the demo give the request of the demo docs."""
+    request, errors = form_host.check_values(
+        DEMO_SCHEMA, DEMO_VALUES, ["https", "s3"], "demo.wdl"
+    )
     assert errors == []
-    assert params == {
-        "io_schema_demo.reads": DEMO_VALUES["reads"],
-        "io_schema_demo.min_mapq": 20,
-        "io_schema_demo.read_filter": "proper_pairs",
-    }
+    assert request == DEMO_REQUEST
+
+
+def test_valid_values_without_workflow_url_are_an_error() -> None:
+    """Test that a request can't be built without a workflow URL."""
+    request, errors = form_host.check_values(DEMO_SCHEMA, DEMO_VALUES, ["https"])
+    assert request is None
+    assert errors == [{"pointer": "", "message": form_host.NO_WORKFLOW_URL}]
+
+
+def test_request_needs_the_language_version() -> None:
+    """Test that a schema without ``descriptor_type_version`` gets an error."""
+    schema = copy.deepcopy(DEMO_SCHEMA)
+    del schema["x-ga4gh-workflow"]["descriptor_type_version"]
+    request, errors = form_host.check_values(schema, DEMO_VALUES, ["https"], "x")
+    assert request is None
+    assert "descriptor type version" in errors[0]["message"]
+
+
+def test_workflow_url_from_trs_or_the_descriptor_path() -> None:
+    """Test the workflow URL: in TRS if known, else the descriptor's path."""
+    trs = "http://trs:8080/ga4gh/trs/v2/"
+    assert form_host.workflow_url(DEMO_SCHEMA, trs) == (
+        "http://trs:8080/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0"
+        "/PLAIN_WDL/descriptor"
+    )
+    assert form_host.workflow_url(DEMO_SCHEMA) == "demo.wdl"
+    schema = copy.deepcopy(DEMO_SCHEMA)
+    del schema["x-ga4gh-workflow"]["trs_version_id"]
+    assert form_host.workflow_url(schema, trs) == "demo.wdl"
+    del schema["x-ga4gh-workflow"]["primary_descriptor_path"]
+    assert form_host.workflow_url(schema, trs) is None
+    assert form_host.workflow_url(SAMPLES_SCHEMA) is None
 
 
 def test_out_of_range_value_gets_the_schema_message() -> None:
     """Test that a value out of range gets ``x-ga4gh-error-message``."""
     values = {**DEMO_VALUES, "min_mapq": 61}
-    params, errors = form_host.check_values(DEMO_SCHEMA, values)
+    params, errors = form_host.check_values(DEMO_SCHEMA, values, url="demo.wdl")
     assert params is None
     assert errors == [{"pointer": "/min_mapq", "message": MAPQ_MESSAGE}]
 
@@ -287,7 +417,7 @@ def test_pointer_escapes_special_characters() -> None:
 def test_file_reference_rules_are_checked() -> None:
     """Test that a file reference with a scheme not allowed is an error."""
     values = {**DEMO_VALUES, "reads": "ftp://example.org/reads.bam"}
-    params, errors = form_host.check_values(DEMO_SCHEMA, values)
+    params, errors = form_host.check_values(DEMO_SCHEMA, values, url="demo.wdl")
     assert params is None
     assert errors[0]["pointer"] == "/reads"
     assert "ftp" in errors[0]["message"]
@@ -333,12 +463,84 @@ def test_host_rejects_unknown_paths(host: str) -> None:
     assert status == 404
 
 
-def test_host_returns_workflow_params(host: str) -> None:
-    """Test the values-to-params path over HTTP."""
+def test_host_returns_the_run_request(host: str) -> None:
+    """Test the values-to-request path over HTTP."""
     body = json.dumps(DEMO_VALUES).encode()
     status, _, response = _request(f"{host}/api/params", body, "POST")
     assert status == 200
-    assert json.loads(response)["workflow_params"]["io_schema_demo.min_mapq"] == 20
+    assert json.loads(response) == {"run_request": DEMO_REQUEST}
+
+
+def test_host_without_wes_sends_nothing(host: str) -> None:
+    """Test that without a WES the page offers no submission, and none is made."""
+    status, _, response = _request(f"{host}/api/config")
+    assert (status, json.loads(response)) == (200, {"wes": False})
+    body = json.dumps(DEMO_VALUES).encode()
+    status, _, response = _request(f"{host}/api/runs", body, "POST")
+    assert status == 404
+    assert json.loads(response) == {
+        "errors": [{"pointer": "", "message": "No WES is configured."}]
+    }
+
+
+def test_host_submits_to_the_wes(wes: str) -> None:
+    """Test that with a WES the request is posted there, as WES form fields."""
+    with serve(DEMO_SCHEMA, workflow_url="demo.wdl", wes_url=f"{wes}/") as host:
+        status, _, response = _request(f"{host}/api/config")
+        assert json.loads(response) == {"wes": True}
+        body = json.dumps(DEMO_VALUES).encode()
+        status, _, response = _request(f"{host}/api/runs", body, "POST")
+    assert status == 200
+    assert json.loads(response) == {
+        "run_request": DEMO_REQUEST,
+        "run_id": "run-1",
+        "state": "QUEUED",
+    }
+    assert FakeWes.fields == {
+        "workflow_params": json.dumps(DEMO_REQUEST["workflow_params"]),
+        "workflow_type": "WDL",
+        "workflow_type_version": "1.1",
+        "workflow_url": "demo.wdl",
+    }
+
+
+def test_host_reports_a_run_without_state(wes: str) -> None:
+    """Test that a run whose state can't be read is reported with its id."""
+    FakeWes.status_status = 500
+    with serve(DEMO_SCHEMA, workflow_url="demo.wdl", wes_url=wes) as host:
+        body = json.dumps(DEMO_VALUES).encode()
+        status, _, response = _request(f"{host}/api/runs", body, "POST")
+    assert status == 200
+    assert json.loads(response)["run_id"] == "run-1"
+    assert json.loads(response)["state"] is None
+
+
+def test_host_reports_failures_of_the_wes(wes: str) -> None:
+    """Test that a WES that rejects the run, or answers no JSON, is a 502."""
+    FakeWes.run_status = 500
+    with serve(DEMO_SCHEMA, workflow_url="demo.wdl", wes_url=wes) as host:
+        body = json.dumps(DEMO_VALUES).encode()
+        status, _, response = _request(f"{host}/api/runs", body, "POST")
+        assert status == 502
+        message = json.loads(response)["errors"][0]["message"]
+        assert message.startswith(f"The WES at {wes} failed: HTTP Error 500")
+        status, _, response = _request(f"{host}/api/runs", b"{}", "POST")
+        assert status == 400
+    with serve(DEMO_SCHEMA, workflow_url="demo.wdl", wes_url=host) as other:
+        # The other host is no WES: it answers 404 for /runs
+        status, _, response = _request(f"{other}/api/runs", body, "POST")
+    assert status == 502
+
+
+def test_submit_needs_a_run_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that a WES answer without ``run_id`` is an error."""
+
+    def answer(*args: Any) -> Any:
+        return {"msg": "no run"}
+
+    monkeypatch.setattr(form_host, "_fetch_json", answer)
+    with pytest.raises(ValueError, match="no run_id"):
+        form_host.submit_run("http://wes", DEMO_REQUEST)
 
 
 def test_host_returns_errors(host: str) -> None:
@@ -382,10 +584,11 @@ def test_host_rejects_values_nested_too_deeply(
         raise RecursionError
 
     monkeypatch.setattr(form_host, "check_values", too_deep)
-    status, _, response = _request(f"{host}/api/params", b"{}", "POST")
-    assert status == 400
-    message = json.loads(response)["errors"][0]["message"]
-    assert message == "The values are nested too deeply."
+    for path in ("/api/params", "/api/runs"):
+        status, _, response = _request(f"{host}{path}", b"{}", "POST")
+        assert status == 400
+        message = json.loads(response)["errors"][0]["message"]
+        assert message == "The values are nested too deeply."
 
 
 def test_load_schema_from_a_file() -> None:
@@ -424,7 +627,23 @@ def test_main_serves_until_interrupted(
 
     monkeypatch.setattr(form_host.FormHost, "serve_forever", interrupt)
     assert form_host.main(["--port", "0", "--allow-scheme", "https"]) == 0
-    assert "Serving the form on http://127.0.0.1:" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "Serving the form on http://127.0.0.1:" in out
+    assert "workflow URL: demo.wdl" in out
+    assert "No WES configured: run requests are shown, not sent." in out
+    argv = ["--port", "0", "--trs-url", "http://trs/ga4gh/trs/v2"]
+    assert form_host.main([*argv, "--wes-url", "http://wes/ga4gh/wes/v1"]) == 0
+    out = capsys.readouterr().out
+    assert "workflow URL: http://trs/ga4gh/trs/v2/tools/" in out
+    assert "Run requests are sent to http://wes/ga4gh/wes/v1" in out
+
+
+@pytest.mark.parametrize("option", ["--trs-url", "--wes-url"])
+def test_main_rejects_urls_that_arent_http(option: str) -> None:
+    """Test that TRS and WES URLs must be http(s) URLs."""
+    with pytest.raises(SystemExit) as exc:
+        form_host.main([option, "file:///etc/passwd"])
+    assert exc.value.code == 2
 
 
 def test_main_rejects_bad_schemas(
