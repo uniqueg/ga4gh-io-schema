@@ -132,6 +132,7 @@ nav:
       - End-to-end demo: adoption/demo.md
       - Form proof of concept: adoption/form.md
       - Prototype: adoption/prototype.md
+      - Prototype evaluation: adoption/prototype-evaluation.md
   - Roadmap: roadmap.md
   - Changelog: changelog.md
   - Versioning and governance: governance.md
