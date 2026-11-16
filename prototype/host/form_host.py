@@ -198,8 +198,9 @@ def load_trs_schema(
     )
     files = _fetch_json(urllib.request.Request(f"{version}/files"))
     try:
+        # path and file_type are optional in TRS: skip entries without them
         primary = next(
-            f["path"] for f in files if f["file_type"] == "PRIMARY_DESCRIPTOR"
+            f["path"] for f in files if f.get("file_type") == "PRIMARY_DESCRIPTOR"
         )
         path = posixpath.join(posixpath.dirname(primary), SCHEMA_NAME)
         # Entries may have more fields, e.g., checksum

@@ -88,7 +88,8 @@ docker compose -f prototype/compose.yaml down
 ```
 
 Without `PROTOTYPE_URL`, `pytest` skips these tests; without Playwright, it
-skips the browser test. `PROTOTYPE_BROWSER_CHANNEL=chrome` uses an
+skips the browser test (in CI, `PROTOTYPE_REQUIRE_BROWSER=1` makes that a
+failure). `PROTOTYPE_BROWSER_CHANNEL=chrome` uses an
 installed Chrome instead of Playwright's Chromium.
 
 ### Layout

@@ -194,11 +194,12 @@ jobs:
           pip install -e ".[e2e]"
           playwright install --with-deps chromium
 
-      # -rs names skipped tests in the log
+      # Without Playwright, the browser test fails here instead of skipping
       - name: Run end-to-end tests
         env:
           PROTOTYPE_URL: http://127.0.0.1:8000
-        run: pytest -m e2e --no-cov -rs tests/test_prototype_e2e.py
+          PROTOTYPE_REQUIRE_BROWSER: "1"
+        run: pytest -m e2e --no-cov tests/test_prototype_e2e.py
 
       - name: Show the logs of the prototype
         if: failure()

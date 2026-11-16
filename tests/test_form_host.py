@@ -835,9 +835,10 @@ def test_load_trs_schema_checks_the_workflow_block() -> None:
 def test_load_trs_schema_takes_entries_with_more_fields(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test that file entries with a checksum are matched by path and type."""
+    """Test that entries with more or fewer fields are matched by path and type."""
     checksum = [{"checksum": "0" * 64, "type": "sha-256"}]
     files = [
+        {"path": "README.md"},
         {"path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR", "checksum": checksum},
         {"path": "ga4gh-io.schema.json", "file_type": "OTHER", "checksum": checksum},
     ]

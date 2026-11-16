@@ -16,7 +16,8 @@ that the page makes, over HTTP. Start the stack first, then set
 
 Without ``PROTOTYPE_URL``, the tests are skipped. The browser test also
 needs Playwright and its Chromium (``pip install -e .[e2e]``, then
-``playwright install chromium``); without Playwright, it is skipped.
+``playwright install chromium``); without Playwright, it is skipped,
+unless ``PROTOTYPE_REQUIRE_BROWSER`` is set (as in CI): then it fails.
 ``PROTOTYPE_BROWSER_CHANNEL`` picks another browser, e.g., ``chrome``.
 
 The tests expect the stack of ``prototype/compose.yaml`` as it is: the TRS
@@ -133,7 +134,10 @@ def test_user_gets_the_run_request_of_a_workflow_from_trs() -> None:
 
 def test_user_gets_the_run_request_in_the_browser() -> None:
     """Test the same path in a browser: the page, the picker and the form."""
-    sync_api = pytest.importorskip("playwright.sync_api")
+    if os.environ.get("PROTOTYPE_REQUIRE_BROWSER"):
+        import playwright.sync_api as sync_api
+    else:
+        sync_api = pytest.importorskip("playwright.sync_api")
     channel = os.environ.get("PROTOTYPE_BROWSER_CHANNEL")
     with sync_api.sync_playwright() as playwright:
         browser = playwright.chromium.launch(channel=channel)
