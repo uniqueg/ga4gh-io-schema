@@ -75,7 +75,9 @@ they are opened.
    default; Conquest, in the [end-to-end demo](demo.md), takes no TRS URLs
    at all. A client can't find out from the WES API whether it resolves
    TRS URLs or which hosts it reaches. The [WES guide](wes.md) should say
-   so, and the question belongs to the WES work stream.
+   so, and the question belongs to the WES work stream. Done in 0.3: [Can
+   the WES fetch the workflow?](wes.md#can-the-wes-fetch-the-workflow) and
+   an [open question](../roadmap.md#open-questions).
 4. **The workflow block check (tools).** The host compares the ids of
    `x-ga4gh-workflow` by hand and skips the checksum (step 2 of the
    [guide](portals.md#2-check-the-workflow-block)). The package validates
