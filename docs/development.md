@@ -208,14 +208,55 @@ it, and builds its grammar, as soon as it is imported itself, to check the
 replacing the extra, which changes the formats that are checked. The time
 of the command-line tool (about 1 s per run) is mostly this import.
 
-## Code quality (Ruff)
+## Branches and pull requests
 
-The codebase uses `Ruff` to enforce strict formatting, linting, and Google-style docstrings.
+Once the repository is at elixir-cloud-aai, `dev` is its default branch
+and the target of all pull requests; `main` holds the reviewed states that
+are published (and, later, the releases). The `v0.N` integration branches
+are no longer used. Pull requests are squash-merged, so their titles become
+the commit messages: Conventional Commits, at most 50 characters (checked
+by the job `PR title`). The only required check is `CI passed`, the gate of
+`.github/workflows/ci.yml`, which fails unless every other job passed.
+
+## Dependencies (uv)
+
+The dependencies are locked in `uv.lock`, which CI installs (`uv sync
+--locked`), so that pull requests are tested with the same versions. After
+you change dependencies in `pyproject.toml`, update the lock and commit it
+with them:
 
 ```bash
-ruff format .
-ruff check .
+uv lock
+uv sync --extra dev
 ```
+
+`uv sync --extra dev` installs the locked versions into `.venv`, as CI
+does. Dependabot updates the lock, the actions of the workflows, the
+JavaScript validators of `tests/js/`, the base image of the prototype and
+the pre-commit hooks once a month (`.github/dependabot.yml`).
+
+## Code quality and security (pre-commit)
+
+The checks of `.pre-commit-config.yaml` run on each commit once you
+install the hooks, and in CI's job `Lint`:
+
+- Ruff: formatting, linting and Google-style docstrings
+- semgrep with the rules of `.semgrep/` (security issues that Ruff's rules
+  don't cover, e.g., YAML loaders that construct objects, requests without
+  a timeout)
+- ast-grep with the rules of `.ast-grep/rules/` (project-specific
+  anti-patterns, e.g., text files without an explicit encoding) and their
+  tests in `.ast-grep/rule-tests/`
+- gitleaks (secrets), actionlint (workflows) and checks of files (YAML
+  syntax, merge conflicts, large files, trailing whitespace)
+
+```bash
+pre-commit install
+pre-commit run --all-files
+```
+
+A new semgrep or ast-grep rule comes with test cases that it finds and
+cases that it must not find; run `ast-grep test` for the ast-grep rules.
 
 ## Meta-schema validation
 

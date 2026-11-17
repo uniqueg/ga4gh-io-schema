@@ -71,6 +71,14 @@ Contributions, issues, and feature requests are welcome! If you have suggestions
 
 ---
 
+## Citation
+
+If you use the profile or the package, please cite it as described in
+[`CITATION.cff`](CITATION.cff) (GitHub shows it as "Cite this repository"),
+and give the commit that you used.
+
+---
+
 ## License
 
 This repository is multi-licensed in compliance with the [REUSE specification](https://reuse.software/):
@@ -85,4 +93,4 @@ Each file's SPDX header, or its entry in `REUSE.toml`, is authoritative; `reuse 
 ## Contacts
 
 - **Maintainer:** ELIXIR On-Cloud / GA4GH Contributors
-- **Repository:** [https://github.com/uniqueg/ga4gh-io-schema](https://github.com/uniqueg/ga4gh-io-schema)
+- **Repository:** [https://github.com/elixir-cloud-aai/ga4gh-io-schema](https://github.com/elixir-cloud-aai/ga4gh-io-schema)
