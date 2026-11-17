@@ -81,7 +81,9 @@ they are opened.
    schemas and builds requests, but has no function for this check; every
    client writes its own, and the checksum part is the one that gets left
    out. A helper that takes the schema, the TRS ids and the descriptor's
-   `FileWrapper` would close it.
+   `FileWrapper` would close it. Since then: the [workflow block
+   check](../tools/check-workflow.md) does, and the host uses it, with the
+   checksum ([#85](https://github.com/uniqueg/ga4gh-io-schema/issues/85)).
 
 ## Limits of the prototype
 

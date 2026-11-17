@@ -49,6 +49,7 @@ from ga4gh_io_schema.wes import (
     build_run_request,
     trs_descriptor_url,
 )
+from ga4gh_io_schema.workflow import check_workflow
 
 HERE = Path(__file__).resolve().parent
 #: The schema of the end-to-end demo, the default.
@@ -166,9 +167,12 @@ def load_trs_schema(
 
     The schema is the file ``ga4gh-io.schema.json`` of type ``OTHER`` in the
     directory of the primary descriptor (see "Publishing convention" in
-    ``docs/adoption/trs.md``). It must name the tool version and the
-    descriptor type that it was fetched for, where it names them (step 2 of
-    the guide for portals and clients, without the checksum).
+    ``docs/adoption/trs.md``). Its workflow block must match the tool
+    version, the descriptor type and the primary descriptor (``FileWrapper``
+    with its checksum and content) that it was fetched for, where it names
+    them (step 2 of the guide for portals and clients, with
+    :func:`ga4gh_io_schema.workflow.check_workflow`); a schema whose checksum
+    can't be compared is used unverified.
 
     Args:
         trs_url: Base URL of the TRS API.
@@ -184,8 +188,8 @@ def load_trs_schema(
         OSError: If the TRS can't be reached or fails (also
             ``urllib.error.HTTPError``).
         ValueError: If an id is empty, ``.`` or ``..``, the tool version
-            has no IO schema, or the schema isn't JSON or names another tool
-            version or descriptor type.
+            has no IO schema, or the schema isn't JSON or doesn't match the
+            tool version, the descriptor type or the primary descriptor.
         jsonschema.exceptions.ValidationError: If the schema doesn't comply
             with the profile.
     """
@@ -215,18 +219,20 @@ def load_trs_schema(
             "next to the primary descriptor)."
         )
     schema = load_schema(f"{version}/descriptor/{urllib.parse.quote(path, safe='')}")
-    block = schema.get("x-ga4gh-workflow") or {}
-    expected = {
-        "trs_tool_id": tool_id,
-        "trs_version_id": version_id,
-        "descriptor_type": descriptor_type,
-    }
-    for key, value in expected.items():
-        if key in block and block[key] != value:
-            raise ValueError(
-                f"The schema is for another workflow: x-ga4gh-workflow.{key} is "
-                f"{block[key]!r}, not {value!r}."
-            )
+    # The FileWrapper of the primary descriptor, with its checksum
+    descriptor = _fetch_json(urllib.request.Request(f"{version}/descriptor"))
+    result = check_workflow(
+        schema,
+        trs_tool_id=tool_id,
+        trs_version_id=version_id,
+        descriptor_type=descriptor_type,
+        descriptor=descriptor if isinstance(descriptor, dict) else None,
+    )
+    if result.mismatches:
+        raise ValueError(
+            "The schema may not match the workflow: "
+            + " ".join(mismatch.message for mismatch in result.mismatches)
+        )
     url = trs_descriptor_url(trs_url, tool_id, version_id, descriptor_type)
     return schema, url
 

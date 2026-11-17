@@ -832,6 +832,16 @@ def test_load_trs_schema_checks_the_workflow_block() -> None:
             form_host.load_trs_schema(base, "other", "1.0.0", "CWL")
 
 
+def test_load_trs_schema_checks_the_checksum() -> None:
+    """Test that a schema whose descriptor changed since is rejected (#85)."""
+    demo = trs_stub.load_workflow(ROOT / "examples" / "demo")
+    files = {**demo.files, demo.primary: ("PRIMARY_DESCRIPTOR", "version 1.1\n")}
+    drifted = trs_stub.Workflow(**{**demo.__dict__, "files": files})
+    with run_stub([drifted]) as base:
+        with pytest.raises(ValueError, match=r"checksum \(sha-256\)"):
+            form_host.load_trs_schema(base, demo.tool_id, demo.version_id, "WDL")
+
+
 def test_load_trs_schema_takes_entries_with_more_fields(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

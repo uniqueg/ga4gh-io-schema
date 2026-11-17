@@ -61,6 +61,14 @@ values and validate them (see
 ga4gh-io-schema wes-validate --schema path/to/your-schema.json --params workflow_params.json
 ```
 
+Clients and publishers check that the workflow block of a schema matches
+the workflow version and the checksum of its primary descriptor (see
+[Workflow block check](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/check-workflow/)):
+
+```bash
+ga4gh-io-schema verify --schema path/to/your-schema.json --descriptor main.wdl
+```
+
 `ga4gh-io-schema --help` lists the subcommands; see the
 [command-line interface](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/cli/)
 for input from standard input, `--output`, `--json` and the exit codes.
