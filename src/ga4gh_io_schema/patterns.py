@@ -18,13 +18,20 @@ The keywords that match names follow jsonschema (4.26) and keep its error
 messages; ``tests/test_patterns.py`` compares them with jsonschema's.
 """
 
+from __future__ import annotations
+
 import functools
 from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import jsonschema
 import regress
-from jsonschema.protocols import Validator
+
+if TYPE_CHECKING:  # pragma: no cover - for type checkers only
+    # The validators that jsonschema creates, with `descend`, which
+    # `Validator` of `jsonschema.protocols` lacks; the class exists in the
+    # stubs only
+    from jsonschema.validators import _Validator as Validator
 
 __all__ = ["PatternError", "ValuesValidator", "is_pattern", "search"]
 

@@ -255,11 +255,14 @@ def workflow_url(schema: dict[str, Any], trs_url: str | None = None) -> str | No
             empty, ``.`` or ``..`` segments.
     """
     block = schema.get("x-ga4gh-workflow") or {}
-    ids = [block.get(key) for key in ("trs_tool_id", "trs_version_id")]
+    tool_id = block.get("trs_tool_id")
+    version_id = block.get("trs_version_id")
     path = block.get("primary_descriptor_path")
     path = path if isinstance(path, str) else None
-    if trs_url and all(isinstance(value, str) for value in ids):
-        return trs_descriptor_url(trs_url, *ids, block["descriptor_type"], path)
+    if trs_url and isinstance(tool_id, str) and isinstance(version_id, str):
+        return trs_descriptor_url(
+            trs_url, tool_id, version_id, block["descriptor_type"], path
+        )
     return path
 
 
@@ -871,7 +874,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     server = FormHost(
         (args.host, args.port), schema, schemes, url, args.wes_url, args.trs_url
     )
-    host, port = server.server_address[:2]
+    # The bound address, as a string (`server_address` may be bytes for
+    # type checkers)
+    host, port = server.socket.getsockname()[:2]
     print(f"Serving the form on http://{host}:{port}/ (Ctrl+C stops)")
     if args.trs_url:
         print(f"  Workflows are picked from {args.trs_url}")

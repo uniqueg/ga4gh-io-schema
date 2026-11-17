@@ -141,6 +141,7 @@ def validate_schema(
         jsonschema.exceptions.SchemaError: If the meta-schema itself is malformed.
     """
     schemas_dir = get_schemas_dir()
+    meta: dict[str, Any] | bool
     if meta_schema is None:
         meta = _cached_profile(schemas_dir)
         name = "the GA4GH IO Profile meta-schema"
@@ -309,7 +310,9 @@ def _build_validator(
     search_dirs = [schemas_dir] if schema_dir is None else [schemas_dir, schema_dir]
     registry = build_registry(search_dirs)
     validator_cls = validator_for(meta_schema)
-    validator_cls.check_schema(meta_schema)
+    # jsonschema checks boolean meta-schemas too; the stub of the protocol
+    # allows objects only
+    validator_cls.check_schema(meta_schema)  # type: ignore[arg-type]
     return validator_cls(
         meta_schema,
         registry=registry,

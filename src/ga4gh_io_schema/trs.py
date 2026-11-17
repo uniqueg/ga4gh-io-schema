@@ -27,12 +27,12 @@ from __future__ import annotations
 
 import posixpath
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 #: The TRS file type of IO schemas that the profile proposes.
-IO_SCHEMA_FILE_TYPE = "IO_SCHEMA"
+IO_SCHEMA_FILE_TYPE: Final = "IO_SCHEMA"
 #: The TRS file type of IO schemas on TRS servers without ``IO_SCHEMA``.
-OTHER_FILE_TYPE = "OTHER"
+OTHER_FILE_TYPE: Final = "OTHER"
 #: The TRS file type of the primary descriptor.
 PRIMARY_DESCRIPTOR_FILE_TYPE = "PRIMARY_DESCRIPTOR"
 #: The name of the IO schema file next to the primary descriptor.
@@ -103,7 +103,11 @@ def find_primary_descriptor_path(files: Any) -> str | None:
             continue
         path = entry.get("path")
         normalised = normalise_path(path)
-        if entry.get("file_type") == PRIMARY_DESCRIPTOR_FILE_TYPE and normalised:
+        if (
+            entry.get("file_type") == PRIMARY_DESCRIPTOR_FILE_TYPE
+            and isinstance(path, str)
+            and normalised
+        ):
             # A leading "/" keeps the URL without a path (servers differ)
             return path if path.startswith("/") else normalised
     return None
