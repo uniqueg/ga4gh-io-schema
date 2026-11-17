@@ -8,8 +8,8 @@ site_description: >-
   and workflow components
 # Read the Docs serves each version under its own path (e.g., `/en/latest/`)
 site_url: !ENV [READTHEDOCS_CANONICAL_URL, "https://ga4gh-io-schema.readthedocs.io/en/latest/"]
-repo_url: https://github.com/uniqueg/ga4gh-io-schema
-repo_name: uniqueg/ga4gh-io-schema
+repo_url: https://github.com/elixir-cloud-aai/ga4gh-io-schema
+repo_name: elixir-cloud-aai/ga4gh-io-schema
 edit_uri: edit/main/docs/
 
 # Files included in pages (see `pymdownx.snippets`) and documented code

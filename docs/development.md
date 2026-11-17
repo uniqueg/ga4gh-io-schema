@@ -1,9 +1,11 @@
 # Development
 
 CI (`.github/workflows/ci.yml`) runs the checks below on every pull request:
-lint (REUSE, Markdown, Ruff, mypy, meta-schema syntax), the Python tests on
-every supported version, the JavaScript tests and the strict documentation
-build. Run them locally before you open a pull request.
+lint (the pre-commit hooks with Ruff and mypy, `CITATION.cff`, REUSE,
+Markdown, meta-schema syntax), the build of the wheel, the Python tests on
+every supported version, the JavaScript tests, the strict documentation
+build and the end-to-end test. Run them locally before you open a pull
+request.
 
 To install the package with all development dependencies, see
 [Installation](tools/validator.md#installation).
@@ -247,14 +249,71 @@ it, and builds its grammar, as soon as it is imported itself, to check the
 replacing the extra, which changes the formats that are checked. The time
 of the command-line tool (about 1 s per run) is mostly this import.
 
-## Code quality (Ruff)
+## Branches and pull requests
 
-The codebase uses `Ruff` to enforce strict formatting, linting, and Google-style docstrings.
+Once the repository is at elixir-cloud-aai, `dev` is its default branch
+and the target of all pull requests; `main` holds the reviewed states that
+are published (and, later, the releases). The `v0.N` integration branches
+are no longer used. Pull requests are squash-merged, so their titles become
+the commit messages: Conventional Commits, at most 50 characters (checked
+by the job `PR title`). The only required check is `CI passed`, the gate of
+`.github/workflows/ci.yml`, which fails unless every other job passed.
+
+## Dependencies (uv)
+
+The dependencies are locked in `uv.lock`, which CI installs (`uv sync
+--locked`), so that pull requests are tested with the same versions.
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
+first (e.g., `pipx install uv`); `pip install -e ".[dev]"` still works, but
+ignores the lock. After you change dependencies in `pyproject.toml`, update
+the lock and commit it with them:
 
 ```bash
-ruff format .
-ruff check .
+uv lock
+uv sync --extra dev
 ```
+
+`uv sync --extra dev` installs the locked versions into `.venv`, as CI
+does. Dependabot updates the lock, the actions of the workflows, the
+JavaScript validators of `tests/js/`, the base image of the prototype and
+the pre-commit hooks once a month (`.github/dependabot.yml`).
+
+## Code quality and security (pre-commit)
+
+The checks of `.pre-commit-config.yaml` run on each commit once you
+install the hooks, and in CI's job `Lint`:
+
+- Ruff: formatting, linting and Google-style docstrings
+- mypy: type checking (see [Type checking](#type-checking-mypy))
+- semgrep with the rules of `.semgrep/` (security issues that Ruff's rules
+  don't cover, e.g., YAML loaders that construct objects, requests without
+  a timeout)
+- ast-grep with the rules of `.ast-grep/rules/` (project-specific
+  anti-patterns, e.g., text files without an explicit encoding) and their
+  tests in `.ast-grep/rule-tests/`
+- gitleaks (secrets), actionlint (workflows) and checks of files (YAML
+  syntax, merge conflicts, large files, trailing whitespace)
+
+```bash
+pre-commit install
+pre-commit run --all-files
+```
+
+CI also scans the whole checkout for secrets, and validates
+`CITATION.cff`; run these checks locally with:
+
+```bash
+pre-commit run --all-files --hook-stage manual gitleaks-all
+pipx run --spec cffconvert==2.0.0 cffconvert --validate -i CITATION.cff
+```
+
+Locally, `gitleaks-all` also scans untracked and ignored files (e.g.,
+caches in `.venv`), so it may report findings there that CI doesn't see.
+
+A new semgrep or ast-grep rule comes with test cases that it finds and
+cases that it must not find: in `.semgrep/ga4gh-io-schema.py` (`# ruleid:`
+and `# ok:` comments) and in `.ast-grep/rule-tests/`. The hooks
+`semgrep-test` and `ast-grep-test` run them.
 
 ## Type checking (mypy)
 
@@ -265,7 +324,8 @@ information (`types-jsonschema`, `types-PyYAML`). `[tool.mypy]` in
 the prototype and the hooks of the documentation) and the options: every
 function has complete type hints (`disallow_untyped_defs`), generic types
 have their parameters (`disallow_any_generics`), and the checks run for the
-lowest supported Python version. Run it without arguments, as CI does:
+lowest supported Python version. It runs as a pre-commit hook (see
+above); to run it alone, call it without arguments, as the hook does:
 
 ```bash
 mypy

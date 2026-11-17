@@ -5,7 +5,7 @@
 version = 1
 SPDX-PackageName = "ga4gh-io-schema"
 SPDX-PackageSupplier = "ELIXIR On-Cloud <cloud-service@elixir-europe.org>"
-SPDX-PackageDownloadLocation = "https://github.com/uniqueg/ga4gh-io-schema"
+SPDX-PackageDownloadLocation = "https://github.com/elixir-cloud-aai/ga4gh-io-schema"
 
 # Default license for the schemas and the bulk of the codebase.
 # Individual files can still override this with their own
@@ -43,6 +43,6 @@ SPDX-License-Identifier = "CC-BY-4.0"
 
 # Files where headers are impractical (images, generated files, etc.)
 [[annotations]]
-path = ["**.png", "**.svg", "**/generated/**"]
+path = ["**.png", "**.svg", "**/generated/**", "uv.lock"]
 SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
 SPDX-License-Identifier = "Apache-2.0"
