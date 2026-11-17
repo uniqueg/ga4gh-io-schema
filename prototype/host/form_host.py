@@ -21,7 +21,6 @@ http://127.0.0.1:8000/.
 
 import argparse
 import json
-import posixpath
 import re
 import sys
 import urllib.error
@@ -41,6 +40,7 @@ from referencing import Registry
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
+from ga4gh_io_schema.trs import find_schema_file
 from ga4gh_io_schema.validator import validate_schema
 from ga4gh_io_schema.wes import (
     DEFAULT_ALLOWED_SCHEMES,
@@ -164,9 +164,11 @@ def load_trs_schema(
 ) -> tuple[dict[str, Any], str]:
     """Load the IO schema of a tool version from TRS, as a client does.
 
-    The schema is the file ``ga4gh-io.schema.json`` of type ``OTHER`` in the
-    directory of the primary descriptor (see "Publishing convention" in
-    ``docs/adoption/trs.md``). It must name the tool version and the
+    The schema is the file of type ``IO_SCHEMA``, or else the file
+    ``ga4gh-io.schema.json`` of type ``OTHER`` in the directory of the
+    primary descriptor, as :func:`ga4gh_io_schema.trs.find_schema_file`
+    matches them (see "Discovery by clients" in ``docs/adoption/trs.md``).
+    It must name the tool version and the
     descriptor type that it was fetched for, where it names them (step 2 of
     the guide for portals and clients, without the checksum).
 
@@ -196,25 +198,15 @@ def load_trs_schema(
         f"/versions/{urllib.parse.quote(version_id, safe='')}"
         f"/{urllib.parse.quote(descriptor_type, safe='')}"
     )
-    files = _fetch_json(urllib.request.Request(f"{version}/files"))
-    try:
-        # path and file_type are optional in TRS: skip entries without them
-        primary = next(
-            f["path"] for f in files if f.get("file_type") == "PRIMARY_DESCRIPTOR"
-        )
-        path = posixpath.join(posixpath.dirname(primary), SCHEMA_NAME)
-        # Entries may have more fields, e.g., checksum
-        found = any(
-            f.get("path") == path and f.get("file_type") == "OTHER" for f in files
-        )
-    except (KeyError, TypeError, AttributeError, StopIteration):
-        found = False
-    if not found:
+    # Entries are matched by file type and normalised path only
+    found = find_schema_file(_fetch_json(urllib.request.Request(f"{version}/files")))
+    if found is None:
         raise ValueError(
-            f"The tool version has no IO schema ({SCHEMA_NAME} of type OTHER "
-            "next to the primary descriptor)."
+            "The tool version has no IO schema (one file of type IO_SCHEMA, or "
+            f"{SCHEMA_NAME} of type OTHER next to the primary descriptor)."
         )
-    schema = load_schema(f"{version}/descriptor/{urllib.parse.quote(path, safe='')}")
+    path = urllib.parse.quote(found.path, safe="")
+    schema = load_schema(f"{version}/descriptor/{path}")
     block = schema.get("x-ga4gh-workflow") or {}
     expected = {
         "trs_tool_id": tool_id,

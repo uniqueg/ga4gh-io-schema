@@ -851,6 +851,24 @@ def test_load_trs_schema_takes_entries_with_more_fields(
     ]
 
 
+def test_load_trs_schema_prefers_the_io_schema_file_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a file of type IO_SCHEMA wins, fetched by its path as listed."""
+    files = [
+        {"path": "./main.wdl", "file_type": "PRIMARY_DESCRIPTOR"},
+        {"path": "ga4gh-io.schema.json", "file_type": "OTHER"},
+        {"path": "./io/inputs.json", "file_type": "IO_SCHEMA"},
+    ]
+    monkeypatch.setattr(form_host, "_fetch_json", lambda *args: files)
+    sources = []
+    monkeypatch.setattr(form_host, "load_schema", lambda s: sources.append(s) or {})
+    form_host.load_trs_schema("http://trs", "t", "v", "WDL")
+    assert sources == [
+        "http://trs/tools/t/versions/v/WDL/descriptor/.%2Fio%2Finputs.json"
+    ]
+
+
 @pytest.mark.parametrize("ids", [("..", "v", "WDL"), ("t", ".", "WDL"), ("t", "v", "")])
 def test_load_trs_schema_rejects_dot_ids(ids: tuple[str, str, str]) -> None:
     """Test that ids that would change the path of the TRS URL are rejected."""
