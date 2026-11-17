@@ -53,7 +53,13 @@ differs between them.
    For `CWL`, a translator MUST reject objects with the `class` `File` or
    `Directory` in the input values, at any depth: the runner would stage
    them without the checks of file references. Files are given as file
-   reference values, i.e., strings.
+   reference values, i.e., strings. For `CWL`, a translator MUST also
+   reject object keys that start with `$`, at any depth and among the
+   members of the input values: the CWL loader (schema-salad) takes them
+   for directives, and `$include` and `$import` make it read or fetch the
+   document they name (also `file:` URIs and internal hosts) past the
+   checks of file references; `$mixin`, `$namespaces` and `$schemas`
+   change the values. Errors name the location of the key, not its value.
 5. **File references.** A string value is a file value if a file reference
    schema applies at its location: directly; in the `items`,
    `prefixItems` or `contains` of an array; in the `properties`,
@@ -281,7 +287,9 @@ the values against `inputs`:
    `basename`, which names the staged file; it MUST reject objects whose
    `class` doesn't match the `kind` of the file reference (`File` for
    `file`, `Directory` for `directory`), and objects at locations where no
-   file reference applies.
+   file reference applies. As for translators (rule 4 of "From input
+   values to `workflow_params`"), it MUST reject keys that start with `$`
+   anywhere in `workflow_params`, the directives of the CWL loader.
 4. Errors name the location in `workflow_params`, not in the input values:
    the first segment of the JSON Pointer is the key of the member in
    `workflow_params` (e.g., `/variant_calling.input_bam`), and the pointer of

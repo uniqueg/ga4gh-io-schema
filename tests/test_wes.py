@@ -415,6 +415,69 @@ def test_cwl_file_objects_are_not_values() -> None:
     assert to_workflow_params(nfl, {"rec": smuggled}) == {"rec": smuggled}
 
 
+@pytest.mark.parametrize("key", ["$include", "$import", "$mixin", "$namespaces"])
+def test_cwl_loader_directives_are_not_values(key: str) -> None:
+    """Test that schema-salad directives can't make the runner load files.
+
+    Args:
+        key: Key of a directive of the CWL loader (schema-salad).
+    """
+    schema = make_schema({"rec": {"type": "object"}}, {"descriptor_type": "CWL"})
+    smuggled = {key: "file:///etc/passwd"}
+
+    with pytest.raises(TranslationError, match=r"start with '\$'") as info:
+        to_workflow_params(schema, {"rec": {"inner": [smuggled]}})
+    assert info.value.pointer == f"/rec/inner/0/{key}"
+    # The message names the location only, not the value
+    assert "passwd" not in info.value.message
+    with pytest.raises(WorkflowParamsError, match=r"start with '\$'") as error:
+        from_workflow_params(schema, {"rec": smuggled})
+    assert error.value.pointer == f"/rec/{key}"
+    # Other engines take such keys as plain members
+    nfl = make_schema({"rec": {"type": "object"}}, NFL)
+    assert to_workflow_params(nfl, {"rec": smuggled}) == {"rec": smuggled}
+
+
+def test_cwl_loader_directives_at_the_top_level() -> None:
+    """Test that a directive can't come as a member of the input values."""
+    schema = make_schema({"reads": {"type": "string"}}, {"descriptor_type": "CWL"})
+
+    with pytest.raises(TranslationError, match=r"start with '\$'") as info:
+        to_workflow_params(schema, {"reads": "a", "$namespaces": {}})
+    assert info.value.pointer == "/$namespaces"
+    with pytest.raises(WorkflowParamsError, match=r"start with '\$'") as error:
+        from_workflow_params(schema, {"reads": "a", "$schemas": []})
+    assert error.value.pointer == "/$schemas"
+    # Also where the schema binds other members to a name without `$`: a
+    # server passes the member on under its own key
+    renamed = make_schema({}, {"descriptor_type": "CWL"})
+    renamed["properties"]["inputs"]["additionalProperties"] = {
+        "x-ga4gh-parameter": {"name": "extra"}
+    }
+    with pytest.raises(WorkflowParamsError, match=r"start with '\$'") as error:
+        from_workflow_params(renamed, {"$include": "file:///etc/passwd"})
+    assert error.value.pointer == "/$include"
+    with pytest.raises(TranslationError, match=r"start with '\$'") as info:
+        to_workflow_params(renamed, {"$include": "file:///etc/passwd"})
+    assert info.value.pointer == "/$include"
+
+
+def test_cwl_loader_directives_in_file_objects() -> None:
+    """Test that a directive in a CWL File object of a request is rejected."""
+    schema = make_schema({"reads": file_ref()}, {"descriptor_type": "CWL"})
+    params = {
+        "reads": {
+            "class": "File",
+            "location": "https://data.example.org/a.bam",
+            "$import": "file:///etc/passwd",
+        }
+    }
+
+    with pytest.raises(WorkflowParamsError) as error:
+        from_workflow_params(schema, params)
+    assert error.value.pointer == "/reads/$import"
+
+
 def test_unevaluated_only_where_nothing_else_applies() -> None:
     """Test that members evaluated by an in-place applicator keep their schema."""
     schema = make_schema(

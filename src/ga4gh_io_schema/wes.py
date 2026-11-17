@@ -77,6 +77,13 @@ _DOCUMENT_URI = "urn:ga4gh-io-schema:document"
 _PLAIN_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # Classes of CWL objects for files and directories
 _CWL_CLASSES = ("File", "Directory")
+# The CWL loader (schema-salad) takes keys that start with `$` for
+# directives: `$include` and `$import` fetch other documents, also from
+# `file:` URIs, and `$mixin`, `$namespaces` and `$schemas` change the values
+_CWL_DIRECTIVE = (
+    "Keys that start with '$' aren't accepted in CWL input values: the CWL "
+    "loader takes them for directives, e.g., $include or $import."
+)
 # Applicators along the evaluation path of a failure, by whether their
 # subschemas apply to the same location as the schema itself, and by whether
 # the schema path names one of several subschemas (by key or index) or the
@@ -943,6 +950,10 @@ class _Translator:
                     f"Two inputs bind to the engine parameter '{name}'.", (key,)
                 )
             names.add(name)
+            # Both the key of the values (which a server passes on as it
+            # came) and the name for the engine
+            if self.binding.descriptor_type == "CWL" and _directive((key, name)):
+                raise TranslationError(_CWL_DIRECTIVE, (key,))
             bound.append((key, name, self._value(scopes, value, (key,))))
         return bound
 
@@ -1372,16 +1383,18 @@ class _Translator:
                 for index, item in enumerate(value)
             ]
         if isinstance(value, dict):
-            if (
-                self.binding.descriptor_type == "CWL"
-                and value.get("class") in _CWL_CLASSES
-            ):
-                # The runner would stage it, unchecked
-                raise TranslationError(
-                    "CWL File and Directory objects aren't input values: give a "
-                    "file reference as a string.",
-                    path,
-                )
+            if self.binding.descriptor_type == "CWL":
+                if value.get("class") in _CWL_CLASSES:
+                    # The runner would stage it, unchecked
+                    raise TranslationError(
+                        "CWL File and Directory objects aren't input values: give "
+                        "a file reference as a string.",
+                        path,
+                    )
+                directive = _directive(value)
+                if directive is not None:
+                    # The loader would fetch what it names, unchecked
+                    raise TranslationError(_CWL_DIRECTIVE, (*path, directive))
             return {
                 key: self._value(
                     self._children(applicable, key, item, value), item, (*path, key)
@@ -1667,6 +1680,18 @@ class _ReverseTranslator:
         if file_field and tuple(path) in self.files:
             located.append(self.files[tuple(path)][0])
         return WorkflowParamsError(message, located)
+
+
+def _directive(keys: Iterable[str]) -> str | None:
+    """Find a key that the CWL loader takes for a directive.
+
+    Args:
+        keys: The keys, e.g., the members of an object.
+
+    Returns:
+        The first key that starts with ``$``, or ``None`` if there is none.
+    """
+    return next((key for key in keys if key.startswith("$")), None)
 
 
 @contextmanager

@@ -14,7 +14,10 @@ conformance suite.
   expected result) or `error.json` (the values must be rejected; `pointer`
   is the JSON Pointer of the offending value in the input values). An
   optional `options.json` has `allowedSchemes` and `allowAbsolutePaths`,
-  with the defaults above.
+  with the defaults above. For CWL, values with `File` or `Directory`
+  objects, or with keys that start with `$` (directives of the CWL loader,
+  e.g., `$include`), at any depth or as members, must be rejected
+  (`loader-directives`, `loader-directive-member`).
 - `wes-requests/<descriptor type>/<case>/`: translation of the
   `workflow_params` of a WES run request back into input values, by a WES
   server. Each case has `schema.json` (an IO schema), `workflow_params.json`
@@ -24,7 +27,9 @@ conformance suite.
   `/reads/location` for a CWL file value). An optional `options.json` has
   `allowedSchemes`, `allowAbsolutePaths` and `allowPaths` (whether CWL
   `File` and `Directory` objects may give `path` instead of `location`,
-  default `false`). The valid cases of `wes-params/` also translate back:
+  default `false`). For CWL, keys that start with `$` anywhere in
+  `workflow_params` must be rejected, also members that the schema would
+  bind under another name. The valid cases of `wes-params/` also translate back:
   their `workflow_params.json` gives their `values.json`.
 - `trs-files/cases.json`: discovery of the IO schema among the files of a
   TRS tool version, by clients. Each case has a `name`, the `files` (the

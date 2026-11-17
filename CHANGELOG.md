@@ -337,6 +337,13 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 
 ### Fixed
 
+- For CWL, `wes-params`, `wes-validate`, `to_workflow_params()` and
+  `from_workflow_params()` reject object keys that start with `$`, at any
+  depth: the CWL loader takes them for directives, and `$include` or
+  `$import` made it read local files or fetch internal URLs past the checks
+  of file references (e.g., in a value of an input typed `Any`). The engine
+  bindings and the security page state the rule; new test vectors in
+  `wes-params/CWL/` and `wes-requests/CWL/`. (#107)
 - The transfer page names the `main` URL of the schemas, as the `$id`s of
   0.3 do, instead of a `v0.3.0` tag that doesn't exist; the check of
   schema URLs leaves out `$`-placeholders of rewrite rules. (#96)

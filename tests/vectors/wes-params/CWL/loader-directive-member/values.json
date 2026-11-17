@@ -1,0 +1,4 @@
+{
+  "reads": "https://data.example.org/sample.bam",
+  "$include": "file:///etc/passwd"
+}
