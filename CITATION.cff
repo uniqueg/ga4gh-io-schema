@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # No `version` and `date-released`: there are no releases before the move
-# of the repository to GA4GH (see "Releases" in `docs/development.md`); a
+# of the repository to GA4GH (see "Releases" in `docs/governance.md`); a
 # release sets them, and a DOI follows with the first archived release
 cff-version: 1.2.0
 message: >-

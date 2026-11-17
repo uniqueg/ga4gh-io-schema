@@ -221,9 +221,11 @@ by the job `PR title`). The only required check is `CI passed`, the gate of
 ## Dependencies (uv)
 
 The dependencies are locked in `uv.lock`, which CI installs (`uv sync
---locked`), so that pull requests are tested with the same versions. After
-you change dependencies in `pyproject.toml`, update the lock and commit it
-with them:
+--locked`), so that pull requests are tested with the same versions.
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
+first (e.g., `pipx install uv`); `pip install -e ".[dev]"` still works, but
+ignores the lock. After you change dependencies in `pyproject.toml`, update
+the lock and commit it with them:
 
 ```bash
 uv lock
@@ -254,6 +256,17 @@ install the hooks, and in CI's job `Lint`:
 pre-commit install
 pre-commit run --all-files
 ```
+
+CI also scans the whole checkout for secrets, and validates
+`CITATION.cff`; run these checks locally with:
+
+```bash
+pre-commit run --all-files --hook-stage manual gitleaks-all
+pipx run --spec cffconvert==2.0.0 cffconvert --validate -i CITATION.cff
+```
+
+Locally, `gitleaks-all` also scans untracked and ignored files (e.g.,
+caches in `.venv`), so it may report findings there that CI doesn't see.
 
 A new semgrep or ast-grep rule comes with test cases that it finds and
 cases that it must not find; run `ast-grep test` for the ast-grep rules.

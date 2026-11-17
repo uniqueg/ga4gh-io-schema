@@ -50,7 +50,8 @@ dev = [
     # The tests of `convert snakemake` need the `snakemake` extra.
     "ga4gh-io-schema[snakemake]",
     "reuse>=3.0.2",
-    "ruff>=0.4.0",
+    # Keep at least the version of the Ruff hook of `.pre-commit-config.yaml`
+    "ruff>=0.17.4",
     # The local hooks of `.pre-commit-config.yaml` (ast-grep) and the hooks
     # themselves
     "ast-grep-cli>=0.51",

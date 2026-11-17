@@ -9,24 +9,44 @@ message: Text file opened without an explicit encoding
 note: |
   Schemas, descriptors and parameters are UTF-8 (JSON requires it); the
   default encoding depends on the locale (e.g., cp1252 on Windows). Pass
-  `encoding="utf-8"`, or open the file in binary mode.
+  `encoding="utf-8"`, or open the file in binary mode. Covers the built-in
+  `open()` and `read_text()`/`write_text()` of paths; not `Path.open()`,
+  `io.open()`, or `read_text()`/`write_text()` with other keyword arguments.
 rule:
   any:
     - all:
         - pattern: open($$$ARGS)
+        # No `encoding=` among the arguments of the call itself
         - not:
             has:
-              stopBy: end
-              kind: keyword_argument
+              field: arguments
               has:
-                field: name
-                regex: ^encoding$
+                kind: keyword_argument
+                has:
+                  field: name
+                  regex: ^encoding$
+        # No binary mode: the second positional argument, or `mode=`, is a
+        # string with `b` (e.g., "rb", "wb", "r+b")
         - not:
             has:
-              stopBy: end
-              kind: string
-              # A mode with `b`, e.g. "rb" or "wb"
-              regex: ^["'][rwax+]*b[rwax+]*["']$
+              field: arguments
+              has:
+                nthChild: 2
+                kind: string
+                regex: ^["'][rwax+]*b[rwax+]*["']$
+        - not:
+            has:
+              field: arguments
+              has:
+                kind: keyword_argument
+                all:
+                  - has:
+                      field: name
+                      regex: ^mode$
+                  - has:
+                      field: value
+                      kind: string
+                      regex: ^["'][rwax+]*b[rwax+]*["']$
     # Without arguments, or with the text only (`encoding` is the first
     # positional argument of `read_text` and the second of `write_text`)
     - pattern: $PATH.read_text()
