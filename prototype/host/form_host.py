@@ -874,8 +874,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     server = FormHost(
         (args.host, args.port), schema, schemes, url, args.wes_url, args.trs_url
     )
-    # The bound address, as a string (`server_address` may be bytes for
-    # type checkers)
+    # The bound address, which `server_address` is set to as well; typeshed
+    # types `server_address` with bytes, which f-strings would print as b'...'
     host, port = server.socket.getsockname()[:2]
     print(f"Serving the form on http://{host}:{port}/ (Ctrl+C stops)")
     if args.trs_url:

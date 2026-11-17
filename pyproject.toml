@@ -56,9 +56,10 @@ dev = [
     # dependency of jsonschema)
     "jsonschema-specifications>=2023.3.6",
     # Type checking (`[tool.mypy]`), with the stubs of the dependencies that
-    # ship no type information
-    "mypy>=2.4",
-    "types-jsonschema>=4.26.0.20261006",
+    # ship no type information; bounded, as new releases add checks (and
+    # src/ga4gh_io_schema/patterns.py uses a class of the jsonschema stubs)
+    "mypy>=2.4,<3",
+    "types-jsonschema>=4.26.0.20261006,<4.27",
     "types-PyYAML>=6.0.12",
     # The tests of `convert snakemake` need the `snakemake` extra.
     "ga4gh-io-schema[snakemake]",
@@ -138,9 +139,8 @@ files = [
 mypy_path = ["examples/demo", "prototype/host", "prototype/trs-stub"]
 # Lowest supported Python version (see requires-python).
 python_version = "3.11"
-# Complete type hints: all functions annotated, generic types parametrized
-# (instead of ruff's `ANN` rules, which report missing hints only, without
-# checking them)
+# Complete type hints, and checked: all functions annotated, generic types
+# parametrized
 disallow_untyped_defs = true
 disallow_any_generics = true
 warn_unused_ignores = true

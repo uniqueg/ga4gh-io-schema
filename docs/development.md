@@ -1,9 +1,9 @@
 # Development
 
 CI (`.github/workflows/ci.yml`) runs the checks below on every pull request:
-lint (REUSE, Markdown, Ruff, mypy, meta-schema syntax), the Python tests on every
-supported version, the JavaScript tests and the strict documentation build.
-Run them locally before you open a pull request.
+lint (REUSE, Markdown, Ruff, mypy, meta-schema syntax), the Python tests on
+every supported version, the JavaScript tests and the strict documentation
+build. Run them locally before you open a pull request.
 
 To install the package with all development dependencies, see
 [Installation](tools/validator.md#installation).
@@ -275,8 +275,10 @@ Fix the errors instead of ignoring them. Where a stub is wrong or misses a
 private attribute that the code needs, ignore the one error with its code
 and a comment that says why (`# type: ignore[attr-defined]`);
 `warn_unused_ignores` reports comments that are no longer needed. Packages
-without type information and without stubs get an override with
-`ignore_missing_imports` in `pyproject.toml`, with the reason.
+without type information and without stubs (`jsonschema-specifications`),
+or that the `dev` extra doesn't install (Playwright, in the `e2e` extra),
+get an override with `ignore_missing_imports` in `pyproject.toml`, with the
+reason.
 
 ## Meta-schema validation
 

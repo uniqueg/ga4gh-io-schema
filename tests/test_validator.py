@@ -156,6 +156,7 @@ def test_validate_schema_uses_profile_whatever_schema_says() -> None:
 def test_validate_schema_rejects_non_object() -> None:
     """Test that a JSON document that isn't an object is reported."""
     with pytest.raises(jsonschema.exceptions.ValidationError, match="JSON object"):
+        # A list on purpose: the error for a document that isn't an object
         validate_schema([])  # type: ignore[arg-type]
 
 
