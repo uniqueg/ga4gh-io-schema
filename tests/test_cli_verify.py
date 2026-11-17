@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DEMO = ROOT / "examples" / "demo"
 SCHEMA = DEMO / "ga4gh-io.schema.json"
 DESCRIPTOR = DEMO / "demo.wdl"
-TOOL_PAGE = ROOT / "docs" / "tools" / "check-workflow.md"
+TOOL_PAGE = ROOT / "docs" / "tools" / "verify.md"
 IDS = [
     "--trs-tool-id",
     "ga4gh-io-schema-demo",

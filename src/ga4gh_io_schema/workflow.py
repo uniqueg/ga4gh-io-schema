@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 #: Algorithms that :func:`check_workflow` computes over a descriptor, by
@@ -98,7 +98,7 @@ class WorkflowCheck:
     """
 
     mismatches: tuple[Mismatch, ...] = ()
-    compared: tuple[str, ...] = field(default=())
+    compared: tuple[str, ...] = ()
 
     @property
     def verified(self) -> bool:
@@ -112,6 +112,20 @@ class WorkflowCheck:
             descriptor): such a schema is unverified, and may be used.
         """
         return bool(self.compared) and not self.mismatches
+
+    @property
+    def mismatch_message(self) -> str:
+        """Describe the mismatches in one message.
+
+        Returns:
+            ``The schema may not match the workflow:`` and the message of
+            each mismatch; empty if nothing mismatches.
+        """
+        if not self.mismatches:
+            return ""
+        return "The schema may not match the workflow: " + " ".join(
+            mismatch.message for mismatch in self.mismatches
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the result to JSON.
@@ -129,6 +143,7 @@ class WorkflowCheck:
 
 def check_workflow(
     schema: Mapping[str, Any],
+    *,
     trs_tool_id: str | None = None,
     trs_version_id: str | None = None,
     descriptor_type: str | None = None,
@@ -145,7 +160,9 @@ def check_workflow(
     over the descriptor's content for the algorithms of
     :data:`HASH_ALGORITHMS`. Algorithm names and digests are compared case
     insensitively. The schema isn't validated against the profile (step 3
-    of the guide); fields of the wrong type are skipped.
+    of the guide): an id of the wrong type mismatches the given id, and
+    checksums, a ``descriptor`` or ``content`` of the wrong type are
+    skipped.
 
     Args:
         schema: The IO schema.
@@ -176,7 +193,7 @@ def check_workflow(
     mismatches = [
         Mismatch(key, block[key], value)
         for key, value in given.items()
-        if value is not None and isinstance(block.get(key), str) and block[key] != value
+        if value is not None and key in block and block[key] != value
     ]
     references = _references(descriptor, checksums, content, _entries(block))
     compared: list[str] = []
@@ -243,14 +260,17 @@ def _references(
         The distinct digests of each algorithm, in lower case.
     """
     entries = list(checksums)
-    if descriptor is not None:
+    if isinstance(descriptor, Mapping):
         wrapped = descriptor.get("checksum")
         entries.extend(wrapped if isinstance(wrapped, list) else [])
         if content is None and isinstance(descriptor.get("content"), str):
             content = descriptor["content"]
     found = _checksums(entries)
-    if content is not None:
-        data = content.encode("utf-8") if isinstance(content, str) else content
+    if isinstance(content, str):
+        # A lone surrogate, which JSON allows, is hashed as such
+        content = content.encode("utf-8", errors="surrogatepass")
+    if isinstance(content, bytes):
+        data = content
         found.extend(
             (algorithm, HASH_ALGORITHMS[algorithm](data).hexdigest())
             for algorithm in dict.fromkeys(algorithm for algorithm, _ in wanted)

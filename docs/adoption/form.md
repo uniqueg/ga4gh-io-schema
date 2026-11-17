@@ -62,7 +62,7 @@ Options:
   profile, and rejects it if its `x-ga4gh-workflow` names another tool,
   version or descriptor type, or a checksum that the primary descriptor
   doesn't have (step 2 of the guide, with the [workflow block
-  check](../tools/check-workflow.md)). A schema whose checksum can't be
+  check](../tools/verify.md)). A schema whose checksum can't be
   compared is used, unverified, without a note on the page.
   The `workflow_url` of the run request is the TRS URL of the plain
   primary descriptor. For the default schema, the `workflow_url` is the

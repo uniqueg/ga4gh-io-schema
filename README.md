@@ -63,7 +63,7 @@ ga4gh-io-schema wes-validate --schema path/to/your-schema.json --params workflow
 
 Clients and publishers check that the workflow block of a schema matches
 the workflow version and the checksum of its primary descriptor (see
-[Workflow block check](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/check-workflow/)):
+[Workflow block check](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/verify/)):
 
 ```bash
 ga4gh-io-schema verify --schema path/to/your-schema.json --descriptor main.wdl

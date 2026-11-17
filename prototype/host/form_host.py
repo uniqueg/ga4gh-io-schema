@@ -220,7 +220,11 @@ def load_trs_schema(
         )
     schema = load_schema(f"{version}/descriptor/{urllib.parse.quote(path, safe='')}")
     # The FileWrapper of the primary descriptor, with its checksum
-    descriptor = _fetch_json(urllib.request.Request(f"{version}/descriptor"))
+    # A descriptor that can't be fetched leaves the schema unverified
+    try:
+        descriptor = _fetch_json(urllib.request.Request(f"{version}/descriptor"))
+    except (OSError, ValueError):
+        descriptor = None
     result = check_workflow(
         schema,
         trs_tool_id=tool_id,
@@ -229,10 +233,7 @@ def load_trs_schema(
         descriptor=descriptor if isinstance(descriptor, dict) else None,
     )
     if result.mismatches:
-        raise ValueError(
-            "The schema may not match the workflow: "
-            + " ".join(mismatch.message for mismatch in result.mismatches)
-        )
+        raise ValueError(result.mismatch_message)
     url = trs_descriptor_url(trs_url, tool_id, version_id, descriptor_type)
     return schema, url
 

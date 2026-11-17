@@ -26,9 +26,11 @@ The result is the list of mismatches and whether the schema is verified:
   client may use the schema, and may say that it is unverified.
 
 The check doesn't validate the schema against the profile (step 3 of the
-guide); fields of the wrong type are skipped. The [form
+guide): an id of the wrong type, e.g., a number, mismatches the id that
+is given, and checksums of the wrong type are skipped. The [form
 host](../adoption/form.md) of the prototype refuses schemas from TRS with a
-mismatch.
+mismatch, and uses a schema unverified if TRS doesn't serve the
+`FileWrapper` of the primary descriptor as JSON.
 
 ## Command-line interface
 
@@ -61,7 +63,20 @@ A mismatch exits with status 1 and names each field, with both values
 (with `--json`, the error has the members `verified`, `mismatches` and
 `compared` of the result); so does an unverified schema with
 `--require-verified`. Otherwise, an unverified schema exits with status 0
-and says why it is unverified.
+and says why it is unverified. With `--json`, each mismatch names the
+`field` of `x-ga4gh-workflow`, its value in the `schema`, the value of the
+`workflow`, the `algorithm` of a checksum (`null` for the other fields) and
+the `message`, e.g., for another tool version:
+
+```json
+{
+  "field": "trs_version_id",
+  "schema": "1.0.0",
+  "workflow": "1.1.0",
+  "algorithm": null,
+  "message": "x-ga4gh-workflow.trs_version_id is '1.0.0', not '1.1.0'."
+}
+```
 
 ## Python API
 

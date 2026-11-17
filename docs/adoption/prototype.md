@@ -59,7 +59,7 @@ The host then lists the files of that tool version, finds the IO schema
 fetches it, validates it against the profile, and checks that its
 `x-ga4gh-workflow` names this tool version and descriptor type, and the
 checksum of the primary descriptor that the stub serves (with the
-[workflow block check](../tools/check-workflow.md)).
+[workflow block check](../tools/verify.md)).
 
 **What it shows:** a client finds the schema of any tool version through
 the plain TRS API, by the [publishing convention](trs.md#publishing-convention)

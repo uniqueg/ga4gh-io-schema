@@ -284,6 +284,29 @@ def input_name(source: str | Path) -> str:
     return "<stdin>" if source == STDIN else str(source)
 
 
+def read_bytes(source: str | Path) -> bytes:
+    """Read the bytes of a file or of standard input.
+
+    Args:
+        source: Path of the file, or the string ``-`` for standard input (a
+            ``Path("-")`` is a file named ``-``).
+
+    Returns:
+        The bytes.
+
+    Raises:
+        CliError: If the input can't be read.
+    """
+    try:
+        if isinstance(source, str) and source == STDIN:
+            if sys.stdin is None:
+                raise CliError(ErrorKind.IO, "Can't read - standard input is closed")
+            return sys.stdin.buffer.read()
+        return Path(source).read_bytes()
+    except OSError as exc:
+        raise read_error(exc, source) from exc
+
+
 def read_text(source: str | Path) -> str:
     """Read text from a file or from standard input.
 
@@ -297,14 +320,11 @@ def read_text(source: str | Path) -> str:
     Raises:
         CliError: If the input can't be read or isn't UTF-8.
     """
+    data = read_bytes(source)
     try:
-        if isinstance(source, str) and source == STDIN:
-            if sys.stdin is None:
-                raise CliError(ErrorKind.IO, "Can't read - standard input is closed")
-            # As UTF-8, like files, whatever the locale
-            return sys.stdin.buffer.read().decode("utf-8")
-        return Path(source).read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as exc:
+        # As UTF-8, like files, whatever the locale
+        return data.decode("utf-8")
+    except UnicodeDecodeError as exc:
         raise read_error(exc, source) from exc
 
 

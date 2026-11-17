@@ -101,6 +101,7 @@ def test_fields_missing_on_either_side_are_not_compared() -> None:
 
     assert result == WorkflowCheck()
     assert not result.verified
+    assert result.mismatch_message == ""
 
 
 @pytest.mark.parametrize(
@@ -208,7 +209,7 @@ def test_schemas_that_cant_be_compared_are_unverified(
     [
         {},
         {"x-ga4gh-workflow": "WDL"},
-        {"x-ga4gh-workflow": {"trs_tool_id": 1, "checksum": "x"}},
+        {"x-ga4gh-workflow": {"checksum": "x"}},
         {"x-ga4gh-workflow": {"checksum": [1, {"type": "sha-256"}, {"checksum": "a"}]}},
     ],
 )
@@ -225,6 +226,42 @@ def test_malformed_blocks_are_skipped(schema: dict[str, Any]) -> None:
     )
 
     assert result == WorkflowCheck()
+
+
+def test_id_of_the_wrong_type_mismatches() -> None:
+    """Test that an id that isn't a string doesn't match the given id."""
+    schema = {"x-ga4gh-workflow": {"trs_version_id": 1.0}}
+
+    result = check_workflow(schema, trs_version_id="1.0")
+
+    assert [mismatch.field for mismatch in result.mismatches] == ["trs_version_id"]
+
+
+@pytest.mark.parametrize(
+    ("descriptor", "content"),
+    [([1], None), (None, 123)],
+)
+def test_inputs_of_the_wrong_type_are_absent(descriptor: Any, content: Any) -> None:
+    """Test that a descriptor or content of the wrong type leaves it unverified.
+
+    Args:
+        descriptor: Not a FileWrapper.
+        content: Neither bytes nor text.
+    """
+    result = check_workflow(
+        schema_with(checksum=sha256(DIGEST)), descriptor=descriptor, content=content
+    )
+
+    assert result == WorkflowCheck()
+
+
+def test_lone_surrogate_in_content_is_hashed() -> None:
+    """Test that content with a lone surrogate, as JSON allows, is compared."""
+    result = check_workflow(
+        schema_with(checksum=sha256(DIGEST)), descriptor={"content": "\ud800"}
+    )
+
+    assert [mismatch.field for mismatch in result.mismatches] == ["checksum"]
 
 
 def test_duplicate_checksums_are_compared_once() -> None:

@@ -832,6 +832,43 @@ def test_load_trs_schema_checks_the_workflow_block() -> None:
             form_host.load_trs_schema(base, "other", "1.0.0", "CWL")
 
 
+def test_load_trs_schema_without_descriptor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a descriptor that can't be fetched leaves the schema unverified.
+
+    Args:
+        monkeypatch: Pytest fixture for patching module attributes.
+    """
+    demo = trs_stub.load_workflow(ROOT / "examples" / "demo")
+    fetch = form_host._fetch_json
+
+    def fail_on_descriptor(request: urllib.request.Request) -> Any:
+        """Fail on the primary descriptor, fetch anything else.
+
+        Args:
+            request: The request.
+
+        Returns:
+            The parsed answer.
+
+        Raises:
+            ValueError: For the primary descriptor, as for an answer that
+                isn't JSON.
+        """
+        if request.full_url.endswith("/descriptor"):
+            raise ValueError("not JSON")
+        return fetch(request)
+
+    monkeypatch.setattr(form_host, "_fetch_json", fail_on_descriptor)
+    with run_stub([demo]) as base:
+        schema, _ = form_host.load_trs_schema(
+            base, demo.tool_id, demo.version_id, "WDL"
+        )
+
+    assert schema["x-ga4gh-workflow"]["trs_version_id"] == demo.version_id
+
+
 def test_load_trs_schema_checks_the_checksum() -> None:
     """Test that a schema whose descriptor changed since is rejected (#85)."""
     demo = trs_stub.load_workflow(ROOT / "examples" / "demo")

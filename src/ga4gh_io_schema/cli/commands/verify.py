@@ -1,8 +1,6 @@
 """The ``verify`` subcommand: check the workflow block of a schema."""
 
 import argparse
-import sys
-from pathlib import Path
 
 from ga4gh_io_schema.cli.base import (
     ROOT,
@@ -11,7 +9,7 @@ from ga4gh_io_schema.cli.base import (
     Command,
     CommandResult,
     ErrorKind,
-    read_error,
+    read_bytes,
     read_json,
 )
 from ga4gh_io_schema.workflow import check_workflow
@@ -109,7 +107,7 @@ class VerifyCommand(Command):
         wrapper = None if args.file_wrapper is None else read_json(args.file_wrapper)
         if wrapper is not None and not isinstance(wrapper, dict):
             raise CliError(ErrorKind.VALIDATION, "The FileWrapper isn't a JSON object.")
-        content = None if args.descriptor is None else _read_bytes(args.descriptor)
+        content = None if args.descriptor is None else read_bytes(args.descriptor)
         result = check_workflow(
             schema,
             trs_tool_id=args.trs_tool_id,
@@ -119,11 +117,8 @@ class VerifyCommand(Command):
             content=content,
         )
         if result.mismatches:
-            message = " ".join(mismatch.message for mismatch in result.mismatches)
             raise CliError(
-                ErrorKind.VALIDATION,
-                f"The schema may not match the workflow: {message}",
-                extra=result.to_dict(),
+                ErrorKind.VALIDATION, result.mismatch_message, extra=result.to_dict()
             )
         if not result.verified and args.require_verified:
             raise CliError(ErrorKind.VALIDATION, UNVERIFIED, extra=result.to_dict())
@@ -133,28 +128,6 @@ class VerifyCommand(Command):
             else UNVERIFIED
         )
         return CommandResult(text=text, data=result.to_dict())
-
-
-def _read_bytes(source: str) -> bytes:
-    """Read the bytes of a file or of standard input.
-
-    Args:
-        source: Path of the file, or ``-`` for standard input.
-
-    Returns:
-        The bytes.
-
-    Raises:
-        CliError: If the input can't be read.
-    """
-    try:
-        if source == STDIN:
-            if sys.stdin is None:
-                raise CliError(ErrorKind.IO, "Can't read - standard input is closed")
-            return sys.stdin.buffer.read()
-        return Path(source).read_bytes()
-    except OSError as exc:
-        raise read_error(exc, source) from exc
 
 
 ROOT.register(VerifyCommand())
