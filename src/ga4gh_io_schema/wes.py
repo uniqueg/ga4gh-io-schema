@@ -20,6 +20,7 @@ import re
 from collections import deque
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, unquote
@@ -96,6 +97,133 @@ _MAX_REFERENCES = 32
 
 #: A location in the input values: keys of objects and indexes of arrays.
 Path = tuple[str | int, ...]
+
+
+class _Validity:
+    """Validity of subschemas for values, kept during one translation.
+
+    Attributes:
+        known: Whether each subschema is valid for each value, by the
+            identity of the subschema, the base URI against which it
+            resolves references, and the identity of the value.
+        dynamic: The number of ``$dynamicRef`` evaluated so far. The result
+            of a ``$dynamicRef`` depends on the dynamic scope, which isn't
+            part of the key: results that evaluated one aren't kept.
+    """
+
+    def __init__(self) -> None:
+        """Start with nothing known."""
+        self.known: dict[tuple[int, str, int], bool] = {}
+        self.dynamic = 0
+
+
+# Validity of subschemas for values during a translation (see
+# `_Translator.bind`); `None` outside of one
+_VALIDITY: ContextVar[_Validity | None] = ContextVar("_VALIDITY", default=None)
+
+
+def _base_uri(resolver: Resolver) -> str:
+    """Get the base URI of a resolver.
+
+    Args:
+        resolver: The resolver.
+
+    Returns:
+        The base URI against which it resolves references.
+    """
+    # `referencing` has no public accessor of the base URI
+    base_uri: str = resolver._base_uri
+    return base_uri
+
+
+def _memoised_descend(
+    self: Draft202012Validator,
+    instance: Any,
+    schema: Any,
+    path: str | int | None = None,
+    schema_path: str | int | None = None,
+    resolver: Resolver | None = None,
+) -> Iterator[jsonschema.exceptions.ValidationError]:
+    """Validate a value against a subschema, once per translation.
+
+    Replaces :meth:`Draft202012Validator.descend` in
+    :data:`_MemoisingValidator`. The translation asks, at every level of the
+    values, which branches of ``anyOf`` and ``oneOf`` and which conditions
+    of ``if`` and ``contains`` a value is valid against; validating the whole
+    value again for each would take time that grows with the size times the
+    depth of the values (issue #86). During a translation, the validity of
+    each subschema for each value is therefore kept, and a subschema that a
+    value is known to be valid against isn't validated again. Failures are
+    validated again, to report their errors.
+
+    Args:
+        self: The validator.
+        instance: The value.
+        schema: The subschema.
+        path: Location of the value relative to that of the validator.
+        schema_path: Location of the subschema relative to that of the
+            validator.
+        resolver: Resolver of the subschema, if not that of the validator.
+
+    Yields:
+        The errors, as :meth:`Draft202012Validator.descend` does.
+    """
+    validity = _VALIDITY.get()
+    errors = _DESCEND(self, instance, schema, path, schema_path, resolver)
+    if validity is None:
+        yield from errors
+        return
+    key = (id(schema), _base_uri(resolver or self._resolver), id(instance))
+    if validity.known.get(key):
+        return
+    dynamic = validity.dynamic
+    valid = True
+    for error in errors:
+        # Before the error goes out: the caller may stop at the first one. An
+        # error found before any `$dynamicRef` fails the subschema whatever
+        # the dynamic scope.
+        if valid and validity.dynamic == dynamic:
+            validity.known[key] = False
+        valid = False
+        yield error
+    if valid and validity.dynamic == dynamic:
+        validity.known[key] = True
+
+
+def _counted_dynamic_ref(
+    validator: Draft202012Validator,
+    dynamic_ref: str,
+    instance: Any,
+    schema: dict[str, Any],
+) -> Iterable[jsonschema.exceptions.ValidationError]:
+    """Count the evaluation of a ``$dynamicRef``, then evaluate it.
+
+    Args:
+        validator: The validator.
+        dynamic_ref: The value of ``$dynamicRef``.
+        instance: The value.
+        schema: The subschema with the ``$dynamicRef``.
+
+    Returns:
+        The errors, as the keyword of :class:`Draft202012Validator` gives.
+    """
+    validity = _VALIDITY.get()
+    if validity is not None:
+        validity.dynamic += 1
+    errors: Iterable[jsonschema.exceptions.ValidationError] = _DYNAMIC_REF(
+        validator, dynamic_ref, instance, schema
+    )
+    return errors
+
+
+_DESCEND = Draft202012Validator.descend
+_DYNAMIC_REF = Draft202012Validator.VALIDATORS["$dynamicRef"]
+#: Validator of the input values, which keeps the validity of subschemas
+#: during a translation (see :func:`_memoised_descend`)
+_MemoisingValidator = jsonschema.validators.extend(
+    Draft202012Validator, {"$dynamicRef": _counted_dynamic_ref}
+)
+_MemoisingValidator.descend = _memoised_descend  # type: ignore[method-assign]
 
 
 class TranslationError(ValueError):
@@ -649,7 +777,7 @@ class _Translator:
         )
         root = _Scope(schema, registry.resolver(base_uri=uri))
         self.inputs = self._descend(root, schema["properties"]["inputs"])
-        self.validator = Draft202012Validator(
+        self.validator = _MemoisingValidator(
             schema,
             registry=registry,
             format_checker=_format_checker(Draft202012Validator),
@@ -685,8 +813,14 @@ class _Translator:
                 schema has a reference that can't be resolved locally.
         """
         self._in_place_cache.clear()
-        with _fail_closed():
-            return self._bind(values)
+        # The values outlive the memo, so the identities of their parts
+        # aren't reused while it is kept
+        token = _VALIDITY.set(_Validity())
+        try:
+            with _fail_closed():
+                return self._bind(values)
+        finally:
+            _VALIDITY.reset(token)
 
     def input_keys(self) -> dict[str, list[str]]:
         """Get the keys in ``workflow_params`` that the inputs can bind to.
@@ -895,6 +1029,27 @@ class _Translator:
         # public way to validate a subschema in the context of its document.
         return self.validator.evolve(schema=scope.schema, _resolver=scope.resolver)
 
+    def _valid(self, scope: _Scope, schema: Any, value: Any) -> bool:
+        """Check whether a value is valid against a subschema of a schema.
+
+        Within :meth:`bind`, the validity of each subschema for each value is
+        computed once (see :func:`_memoised_descend`).
+
+        Args:
+            scope: The schema.
+            schema: The subschema, which ``scope`` applies in place.
+            value: The value.
+
+        Returns:
+            Whether the value is valid against the subschema.
+        """
+        validity = _VALIDITY.get()
+        key = (id(schema), _base_uri(scope.resolver), id(value))
+        if validity is not None and key in validity.known:
+            return validity.known[key]
+        errors = self._validator(scope).descend(value, schema)
+        return next(errors, None) is None
+
     def _expand(self, scopes: Iterable[_Scope], value: Any) -> list[_Scope]:
         """Collect the subschemas that apply to a value at one location.
 
@@ -934,10 +1089,9 @@ class _Translator:
                         "doesn't support."
                     )
             if "if" in schema:
-                condition = self._descend(scope, schema["if"])
-                valid = self._validator(condition).is_valid(value)
+                valid = self._valid(scope, schema["if"], value)
                 if valid:
-                    queue.append(condition)
+                    queue.append(self._descend(scope, schema["if"]))
                 branch = "then" if valid else "else"
                 if branch in schema:
                     queue.append(self._descend(scope, schema[branch]))
@@ -955,10 +1109,11 @@ class _Translator:
                 self._descend(scope, sub) for sub in _subschemas(schema, "allOf")
             )
             for keyword in ("anyOf", "oneOf"):
-                for sub in _subschemas(schema, keyword):
-                    branch = self._descend(scope, sub)
-                    if self._validator(branch).is_valid(value):
-                        queue.append(branch)
+                queue.extend(
+                    self._descend(scope, sub)
+                    for sub in _subschemas(schema, keyword)
+                    if self._valid(scope, sub, value)
+                )
         return found
 
     def _closure(self, scopes: Iterable[_Scope]) -> list[_Scope]:
@@ -1098,10 +1253,8 @@ class _Translator:
                 children.append(self._descend(scope, prefix[key]))
             elif "items" in schema:
                 children.append(self._descend(scope, schema["items"]))
-            if "contains" in schema:
-                contains = self._descend(scope, schema["contains"])
-                if self._validator(contains).is_valid(item):
-                    children.append(contains)
+            if "contains" in schema and self._valid(scope, schema["contains"], item):
+                children.append(self._descend(scope, schema["contains"]))
             return children
         matched = False
         properties = schema.get("properties")

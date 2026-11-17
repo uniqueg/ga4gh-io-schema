@@ -168,6 +168,16 @@ on every call. `tests/test_performance.py` checks that
 validation takes time linear in the size of a schema (#47), and that
 repeated calls don't set up the validation again (#66).
 
+The translation between input values and `workflow_params` (`wes.py`)
+asks, at every level of the values, which branches of `anyOf` and `oneOf`
+and which conditions of `if` and `contains` a value is valid against.
+During one translation, its validator keeps the validity of each subschema
+for each value (by their identities), so that a subtree is validated once,
+not again at every level above it (#86); results that evaluated a
+`$dynamicRef` aren't kept, as they depend on the dynamic scope.
+`tests/test_performance.py` times recursive values at several depths, and
+`tests/test_wes.py` counts the validations.
+
 To measure the time of validation, run the tests of the validator without
 coverage, which almost triples their time, and time single steps in Python
 (take the best of several calls after the first):

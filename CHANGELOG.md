@@ -303,6 +303,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Clients that use hyperjump no longer need a copy of the IO schema that
   names Draft 2020-12 to validate values, unless an embedded resource of
   the IO schema names the profile. (#61)
+- Translating `workflow_params` back into input values
+  (`from_workflow_params()`, `ga4gh-io-schema wes-validate`), and input
+  values into `workflow_params`, takes time roughly linear in the size of
+  the values, no longer in their size times their depth: the branches of
+  `anyOf` and `oneOf` that apply at each level are no longer found by
+  validating the whole subtree again. A recursive input (a string or a list
+  of such inputs) with 10,000 strings translates there and back in under
+  1 s at depth 40, instead of 37 s. Errors and results are unchanged. (#86)
 
 ## v0.2 (2026-10-13)
 

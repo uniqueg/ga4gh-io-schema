@@ -341,6 +341,39 @@ def test_translation_of_large_containers(parameter: dict[str, Any], value: Any) 
         assert from_workflow_params(schema, params) == {"parameter": value}
 
 
+@pytest.mark.parametrize("keyword", ["anyOf", "oneOf"])
+@pytest.mark.parametrize("depth", [1, 10, 40])
+def test_translation_of_recursive_values(keyword: str, depth: int) -> None:
+    """Test that values of recursive schemas translate in linear time.
+
+    An input that is a string or a list of such inputs, with 10,000 strings
+    (about 50 KB of ``workflow_params``) at several depths: under 1 s on a
+    busy laptop at each depth, there and back; before the fix of issue #86,
+    4 s at depth 1, 13 s at depth 10 and 37 s at depth 40.
+
+    Args:
+        keyword: ``anyOf`` or ``oneOf``.
+        depth: The number of nested lists.
+    """
+    schema = io_schema({"$ref": "#/$defs/n"})
+    schema["$defs"] = {
+        "n": {
+            keyword: [
+                {"type": "string"},
+                {"type": "array", "items": {"$ref": "#/$defs/n"}},
+            ]
+        }
+    }
+    schema["x-ga4gh-workflow"] = {"descriptor_type": "NFL"}
+    value: list[Any] = ["x"] * 10_000
+    for _ in range(depth - 1):
+        value = [value]
+
+    with time_budget(BUDGET * 2):
+        params = to_workflow_params(schema, {"parameter": value})
+        assert from_workflow_params(schema, params) == {"parameter": value}
+
+
 def test_time_budget_stops_slow_blocks() -> None:
     """Test that the budget stops a block that runs too long, then disarms."""
     previous = signal.getsignal(signal.SIGALRM)
