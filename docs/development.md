@@ -175,9 +175,11 @@ During one translation, its validator keeps the validity of each subschema
 for each value (by their identities), so that a valid subtree isn't
 validated again at every level above it (#86); failures are validated
 again to report their errors. Schemas with `$dynamicRef`,
-`$dynamicAnchor` or references that don't start with `#` keep nothing:
-their results can depend on the dynamic scope, which isn't part of the key
-(a `$ref` to a `$dynamicAnchor` resolves through it too).
+`$dynamicAnchor`, an `$id` below the root, or references that don't start
+with `#` keep nothing: their results can depend on the path to a
+subschema, which isn't part of the key (a `$ref` to a `$dynamicAnchor`
+resolves through the dynamic scope too, and an embedded `$id` can take the
+URI of another document).
 `tests/test_performance.py` times recursive values at several depths, and
 `tests/test_wes.py` counts the validations.
 

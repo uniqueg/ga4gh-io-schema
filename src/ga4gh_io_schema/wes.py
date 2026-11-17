@@ -132,31 +132,38 @@ def _static(schema: Any) -> bool:
     """Check that the results of a schema can't depend on the dynamic scope.
 
     The validity of a subschema for a value is kept by the subschema, its
-    base URI and the value, not by the dynamic scope. Only ``$dynamicRef``,
-    and ``$ref`` to a ``$dynamicAnchor``, resolve through the dynamic scope;
-    a schema without either keyword and with local references only (which
-    can't reach a document with them) is safe to keep results for.
+    base URI and the value, not by the path that led to it. Only
+    ``$dynamicRef``, and ``$ref`` to a ``$dynamicAnchor``, resolve through
+    the dynamic scope; and a reference may reach different documents on
+    different paths where an embedded ``$id`` takes a URI that is already
+    registered (e.g., that of a vocabulary of the profile). A schema without
+    these keywords below its root, and with references that start with
+    ``#`` only, which then stay in the document, is safe to keep results
+    for.
 
     Args:
         schema: The IO schema.
 
     Returns:
         Whether the schema has no ``$dynamicRef`` and no ``$dynamicAnchor``
-        anywhere (also as names of properties, to be safe), and only
-        references that start with ``#``.
+        anywhere and no ``$id`` below the root (also as names of
+        properties, to be safe), and only references that start with ``#``.
     """
-    stack = [schema]
+    # Each node, and whether it is the root
+    stack: list[tuple[Any, bool]] = [(schema, True)]
     while stack:
-        node = stack.pop()
+        node, root = stack.pop()
         if isinstance(node, list):
-            stack.extend(node)
+            stack.extend((item, False) for item in node)
         elif isinstance(node, dict):
-            if "$dynamicRef" in node or "$dynamicAnchor" in node:
+            if {"$dynamicRef", "$dynamicAnchor"} & node.keys():
+                return False
+            if "$id" in node and not root:
                 return False
             reference = node.get("$ref")
             if isinstance(reference, str) and not reference.startswith("#"):
                 return False
-            stack.extend(node.values())
+            stack.extend((value, False) for value in node.values())
     return True
 
 

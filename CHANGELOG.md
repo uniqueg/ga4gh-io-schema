@@ -311,11 +311,11 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   validating the whole subtree again. A recursive input (a string or a list
   of such inputs) with 10,000 strings translates there and back in under
   1 s at depth 40, instead of 37 s. Errors and results are unchanged.
-  Schemas with `$dynamicRef`, `$dynamicAnchor` or references outside the
-  document translate as before, as their results can depend on the dynamic
-  scope. The validation takes a little more of the stack: values of such a
-  recursive input are rejected as too deeply nested from about 110 levels,
-  instead of 160 (with Python's default recursion limit). (#86)
+  Schemas with `$dynamicRef`, `$dynamicAnchor`, an `$id` below the root or
+  references outside the document translate as before, as their results
+  can depend on the path to a subschema. The validation takes a little more
+  of the stack: values are rejected as too deeply nested at a somewhat
+  lower depth than before (about two thirds of it). (#86)
 
 ## v0.2 (2026-10-13)
 

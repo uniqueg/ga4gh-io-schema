@@ -1484,6 +1484,9 @@ def test_results_of_dynamic_references_are_not_kept(
         ({"properties": {"a": {"$dynamicRef": "#t"}}}, False),
         ({"$defs": {"t": {"$dynamicAnchor": "t"}}}, False),
         ({"anyOf": [{"$ref": "urn:example:s"}]}, False),
+        ({"$id": "urn:example:root", "$ref": "#/$defs/n"}, True),
+        ({"$ref": "urn:example:s"}, False),
+        ({"properties": {"a": {"$id": "urn:example:a"}}}, False),
     ],
 )
 def test_validity_is_kept_only_for_static_schemas(
