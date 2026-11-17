@@ -20,8 +20,8 @@ rules:
           - pattern: yaml.unsafe_load_all(...)
           - pattern: yaml.full_load(...)
           - pattern: yaml.full_load_all(...)
-      - pattern-not: yaml.$LOAD($S, Loader=yaml.SafeLoader, ...)
-      - pattern-not: yaml.$LOAD($S, Loader=yaml.CSafeLoader, ...)
+      - pattern-not: yaml.$LOAD(..., Loader=yaml.SafeLoader, ...)
+      - pattern-not: yaml.$LOAD(..., Loader=yaml.CSafeLoader, ...)
       - pattern-not: yaml.$LOAD($S, yaml.SafeLoader, ...)
       - pattern-not: yaml.$LOAD($S, yaml.CSafeLoader, ...)
   - id: urlopen-without-timeout

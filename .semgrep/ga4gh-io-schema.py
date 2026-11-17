@@ -30,6 +30,8 @@ yaml.load(s, Loader=yaml.CSafeLoader)
 # ok: yaml-load-without-safe-loader
 yaml.load_all(s, Loader=yaml.CSafeLoader)
 # ok: yaml-load-without-safe-loader
+yaml.load(stream=s, Loader=yaml.SafeLoader)
+# ok: yaml-load-without-safe-loader
 yaml.safe_load(s)
 
 # ruleid: urlopen-without-timeout
