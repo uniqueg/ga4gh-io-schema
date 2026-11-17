@@ -11,17 +11,19 @@ path: relative imports of a multi-file workflow resolve (RFC 3986) to URLs
 that TRS serves.
 """
 
+import json
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
 import pytest
 
-from ga4gh_io_schema.validator import load_json
 from ga4gh_io_schema.wes import trs_descriptor_url
 
-CASES = load_json(
-    Path(__file__).resolve().parent / "vectors" / "workflow-urls" / "cases.json"
+CASES: list[dict[str, Any]] = json.loads(
+    (
+        Path(__file__).resolve().parent / "vectors" / "workflow-urls" / "cases.json"
+    ).read_text(encoding="utf-8")
 )
 #: Keys that a case may have.
 CASE_KEYS = {

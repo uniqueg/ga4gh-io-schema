@@ -140,8 +140,8 @@ def write_pipeline(
     Returns:
         Path of the nf-schema file.
     """
-    for path, sheet in (sheets or {}).items():
-        file = directory / path
+    for relative, sheet in (sheets or {}).items():
+        file = directory / relative
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(json.dumps(sheet), encoding="utf-8")
     path = directory / "nextflow_schema.json"

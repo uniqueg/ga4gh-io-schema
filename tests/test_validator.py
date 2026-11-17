@@ -328,9 +328,10 @@ def test_validate_schema_uses_meta_schema_that_json_would_change() -> None:
     for _ in range(2):
         with pytest.raises(jsonschema.exceptions.SchemaError, match="not of type"):
             validate_schema({}, malformed)
-    validate_schema({}, {1: "a", "maxProperties": 0})
+    not_json: dict[Any, Any] = {1: "a", "maxProperties": 0}
+    validate_schema({}, not_json)
     with pytest.raises(jsonschema.exceptions.ValidationError, match="empty"):
-        validate_schema({"inputs": {}}, {1: "a", "maxProperties": 0})
+        validate_schema({"inputs": {}}, not_json)
     assert validator._cached_validator.cache_info().currsize == 0
 
 
