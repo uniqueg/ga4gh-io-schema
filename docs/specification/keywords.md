@@ -183,7 +183,7 @@ For example, with this IO schema:
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
   "type": "object",
   "properties": {
     "inputs": {

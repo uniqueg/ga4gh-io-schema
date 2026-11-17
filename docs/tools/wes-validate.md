@@ -139,29 +139,31 @@ limits](../security.md#regular-expressions-and-size-limits)).
 
 ```python
 from ga4gh_io_schema.wes import (
-    WorkflowParamsError,
+    TranslationError,
     error_response,
     from_workflow_params,
     get_binding,
 )
 
-binding = get_binding(
-    schema,
-    descriptor_type=request["workflow_type"],
-    descriptor_type_version=request["workflow_type_version"],
-)
 try:
+    binding = get_binding(
+        schema,
+        descriptor_type=request["workflow_type"],
+        descriptor_type_version=request["workflow_type_version"],
+    )
     values = from_workflow_params(
         schema, workflow_params, binding, allowed_schemes=["drs", "https", "s3"]
     )
-except WorkflowParamsError as error:
+except TranslationError as error:
     body = error_response(error)  # {"msg": …, "status_code": 400}
 ```
 
 `get_binding()` raises a `TranslationError` for a binding that can't be
 used (e.g., a `workflow_type` that differs from the schema, or `GALAXY`);
-`error_response()` builds the body for it too. A `WorkflowParamsError` names
-the location of the offending value in `workflow_params` as `pointer`. A
+`from_workflow_params()` raises a `WorkflowParamsError`, a subclass, for
+a request that it rejects. `error_response()` builds the body for both.
+A `WorkflowParamsError` names the location of the offending value in
+`workflow_params` as `pointer`. A
 schema that doesn't comply with the profile raises
 `jsonschema.exceptions.ValidationError`: it is an error of the deployment,
 not of the request. The [test

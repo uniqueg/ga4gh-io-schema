@@ -31,6 +31,7 @@ from referencing import Registry
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
+from ga4gh_io_schema.patterns import ValuesValidator, search
 from ga4gh_io_schema.validator import (
     _format_checker,
     build_registry,
@@ -238,7 +239,7 @@ def _recorded(
 _DESCEND = Draft202012Validator.descend
 #: Validator of the input values, which keeps the validity of subschemas
 #: during a translation (see :func:`_memoised_descend`)
-_MemoisingValidator = jsonschema.validators.extend(Draft202012Validator)
+_MemoisingValidator = jsonschema.validators.extend(ValuesValidator)
 _MemoisingValidator.descend = _memoised_descend  # type: ignore[method-assign]
 
 
@@ -1312,7 +1313,7 @@ class _Translator:
         patterns = schema.get("patternProperties")
         # The values passed validation, which compiled the same patterns
         for pattern, sub in patterns.items() if isinstance(patterns, dict) else ():
-            if re.search(pattern, key):
+            if search(pattern, key):
                 children.append(self._descend(scope, sub))
                 matched = True
         if not matched and "additionalProperties" in schema:

@@ -803,6 +803,57 @@ def test_main_rejects_forbidden_schemes() -> None:
     assert exc.value.code == 2
 
 
+def test_patterns_are_ecma_262() -> None:
+    r"""Test ECMA-262 patterns: ``\p{L}`` works, ``$`` rejects a newline."""
+    schema = copy.deepcopy(SAMPLES_SCHEMA)
+    inputs = schema["properties"]["inputs"]
+    inputs["properties"] = {
+        "name": {"type": "string", "pattern": r"^\p{L}+$"},
+        "tag": {"type": "string", "pattern": "^[a-z]+$"},
+    }
+    inputs.pop("required", None)
+
+    _, errors = form_host.check_values(schema, {"name": "äbc", "tag": "abc\n"})
+
+    assert [error["pointer"] for error in errors] == ["/tag"]
+
+
+@pytest.mark.parametrize(
+    ("tag", "value", "message"),
+    [
+        ({"type": "string", "pattern": "("}, "a", "isn't a valid ECMA-262"),
+        (
+            {
+                "type": "object",
+                "patternProperties": {"(": True},
+                "unevaluatedProperties": False,
+            },
+            {"a": 1},
+            "isn't a valid ECMA-262",
+        ),
+    ],
+)
+def test_invalid_pattern_is_an_error(
+    tag: dict[str, Any], value: Any, message: str
+) -> None:
+    """Test that an invalid pattern is reported, not raised.
+
+    Args:
+        tag: The schema of the input.
+        value: The value of the input.
+        message: Part of the expected message.
+    """
+    schema = copy.deepcopy(SAMPLES_SCHEMA)
+    inputs = schema["properties"]["inputs"]
+    inputs["properties"] = {"tag": tag}
+    inputs.pop("required", None)
+
+    _, errors = form_host.check_values(schema, {"tag": value})
+
+    assert errors[0]["pointer"] == ""
+    assert message in errors[0]["message"]
+
+
 DEMO_PICK = "tool=ga4gh-io-schema-demo&version=1.0.0&type=WDL"
 DEMO_ENTRY = {
     "tool_id": "ga4gh-io-schema-demo",
