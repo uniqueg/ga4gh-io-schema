@@ -452,9 +452,21 @@ def _prepare(schema: dict[str, Any], binding: EngineBinding | None) -> EngineBin
 
 
 def trs_descriptor_url(
-    trs_url: str, tool_id: str, version_id: str, descriptor_type: str
+    trs_url: str,
+    tool_id: str,
+    version_id: str,
+    descriptor_type: str,
+    primary_descriptor_path: str | None = None,
 ) -> str:
     """Build the TRS URL of the plain primary descriptor of a tool version.
+
+    With the path of the primary descriptor, the URL is that of
+    ``GET .../PLAIN_{type}/descriptor/{relative_path}`` for the primary
+    descriptor, so that relative imports of a multi-file workflow (e.g., a
+    WDL ``import "tasks/sub.wdl"``) resolve (RFC 3986) to files that TRS
+    serves under ``.../descriptor/``. Without it, the URL is that of
+    ``GET .../PLAIN_{type}/descriptor``, which suits single-file workflows
+    only (see "Workflow URLs in TRS" of the page "Engine bindings").
 
     Args:
         trs_url: Base URL of the TRS API, e.g.,
@@ -462,16 +474,34 @@ def trs_descriptor_url(
         tool_id: Id of the tool (``Tool.id``).
         version_id: Id of the tool version (``ToolVersion.id``).
         descriptor_type: TRS descriptor type, e.g., ``WDL``.
+        primary_descriptor_path: Path of the primary descriptor as TRS lists
+            it (``ToolFile.path`` of the ``PRIMARY_DESCRIPTOR``), e.g.,
+            ``x-ga4gh-workflow.primary_descriptor_path``. A path with a
+            leading ``/`` gives the URL without path: TRS servers differ in
+            how they serve such paths, and the path without the ``/`` is
+            not one that TRS listed.
 
     Returns:
-        The URL of ``GET /tools/{id}/versions/{version_id}/PLAIN_{type}/descriptor``,
-        with the ids percent-encoded.
+        The URL, with the ids and each segment of the path percent-encoded.
+
+    Raises:
+        ValueError: If the path is empty, or has empty, ``.`` or ``..``
+            segments, which would change where relative imports resolve.
     """
-    return (
+    url = (
         f"{trs_url.rstrip('/')}/tools/{quote(tool_id, safe='')}"
         f"/versions/{quote(version_id, safe='')}"
         f"/PLAIN_{descriptor_type}/descriptor"
     )
+    if primary_descriptor_path is None or primary_descriptor_path.startswith("/"):
+        return url
+    segments = primary_descriptor_path.split("/")
+    if any(segment in ("", ".", "..") for segment in segments):
+        raise ValueError(
+            "The primary descriptor path must be a relative file path without "
+            f"empty, '.' or '..' segments, not {primary_descriptor_path!r}."
+        )
+    return f"{url}/{'/'.join(quote(segment, safe='') for segment in segments)}"
 
 
 def check_file_value(

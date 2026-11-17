@@ -72,8 +72,8 @@ needs to know two things about the WES:
 
 - **TRS URL support:** whether the server fetches a remote `workflow_url`
   over `http(s)` at all, and, for multi-file workflows, also the files that
-  the primary descriptor imports, relative to that URL (see [Run
-  requests](../specification/engine-bindings.md#run-requests)). Some
+  the primary descriptor imports, relative to that URL (see [Workflow URLs in
+  TRS](../specification/engine-bindings.md#workflow-urls-in-trs)). Some
   servers take only workflows attached to the request
   (`workflow_attachment`), or only workflows from a list of their own.
 - **Reachable hosts:** whether the server can reach the host of the TRS,

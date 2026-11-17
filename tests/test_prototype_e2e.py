@@ -51,7 +51,7 @@ PICK = "?tool=ga4gh-io-schema-demo&version=1.0.0&type=WDL"
 #: service name of the stub in prototype/compose.yaml).
 WORKFLOW_URL = (
     "http://trs-stub:8080/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0"
-    "/PLAIN_WDL/descriptor"
+    "/PLAIN_WDL/descriptor/demo.wdl"
 )
 #: The values of the demo.
 VALUES = json.loads((DEMO / "values.json").read_text("utf-8"))
