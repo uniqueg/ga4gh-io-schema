@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+version: 2
+# No entry sets `target-branch`: pull requests go to the default branch
+# (`dev`, after the move to elixir-cloud-aai) anyway, and while
+# `target-branch` is set, GitHub doesn't apply the entry's options
+# (`labels`, `ignore`, ...) to security updates
+updates:
+  # Dependencies in `pyproject.toml` and the lock (`uv.lock`), updated
+  # together
+  - package-ecosystem: uv
+    directory: /
+    labels: ["type: dependencies"]
+    schedule:
+      interval: monthly
+    versioning-strategy: increase-if-necessary
+    groups:
+      # Dependencies of the documentation (the `docs` extra), in pull
+      # requests of their own
+      docs-dependencies:
+        patterns: [
+          "griffelib", "mkdocs", "mkdocs-*", "mkdocstrings",
+          "mkdocstrings-*", "pymdown-extensions",
+        ]
+      # Dependencies match the first group listed
+      python-dependencies:
+        patterns: ["*"]
+  # Actions in the workflows, including the pins of the shared actions of
+  # `elixir-cloud-aai/.github` (to the commits of its releases,
+  # `@<commit> # vX.Y.Z`)
+  - package-ecosystem: github-actions
+    directory: /
+    labels: ["type: dependencies"]
+    schedule:
+      interval: monthly
+    groups:
+      github-actions:
+        patterns: ["*"]
+  # The JavaScript validators of the tests (`tests/js/package.json`, pinned
+  # exactly, and `package-lock.json`); `docs/tools/javascript.md` lists
+  # their results, so check it when they change
+  - package-ecosystem: npm
+    directory: /tests/js
+    labels: ["type: dependencies"]
+    schedule:
+      interval: monthly
+    groups:
+      npm:
+        patterns: ["*"]
+  # The base image of the prototype (`prototype/Dockerfile`)
+  - package-ecosystem: docker
+    directory: /prototype
+    labels: ["type: dependencies"]
+    schedule:
+      interval: monthly
+    groups:
+      docker:
+        patterns: ["*"]
+  # Hook revisions in `.pre-commit-config.yaml`
+  - package-ecosystem: pre-commit
+    directory: /
+    labels: ["type: dependencies"]
+    schedule:
+      interval: monthly
+    groups:
+      pre-commit:
+        patterns: ["*"]
