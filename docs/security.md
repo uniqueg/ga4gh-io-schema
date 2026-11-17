@@ -33,6 +33,8 @@ The `pattern` and `patternProperties` keywords run regular expressions from the 
 - Servers SHOULD reject schemas with patterns longer than a limit set by the deployment (e.g., 1,000 characters).
 - Servers MUST limit the size of the `workflow_params` they validate (e.g., 1 MiB) and SHOULD limit the depth of nested values; requests above the limits are rejected before validation.
 
+The size limit bounds the time of validation only if that time grows linearly with the size of the request. A translator that finds the branches of `anyOf` and `oneOf` that apply at each level by validating the value below again takes time that grows with the size times the depth. The `ga4gh-io-schema` package keeps the results of such checks during a translation, so its time stays linear ([#86](https://github.com/uniqueg/ga4gh-io-schema/issues/86)).
+
 ## URIs and file references
 
 The `uri` format of JSON Schema accepts any scheme of [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986), including `javascript:`, `data:` and `file:`. Validation against `format: uri` therefore doesn't make a reference safe to use, and many validators don't check formats at all.

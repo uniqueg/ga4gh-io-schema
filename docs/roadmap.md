@@ -53,6 +53,19 @@ of the repository lists each removal as a breaking change.
   is open. The GA4GH
   [AI Work Stream](https://www.ga4gh.org/news_item/ga4gh-launches-new-work-stream-to-support-responsible-ai-in-genomics-and-health/)
   would be the place to discuss it.
+- **How does a client learn whether a WES fetches TRS URLs?** A run request
+  is only runnable if the WES server can fetch its `workflow_url`, and the
+  imports of a multi-file workflow; the WES API gives a client no way to
+  learn whether a server resolves TRS URLs or which TRS hosts it reaches
+  (see [Can the WES fetch the
+  workflow?](adoption/wes.md#can-the-wes-fetch-the-workflow)). Deployments
+  tell clients by configuration or deployment-specific conventions today.
+  A field of the WES `service-info`, e.g., the TRS base URLs (or hosts)
+  from which the server fetches workflows, with a value for "any", would
+  let generic clients decide before they submit. This is a change to WES,
+  for the GA4GH Federated Analysis Work Stream, to propose next to the other
+  WES change of this work (structured errors, in
+  [ga4gh/workflow-execution-service-schemas#226](https://github.com/ga4gh/workflow-execution-service-schemas/pull/226)).
 
 ## Document history
 
