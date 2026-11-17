@@ -290,6 +290,8 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   configuration, service registry, `service-info` tags), and the fallback
   with `workflow_attachment`; an open question in the roadmap for a WES
   `service-info` field. (#84)
+- Prototype evaluation: each gap links to its issue (#82 to #85) and, for
+  the fixed ones, to the pull request that closed it. (#74)
 
 ### Fixed
 
