@@ -23,7 +23,10 @@ found = find_schema_file(files)
 ```
 
 `None` means that the tool version has no IO schema for the descriptor
-type (or several files of type `IO_SCHEMA`). The test vectors of the rules
+type (or several files of type `IO_SCHEMA`, or several of type `OTHER` at
+the conventional path). `find_primary_descriptor_path(files)` returns the
+path of the primary descriptor as listed, for the `workflow_url` of run
+requests (`ga4gh_io_schema.wes.trs_descriptor_url`). The test vectors of the rules
 are in `tests/vectors/trs-files/cases.json`. The [demo with
 TRS-Filer](../adoption/demo-trs-filer.md) uses the module in a complete
 client (`examples/demo/trs_client.py`).

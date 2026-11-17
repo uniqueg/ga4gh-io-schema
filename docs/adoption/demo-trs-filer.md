@@ -78,11 +78,11 @@ An example, with TRS-Filer from the branch that adds `IO_SCHEMA` on port
 18082:
 
 ```text
-== Register the demo workflow (I/O Schema of type IO_SCHEMA)
+== Register the demo workflow (IO schema of type IO_SCHEMA)
 http://127.0.0.1:18082/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/descriptor/ga4gh-io.schema.json
-== Find the I/O Schema as a client and build the run request
+== Find the IO schema as a client and build the run request
 1. Files of the tool version: [{"file_type": "PRIMARY_DESCRIPTOR", "path": "demo.wdl"}, {"file_type": "IO_SCHEMA", "path": "ga4gh-io.schema.json"}]
-2. I/O Schema: ga4gh-io.schema.json (file type IO_SCHEMA)
+2. IO schema: ga4gh-io.schema.json (file type IO_SCHEMA)
 3. Valid against the profile: https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json
 4. Bound to the tool version; checksum matches
 5. Run request (not submitted):
@@ -97,7 +97,7 @@ http://127.0.0.1:18082/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WD
   },
   "workflow_type": "WDL",
   "workflow_type_version": "1.1",
-  "workflow_url": "http://127.0.0.1:18082/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/PLAIN_WDL/descriptor"
+  "workflow_url": "http://127.0.0.1:18082/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/PLAIN_WDL/descriptor/demo.wdl"
 }
 ```
 

@@ -11,7 +11,8 @@ the file of type ``IO_SCHEMA``, or else ``ga4gh-io.schema.json`` of type
 ``OTHER`` next to the primary descriptor), fetch it, validate it against the
 profile, check its ``x-ga4gh-workflow`` against the tool version and the
 checksum of the primary descriptor, and turn input values into a WES run
-request whose ``workflow_url`` is the TRS URL of the primary descriptor.
+request whose ``workflow_url`` is the TRS URL of the plain primary
+descriptor, by its path.
 
 Usage::
 
@@ -34,7 +35,7 @@ from typing import Any
 from demo_http import HTTPError, request_json
 from jsonschema.exceptions import ValidationError
 
-from ga4gh_io_schema.trs import find_schema_file
+from ga4gh_io_schema.trs import find_primary_descriptor_path, find_schema_file
 from ga4gh_io_schema.validator import validate_schema
 from ga4gh_io_schema.wes import build_run_request, trs_descriptor_url
 
@@ -109,7 +110,7 @@ def _sha256(wrapper: Any) -> set[str]:
 
 def discover(
     trs_url: str, tool_id: str, version_id: str, descriptor_type: str
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], str | None]:
     """Find, fetch and check the IO schema of a tool version in TRS.
 
     Args:
@@ -120,7 +121,8 @@ def discover(
 
     Returns:
         The IO schema, valid against the profile and bound to the tool
-        version.
+        version, and the path of the primary descriptor as TRS lists it
+        (``None`` if it lists none), for the ``workflow_url``.
 
     Raises:
         HTTPError: If a request to TRS fails.
@@ -171,7 +173,7 @@ def discover(
             )
     else:
         _report("4. Bound to the tool version; no checksum to compare")
-    return schema
+    return schema, find_primary_descriptor_path(files)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -202,11 +204,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         values = json.loads(args.values.read_text(encoding="utf-8"))
-        schema = discover(
+        schema, primary = discover(
             args.trs_url, args.tool_id, args.version_id, args.descriptor_type
         )
+        # By the path of the primary descriptor, so that imports resolve
         url = trs_descriptor_url(
-            args.trs_url, args.tool_id, args.version_id, args.descriptor_type
+            args.trs_url, args.tool_id, args.version_id, args.descriptor_type, primary
         )
         request = build_run_request(schema, values, workflow_url=url)
     except ValidationError as exc:

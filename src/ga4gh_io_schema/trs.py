@@ -76,6 +76,34 @@ def normalise_path(path: Any) -> str | None:
     return "/".join(segments)
 
 
+def find_primary_descriptor_path(files: Any) -> str | None:
+    """Find the path of the primary descriptor in the files of a TRS tool version.
+
+    For the ``workflow_url`` of run requests (see
+    :func:`ga4gh_io_schema.wes.trs_descriptor_url`), which takes the path as
+    TRS lists it.
+
+    Args:
+        files: The answer of ``GET .../{type}/files``: a list of ``ToolFile``
+            entries; anything else has no primary descriptor.
+
+    Returns:
+        The path, as listed (not normalised), of the first entry of type
+        ``PRIMARY_DESCRIPTOR`` whose path is a string, or ``None`` if there
+        is none.
+    """
+    if not isinstance(files, list):
+        return None
+    for entry in files:
+        if (
+            isinstance(entry, dict)
+            and entry.get("file_type") == PRIMARY_DESCRIPTOR_FILE_TYPE
+            and isinstance(entry.get("path"), str)
+        ):
+            return entry["path"]
+    return None
+
+
 def find_schema_file(files: Any) -> SchemaFile | None:
     """Find the entry of the IO schema in the files of a TRS tool version.
 

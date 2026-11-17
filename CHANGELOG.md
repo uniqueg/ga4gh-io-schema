@@ -285,6 +285,21 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   schema as `IO_SCHEMA` with `--schema-file-type IO_SCHEMA`, and
   `trs_client.py` and a new page show discovery with TRS-Filer end to end.
   (#82)
+- Engine bindings, "Workflow URLs in TRS": the recommended `workflow_url`
+  is the plain primary descriptor by its path,
+  `.../PLAIN_{type}/descriptor/{path}`, so that relative imports of
+  multi-file workflows (e.g., a WDL import) resolve (RFC 3986) to files
+  that TRS serves; the bare `.../PLAIN_{type}/descriptor` is for
+  single-file workflows. `trs_descriptor_url` takes the path, and
+  `wes-params --trs-url`, the form host and the TRS stub use it (from
+  `primary_descriptor_path`, or from the TRS file list). New test vectors
+  in `tests/vectors/workflow-urls/`, with imports. (#83)
+- WES guide, "Can the WES fetch the workflow?": what a client must know
+  about a WES before it sends a TRS URL as `workflow_url` (TRS URL
+  support, reachable hosts), how deployments tell it today (client
+  configuration, service registry, `service-info` tags), and the fallback
+  with `workflow_attachment`; an open question in the roadmap for a WES
+  `service-info` field. (#84)
 
 ### Fixed
 
@@ -313,6 +328,19 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Clients that use hyperjump no longer need a copy of the IO schema that
   names Draft 2020-12 to validate values, unless an embedded resource of
   the IO schema names the profile. (#61)
+- Translating `workflow_params` back into input values
+  (`from_workflow_params()`, `ga4gh-io-schema wes-validate`), and input
+  values into `workflow_params`, takes time roughly linear in the size of
+  the values, no longer in their size times their depth: the branches of
+  `anyOf` and `oneOf` that apply at each level are no longer found by
+  validating the whole subtree again. A recursive input (a string or a list
+  of such inputs) with 10,000 strings translates there and back in under
+  1 s at depth 40, instead of 37 s. Errors and results are unchanged.
+  Schemas with `$dynamicRef`, `$dynamicAnchor`, an `$id` below the root or
+  references outside the document translate as before, as their results
+  can depend on the path to a subschema. The validation takes a little more
+  of the stack: values are rejected as too deeply nested at a somewhat
+  lower depth than before (about two thirds of it). (#86)
 
 ## v0.2 (2026-10-13)
 

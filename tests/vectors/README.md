@@ -31,10 +31,18 @@ conformance suite.
   answer of `GET .../{type}/files`, a list of TRS `ToolFile` entries) and
   the `schemaFile` that a client finds: its `path` as listed and its
   `file_type`, or `null` for none.
+- `workflow-urls/cases.json`: the `workflow_url` of a run request from
+  TRS. Each case has a `name`, the TRS base URL (`trsUrl`), `toolId`,
+  `versionId`, `descriptorType` and an optional `primaryDescriptorPath`, and
+  either the expected `workflowUrl` or `"error": true` (the path must be
+  rejected). Optional `imports` pair a relative `reference` in the primary
+  descriptor (e.g., a WDL import) with the `url` that it resolves to
+  against `workflowUrl` (RFC 3986).
 
 Compare JSON documents, not their text. Error messages are not part of the
 vectors. The rules are described in the
-[Engine bindings](https://ga4gh-io-schema.readthedocs.io/en/latest/specification/engine-bindings/),
+[Engine bindings](https://ga4gh-io-schema.readthedocs.io/en/latest/specification/engine-bindings/)
+(including "Workflow URLs in TRS"),
 [File references](https://ga4gh-io-schema.readthedocs.io/en/latest/specification/files/#values)
 and [TRS](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/trs/#matching-file-entries)
 pages of the documentation.

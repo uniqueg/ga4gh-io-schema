@@ -18,6 +18,7 @@ from ga4gh_io_schema.trs import (
     IO_SCHEMA_FILE_TYPE,
     OTHER_FILE_TYPE,
     SchemaFile,
+    find_primary_descriptor_path,
     find_schema_file,
     normalise_path,
 )
@@ -96,3 +97,29 @@ def test_find_schema_file_skips_entries_that_are_no_objects() -> None:
         {"path": "ga4gh-io.schema.json", "file_type": "OTHER"},
     ]
     assert find_schema_file(files) == SchemaFile("ga4gh-io.schema.json", "OTHER")
+
+
+@pytest.mark.parametrize(
+    ("files", "expected"),
+    [
+        (
+            [
+                {"path": "ga4gh-io.schema.json", "file_type": "IO_SCHEMA"},
+                {"path": 5, "file_type": "PRIMARY_DESCRIPTOR"},
+                "main.wdl",
+                {"path": "./wdl/main.wdl", "file_type": "PRIMARY_DESCRIPTOR"},
+            ],
+            "./wdl/main.wdl",
+        ),
+        ([{"path": "ga4gh-io.schema.json", "file_type": "IO_SCHEMA"}], None),
+        ({"path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR"}, None),
+    ],
+)
+def test_find_primary_descriptor_path(files: Any, expected: str | None) -> None:
+    """Test that the path of the primary descriptor is found as listed.
+
+    Args:
+        files: The answer of ``GET .../{type}/files``.
+        expected: The path, or ``None``.
+    """
+    assert find_primary_descriptor_path(files) == expected

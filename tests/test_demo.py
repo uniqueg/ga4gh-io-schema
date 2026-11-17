@@ -714,7 +714,7 @@ def test_trs_client(
     request = json.loads(captured.out)
     assert request["workflow_url"] == (
         f"{mock.url}{API}/tools/ga4gh-io-schema-demo/versions/1.0.0"
-        "/PLAIN_WDL/descriptor"
+        "/PLAIN_WDL/descriptor/demo.wdl"
     )
     assert request["workflow_params"] == to_workflow_params(SCHEMA, VALUES)
     assert f"(file type {file_type})" in captured.err
