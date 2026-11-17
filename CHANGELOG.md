@@ -275,6 +275,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   those of the wrong `class`. "File references" now says, like the engine
   bindings, that a branch of `anyOf` or `oneOf` that a value isn't valid
   against doesn't make it a file value. (#67)
+- Engine bindings, "Workflow URLs in TRS": the recommended `workflow_url`
+  is the plain primary descriptor by its path,
+  `.../PLAIN_{type}/descriptor/{path}`, so that relative imports of
+  multi-file workflows (e.g., a WDL import) resolve (RFC 3986) to files
+  that TRS serves; the bare `.../PLAIN_{type}/descriptor` is for
+  single-file workflows. `trs_descriptor_url` takes the path, and
+  `wes-params --trs-url`, the form host and the TRS stub use it (from
+  `primary_descriptor_path`, or from the TRS file list). New test vectors
+  in `tests/vectors/workflow-urls/`, with imports. (#83)
 
 ### Fixed
 

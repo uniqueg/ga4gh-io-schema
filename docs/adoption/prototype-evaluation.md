@@ -68,6 +68,8 @@ they are opened.
    `.../descriptor/tasks/sub.wdl`. The demo is one file, so the prototype
    didn't hit this; it follows from URL resolution (RFC 3986) and needs a
    decision in [Run requests](../specification/engine-bindings.md#run-requests).
+   Decided in 0.3: the form with the path is recommended ([Workflow URLs in
+   TRS](../specification/engine-bindings.md#workflow-urls-in-trs)).
 3. **Can the WES fetch the `workflow_url`? (docs).** The run request is
    only useful if the WES can fetch the TRS URL. In the prototype, the stub
    is reachable inside the stack only, so the stack sends nothing by

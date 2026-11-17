@@ -285,7 +285,7 @@ def test_workflow_url_from_trs_or_the_descriptor_path() -> None:
     trs = "http://trs:8080/ga4gh/trs/v2/"
     assert form_host.workflow_url(DEMO_SCHEMA, trs) == (
         "http://trs:8080/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0"
-        "/PLAIN_WDL/descriptor"
+        "/PLAIN_WDL/descriptor/demo.wdl"
     )
     assert form_host.workflow_url(DEMO_SCHEMA) == "demo.wdl"
     schema = copy.deepcopy(DEMO_SCHEMA)
@@ -783,6 +783,19 @@ def test_main_rejects_bad_schemas(
     assert form_host.main(["--schema", str(tmp_path / "missing.json")]) == 1
 
 
+def test_main_rejects_a_bad_primary_descriptor_path(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a path with ``..`` can't go into a TRS workflow URL."""
+    schema = copy.deepcopy(DEMO_SCHEMA)
+    schema["x-ga4gh-workflow"]["primary_descriptor_path"] = "../demo.wdl"
+    path = tmp_path / "schema.json"
+    path.write_text(json.dumps(schema), encoding="utf-8")
+    argv = ["--schema", str(path), "--trs-url", "http://trs/ga4gh/trs/v2"]
+    assert form_host.main(argv) == 1
+    assert "primary descriptor path" in capsys.readouterr().err
+
+
 def test_main_rejects_forbidden_schemes() -> None:
     """Test that schemes that can't be allowed are an argument error."""
     with pytest.raises(SystemExit) as exc:
@@ -817,7 +830,7 @@ def test_load_trs_schema(trs: str) -> None:
     schema, url = form_host.load_trs_schema(trs, "ga4gh-io-schema-demo", "1.0.0", "WDL")
     assert schema == DEMO_SCHEMA
     assert url == (
-        f"{trs}/tools/ga4gh-io-schema-demo/versions/1.0.0/PLAIN_WDL/descriptor"
+        f"{trs}/tools/ga4gh-io-schema-demo/versions/1.0.0/PLAIN_WDL/descriptor/demo.wdl"
     )
 
 
@@ -845,10 +858,35 @@ def test_load_trs_schema_takes_entries_with_more_fields(
     monkeypatch.setattr(form_host, "_fetch_json", lambda *args: files)
     sources = []
     monkeypatch.setattr(form_host, "load_schema", lambda s: sources.append(s) or {})
-    form_host.load_trs_schema("http://trs", "t", "v", "WDL")
+    _, url = form_host.load_trs_schema("http://trs", "t", "v", "WDL")
     assert sources == [
         "http://trs/tools/t/versions/v/WDL/descriptor/ga4gh-io.schema.json"
     ]
+    assert url == "http://trs/tools/t/versions/v/PLAIN_WDL/descriptor/main.wdl"
+
+
+def test_load_trs_schema_names_a_nested_primary_descriptor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test the workflow URL of a primary descriptor in a directory.
+
+    The URL ends in the path that TRS lists, so that a relative import of a
+    multi-file workflow resolves to a file of the tool version.
+    """
+    files = [
+        {"path": "workflows/main.wdl", "file_type": "PRIMARY_DESCRIPTOR"},
+        {"path": "workflows/tasks/sub.wdl", "file_type": "SECONDARY_DESCRIPTOR"},
+        {"path": "workflows/ga4gh-io.schema.json", "file_type": "OTHER"},
+    ]
+    monkeypatch.setattr(form_host, "_fetch_json", lambda *args: files)
+    monkeypatch.setattr(form_host, "load_schema", lambda source: {})
+    _, url = form_host.load_trs_schema("http://trs", "t", "v", "WDL")
+    assert url == (
+        "http://trs/tools/t/versions/v/PLAIN_WDL/descriptor/workflows/main.wdl"
+    )
+    assert urllib.parse.urljoin(url, "tasks/sub.wdl") == (
+        "http://trs/tools/t/versions/v/PLAIN_WDL/descriptor/workflows/tasks/sub.wdl"
+    )
 
 
 @pytest.mark.parametrize("ids", [("..", "v", "WDL"), ("t", ".", "WDL"), ("t", "v", "")])
@@ -893,7 +931,7 @@ def test_host_picks_a_workflow_from_trs(trs: str) -> None:
         assert request == {
             **DEMO_REQUEST,
             "workflow_url": f"{trs}/tools/ga4gh-io-schema-demo/versions/1.0.0"
-            "/PLAIN_WDL/descriptor",
+            "/PLAIN_WDL/descriptor/demo.wdl",
         }
         status, _, _ = _request(f"{host}/api/params", body, "POST")
         assert status == 404

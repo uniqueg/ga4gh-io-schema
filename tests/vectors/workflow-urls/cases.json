@@ -1,0 +1,142 @@
+[
+  {
+    "name": "single-file-bare",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "demo",
+    "versionId": "1.0.0",
+    "descriptorType": "WDL",
+    "workflowUrl": "https://trs.example.org/ga4gh/trs/v2/tools/demo/versions/1.0.0/PLAIN_WDL/descriptor"
+  },
+  {
+    "name": "single-file-with-path",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "demo",
+    "versionId": "1.0.0",
+    "descriptorType": "WDL",
+    "primaryDescriptorPath": "demo.wdl",
+    "workflowUrl": "https://trs.example.org/ga4gh/trs/v2/tools/demo/versions/1.0.0/PLAIN_WDL/descriptor/demo.wdl"
+  },
+  {
+    "name": "wdl-import",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2/",
+    "toolId": "variant-calling",
+    "versionId": "1.2.0",
+    "descriptorType": "WDL",
+    "primaryDescriptorPath": "main.wdl",
+    "workflowUrl": "https://trs.example.org/ga4gh/trs/v2/tools/variant-calling/versions/1.2.0/PLAIN_WDL/descriptor/main.wdl",
+    "imports": [
+      {
+        "reference": "tasks/align.wdl",
+        "url": "https://trs.example.org/ga4gh/trs/v2/tools/variant-calling/versions/1.2.0/PLAIN_WDL/descriptor/tasks/align.wdl"
+      }
+    ]
+  },
+  {
+    "name": "wdl-import-without-path-misses",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "variant-calling",
+    "versionId": "1.2.0",
+    "descriptorType": "WDL",
+    "workflowUrl": "https://trs.example.org/ga4gh/trs/v2/tools/variant-calling/versions/1.2.0/PLAIN_WDL/descriptor",
+    "imports": [
+      {
+        "reference": "tasks/align.wdl",
+        "url": "https://trs.example.org/ga4gh/trs/v2/tools/variant-calling/versions/1.2.0/PLAIN_WDL/tasks/align.wdl"
+      }
+    ]
+  },
+  {
+    "name": "nested-primary-descriptor",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "#workflow/example.org/variant-calling",
+    "versionId": "1.2.0",
+    "descriptorType": "WDL",
+    "primaryDescriptorPath": "workflows/variant_calling.wdl",
+    "workflowUrl": "https://trs.example.org/ga4gh/trs/v2/tools/%23workflow%2Fexample.org%2Fvariant-calling/versions/1.2.0/PLAIN_WDL/descriptor/workflows/variant_calling.wdl",
+    "imports": [
+      {
+        "reference": "tasks/align.wdl",
+        "url": "https://trs.example.org/ga4gh/trs/v2/tools/%23workflow%2Fexample.org%2Fvariant-calling/versions/1.2.0/PLAIN_WDL/descriptor/workflows/tasks/align.wdl"
+      },
+      {
+        "reference": "../common/qc.wdl",
+        "url": "https://trs.example.org/ga4gh/trs/v2/tools/%23workflow%2Fexample.org%2Fvariant-calling/versions/1.2.0/PLAIN_WDL/descriptor/common/qc.wdl"
+      }
+    ]
+  },
+  {
+    "name": "cwl-run-reference",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "align",
+    "versionId": "2",
+    "descriptorType": "CWL",
+    "primaryDescriptorPath": "/Dockstore.cwl",
+    "workflowUrl": "https://trs.example.org/ga4gh/trs/v2/tools/align/versions/2/PLAIN_CWL/descriptor/Dockstore.cwl",
+    "imports": [
+      {
+        "reference": "tools/bwa-mem.cwl",
+        "url": "https://trs.example.org/ga4gh/trs/v2/tools/align/versions/2/PLAIN_CWL/descriptor/tools/bwa-mem.cwl"
+      }
+    ]
+  },
+  {
+    "name": "path-segments-percent-encoded",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "demo",
+    "versionId": "1.0.0",
+    "descriptorType": "WDL",
+    "primaryDescriptorPath": "my workflow/main#1?.wdl",
+    "workflowUrl": "https://trs.example.org/ga4gh/trs/v2/tools/demo/versions/1.0.0/PLAIN_WDL/descriptor/my%20workflow/main%231%3F.wdl",
+    "imports": [
+      {
+        "reference": "sub.wdl",
+        "url": "https://trs.example.org/ga4gh/trs/v2/tools/demo/versions/1.0.0/PLAIN_WDL/descriptor/my%20workflow/sub.wdl"
+      }
+    ]
+  },
+  {
+    "name": "error-dot-dot-segment",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "demo",
+    "versionId": "1.0.0",
+    "descriptorType": "WDL",
+    "primaryDescriptorPath": "../main.wdl",
+    "error": true
+  },
+  {
+    "name": "error-dot-segment",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "demo",
+    "versionId": "1.0.0",
+    "descriptorType": "WDL",
+    "primaryDescriptorPath": "workflows/./main.wdl",
+    "error": true
+  },
+  {
+    "name": "error-empty-segment",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "demo",
+    "versionId": "1.0.0",
+    "descriptorType": "WDL",
+    "primaryDescriptorPath": "workflows//main.wdl",
+    "error": true
+  },
+  {
+    "name": "error-directory",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "demo",
+    "versionId": "1.0.0",
+    "descriptorType": "WDL",
+    "primaryDescriptorPath": "workflows/",
+    "error": true
+  },
+  {
+    "name": "error-empty",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "demo",
+    "versionId": "1.0.0",
+    "descriptorType": "WDL",
+    "primaryDescriptorPath": "/",
+    "error": true
+  }
+]
