@@ -228,9 +228,12 @@ class TrsHandler(BaseHTTPRequestHandler):
                 self._send(HTTPStatus.OK, "text/plain; charset=utf-8", data)
                 return
             digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
-            url = f"{self._version(base, workflow)['url']}/PLAIN_{kind}/descriptor"
-            if relative != workflow.primary:
-                url = f"{url}/{urllib.parse.quote(relative, safe='')}"
+            # The primary descriptor too, by its path: relative imports of
+            # the plain URL then resolve under .../descriptor/
+            path = "/".join(urllib.parse.quote(s, safe="") for s in relative.split("/"))
+            url = (
+                f"{self._version(base, workflow)['url']}/PLAIN_{kind}/descriptor/{path}"
+            )
             wrapper = {
                 "content": content,
                 "checksum": [{"type": "sha-256", "checksum": digest}],

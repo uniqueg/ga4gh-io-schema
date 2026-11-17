@@ -10,14 +10,17 @@ implementations run them with their own runner (see
 ``docs/specification/engine-bindings.md``).
 """
 
+import contextlib
 import copy
 import sys
 from pathlib import Path
 from typing import Any
+from unittest.mock import Mock
 
 import jsonschema
 import pytest
 
+from ga4gh_io_schema import wes
 from ga4gh_io_schema.validator import load_json
 from ga4gh_io_schema.wes import (
     DEFAULT_ALLOWED_SCHEMES,
@@ -1316,3 +1319,210 @@ def test_deep_nesting_rejects_the_request() -> None:
     error = reject(schema, {"a": nested})
 
     assert "too deeply nested" in error.message
+
+
+def recursive_schema(keyword: str) -> dict[str, Any]:
+    """Build an IO schema with a recursive input: a string or a list of them.
+
+    Args:
+        keyword: ``anyOf`` or ``oneOf``.
+
+    Returns:
+        The schema.
+    """
+    return make_schema(
+        {"a": {"$ref": "#/$defs/n"}},
+        NFL,
+        **{
+            "$defs": {
+                "n": {
+                    keyword: [
+                        {"type": "string"},
+                        {"type": "array", "items": {"$ref": "#/$defs/n"}},
+                    ]
+                }
+            }
+        },
+    )
+
+
+def nested_list(depth: int, leaves: int) -> list[Any]:
+    """Build a list of strings, nested in lists.
+
+    Args:
+        depth: The number of nested lists.
+        leaves: The number of strings in the innermost list.
+
+    Returns:
+        The value.
+    """
+    value: list[Any] = ["x"] * leaves
+    for _ in range(depth - 1):
+        value = [value]
+    return value
+
+
+@pytest.mark.parametrize("keyword", ["anyOf", "oneOf"])
+def test_each_subschema_is_validated_once_per_value(
+    monkeypatch: pytest.MonkeyPatch, keyword: str
+) -> None:
+    """Test that the validations don't grow with the depth of the values.
+
+    The branches of ``anyOf`` and ``oneOf`` that apply at each level were
+    found by validating the whole subtree again, so that the time grew with
+    the size times the depth (issue #86). The test counts validations of
+    subschemas instead of timing them (``test_performance.py`` times them).
+
+    Args:
+        monkeypatch: Pytest fixture for patching module attributes.
+        keyword: ``anyOf`` or ``oneOf``.
+    """
+    leaves = 200
+    schema = recursive_schema(keyword)
+    original = wes._DESCEND
+    counts = {}
+    for depth in (1, 2, 40):
+        values = {"a": nested_list(depth, leaves)}
+        descend = Mock(wraps=original)
+        monkeypatch.setattr(wes, "_DESCEND", descend)
+        params = to_workflow_params(schema, values)
+        assert from_workflow_params(schema, params) == values
+        counts[depth] = descend.call_count
+
+    per_level = counts[2] - counts[1]
+    # Each list around the strings adds the same few validations (8), not a
+    # validation of everything below it
+    assert 0 < per_level < leaves
+    assert counts[40] - counts[1] == 39 * per_level
+
+
+def test_errors_deep_in_recursive_values() -> None:
+    """Test that a failure deep in a recursive value is found and located."""
+    values = nested_list(30, 3)
+    leaf = values
+    for _ in range(29):
+        leaf = leaf[0]
+    leaf[1] = 1
+
+    error = reject(recursive_schema("anyOf"), {"a": values})
+
+    assert error.pointer == "/a" + "/0" * 29 + "/1"
+    assert error.message == "The value fails the keyword 'anyOf' of the schema."
+
+
+def dynamic_scope_schema(first: str, second: str, keyword: str) -> dict[str, Any]:
+    """Build an IO schema whose subschema ``s`` depends on the dynamic scope.
+
+    ``s`` is valid for a string where ``a`` brings it into scope, and not
+    where ``b`` does. The input applies both, in the order given.
+
+    Args:
+        first: ``a`` or ``b``.
+        second: The other one.
+        keyword: ``$dynamicRef``, or ``$ref``, which also resolves through
+            the dynamic scope where it points to a ``$dynamicAnchor``.
+
+    Returns:
+        The schema.
+    """
+    anchor = {"$dynamicAnchor": "t"}
+    return make_schema(
+        {
+            "v": {
+                "allOf": [
+                    {"not": {"not": {"$ref": f"urn:example:{first}"}}},
+                    {"not": {"not": {"$ref": f"urn:example:{second}"}}},
+                ]
+            }
+        },
+        NFL,
+        **{
+            "$defs": {
+                "s": {
+                    "$id": "urn:example:s",
+                    "$defs": {"t": anchor},
+                    keyword: "#t",
+                },
+                "a": {
+                    "$id": "urn:example:a",
+                    "$defs": {"t": {**anchor, "type": "string"}},
+                    "$ref": "urn:example:s",
+                },
+                "b": {
+                    "$id": "urn:example:b",
+                    "$defs": {"t": {**anchor, "type": "integer"}},
+                    "$ref": "urn:example:s",
+                },
+            }
+        },
+    )
+
+
+@pytest.mark.parametrize("keyword", ["$dynamicRef", "$ref"])
+@pytest.mark.parametrize(("first", "second"), [("a", "b"), ("b", "a")])
+def test_results_of_dynamic_references_are_not_kept(
+    first: str, second: str, keyword: str
+) -> None:
+    """Test that a subschema that resolves dynamically is validated in each scope.
+
+    Keeping the first result of ``s`` would accept the value.
+
+    Args:
+        first: The scope that validates ``s`` first.
+        second: The other scope.
+        keyword: The keyword of the reference in ``s``.
+    """
+    error = reject(dynamic_scope_schema(first, second, keyword), {"v": "x"})
+
+    assert error.pointer == "/v"
+
+
+@pytest.mark.parametrize(
+    ("schema", "static"),
+    [
+        ({"$defs": {"n": {"$ref": "#/$defs/n"}}, "items": [{"$ref": "#n"}]}, True),
+        ({"properties": {"a": {"$dynamicRef": "#t"}}}, False),
+        ({"$defs": {"t": {"$dynamicAnchor": "t"}}}, False),
+        ({"anyOf": [{"$ref": "urn:example:s"}]}, False),
+        ({"$id": "urn:example:root", "$ref": "#/$defs/n"}, True),
+        ({"$ref": "urn:example:s"}, False),
+        ({"properties": {"a": {"$id": "urn:example:a"}}}, False),
+    ],
+)
+def test_validity_is_kept_only_for_static_schemas(
+    schema: dict[str, Any], static: bool
+) -> None:
+    """Test which schemas can't depend on the dynamic scope.
+
+    Args:
+        schema: The schema.
+        static: Whether results can be kept for it.
+    """
+    assert wes._static(schema) is static
+
+
+def test_validator_outside_of_a_translation() -> None:
+    """Test that the validator works as plain Draft 2020-12 outside of one."""
+    schema = {
+        "$defs": {"t": {"$dynamicAnchor": "t", "type": "string"}},
+        "anyOf": [{"$dynamicRef": "#t"}, {"type": "array"}],
+    }
+    validator = wes._MemoisingValidator(schema)
+
+    assert validator.is_valid("x")
+    assert not validator.is_valid(1)
+
+
+@pytest.mark.parametrize("values", [{"a": ["x"]}, {"a": [1]}])
+def test_validity_is_kept_only_during_a_translation(values: dict[str, Any]) -> None:
+    """Test that the validity is dropped after a translation, also a failed one.
+
+    The identities of values are reused once they are gone.
+
+    Args:
+        values: The input values, valid or not.
+    """
+    with contextlib.suppress(WorkflowParamsError):
+        from_workflow_params(recursive_schema("anyOf"), values)
+
+    assert wes._VALIDITY.get() is None

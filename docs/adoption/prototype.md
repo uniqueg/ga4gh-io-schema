@@ -102,7 +102,7 @@ shows the run request that a WES gets:
   },
   "workflow_type": "WDL",
   "workflow_type_version": "1.1",
-  "workflow_url": "http://trs-stub:8080/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/PLAIN_WDL/descriptor"
+  "workflow_url": "http://trs-stub:8080/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/PLAIN_WDL/descriptor/demo.wdl"
 }
 ```
 

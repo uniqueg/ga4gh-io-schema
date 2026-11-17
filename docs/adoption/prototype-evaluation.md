@@ -61,20 +61,23 @@ they are opened.
    adds to the case for the [deferred `IO_SCHEMA` file
    type](trs.md#deferred-an-io_schema-file-type).
 2. **Imports of multi-file workflows (spec).** The `workflow_url` that the
-   binding recommends, `.../PLAIN_{type}/descriptor`, has no file name, so a
+   binding recommended, `.../PLAIN_{type}/descriptor`, has no file name, so a
    relative import such as `tasks/sub.wdl` resolves to
    `.../PLAIN_{type}/tasks/sub.wdl`, which TRS doesn't serve;
    `.../PLAIN_{type}/descriptor/{primary path}` would resolve it to
    `.../descriptor/tasks/sub.wdl`. The demo is one file, so the prototype
-   didn't hit this; it follows from URL resolution (RFC 3986) and needs a
-   decision in [Run requests](../specification/engine-bindings.md#run-requests).
+   didn't hit this; it follows from URL resolution (RFC 3986). Decided in
+   0.3: the form with the path is recommended ([Workflow URLs in
+   TRS](../specification/engine-bindings.md#workflow-urls-in-trs)).
 3. **Can the WES fetch the `workflow_url`? (docs).** The run request is
    only useful if the WES can fetch the TRS URL. In the prototype, the stub
    is reachable inside the stack only, so the stack sends nothing by
    default; Conquest, in the [end-to-end demo](demo.md), takes no TRS URLs
    at all. A client can't find out from the WES API whether it resolves
    TRS URLs or which hosts it reaches. The [WES guide](wes.md) should say
-   so, and the question belongs to the WES work stream.
+   so, and the question belongs to the WES work stream. Done in 0.3: [Can
+   the WES fetch the workflow?](wes.md#can-the-wes-fetch-the-workflow) and
+   an [open question](../roadmap.md#open-questions).
 4. **The workflow block check (tools).** Resolved by the [workflow block
    check](../tools/verify.md)
    ([#85](https://github.com/uniqueg/ga4gh-io-schema/issues/85)). At the
