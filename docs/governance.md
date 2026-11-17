@@ -22,6 +22,14 @@ version covers the normative text (see
 meta-schema and vocabularies in `schemas/`, and the
 [conformance suite](specification/conformance.md#conformance-suite).
 
+!!! note "Until the first release"
+    There are no releases yet (see [Releases](#releases)). Until the first
+    one, the `$id` of the meta-schema names the `main` branch, so `$schema`
+    doesn't tell versions apart, and breaking changes on `main` keep it as
+    it is. Pin a commit to fix the version that you use (see [Schema
+    identifiers](development.md#schema-identifiers)). The rules below apply
+    from the first release on.
+
 Each release has a meta-schema of its own, with the release in its `$id`,
 and a schema document names the release that it targets in `$schema`. To
 move a document to a new release, its author changes `$schema` (a
@@ -52,7 +60,7 @@ conformance suite for existing rules.
   semantic versioning allows. The [changelog](changelog.md) lists them under
   "Breaking changes", with what to change.
 - Each schema document names the version that it targets: `$schema` is the
-  versioned `$id` of that version's meta-schema (see
+  `$id` of that version's meta-schema (see
   [Referencing the meta-schema](specification/meta-schema.md#referencing-the-meta-schema)).
   A new version of the profile doesn't change what an existing schema
   document means; for a non-breaking version, changing `$schema` is all
@@ -60,15 +68,18 @@ conformance suite for existing rules.
 
 ## Releases
 
-- Releases are Git tags `vMAJOR.MINOR.PATCH` on the `main` branch of the
-  repository, starting with `v0.3.0`. Earlier versions (0.1 and 0.2) were
-  drafts of the proposal and have no tags (see [Changelog](changelog.md)).
-- The `$id`s of the meta-schema and vocabularies name the tag of their
-  release, and are served from it; tags are never moved or deleted, so a
-  published `$id` keeps resolving to the same content.
-- The Python package `ga4gh-io-schema` is released from the same tags. It
-  isn't published on PyPI until a deployment needs it; install it from the
-  repository (see [Installation](tools/validator.md#installation)).
+- There are no releases yet: versions 0.1 to 0.3 have no tags (see
+  [Changelog](changelog.md)). Releases, as Git tags `vMAJOR.MINOR.PATCH`,
+  come with the move of the repository to GA4GH.
+- Until then, the `$id`s of the meta-schema and vocabularies name the
+  `main` branch of the repository, which holds the latest reviewed state
+  (they resolve once version 0.3 is merged into `main` at
+  elixir-cloud-aai). To use fixed content, pin a commit SHA (see [Schema
+  identifiers](development.md#schema-identifiers)). A stable identifier for
+  released versions follows with the first release.
+- The Python package `ga4gh-io-schema` isn't published on PyPI; install it
+  from the repository, at a commit (see
+  [Installation](tools/validator.md#installation)).
 
 ## Proposing changes
 

@@ -17,7 +17,9 @@ pip install -e ".[dev]"
 To install only the validator, run `pip install .` in the cloned repository
 instead. The package supports Python 3.11 and later. It ships the meta-schema
 and its vocabularies, so the validator works offline and outside the
-repository.
+repository. Its dependencies are jsonschema and referencing, and regress for
+the [patterns of values](#patterns-of-values); the converters need the
+extras `cwl`, `wdl` and `snakemake` (see [Converters](converters.md)).
 
 ## Command-line interface
 
@@ -32,7 +34,7 @@ ga4gh-io-schema validate path/to/your-schema.json
 Without further options, the validator always checks the schema against the
 GA4GH IO Profile meta-schema that the package ships, whatever the schema's
 `$schema` says. The schema's `$schema` must name that meta-schema by its
-versioned `$id` (see [Referencing the
+`$id` (see [Referencing the
 meta-schema](../specification/meta-schema.md#referencing-the-meta-schema)); a
 missing `$schema`, or one that names another meta-schema (e.g., plain JSON
 Schema), is an error. To validate against another meta-schema file, pass it
@@ -60,9 +62,10 @@ the result and errors as JSON objects (see [Conventions](cli.md#conventions)).
 The validator checks the `format` keywords of the meta-schema, for example
 that `$id` is a URI reference and that `x-ga4gh-ontology` is a URI. It uses
 the `format-nongpl` extra of `jsonschema`, which avoids GPL-licensed
-dependencies. It doesn't check the `regex` format of `pattern` keywords,
-because patterns are ECMA-262 regular expressions, which Python can't always
-parse (e.g., `\p{L}`).
+dependencies. It checks the `regex` format of `pattern` and of the names in
+`patternProperties` as ECMA-262 regular expressions in Unicode mode (the
+`u` flag), with the engine that matches values (see [Patterns of
+values](#patterns-of-values)), not with Python's `re`.
 
 These checks apply to the IO schema itself, not to the input values that a
 WES request sends later. File references don't use `"format": "uri"`, which
@@ -70,6 +73,28 @@ would reject DRS URIs with a compact identifier (`drs://prefix:accession`),
 because the part after the colon isn't a port number; the meta-schema rejects
 `format` on them. Their values follow the rules of [File
 references](../specification/files.md#values).
+
+## Patterns of values
+
+Input and output values are matched with ECMA-262 semantics, as JavaScript
+clients with Unicode-mode regular expressions (e.g., Ajv) match them:
+`wes-params`, `wes-validate`, `outputs` and the [form proof of
+concept](../adoption/form.md) match `pattern`, `patternProperties` and the
+names that `additionalProperties` and `unevaluatedProperties` check with
+[regress](https://github.com/Julian/regress), an ECMA-262 engine, in Unicode
+mode. Where this differs from Python's `re`:
+
+- `\p{L}` and other Unicode property escapes work.
+- `$` doesn't match before a trailing newline: `^[a-z]+$` rejects
+  `"abc\n"`, which `re` accepts.
+- `\w`, `\d` and `\s` are as in ECMA-262: `\w` and `\d` match ASCII only
+  (`^\w+$` rejects `"Zürich"`; use `\p{L}`).
+- Escapes that Unicode mode doesn't allow are errors, e.g., `\-` outside a
+  character class, `\_`, or `{,3}` as a quantifier.
+
+A schema with a pattern that isn't valid in Unicode mode doesn't comply with
+the profile: `validate` rejects it (the `regex` format), and so do the
+subcommands that read a schema, before any value is matched.
 
 ## Python API
 

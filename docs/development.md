@@ -1,6 +1,9 @@
 # Development
 
-This project enforces a strict "full defense" CI/CD pipeline. All code must pass comprehensive unit tests, static analysis, and licensing checks before being merged.
+CI (`.github/workflows/ci.yml`) runs the checks below on every pull request:
+lint (REUSE, Markdown, Ruff, meta-schema syntax), the Python tests on every
+supported version, the JavaScript tests and the strict documentation build.
+Run them locally before you open a pull request.
 
 To install the package with all development dependencies, see
 [Installation](tools/validator.md#installation).
@@ -68,14 +71,50 @@ The versions of the validators are pinned in `package.json` and
 `package-lock.json`; update them together (`npm install --save-exact
 <package>@<version>`), and update the results on the page.
 
-## Schema versions
+## Schema identifiers
 
-The `$id`s of the schemas in `schemas/`, and the `$schema` of the examples in
-`tests/data/`, of the cases in `tests/conformance/` and `tests/vectors/` and
-of the snippet in the
-meta-schema documentation, name the release tag of the profile (e.g.,
-`v0.3.0`). For a new release, change the tag in all of them at once (the
-tests check that they agree), and push the tag so that the URLs resolve.
+The profile has no releases and no tags yet (see [Versioning and
+governance](governance.md#releases)). Until it has, the `$id`s of the
+schemas in `schemas/`, and the `$schema` of the examples in `tests/data/`
+and `examples/`, of the cases in `tests/conformance/` and `tests/vectors/`
+and of the snippets in the documentation, start with
+
+```text
+https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/
+```
+
+These URLs resolve once the repository has moved to elixir-cloud-aai and
+version 0.3 is merged into its `main` branch. `main` holds the latest
+reviewed state, so the content behind them changes, also with breaking
+changes: until the first release, `$schema` doesn't tell versions of the
+profile apart, and the commit you pin does.
+
+To use fixed content, pin a commit SHA (`<owner>` is the owner of the
+repository at that time: `uniqueg` before the move, `elixir-cloud-aai`
+after it):
+
+- In Python, install the package from that commit (`pip install
+  "git+https://github.com/<owner>/ga4gh-io-schema@<sha>"`); it ships the
+  schemas and never fetches them.
+- Elsewhere, download every file of `schemas/` from
+  `https://raw.githubusercontent.com/<owner>/ga4gh-io-schema/<sha>/schemas/...`,
+  register each under its `$id`, and turn off the fetching of remote
+  references, as [JavaScript validators](tools/javascript.md) describes. The
+  `$ref`s between the schemas name `main`, so a validator that fetches them
+  would mix the pinned file with the current ones.
+
+The `$schema` of your IO schemas stays as above: it identifies the profile,
+it isn't the place you fetch the meta-schema from. `version` in
+`pyproject.toml` is a development version (e.g., `0.3.0.dev0`), which
+isn't bumped per commit (pin the commit, not the version); the tests check
+both.
+
+## Releases
+
+Releases (tags `vMAJOR.MINOR.PATCH`) come with the move of the repository
+to GA4GH. A stable identifier for the schemas
+([#26](https://github.com/uniqueg/ga4gh-io-schema/issues/26)) then replaces
+the URLs above.
 
 ## Changelog and conformance suite
 
@@ -96,7 +135,7 @@ Keywords live in one vocabulary file per keyword group in
 `schemas/vocabularies/`. To add a keyword or a group:
 
 1. Add the keyword to the `properties` of its vocabulary file, or create a new
-   file (with a versioned `$id`, like the others) and add a `$ref` to it to the
+   file (with an `$id` on the base of [Schema identifiers](#schema-identifiers)) and add a `$ref` to it to the
    `allOf` of `$defs/node/$defs/keywords` in
    `schemas/ga4gh-io-profile.schema.json`. A keyword that is allowed only at
    the top level (like `x-ga4gh-workflow`) goes into

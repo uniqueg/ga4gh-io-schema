@@ -92,7 +92,7 @@ class ConvertCwlCommand(Command):
             raise CliError(
                 ErrorKind.IO,
                 "The CWL converter needs the optional dependency cwl-utils; "
-                "install it with: pip install 'ga4gh-io-schema[cwl]'",
+                "install the extra 'cwl' (in a clone: pip install '.[cwl]')",
             ) from exc
 
         root = args.root

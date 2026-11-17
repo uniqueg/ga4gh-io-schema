@@ -755,7 +755,7 @@ def test_missing_miniwdl(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test the error without the optional dependency."""
     monkeypatch.setitem(sys.modules, "WDL", None)
 
-    with pytest.raises(wdl.MissingDependencyError, match=r"ga4gh-io-schema\[wdl\]"):
+    with pytest.raises(wdl.MissingDependencyError, match=r"pip install .\.\[wdl\]."):
         wdl.miniwdl()
 
 
@@ -953,7 +953,7 @@ def test_cli_without_miniwdl(
     monkeypatch.setitem(sys.modules, "WDL", None)
 
     assert main(["convert", "wdl", str(QC)]) == 3
-    assert "pip install 'ga4gh-io-schema[wdl]'" in capsys.readouterr().err
+    assert "pip install '.[wdl]'" in capsys.readouterr().err
 
 
 def test_docs_use_existing_options() -> None:

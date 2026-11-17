@@ -15,11 +15,13 @@ as described in [Notational conventions](conformance.md#notational-conventions).
 Two identifiers and their versions are involved:
 
 - **The profile:** `$schema` names the meta-schema of the profile by its
-  versioned `$id`, which contains the release tag of the profile (e.g.,
-  `v0.3.0`, see [Referencing the
-  meta-schema](meta-schema.md#referencing-the-meta-schema)). The `$id`s of
-  the meta-schema and its vocabularies name the same tag; they never name a
-  branch.
+  `$id` (see [Referencing the
+  meta-schema](meta-schema.md#referencing-the-meta-schema)). The profile
+  has no releases yet, so its `$id`s name the `main` branch of the
+  repository; released versions will get versioned `$id`s that never name
+  a branch (see [Schema identifiers](../development.md#schema-identifiers)).
+  This is a temporary exception for the profile itself; the rules below
+  for the `$id` of IO schemas apply in full.
 - **The IO schema itself:** `$id` identifies the schema.
 
 Rules for the `$id` of an IO schema:
@@ -57,7 +59,7 @@ the meta-schema rejects it in nested schemas.
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
   "$id": "https://example.org/schemas/variant-calling/wdl/1.2.0",
   "x-ga4gh-workflow": {
     "trs_tool_id": "#workflow/example.org/variant-calling",
