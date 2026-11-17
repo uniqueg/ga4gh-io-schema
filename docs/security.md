@@ -19,7 +19,7 @@ Validation in the client catches mistakes before a run starts, which saves time 
 A schema decides what a server accepts and which addresses a validator may look up, so it has to come from a source that the deployment trusts.
 
 - Servers MUST use only IO schemas from trusted sources: the TRS entry of the workflow (see [TRS](adoption/trs.md)) in a registry that the deployment trusts, or a schema bundled with the deployment.
-- Servers MUST NOT accept IO schemas supplied by clients in a run request. Earlier versions of this proposal let servers use schemas that came with the request; version 0.3 removes that (see [Roadmap](roadmap.md#cut) and [#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17)).
+- Servers MUST NOT accept IO schemas supplied by clients in a run request. Earlier versions of this proposal let servers use schemas that came with the request; version 0.3 removes that (see [Roadmap](roadmap.md#cut) and [#17](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/17)).
 - Servers MUST NOT retrieve any reference (`$ref` or `$dynamicRef`) over the network while validating, whatever the base URI (`$id`) of the schema. Network lookups would make the server send requests to addresses chosen by the schema's author, including internal addresses such as `169.254.169.254` (the metadata service of many cloud providers) or services behind the firewall; a valid URI is not a safe address.
 - A schema with a reference that the server can't resolve from its local copies is invalid. Servers MUST NOT validate requests against it, not even partially, and MUST NOT pass requests for that workflow to the engine unchecked: they reject them (fail closed) with a message that names the problem with the schema, and SHOULD report it to the operators of the deployment.
 - IO schemas MUST be bundled: all references are local (`#/$defs/…`) or point to the profile's meta-schema and vocabularies. Validators MUST load the meta-schema and vocabularies from local copies (as the [validator](tools/validator.md) does), not from the network.
@@ -33,7 +33,7 @@ The `pattern` and `patternProperties` keywords run regular expressions from the 
 - Servers SHOULD reject schemas with patterns longer than a limit set by the deployment (e.g., 1,000 characters).
 - Servers MUST limit the size of the `workflow_params` they validate (e.g., 1 MiB) and SHOULD limit the depth of nested values; requests above the limits are rejected before validation.
 
-The size limit bounds the time of validation only if that time grows linearly with the size of the request. A translator that finds the branches of `anyOf` and `oneOf` that apply at each level by validating the value below again takes time that grows with the size times the depth. The `ga4gh-io-schema` package keeps the results of such checks during a translation, so its time stays linear ([#86](https://github.com/uniqueg/ga4gh-io-schema/issues/86)).
+The size limit bounds the time of validation only if that time grows linearly with the size of the request. A translator that finds the branches of `anyOf` and `oneOf` that apply at each level by validating the value below again takes time that grows with the size times the depth. The `ga4gh-io-schema` package keeps the results of such checks during a translation, so its time stays linear ([#86](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/86)).
 
 ## URIs and file references
 

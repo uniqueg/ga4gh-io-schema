@@ -136,7 +136,7 @@ and directories are those that contain listed files.
 ## Test vectors
 
 Language-neutral test vectors for output normalisers are in
-[`tests/vectors/wes-outputs/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/tests/vectors/wes-outputs),
+[`tests/vectors/wes-outputs/`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/tree/main/tests/vectors/wes-outputs),
 one directory per case, described in its `README.md`. They cover the shapes
 above, the checks of listings, glob matching, and completed, non-conformant
 and partial runs. The cases of cwltool, Sapporo, WESkit, Toil (CWL with a

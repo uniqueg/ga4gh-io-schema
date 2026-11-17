@@ -3,7 +3,7 @@
 `x-ga4gh-ui-widget` tells clients how to render an input or an output (see
 [Keywords](keywords.md#the-x-ga4gh-vocabulary)). Its values come from the
 vocabulary of UI widgets
-([`ui-widgets.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json)),
+([`ui-widgets.schema.json`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json)),
 or are custom widgets (`custom:<name>`). This page defines, for each widget
 of the vocabulary, the schemas that it fits, the keywords that it needs, and
 the value that it produces. Requirements use the key words of BCP 14, as

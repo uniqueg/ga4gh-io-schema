@@ -148,7 +148,7 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   found by glob (`--out-file`, `--out-files`, `--out-dir`), and the engine
   binding (`descriptor_type` `NFL`). It replaces the separate
   `ga4gh-io-schema-converter` command of the draft in
-  [#2](https://github.com/uniqueg/ga4gh-io-schema/pull/2), which was never
+  [#2](https://github.com/elixir-cloud-aai/ga4gh-io-schema/pull/2), which was never
   released. (#1)
 - `ga4gh-io-schema convert snakemake`: converts a Snakemake config schema
   (YAML or JSON, Draft 4 to 2020-12) and sample-sheet schemas to an IO
@@ -400,6 +400,11 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   can depend on the path to a subschema. The validation takes a little more
   of the stack: values are rejected as too deeply nested at a somewhat
   lower depth than before (about two thirds of it). (#86)
+- Links in the documentation, the changelog and the tests, and the default
+  repository of `examples/demo/register.py`, name the repository's new home
+  `elixir-cloud-aai/ga4gh-io-schema` instead of `uniqueg/ga4gh-io-schema`;
+  the "Edit" links of the docs open the `dev` branch. A test keeps the old
+  name out of the repository, except where the move is explained. (#102)
 
 ## v0.2 (2026-10-13)
 

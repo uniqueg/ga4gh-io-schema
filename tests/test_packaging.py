@@ -30,6 +30,39 @@ SCHEMA_BASE = (
 # A schema base in text; a version segment with a placeholder (e.g., `<sha>`,
 # or `$1` in a rewrite rule) is no base.
 SCHEMA_URL = re.compile(r"https?://[^\"\s<>`]*?/ga4gh-io-schema/[^/\"\s<>`$]+/schemas/")
+# Text files of the repository that may link to it, and the pages that
+# explain its move from `uniqueg` (the changelog's old `$id`s, the transfer
+# page).
+REPO_TEXT_FILES = [
+    REPO_ROOT / name
+    for name in ("README.md", "CHANGELOG.md", "mkdocs.yml", "pyproject.toml")
+]
+REPO_TEXT_DIRS = (
+    ".github",
+    "docs",
+    "examples",
+    "prototype",
+    "schemas",
+    "src",
+    "tests",
+)
+# Installed dependencies and caches below these directories
+NOT_REPO_TEXT = {"node_modules", "__pycache__"}
+REPO_TEXT_SUFFIXES = {
+    ".cff",
+    ".css",
+    ".html",
+    ".js",
+    ".json",
+    ".md",
+    ".mjs",
+    ".py",
+    ".sh",
+    ".toml",
+    ".yaml",
+    ".yml",
+}
+MOVE_EXPLAINED = {REPO_ROOT / "CHANGELOG.md", REPO_ROOT / "docs" / "transfer.md"}
 # Docs that show CLI usage; mkdocs build --strict checks the links of docs/.
 USAGE_DOCS = [
     REPO_ROOT / "README.md",
@@ -74,9 +107,9 @@ def test_get_schemas_dir_falls_back_to_checkout(
     [
         (f"`{SCHEMA_BASE}ga4gh-io-profile.schema.json`", [SCHEMA_BASE]),
         (
-            "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/",
+            "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/0123abc/schemas/",
             [
-                "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/"
+                "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/0123abc/schemas/"
             ],
         ),
         ("https://example.org/<owner>/ga4gh-io-schema/<sha>/schemas/x", []),
@@ -94,6 +127,34 @@ def test_schema_url_pattern(text: str, bases: list[str]) -> None:
         bases: The schema bases found in it.
     """
     assert SCHEMA_URL.findall(text) == bases
+
+
+def test_no_links_to_the_former_repository() -> None:
+    """Test that the repository names its home, ``elixir-cloud-aai``.
+
+    The repository moved from ``uniqueg`` to ``elixir-cloud-aai`` (#25).
+    GitHub redirects the old URLs, but links name the new home. Only the
+    pages that explain the move (``MOVE_EXPLAINED``) name the old one.
+    """
+    old_name = "uniqueg" + "/ga4gh-io-schema"
+    paths = [
+        *REPO_TEXT_FILES,
+        *(
+            path
+            for directory in REPO_TEXT_DIRS
+            for path in (REPO_ROOT / directory).rglob("*")
+            if path.is_file()
+            and path.suffix in REPO_TEXT_SUFFIXES
+            and not NOT_REPO_TEXT & set(path.parts)
+        ),
+    ]
+    assert REPO_ROOT / "docs" / "index.md" in paths
+    offending = [
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in paths
+        if path not in MOVE_EXPLAINED and old_name in path.read_text(encoding="utf-8")
+    ]
+    assert offending == []
 
 
 def test_schema_urls_use_the_schema_base() -> None:

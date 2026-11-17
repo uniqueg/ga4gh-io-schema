@@ -25,7 +25,7 @@ and aren't for deployment: no authentication, no TLS, no persistence (see
 One command, in a fresh clone of this repository:
 
 ```bash
-git clone https://github.com/uniqueg/ga4gh-io-schema.git
+git clone https://github.com/elixir-cloud-aai/ga4gh-io-schema.git
 cd ga4gh-io-schema
 docker compose -f prototype/compose.yaml up --build
 ```

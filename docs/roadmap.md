@@ -17,7 +17,7 @@ and outputs. Earlier versions of the proposal contained features that add
 risk without serving that use. They are either cut (removed, with no plan to
 bring them back) or deferred (removed or kept experimental until a later
 version specifies them properly). See
-[#17](https://github.com/uniqueg/ga4gh-io-schema/issues/17); the changelog
+[#17](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/17); the changelog
 of the repository lists each removal as a breaking change.
 
 ### Cut

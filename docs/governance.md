@@ -84,7 +84,7 @@ conformance suite for existing rules.
 ## Proposing changes
 
 - Propose a change, or report a problem, as an issue in the
-  [repository](https://github.com/uniqueg/ga4gh-io-schema/issues): describe
+  [repository](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues): describe
   the problem and, where you can, the use case behind it.
 - Changes are made by pull request. A pull request that changes the
   normative text changes the meta-schema, the conformance suite (a negative

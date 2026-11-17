@@ -115,7 +115,7 @@ both.
 
 Releases (tags `vMAJOR.MINOR.PATCH`) come with the move of the repository
 to GA4GH. A stable identifier for the schemas
-([#26](https://github.com/uniqueg/ga4gh-io-schema/issues/26)) then replaces
+([#26](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/26)) then replaces
 the URLs above.
 
 ## Changelog and conformance suite

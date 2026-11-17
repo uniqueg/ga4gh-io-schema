@@ -263,7 +263,7 @@ def test_payload() -> None:
     assert descriptor["type"] == "WDL"
     assert descriptor["file_wrapper"]["checksum"] == workflow["checksum"]
     assert descriptor["file_wrapper"]["url"] == (
-        "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/"
+        "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/"
         f"{SHA}/examples/demo/demo.wdl"
     )
     assert schema_file["tool_file"] == {
@@ -421,7 +421,7 @@ def test_engine_parameters() -> None:
     """The repository, the revision and the main workflow are added."""
     request = {"workflow_url": "https://trs.example.org/x", "workflow_type": "WDL"}
     assert conquest.add_engine_parameters(request, SHA) == {
-        "workflow_url": "https://github.com/uniqueg/ga4gh-io-schema",
+        "workflow_url": "https://github.com/elixir-cloud-aai/ga4gh-io-schema",
         "workflow_type": "WDL",
         "workflow_engine_parameters": {
             "revision": SHA,
@@ -548,7 +548,7 @@ def test_run_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
         },
         "workflow_type": "WDL",
         "workflow_type_version": "1.1",
-        "workflow_url": "https://github.com/uniqueg/ga4gh-io-schema",
+        "workflow_url": "https://github.com/elixir-cloud-aai/ga4gh-io-schema",
         "workflow_engine_parameters": {
             "revision": SHA,
             "main_workflow_path": "examples/demo/demo.wdl",

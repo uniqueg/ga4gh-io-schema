@@ -294,7 +294,7 @@ references](../security.md#uris-and-file-references).
 ## Test vectors
 
 Language-neutral test vectors in
-[`tests/vectors/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/tests/vectors)
+[`tests/vectors/`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/tree/main/tests/vectors)
 of the repository test request builders against these rules, so that
 implementations in other languages (e.g., TypeScript) can run the same cases:
 
