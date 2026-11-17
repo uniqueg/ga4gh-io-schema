@@ -58,15 +58,17 @@ conformance suite for existing rules.
 
 ## Releases
 
-- Releases are Git tags `vMAJOR.MINOR.PATCH` on the `main` branch of the
-  repository, starting with `v0.3.0`. Earlier versions (0.1 and 0.2) were
-  drafts of the proposal and have no tags (see [Changelog](changelog.md)).
-- The `$id`s of the meta-schema and vocabularies name the tag of their
-  release, and are served from it; tags are never moved or deleted, so a
-  published `$id` keeps resolving to the same content.
-- The Python package `ga4gh-io-schema` is released from the same tags. It
-  isn't published on PyPI until a deployment needs it; install it from the
-  repository (see [Installation](tools/validator.md#installation)).
+- There are no releases yet: versions 0.1 to 0.3 have no tags (see
+  [Changelog](changelog.md)). Releases, as Git tags `vMAJOR.MINOR.PATCH`,
+  come with the move of the repository to GA4GH.
+- Until then, the `$id`s of the meta-schema and vocabularies name the
+  `main` branch of the repository, which holds the latest reviewed state.
+  To use fixed content, pin a commit SHA (see [Schema
+  identifiers](development.md#schema-identifiers)). A stable identifier for
+  released versions follows with the first release.
+- The Python package `ga4gh-io-schema` isn't published on PyPI; install it
+  from the repository, at a commit (see
+  [Installation](tools/validator.md#installation)).
 
 ## Proposing changes
 

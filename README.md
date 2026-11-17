@@ -42,8 +42,13 @@ pip install .
 ga4gh-io-schema validate path/to/your-schema.json
 ```
 
-The package isn't published on PyPI yet (see
-[Versioning and governance](https://ga4gh-io-schema.readthedocs.io/en/latest/governance/#releases)).
+There are no releases yet: no tags, and the package isn't published on
+PyPI. Releases come with the move of the repository to GA4GH. Until then,
+pin a commit SHA: install the package from it
+(`pip install "git+https://github.com/<owner>/ga4gh-io-schema@<sha>"`), and
+fetch the schemas from
+`https://raw.githubusercontent.com/<owner>/ga4gh-io-schema/<sha>/schemas/...`
+(see [Schema identifiers](https://ga4gh-io-schema.readthedocs.io/en/latest/development/#schema-identifiers)).
 
 Convert the input descriptions of CWL, Nextflow (nf-schema), Snakemake and WDL
 workflows into IO schemas with `ga4gh-io-schema convert cwl|nextflow|snakemake|wdl`;

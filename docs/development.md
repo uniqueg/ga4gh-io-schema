@@ -71,31 +71,37 @@ The versions of the validators are pinned in `package.json` and
 `package-lock.json`; update them together (`npm install --save-exact
 <package>@<version>`), and update the results on the page.
 
-## Schema versions
+## Schema identifiers
 
-The `$id`s of the schemas in `schemas/`, and the `$schema` of the examples in
-`tests/data/` and `examples/`, of the cases in `tests/conformance/` and
-`tests/vectors/` and of the snippet in the
-meta-schema documentation, name the release tag of the profile (e.g.,
-`v0.3.0`), and `version` in `pyproject.toml` is that tag without the `v`
-(e.g., `0.3.0`). For a new release, change the tag in all of them at once
-(the tests check that they agree), and push the tag so that the URLs resolve.
+The profile has no releases and no tags yet (see [Versioning and
+governance](governance.md#releases)). Until it has, the `$id`s of the
+schemas in `schemas/`, and the `$schema` of the examples in `tests/data/`
+and `examples/`, of the cases in `tests/conformance/` and `tests/vectors/`
+and of the snippet in the meta-schema documentation, start with
+
+```text
+https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/
+```
+
+`main` holds the latest reviewed state, so the content behind these URLs
+changes. To use fixed content, pin a commit SHA: fetch the files from
+
+```text
+https://raw.githubusercontent.com/<owner>/ga4gh-io-schema/<sha>/schemas/...
+```
+
+or install the package from that commit (`pip install
+"git+https://github.com/<owner>/ga4gh-io-schema@<sha>"`). The `$schema` of
+your IO schemas stays as above: it identifies the profile, it isn't the
+place you fetch the meta-schema from. `version` in `pyproject.toml` is a
+development version (e.g., `0.3.0.dev0`); the tests check both.
 
 ## Releases
 
-A release (see [Versioning and governance](governance.md#releases)) is
-prepared by a pull request that:
-
-1. sets the release tag in the schema versions above and the version in
-   `pyproject.toml`;
-2. turns "Unreleased" in `CHANGELOG.md` into a section for the version and
-   its date, and adds a new, empty "Unreleased" section;
-3. adds the version and its date to the document history in
-   `docs/roadmap.md`.
-
-Once it is merged into `main` and CI passed there, the maintainer creates
-the signed tag `vMAJOR.MINOR.PATCH` on that commit and a GitHub release from
-it (a pre-release before 1.0.0). Tags are never moved or deleted.
+Releases (tags `vMAJOR.MINOR.PATCH`) come with the move of the repository
+to GA4GH. A stable identifier for the schemas
+([#26](https://github.com/uniqueg/ga4gh-io-schema/issues/26)) then replaces
+the URLs above.
 
 ## Changelog and conformance suite
 

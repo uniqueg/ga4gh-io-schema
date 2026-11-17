@@ -25,7 +25,7 @@ repeats a requirement, the normative page that it links to governs.
 
 A conformance claim names the conformance classes that a document or an
 implementation meets, and the version of the profile, e.g., "Validator and
-Form renderer of the GA4GH IO Schema Profile v0.3.0". An implementation
+Form renderer of the GA4GH IO Schema Profile v0.3". An implementation
 conforms to a class if it meets every MUST and MUST NOT requirement of that
 class; it SHOULD meet the SHOULD requirements, and documents the ones it
 doesn't meet and why.
