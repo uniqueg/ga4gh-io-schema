@@ -53,7 +53,9 @@ access to install the build backend and the dependencies; deselect it with
 Python version, from the lowest to the newest. The supported versions are set
 in `requires-python` and the classifiers of `pyproject.toml`, ruff's
 `target-version`, mypy's `python_version` and the test matrix of
-`.github/workflows/ci.yml`; change them together.
+`.github/workflows/ci.yml`; change them together. The lowest supported
+version is also that of the job "Test (lowest dependencies)" (see
+[Dependencies](#dependencies-uv)).
 
 ## JavaScript tests (Node.js)
 
@@ -274,7 +276,22 @@ uv sync --extra dev
 ```
 
 `uv sync --extra dev` installs the locked versions into `.venv`, as CI
-does. Dependabot updates the lock, the actions of the workflows, the
+does.
+
+The lower bounds in `pyproject.toml` are tested too: the CI job "Test
+(lowest dependencies)" installs the lowest versions of the direct
+dependencies that they allow, on the lowest supported Python version, and
+runs the tests without the wheel tests. If it fails, raise the bound of the
+dependency that fails. To run it locally, in an environment of its own
+(the resolution also rewrites `uv.lock`; don't commit that):
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-lowest uv sync --resolution lowest-direct --extra dev --python 3.11
+.venv-lowest/bin/pytest --no-cov -m "not wheel"
+git checkout uv.lock
+```
+
+Dependabot updates the lock, the actions of the workflows, the
 JavaScript validators of `tests/js/`, the base image of the prototype and
 the pre-commit hooks once a month (`.github/dependabot.yml`).
 

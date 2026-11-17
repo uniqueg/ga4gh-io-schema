@@ -349,6 +349,12 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   conformance suite has a new positive case with deeply nested parameters,
   `nested.schema.json`. (#47)
 - `validate_schema()` sets up the validation against a meta-schema once and
+- The package needs jsonschema 4.25 or later (was 4.21.1): with earlier
+  versions, errors had other messages and JSON Paths, and before 4.24,
+  deeply nested values raised a `PanicException` of rpds instead of the
+  "too deeply nested" validation error. A new CI job, "Test (lowest
+  dependencies)", runs the tests with the lowest versions that
+  `pyproject.toml` allows, on the lowest supported Python version. (#110)
   reuses it: loading the profile, finding the local schemas, checking the
   meta-schema against its dialect and building the validator no longer
   happen on every call. Validating a small schema takes about 13 ms after
