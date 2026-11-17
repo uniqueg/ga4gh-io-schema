@@ -86,7 +86,7 @@ against `properties.inputs` of the IO schema, and normalised outputs against
 
 ## Where the meta-schema is served
 
-As a schema standard, there is no active deployment of a service. The schemas and vocabularies are served statically via raw GitHub URLs: from the `main` branch that their `$id`s name, or from a commit that you pin (see [Schema identifiers](../development.md#schema-identifiers)). IO schemas of workflows are published in **TRS (Tool Registry Service)** implementations as files of the existing type `OTHER` (see [TRS](../adoption/trs.md)); a dedicated file type such as `IO_SCHEMA` is deferred (see [Roadmap](../roadmap.md#deferred)).
+As a schema standard, there is no active deployment of a service. The schemas and vocabularies are served statically via raw GitHub URLs: from the `main` branch that their `$id`s name, or from a commit that you pin (see [Schema identifiers](../development.md#schema-identifiers)). IO schemas of workflows are published in **TRS (Tool Registry Service)** implementations as files of the proposed type `IO_SCHEMA`, or, on servers without it, of the existing type `OTHER` at the path `ga4gh-io.schema.json` (see [TRS](../adoption/trs.md)).
 
 ## Structure of the meta-schema
 

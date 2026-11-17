@@ -57,8 +57,10 @@ Options:
   `http://127.0.0.1:8080/ga4gh/trs/v2` for the [TRS
   stub](prototype.md#trs-stub)). The page lists its tool versions, per
   descriptor type, and users pick one: the host takes the IO schema from
-  the files of the tool version (`ga4gh-io.schema.json` of type `OTHER`
-  in the directory of the primary descriptor), validates it against the
+  the files of the tool version (the file of type `IO_SCHEMA`, or else
+  `ga4gh-io.schema.json` of type `OTHER` in the directory of the primary
+  descriptor, matched as [Matching file
+  entries](trs.md#matching-file-entries) says), validates it against the
   profile, and rejects it if its `x-ga4gh-workflow` names another tool,
   version or descriptor type, or a checksum that the primary descriptor
   doesn't have (step 2 of the guide, with the [workflow block

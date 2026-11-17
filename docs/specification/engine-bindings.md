@@ -207,7 +207,12 @@ as `{relative_path}`, so only a listed path is sure to be served. The
 SHOULD prefer the listed path. The ids are percent-encoded as path
 segments; the path keeps its `/` separators and has each segment
 percent-encoded. A path with empty, `.` or `..` segments MUST NOT be used:
-it would change where relative references resolve. For a path with a
+it would change where relative references resolve. A request builder that
+reads `/files` SHOULD use the listed path with its empty and `.` segments
+removed instead (e.g., `main.wdl` for `./main.wdl`, as clients compare
+paths, see [Matching file entries](../adoption/trs.md#matching-file-entries)),
+which resolves (RFC 3986) like the listed one; a listed path with a `..`
+segment isn't used. For a path with a
 leading `/` (some TRS servers list paths so), a request builder SHOULD use
 the bare form below: servers differ in how they serve such paths in a URL,
 and the path without its `/` is not one that TRS listed.

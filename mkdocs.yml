@@ -125,12 +125,14 @@ nav:
       - WES request validation: tools/wes-validate.md
       - Workflow block check: tools/verify.md
       - Output normaliser: tools/outputs.md
+      - TRS discovery: tools/trs.md
   - Adoption:
       - adoption/index.md
       - TRS: adoption/trs.md
       - WES: adoption/wes.md
       - Portals and clients: adoption/portals.md
       - End-to-end demo: adoption/demo.md
+      - Demo with TRS-Filer: adoption/demo-trs-filer.md
       - Form proof of concept: adoption/form.md
       - Prototype: adoption/prototype.md
       - Prototype evaluation: adoption/prototype-evaluation.md

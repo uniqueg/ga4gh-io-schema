@@ -6,14 +6,17 @@
 
 The tool version has, for the descriptor type ``WDL``, the primary
 descriptor ``demo.wdl`` (with its content, and a URL pinned to a commit of
-the repository) and the I/O Schema as a file of type ``OTHER`` at the path
-``ga4gh-io.schema.json``, as the TRS convention of the profile says. The
-identifiers of the tool and the version are those that the schema names in
-``x-ga4gh-workflow``, so the tool is created with ``PUT /tools/{id}``.
+the repository) and the I/O Schema at the path ``ga4gh-io.schema.json``, as
+a file of type ``OTHER``, as the TRS convention of the profile says for TRS
+servers without the file type ``IO_SCHEMA``, or, with ``--schema-file-type
+IO_SCHEMA``, of that type. The identifiers of the tool and the version are
+those that the schema names in ``x-ga4gh-workflow``, so the tool is created
+with ``PUT /tools/{id}``.
 
 Usage::
 
-    python examples/demo/register.py --trs-url URL --revision SHA [--dry-run]
+    python examples/demo/register.py --trs-url URL --revision SHA \
+        [--schema-file-type {OTHER,IO_SCHEMA}] [--dry-run]
 
 The access token for writing, if the instance needs one, is read from the
 environment variable ``TRS_TOKEN``.
@@ -30,6 +33,8 @@ from pathlib import Path
 from typing import Any
 
 from demo_http import HTTPError, request_json
+
+from ga4gh_io_schema.trs import IO_SCHEMA_FILE_TYPE, OTHER_FILE_TYPE
 
 #: Directory of the demo.
 DEMO_DIR = Path(__file__).resolve().parent
@@ -97,7 +102,9 @@ def _sha256(content: bytes) -> list[dict[str, str]]:
 
 
 def build_payload(
-    revision: str, repository: str = DEFAULT_REPOSITORY
+    revision: str,
+    repository: str = DEFAULT_REPOSITORY,
+    schema_file_type: str = OTHER_FILE_TYPE,
 ) -> dict[str, Any]:
     """Build the TRS-Filer registration of the demo tool (``ToolRegister``).
 
@@ -105,6 +112,8 @@ def build_payload(
         revision: Full commit SHA that the URL of the primary descriptor
             pins; the commit must contain the demo files as they are here.
         repository: Root URL of the GitHub repository with the demo.
+        schema_file_type: TRS file type of the I/O Schema: ``OTHER``, or
+            ``IO_SCHEMA`` for TRS servers that have it.
 
     Returns:
         The body of ``PUT /tools/{id}``.
@@ -157,7 +166,7 @@ def build_payload(
                     {
                         "tool_file": {
                             "path": SCHEMA_NAME,
-                            "file_type": "OTHER",
+                            "file_type": schema_file_type,
                         },
                         "type": descriptor_type,
                         "file_wrapper": {
@@ -238,13 +247,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=f"GitHub repository with the demo (default: {DEFAULT_REPOSITORY})",
     )
     parser.add_argument(
+        "--schema-file-type",
+        choices=[OTHER_FILE_TYPE, IO_SCHEMA_FILE_TYPE],
+        default=OTHER_FILE_TYPE,
+        help="TRS file type of the I/O Schema (default: OTHER; IO_SCHEMA for "
+        "TRS servers that have it, e.g., TRS-Filer from its branch dev)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="print the registration instead of sending it",
     )
     args = parser.parse_args(argv)
     try:
-        payload = build_payload(args.revision, args.repository)
+        payload = build_payload(args.revision, args.repository, args.schema_file_type)
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1

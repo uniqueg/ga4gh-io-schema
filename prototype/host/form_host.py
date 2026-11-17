@@ -21,7 +21,6 @@ http://127.0.0.1:8000/.
 
 import argparse
 import json
-import posixpath
 import sys
 import urllib.error
 import urllib.parse
@@ -41,6 +40,7 @@ from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
 from ga4gh_io_schema.patterns import PatternError, ValuesValidator, search
+from ga4gh_io_schema.trs import find_primary_descriptor_path, find_schema_file
 from ga4gh_io_schema.validator import validate_schema
 from ga4gh_io_schema.wes import (
     DEFAULT_ALLOWED_SCHEMES,
@@ -165,14 +165,15 @@ def load_trs_schema(
 ) -> tuple[dict[str, Any], str]:
     """Load the IO schema of a tool version from TRS, as a client does.
 
-    The schema is the file ``ga4gh-io.schema.json`` of type ``OTHER`` in the
-    directory of the primary descriptor (see "Publishing convention" in
-    ``docs/adoption/trs.md``). Its workflow block must match the tool
-    version, the descriptor type and the primary descriptor (``FileWrapper``
-    with its checksum and content) that it was fetched for, where it names
-    them (step 2 of the guide for portals and clients, with
-    :func:`ga4gh_io_schema.workflow.check_workflow`); a schema whose checksum
-    can't be compared is used unverified.
+    The schema is the file of type ``IO_SCHEMA``, or else the file
+    ``ga4gh-io.schema.json`` of type ``OTHER`` in the directory of the
+    primary descriptor, as :func:`ga4gh_io_schema.trs.find_schema_file`
+    matches them (see "Discovery by clients" in ``docs/adoption/trs.md``).
+    Its workflow block must match the tool version, the descriptor type and
+    the primary descriptor (``FileWrapper`` with its checksum and content)
+    that it was fetched for, where it names them (step 2 of the guide for
+    portals and clients, with :func:`ga4gh_io_schema.workflow.check_workflow`);
+    a schema whose checksum can't be compared is used unverified.
 
     Args:
         trs_url: Base URL of the TRS API.
@@ -183,17 +184,16 @@ def load_trs_schema(
     Returns:
         The schema, valid against the profile, and the ``workflow_url`` of
         run requests: the TRS URL of the plain primary descriptor, by the
-        path that TRS lists for it, so that relative imports of multi-file
-        workflows resolve to files of the tool version.
+        path that TRS lists for it, normalised, so that relative imports of
+        multi-file workflows resolve to files of the tool version (see
+        :func:`ga4gh_io_schema.trs.find_primary_descriptor_path`).
 
     Raises:
         OSError: If the TRS can't be reached or fails (also
             ``urllib.error.HTTPError``).
         ValueError: If an id is empty, ``.`` or ``..``, the tool version
-            has no IO schema, the path of its primary descriptor has empty,
-            ``.`` or ``..`` segments, or the schema isn't JSON or doesn't
-            match the tool version, the descriptor type or the primary
-            descriptor.
+            has no IO schema, or the schema isn't JSON or doesn't match the
+            tool version, the descriptor type or the primary descriptor.
         jsonschema.exceptions.ValidationError: If the schema doesn't comply
             with the profile.
     """
@@ -205,24 +205,15 @@ def load_trs_schema(
         f"/{urllib.parse.quote(descriptor_type, safe='')}"
     )
     files = _fetch_json(urllib.request.Request(f"{version}/files"))
-    try:
-        # path and file_type are optional in TRS: skip entries without them
-        primary = next(
-            f["path"] for f in files if f.get("file_type") == "PRIMARY_DESCRIPTOR"
-        )
-        path = posixpath.join(posixpath.dirname(primary), SCHEMA_NAME)
-        # Entries may have more fields, e.g., checksum
-        found = any(
-            f.get("path") == path and f.get("file_type") == "OTHER" for f in files
-        )
-    except (KeyError, TypeError, AttributeError, StopIteration):
-        found = False
-    if not found:
+    # Entries are matched by file type and normalised path only
+    found = find_schema_file(files)
+    if found is None:
         raise ValueError(
-            f"The tool version has no IO schema ({SCHEMA_NAME} of type OTHER "
-            "next to the primary descriptor)."
+            "The tool version has no IO schema (one file of type IO_SCHEMA, or "
+            f"{SCHEMA_NAME} of type OTHER next to the primary descriptor)."
         )
-    schema = load_schema(f"{version}/descriptor/{urllib.parse.quote(path, safe='')}")
+    path = urllib.parse.quote(found.path, safe="")
+    schema = load_schema(f"{version}/descriptor/{path}")
     # The FileWrapper of the primary descriptor, with its checksum
     # A descriptor that can't be fetched leaves the schema unverified
     try:
@@ -238,6 +229,9 @@ def load_trs_schema(
     )
     if result.mismatches:
         raise ValueError(result.mismatch_message)
+    # Without a primary descriptor (an IO_SCHEMA file needs none), the URL
+    # has no path
+    primary = find_primary_descriptor_path(files)
     url = trs_descriptor_url(trs_url, tool_id, version_id, descriptor_type, primary)
     return schema, url
 

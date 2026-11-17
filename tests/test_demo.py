@@ -25,13 +25,14 @@ import conquest
 import demo_http
 import pytest
 import register
+import trs_client
 
 from ga4gh_io_schema.outputs import normalise_outputs
 from ga4gh_io_schema.validator import validate_schema
 from ga4gh_io_schema.wes import TranslationError, to_workflow_params
 
-# build_schema, conquest, demo_http and register are the demo scripts, on the
-# path through `pythonpath` of pytest (pyproject.toml).
+# build_schema, conquest, demo_http, register and trs_client are the demo
+# scripts, on the path through `pythonpath` of pytest (pyproject.toml).
 DEMO_DIR = Path(__file__).resolve().parents[1] / "examples" / "demo"
 
 SHA = "0123456789abcdef0123456789abcdef01234567"
@@ -650,4 +651,186 @@ def test_run_rejects_invalid_schema(
     schema.write_text(json.dumps({**SCHEMA, "type": "array"}), encoding="utf-8")
     argv = ["run", "--dry-run", "--revision", SHA, "--schema", str(schema)]
     assert conquest.main(argv) == 1
+    assert capsys.readouterr().err.startswith("Error: ")
+
+
+def test_payload_with_io_schema_file_type() -> None:
+    """The schema can be registered with the file type ``IO_SCHEMA``."""
+    payload = register.build_payload(SHA, schema_file_type="IO_SCHEMA")
+    _, schema_file = payload["versions"][0]["files"]
+    assert schema_file["tool_file"] == {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "IO_SCHEMA",
+    }
+    argv = ["--revision", SHA, "--schema-file-type", "IO_SCHEMA", "--dry-run"]
+    assert register.main(argv) == 0
+
+
+# Discovery in TRS, as a client
+
+#: Path of the TRS API on the mock server.
+API = "/ga4gh/trs/v2"
+#: Path of the demo's tool version for WDL on the mock server.
+VERSION = f"{API}/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL"
+#: Path of the I/O Schema of the demo's tool version, as listed.
+SCHEMA_PATH = f"{VERSION}/descriptor/.%2Fga4gh-io.schema.json"
+#: The primary descriptor of the demo, as TRS-Filer serves it.
+DESCRIPTOR = {
+    "content": (DEMO_DIR / "demo.wdl").read_text(encoding="utf-8"),
+    "checksum": SCHEMA["x-ga4gh-workflow"]["checksum"],
+}
+
+
+def _serve_demo(mock: Mock, file_type: str = "IO_SCHEMA", schema: Any = None) -> None:
+    """Serve the demo's tool version on the mock server, as TRS-Filer does.
+
+    The schema is listed as ``./ga4gh-io.schema.json``, and the entries carry
+    fields that clients ignore.
+
+    Args:
+        mock: The mock server.
+        file_type: The file type of the I/O Schema.
+        schema: The I/O Schema; by default, the demo's.
+    """
+    checksum = [{"type": "sha-256", "checksum": "0" * 64}]
+    files = [
+        {"path": "demo.wdl", "file_type": "PRIMARY_DESCRIPTOR", "checksum": checksum},
+        {"path": "./ga4gh-io.schema.json", "file_type": file_type},
+    ]
+    content = json.dumps(SCHEMA if schema is None else schema)
+    mock.add("GET", f"{VERSION}/files", 200, files)
+    mock.add("GET", SCHEMA_PATH, 200, {"content": content})
+    mock.add("GET", f"{VERSION}/descriptor", 200, DESCRIPTOR)
+
+
+@pytest.mark.parametrize("file_type", ["IO_SCHEMA", "OTHER"])
+def test_trs_client(
+    mock: Mock, file_type: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The client finds the schema, checks it and prints the run request."""
+    _serve_demo(mock, file_type)
+    assert trs_client.main(["--trs-url", f"{mock.url}{API}"]) == 0
+    captured = capsys.readouterr()
+    request = json.loads(captured.out)
+    assert request["workflow_url"] == (
+        f"{mock.url}{API}/tools/ga4gh-io-schema-demo/versions/1.0.0"
+        "/PLAIN_WDL/descriptor/demo.wdl"
+    )
+    assert request["workflow_params"] == to_workflow_params(SCHEMA, VALUES)
+    assert f"(file type {file_type})" in captured.err
+    assert "checksum matches" in captured.err
+
+
+@pytest.mark.parametrize(
+    ("checksum", "message"),
+    [
+        (None, "checksum unverified"),
+        (5, "checksum unverified"),
+        ([{"type": "sha-256", "checksum": "1" * 64}], None),
+        ([{"type": "SHA-256", "checksum": "1" * 64}], None),
+        ([{"type": "sha256", "checksum": "1" * 64}], None),
+        (
+            [{"type": "SHA256", "checksum": DESCRIPTOR["checksum"][0]["checksum"]}],
+            "checksum matches",
+        ),
+    ],
+)
+def test_trs_client_checksum(
+    mock: Mock,
+    checksum: Any,
+    message: str | None,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A primary descriptor without checksum is unverified; another is drift."""
+    _serve_demo(mock)
+    mock.routes[("GET", f"{VERSION}/descriptor")] = [
+        (200, {**DESCRIPTOR, "checksum": checksum})
+    ]
+    status = trs_client.main(["--trs-url", f"{mock.url}{API}"])
+    err = capsys.readouterr().err
+    if message:
+        assert status == 0
+        assert message in err
+    else:
+        assert status == 1
+        assert "(drift)" in err
+
+
+def test_trs_client_without_checksum_in_schema(
+    mock: Mock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A schema that names no checksum has nothing to compare."""
+    block = {k: v for k, v in SCHEMA["x-ga4gh-workflow"].items() if k != "checksum"}
+    _serve_demo(mock, schema={**SCHEMA, "x-ga4gh-workflow": block})
+    assert trs_client.main(["--trs-url", f"{mock.url}{API}"]) == 0
+    assert "no checksum to compare" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("argv", [["--version-id", "2.0.0"], ["--tool-id", "other"]])
+def test_trs_client_trs_errors(
+    mock: Mock, argv: list[str], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Errors of TRS are reported, with exit status 1."""
+    _serve_demo(mock)
+    assert trs_client.main(["--trs-url", f"{mock.url}{API}", *argv]) == 1
+    assert "HTTP 404" in capsys.readouterr().err
+
+
+def test_trs_client_no_schema(mock: Mock, capsys: pytest.CaptureFixture[str]) -> None:
+    """A tool version without I/O Schema is an error."""
+    _serve_demo(mock, file_type="TEST_FILE")
+    assert trs_client.main(["--trs-url", f"{mock.url}{API}"]) == 1
+    assert "has no IO schema" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("wrapper", [{"content": "{"}, {"url": "x"}, ["x"]])
+def test_trs_client_schema_not_json(
+    mock: Mock, wrapper: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A schema that isn't JSON in a FileWrapper is an error."""
+    _serve_demo(mock)
+    mock.routes[("GET", SCHEMA_PATH)] = [(200, wrapper)]
+    assert trs_client.main(["--trs-url", f"{mock.url}{API}"]) == 1
+    assert "isn't JSON in a FileWrapper" in capsys.readouterr().err
+
+
+def test_trs_client_schema_invalid(
+    mock: Mock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A schema that doesn't comply with the profile is an error."""
+    _serve_demo(mock, schema={**SCHEMA, "type": "array"})
+    assert trs_client.main(["--trs-url", f"{mock.url}{API}"]) == 1
+    assert "the IO schema is invalid" in capsys.readouterr().err
+
+
+def test_trs_client_schema_of_another_workflow(
+    mock: Mock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A schema that names another tool version is an error."""
+    block = {**SCHEMA["x-ga4gh-workflow"], "trs_version_id": "0.9.0"}
+    _serve_demo(mock, schema={**SCHEMA, "x-ga4gh-workflow": block})
+    assert trs_client.main(["--trs-url", f"{mock.url}{API}"]) == 1
+    assert "x-ga4gh-workflow.trs_version_id" in capsys.readouterr().err
+
+
+def test_trs_client_invalid_values(
+    mock: Mock, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Values that don't fit the schema are an error, after the discovery."""
+    _serve_demo(mock)
+    values = tmp_path / "values.json"
+    values.write_text(json.dumps({**VALUES, "min_mapq": 61}), encoding="utf-8")
+    argv = ["--trs-url", f"{mock.url}{API}", "--values", str(values)]
+    assert trs_client.main(argv) == 1
+    err = capsys.readouterr().err
+    assert err.startswith("1. Files")
+    assert "Error: " in err
+
+
+def test_trs_client_missing_values(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A missing values file is an error, before anything is requested."""
+    argv = ["--trs-url", "http://127.0.0.1:9", "--values", str(tmp_path / "x.json")]
+    assert trs_client.main(argv) == 1
     assert capsys.readouterr().err.startswith("Error: ")

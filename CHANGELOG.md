@@ -72,8 +72,6 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
     validation of tabular files is deferred.
   - Servers no longer accept IO schemas supplied by clients in a run request
     (cut); they use schemas from trusted sources only.
-  - The proposed TRS file type `IO_SCHEMA` is deferred; IO schemas are
-    published as TRS files of type `OTHER`.
   - The proposal no longer covers chaining workflows by ontology terms
     (deferred), drafting of IO schemas by AI agents (cut), or the claim that
     the profile suits machine learning pipelines (cut; an open question on
@@ -191,8 +189,8 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   engine binding" with the rules for `$id`s and for drift. (#12)
 - A convention for publishing IO schemas in TRS without a change of TRS:
   file type `OTHER`, path `ga4gh-io.schema.json` next to the primary
-  descriptor, identified by `$schema`; an `IO_SCHEMA` file type is deferred.
-  (#12)
+  descriptor, identified by `$schema`; it is the fallback for TRS servers
+  without the file type `IO_SCHEMA` that is proposed now (see below). (#12)
 - Shared conventions of all subcommands: input from a path or `-` (standard
   input), `--output` for the result, `--json` for results and errors as JSON
   objects. (#9)
@@ -298,6 +296,21 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   those of the wrong `class`. "File references" now says, like the engine
   bindings, that a branch of `anyOf` or `oneOf` that a value isn't valid
   against doesn't make it a file value. (#67)
+- The TRS file type `IO_SCHEMA` is proposed for IO schemas, no longer
+  deferred: clients look for the one file of that type first, and fall back
+  to the file `ga4gh-io.schema.json` of type `OTHER` next to the primary
+  descriptor, for TRS servers without it. "Discovery by clients" says how
+  to match file entries: by `file_type` and normalised `path` only (empty
+  and `.` segments removed), ignoring other fields such as `checksum`, with
+  test vectors in `tests/vectors/trs-files/`. The module
+  `ga4gh_io_schema.trs` implements the matching (`find_schema_file`) and
+  finds the path of the primary descriptor for the `workflow_url`
+  (`find_primary_descriptor_path`), normalised: "Workflow URLs in TRS" now
+  says to use `main.wdl` for a listed `./main.wdl`. The
+  host of the prototype uses it, the demo's `register.py` registers the
+  schema as `IO_SCHEMA` with `--schema-file-type IO_SCHEMA`, and
+  `trs_client.py` and a new page show discovery with TRS-Filer end to end.
+  (#82)
 - Engine bindings, "Workflow URLs in TRS": the recommended `workflow_url`
   is the plain primary descriptor by its path,
   `.../PLAIN_{type}/descriptor/{path}`, so that relative imports of
