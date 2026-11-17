@@ -88,19 +88,23 @@ def find_primary_descriptor_path(files: Any) -> str | None:
             entries; anything else has no primary descriptor.
 
     Returns:
-        The path, as listed (not normalised), of the first entry of type
-        ``PRIMARY_DESCRIPTOR`` whose path is a string, or ``None`` if there
-        is none.
+        The path of the first entry of type ``PRIMARY_DESCRIPTOR`` with a
+        usable path (as :func:`find_schema_file` counts them), if TRS lists
+        it in normalised form (e.g., ``wdl/main.wdl``). ``None`` if there is
+        no such entry, or if its path has another form (e.g., ``./main.wdl``
+        or ``wdl//main.wdl``), which ``trs_descriptor_url`` doesn't take: the
+        URL without a path suits single-file workflows, as for a leading
+        ``/``.
     """
     if not isinstance(files, list):
         return None
     for entry in files:
-        if (
-            isinstance(entry, dict)
-            and entry.get("file_type") == PRIMARY_DESCRIPTOR_FILE_TYPE
-            and isinstance(entry.get("path"), str)
-        ):
-            return entry["path"]
+        if not isinstance(entry, dict):
+            continue
+        path = entry.get("path")
+        normalised = normalise_path(path)
+        if entry.get("file_type") == PRIMARY_DESCRIPTOR_FILE_TYPE and normalised:
+            return path if path == normalised else None
     return None
 
 

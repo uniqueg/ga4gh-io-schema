@@ -182,15 +182,16 @@ def load_trs_schema(
         The schema, valid against the profile, and the ``workflow_url`` of
         run requests: the TRS URL of the plain primary descriptor, by the
         path that TRS lists for it, so that relative imports of multi-file
-        workflows resolve to files of the tool version.
+        workflows resolve to files of the tool version (without the path if
+        TRS lists none in normalised form, see
+        :func:`ga4gh_io_schema.trs.find_primary_descriptor_path`).
 
     Raises:
         OSError: If the TRS can't be reached or fails (also
             ``urllib.error.HTTPError``).
         ValueError: If an id is empty, ``.`` or ``..``, the tool version
-            has no IO schema, the path of its primary descriptor has empty,
-            ``.`` or ``..`` segments, or the schema isn't JSON or names
-            another tool version or descriptor type.
+            has no IO schema, or the schema isn't JSON or names another tool
+            version or descriptor type.
         jsonschema.exceptions.ValidationError: If the schema doesn't comply
             with the profile.
     """

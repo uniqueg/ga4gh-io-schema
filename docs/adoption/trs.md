@@ -133,8 +133,8 @@ altogether.
 implementation of ELIXIR On-Cloud, is getting `IO_SCHEMA` as an
 experimental extension of the TRS file types (on a branch, not yet in a
 release); the [demo with TRS-Filer](demo-trs-filer.md) registers a schema
-of that type with it and discovers it as a client. The type is to be proposed to the TRS specification with
-this evidence. Until TRS adopts it:
+of that type with it and discovers it as a client. The type is to be
+proposed to the TRS specification with this evidence. Until TRS adopts it:
 
 - **TRS servers without `IO_SCHEMA`** reject or don't list files of that
   type: publish the schema there as `OTHER` at `ga4gh-io.schema.json`, the

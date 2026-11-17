@@ -865,22 +865,28 @@ def test_load_trs_schema_takes_entries_with_more_fields(
     assert url == "http://trs/tools/t/versions/v/PLAIN_WDL/descriptor/main.wdl"
 
 
-def test_load_trs_schema_rejects_a_bad_primary_descriptor_path(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize("primary", ["../main.wdl", "./main.wdl", "wdl//main.wdl"])
+def test_load_trs_schema_ignores_an_unusable_primary_descriptor_path(
+    monkeypatch: pytest.MonkeyPatch, primary: str
 ) -> None:
-    """Test that a listed primary descriptor path with ``..`` is an error.
+    """Test that a primary descriptor path not in normalised form isn't used.
 
-    The schema is of type ``IO_SCHEMA``, which is found whatever the path of
-    the primary descriptor (an ``OTHER`` file next to it would be ignored).
+    The workflow URL is then that without a path, as for a leading ``/``;
+    the schema is of type ``IO_SCHEMA``, which is found whatever the path of
+    the primary descriptor.
+
+    Args:
+        monkeypatch: Pytest fixture.
+        primary: The path of the primary descriptor, as listed.
     """
     files = [
-        {"path": "../main.wdl", "file_type": "PRIMARY_DESCRIPTOR"},
+        {"path": primary, "file_type": "PRIMARY_DESCRIPTOR"},
         {"path": "ga4gh-io.schema.json", "file_type": "IO_SCHEMA"},
     ]
     monkeypatch.setattr(form_host, "_fetch_json", lambda *args: files)
     monkeypatch.setattr(form_host, "load_schema", lambda source: {})
-    with pytest.raises(ValueError, match="primary descriptor path"):
-        form_host.load_trs_schema("http://trs", "t", "v", "WDL")
+    _, url = form_host.load_trs_schema("http://trs", "t", "v", "WDL")
+    assert url == "http://trs/tools/t/versions/v/PLAIN_WDL/descriptor"
 
 
 def test_load_trs_schema_names_a_nested_primary_descriptor(

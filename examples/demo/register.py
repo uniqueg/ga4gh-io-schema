@@ -251,7 +251,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         choices=[OTHER_FILE_TYPE, IO_SCHEMA_FILE_TYPE],
         default=OTHER_FILE_TYPE,
         help="TRS file type of the I/O Schema (default: OTHER; IO_SCHEMA for "
-        "TRS servers that have it, such as TRS-Filer)",
+        "TRS servers that have it, e.g., TRS-Filer from the branch that adds it)",
     )
     parser.add_argument(
         "--dry-run",
