@@ -247,11 +247,11 @@ file). Normalisers build the object only for runs in a final state.
 How the workflow languages declare outputs, how engines and WES servers
 report them, and how a schema finds them. The behaviour of engines and
 servers is informative: it was surveyed in November 2026 for
-[#11](https://github.com/uniqueg/ga4gh-io-schema/issues/11), with the WES
+[#11](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/11), with the WES
 servers Sapporo, WESkit and Conquest (a WES server that runs workflows from
 Git repositories), and checked against real runs of Sapporo 2.4, WESkit,
 Toil 9.5 and Cromwell 92 for
-[#55](https://github.com/uniqueg/ga4gh-io-schema/issues/55); it may change
+[#55](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/55); it may change
 with new versions. The test vectors of the normaliser record the shapes
 that it supports (see [Output
 normaliser](../tools/outputs.md#supported-shapes)).

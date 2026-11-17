@@ -17,7 +17,7 @@ outside servers, from TRS to the WES run request, run the
 ## The demo files
 
 Everything is in
-[`examples/demo/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/examples/demo):
+[`examples/demo/`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/tree/main/examples/demo):
 
 | File | What it is |
 | --- | --- |
@@ -106,7 +106,7 @@ convention](trs.md#publishing-convention) says:
 
 - the primary descriptor `demo.wdl` (`PRIMARY_DESCRIPTOR`), with its content,
   its SHA-256 checksum and a URL pinned to the commit
-  (`https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/<SHA>/examples/demo/demo.wdl`);
+  (`https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/<SHA>/examples/demo/demo.wdl`);
 - the IO schema, of type `OTHER` at the path `ga4gh-io.schema.json` next to
   it, with its content and checksum; with `--schema-file-type IO_SCHEMA`, of
   the [proposed type](trs.md#proposed-the-io_schema-file-type) `IO_SCHEMA`,
@@ -139,7 +139,7 @@ normalised outputs.
     ```bash
     ga4gh-io-schema wes-params --schema examples/demo/ga4gh-io.schema.json \
       --values examples/demo/values.json --allow-scheme https --allow-scheme s3 \
-      --request --workflow-url https://github.com/uniqueg/ga4gh-io-schema \
+      --request --workflow-url https://github.com/elixir-cloud-aai/ga4gh-io-schema \
       > request.json
     ```
 
@@ -161,7 +161,7 @@ normalised outputs.
       },
       "workflow_type": "WDL",
       "workflow_type_version": "1.1",
-      "workflow_url": "https://github.com/uniqueg/ga4gh-io-schema",
+      "workflow_url": "https://github.com/elixir-cloud-aai/ga4gh-io-schema",
       "workflow_engine_parameters": {
         "revision": "<SHA>",
         "main_workflow_path": "examples/demo/demo.wdl"

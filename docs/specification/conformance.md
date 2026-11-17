@@ -286,7 +286,7 @@ document from a trusted source is available.
 ## Conformance suite
 
 The conformance suite is a set of language-neutral test cases in
-[`tests/conformance/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/tests/conformance)
+[`tests/conformance/`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/tree/main/tests/conformance)
 of the repository: JSON files, without code, that any implementation can run
 with a runner of its own.
 
@@ -306,14 +306,14 @@ tests/conformance/
   meta-schema by its `$id`; no case has other references, so a
   runner needs only the
   meta-schema and vocabularies of
-  [`schemas/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/schemas),
+  [`schemas/`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/tree/main/schemas),
   loaded from local copies: a runner maps each `$id` of `schemas/` to its
   file. A runner checks `$schema` before the meta-schema (requirement 3
   of [Validator](#validator)). Error messages differ between validators
   and are not part of the suite. Files ending in `.license` hold licence
   information ([REUSE](https://reuse.software/)) and are not cases.
 - **Test vectors** in
-  [`tests/vectors/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/tests/vectors)
+  [`tests/vectors/`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/tree/main/tests/vectors)
   test the class [Request builder](#request-builder): the translation of
   input values into `workflow_params` for each descriptor type
   (`wes-params/`), and the checks of file reference values (schemes,

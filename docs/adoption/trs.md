@@ -102,7 +102,7 @@ The client fetches the schema by the path as the entry lists it, not by the
 normalised one, as servers may store paths as they were registered.
 
 The test vectors in
-[`tests/vectors/trs-files/cases.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/tests/vectors/trs-files/cases.json)
+[`tests/vectors/trs-files/cases.json`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/blob/main/tests/vectors/trs-files/cases.json)
 are lists of file entries, such as answers with checksums or with `./` in
 paths, each with the entry that a client finds (`schemaFile`: its `path` as
 listed and its `file_type`), or `null` for none. The package implements the

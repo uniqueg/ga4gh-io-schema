@@ -9,7 +9,7 @@ command-line tool and as a Python API.
 To install the validator tool and all development dependencies for local testing, clone the repository and install it in editable mode:
 
 ```bash
-git clone https://github.com/uniqueg/ga4gh-io-schema.git
+git clone https://github.com/elixir-cloud-aai/ga4gh-io-schema.git
 cd ga4gh-io-schema
 pip install -e ".[dev]"
 ```

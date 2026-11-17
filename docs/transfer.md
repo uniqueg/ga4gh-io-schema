@@ -6,9 +6,10 @@ governance and stable identifiers. It records proposals. GA4GH decides on
 them during submission, and none of them is agreed yet.
 
 Until the transfer, the profile has no tags or releases. The repository
-moves from `uniqueg/ga4gh-io-schema` to
-`elixir-cloud-aai/ga4gh-io-schema` first, and to the `ga4gh` organisation
-when GA4GH accepts it.
+moved from `uniqueg/ga4gh-io-schema` to
+`elixir-cloud-aai/ga4gh-io-schema` first
+([#25](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/25)), and
+moves to the `ga4gh` organisation when GA4GH accepts it.
 
 ## Naming
 
@@ -21,7 +22,7 @@ name no organisation other than GA4GH:
 | Python distribution, command | `ga4gh-io-schema` |
 | Python import package | `ga4gh_io_schema` |
 | Schema titles | `GA4GH IO Profile …` (e.g., "GA4GH IO Profile Meta-Schema"), and "GA4GH UI Widgets Vocabulary" |
-| Repository | `uniqueg/ga4gh-io-schema`, moving to `elixir-cloud-aai/ga4gh-io-schema` |
+| Repository | `elixir-cloud-aai/ga4gh-io-schema` (moved from `uniqueg/ga4gh-io-schema`) |
 
 Some names still point to the organisations where the profile was
 developed:
@@ -172,10 +173,10 @@ that holds the copyright. Proposal:
 
 **Status.**
 
-- **0.3 (no tag, [#78](https://github.com/uniqueg/ga4gh-io-schema/pull/78)):**
+- **0.3 (no tag, [#78](https://github.com/elixir-cloud-aai/ga4gh-io-schema/pull/78)):**
   the `$id`s and `$schema` of the profile name the `main` branch of the
   repository's new home
-  ([#25](https://github.com/uniqueg/ga4gh-io-schema/issues/25)), e.g.,
+  ([#25](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/25)), e.g.,
   `https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json`.
 
 Drafts of 0.3 named the repository under `uniqueg` and a `v0.3.0` tag,

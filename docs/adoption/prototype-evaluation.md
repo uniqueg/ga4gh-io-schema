@@ -56,7 +56,7 @@ pull request that closed them.
    compared whole file entries and missed the schema as soon as an entry
    had a `checksum`. TRS `ToolFile` fields are all optional, and paths may
    have forms such as `./ga4gh-io.schema.json`. Addressed
-   ([#82](https://github.com/uniqueg/ga4gh-io-schema/issues/82)):
+   ([#82](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/82)):
    [Matching file entries](trs.md#matching-file-entries) says to compare
    entries by `file_type` and normalised `path` only, ignoring other
    fields, with test vectors; and this is the evidence for the [proposed
@@ -71,7 +71,7 @@ pull request that closed them.
    didn't hit this; it follows from URL resolution (RFC 3986). Decided in
    0.3: the form with the path is recommended ([Workflow URLs in
    TRS](../specification/engine-bindings.md#workflow-urls-in-trs));
-   [#83](https://github.com/uniqueg/ga4gh-io-schema/issues/83), fixed by [#89](https://github.com/uniqueg/ga4gh-io-schema/pull/89).
+   [#83](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/83), fixed by [#89](https://github.com/elixir-cloud-aai/ga4gh-io-schema/pull/89).
 3. **Can the WES fetch the `workflow_url`? (docs).** The run request is
    only useful if the WES can fetch the TRS URL. In the prototype, the stub
    is reachable inside the stack only, so the stack sends nothing by
@@ -81,7 +81,7 @@ pull request that closed them.
    so, and the question belongs to the WES work stream. Done in 0.3: [Can
    the WES fetch the workflow?](wes.md#can-the-wes-fetch-the-workflow) and
    an [open question](../roadmap.md#open-questions);
-   [#84](https://github.com/uniqueg/ga4gh-io-schema/issues/84), fixed by [#87](https://github.com/uniqueg/ga4gh-io-schema/pull/87).
+   [#84](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/84), fixed by [#87](https://github.com/elixir-cloud-aai/ga4gh-io-schema/pull/87).
 4. **The workflow block check (tools).** The host compares the ids of
    `x-ga4gh-workflow` by hand and skips the checksum (step 2 of the
    [guide](portals.md#2-check-the-workflow-block)). The package validates
@@ -90,7 +90,7 @@ pull request that closed them.
    out. A helper that takes the schema, the TRS ids and the descriptor's
    `FileWrapper` would close it. Done in 0.3: the [workflow block
    check](../tools/verify.md), which the host uses;
-   [#85](https://github.com/uniqueg/ga4gh-io-schema/issues/85), fixed by [#92](https://github.com/uniqueg/ga4gh-io-schema/pull/92).
+   [#85](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/85), fixed by [#92](https://github.com/elixir-cloud-aai/ga4gh-io-schema/pull/92).
 
 ## Limits of the prototype
 

@@ -17,7 +17,7 @@ the type, and the client finds it there.
 
 ## What runs
 
-[`examples/demo/trs-filer-demo.sh`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/examples/demo/trs-filer-demo.sh):
+[`examples/demo/trs-filer-demo.sh`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/blob/main/examples/demo/trs-filer-demo.sh):
 
 1. Starts TRS-Filer and MongoDB with TRS-Filer's Docker Compose setup, as a
    Compose project of its own (`io-schema-trs-filer-demo`), on

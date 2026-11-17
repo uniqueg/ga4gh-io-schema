@@ -43,7 +43,7 @@ REPOSITORY_DIR = "examples/demo"
 #: Name of the I/O Schema file, next to the primary descriptor.
 SCHEMA_NAME = "ga4gh-io.schema.json"
 #: The repository that holds the demo workflow.
-DEFAULT_REPOSITORY = "https://github.com/uniqueg/ga4gh-io-schema"
+DEFAULT_REPOSITORY = "https://github.com/elixir-cloud-aai/ga4gh-io-schema"
 #: Name of the environment variable with the access token.
 TOKEN_ENV = "TRS_TOKEN"
 #: A full commit SHA of Git.

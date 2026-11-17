@@ -3,26 +3,26 @@
 IO schemas are validated against the GA4GH IO Profile meta-schema, a JSON
 Schema (Draft 2020-12) of the repository:
 
-- [`schemas/ga4gh-io-profile.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/ga4gh-io-profile.schema.json):
+- [`schemas/ga4gh-io-profile.schema.json`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/blob/main/schemas/ga4gh-io-profile.schema.json):
   the meta-schema: the rules for the top level of an IO schema, and (in
   `$defs/node`) the rules for every schema of an IO schema, at any depth,
   which combine the vocabularies.
-- [`schemas/vocabularies/annotations.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/annotations.schema.json):
+- [`schemas/vocabularies/annotations.schema.json`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/blob/main/schemas/vocabularies/annotations.schema.json):
   the [`x-ga4gh-*` keywords](keywords.md#the-x-ga4gh-vocabulary) that annotate
   parameters for clients (UI hints, error message, description format,
   ontology term).
-- [`schemas/vocabularies/file.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/file.schema.json):
+- [`schemas/vocabularies/file.schema.json`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/blob/main/schemas/vocabularies/file.schema.json):
   the `x-ga4gh-*` keywords of file parameters ([file
   references](files.md), tabular files).
-- [`schemas/vocabularies/parameter.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/parameter.schema.json):
+- [`schemas/vocabularies/parameter.schema.json`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/blob/main/schemas/vocabularies/parameter.schema.json):
   the binding of a parameter to the engine's parameter (`x-ga4gh-parameter`).
-- [`schemas/vocabularies/workflow.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/workflow.schema.json):
+- [`schemas/vocabularies/workflow.schema.json`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/blob/main/schemas/vocabularies/workflow.schema.json):
   the top-level keywords: the workflow version and engine of the schema
   (`x-ga4gh-workflow`, see [Identity and engine binding](identity.md)).
-- [`schemas/vocabularies/outputs.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/outputs.schema.json):
+- [`schemas/vocabularies/outputs.schema.json`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/blob/main/schemas/vocabularies/outputs.schema.json):
   the `x-ga4gh-*` keywords that find the outputs of a run
   ([Outputs](outputs.md)).
-- [`schemas/vocabularies/ui-widgets.schema.json`](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json):
+- [`schemas/vocabularies/ui-widgets.schema.json`](https://github.com/elixir-cloud-aai/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json):
   the vocabulary of UI widgets (values of `x-ga4gh-ui-widget`), and the
   rules for the schemas that each widget fits (see [UI widgets](widgets.md)).
 
@@ -130,7 +130,7 @@ The rules combine one vocabulary file per keyword group:
 | Keyword | Value | Vocabulary |
 | ----- | ----- | ----- |
 | `x-ga4gh-ontology` | string, a URI | `annotations` |
-| `x-ga4gh-ui-widget` | a widget of the [vocabulary](https://github.com/uniqueg/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json), or `custom:<name>` (lowercase letters, digits and hyphens); a widget of the vocabulary needs the type and keywords that it fits in the same schema, and viewers are for outputs (see [UI widgets](widgets.md)) | `annotations`, `ui-widgets` |
+| `x-ga4gh-ui-widget` | a widget of the [vocabulary](https://github.com/elixir-cloud-aai/ga4gh-io-schema/blob/main/schemas/vocabularies/ui-widgets.schema.json), or `custom:<name>` (lowercase letters, digits and hyphens); a widget of the vocabulary needs the type and keywords that it fits in the same schema, and viewers are for outputs (see [UI widgets](widgets.md)) | `annotations`, `ui-widgets` |
 | `x-ga4gh-description-format` | `plain_text` or `markdown` | `annotations` |
 | `x-ga4gh-hidden` | boolean | `annotations` |
 | `x-ga4gh-error-message` | string | `annotations` |

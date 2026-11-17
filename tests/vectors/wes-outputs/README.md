@@ -50,7 +50,7 @@ reasons of reports are not part of the vectors.
 
 No case holds data of real users. The real runs below ran tiny test
 workflows (no real data) on local Docker containers of the servers, in
-November 2026 ([#55](https://github.com/uniqueg/ga4gh-io-schema/issues/55)).
+November 2026 ([#55](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/55)).
 Their run logs are `GET /runs/{run_id}` as the server returned it, cut down
 to `run_id`, `state` and `outputs`, with host paths, run IDs and signatures
 of presigned URLs replaced. The workflows are in
