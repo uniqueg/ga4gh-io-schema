@@ -193,15 +193,18 @@ jobs:
       - name: Run tests (including installed wheel)
         run: pytest --cov-report=xml
       # Uploaded once, from the version of the other single-version jobs.
-      # Upload errors fail the workflow only on pushes, because pull requests
-      # from forks and Dependabot get no access to the Codecov token
+      # Upload errors fail the workflow only on pushes in elixir-cloud-aai:
+      # pull requests from forks and Dependabot get no access to the Codecov
+      # token, and Codecov isn't set up before the transfer
       - name: Submit report to Codecov
         if: ${{ matrix.python-version == '3.13' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
-          fail_ci_if_error: ${{ github.event_name == 'push' }}
+          fail_ci_if_error: >-
+            ${{ github.event_name == 'push'
+            && github.repository_owner == 'elixir-cloud-aai' }}
           verbose: true
 
       - name: E2E CLI Validation (Valid Schemas)

@@ -269,7 +269,9 @@ Locally, `gitleaks-all` also scans untracked and ignored files (e.g.,
 caches in `.venv`), so it may report findings there that CI doesn't see.
 
 A new semgrep or ast-grep rule comes with test cases that it finds and
-cases that it must not find; run `ast-grep test` for the ast-grep rules.
+cases that it must not find: in `.semgrep/ga4gh-io-schema.py` (`# ruleid:`
+and `# ok:` comments) and in `.ast-grep/rule-tests/`. The hooks
+`semgrep-test` and `ast-grep-test` run them.
 
 ## Meta-schema validation
 

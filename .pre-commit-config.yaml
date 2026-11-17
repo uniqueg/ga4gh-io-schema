@@ -9,7 +9,10 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
+      # Also files committed without the hooks (CI runs on all files)
       - id: check-added-large-files
+        args: [--enforce-all]
+        exclude: ^uv\.lock$
       - id: check-merge-conflict
       - id: check-yaml
         # `mkdocs.yml` uses MkDocs' `!ENV` tag (the docs build checks it)
@@ -38,6 +41,18 @@ repos:
           - --disable-version-check
           - --quiet
           - --skip-unknown-extensions
+        # The test cases of the rules contain findings on purpose
+        exclude: ^\.semgrep/
+      # The rules against their test cases (`# ruleid:` / `# ok:`)
+      - id: semgrep
+        alias: semgrep-test
+        name: semgrep rule tests
+        entry: >-
+          semgrep --test --metrics=off --disable-version-check
+          --config .semgrep/ga4gh-io-schema.yml .semgrep/ga4gh-io-schema.py
+        args: []
+        files: ^\.semgrep/
+        pass_filenames: false
   - repo: https://github.com/gitleaks/gitleaks
     rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e  # frozen: v8.30.1
     hooks:

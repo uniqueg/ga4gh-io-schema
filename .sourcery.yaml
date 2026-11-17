@@ -14,6 +14,7 @@ ignore:
   - .tox
   - node_modules
   - vendor
-  # The ast-grep rule tests contain findings on purpose; the rules
-  # themselves stay reviewed
+  # The semgrep and ast-grep rule tests contain findings on purpose; the
+  # rules themselves stay reviewed
+  - .semgrep/*.py
   - .ast-grep/rule-tests/
