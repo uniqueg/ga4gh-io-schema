@@ -324,6 +324,9 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 
 ### Fixed
 
+- The transfer page names the `main` URL of the schemas, as the `$id`s of
+  0.3 do, instead of a `v0.3.0` tag that doesn't exist; the check of
+  schema URLs leaves out `$`-placeholders of rewrite rules. (#96)
 - Validation against the meta-schema takes time roughly linear in the size
   of the schema, no longer exponential in its depth of nesting: deeply
   nested parameters (e.g., arrays of arrays, nested records) validate in
