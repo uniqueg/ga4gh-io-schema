@@ -12,11 +12,19 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## v0.3.0 (2026-11-16)
-
-First tagged release of the profile and the `ga4gh-io-schema` package.
+Version 0.3 of the profile; not released (no tag). Releases come with the
+move of the repository to GA4GH; until then, pin a commit SHA (see
+[Development](https://ga4gh-io-schema.readthedocs.io/en/latest/development/#schema-identifiers)).
 
 ### Breaking changes
+
+- The `$id`s of the meta-schema and its vocabularies, and with them the
+  `$schema` of IO schemas, start with
+  `https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/`
+  instead of `https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/`,
+  because the repository moves to elixir-cloud-aai. A stable identifier
+  follows later (#26). To migrate, change `$schema` in your IO schemas.
+  (#77)
 
 - Widgets of `x-ga4gh-ui-widget` must fit their schema: the meta-schema
   rejects, for example, a `slider` without a numeric type and both bounds, a

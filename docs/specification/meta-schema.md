@@ -31,14 +31,15 @@ The [validator](../tools/validator.md) checks schemas against them.
 ## Referencing the meta-schema
 
 Inside your own drafted schemas, you can reference the meta-schema directly to
-enable IDE autocompletion and validation. The identifier is versioned: it names
-a release of the profile, not a moving branch. Use the tag of the profile
-release that you target, and replace the `$id` of the example with an
-identifier of your own.
+enable IDE autocompletion and validation. The profile has no releases yet, so
+the identifier names the `main` branch, whose content changes; to work against
+fixed content, fetch the meta-schema from a commit (see [Schema
+identifiers](../development.md#schema-identifiers)), but keep `$schema` as in
+the example. Replace the `$id` of the example with an identifier of your own.
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
   "$id": "https://example.org/schemas/my-tool/v1"
 }
 ```
@@ -85,7 +86,7 @@ against `properties.inputs` of the IO schema, and normalised outputs against
 
 ## Where the meta-schema is served
 
-As a schema standard, there is no active deployment of a service. The schemas and vocabularies are served statically via raw GitHub URLs, at the release tag that their `$id`s name. IO schemas of workflows are published in **TRS (Tool Registry Service)** implementations as files of the existing type `OTHER` (see [TRS](../adoption/trs.md)); a dedicated file type such as `IO_SCHEMA` is deferred (see [Roadmap](../roadmap.md#deferred)).
+As a schema standard, there is no active deployment of a service. The schemas and vocabularies are served statically via raw GitHub URLs: from the `main` branch that their `$id`s name, or from a commit that you pin (see [Schema identifiers](../development.md#schema-identifiers)). IO schemas of workflows are published in **TRS (Tool Registry Service)** implementations as files of the existing type `OTHER` (see [TRS](../adoption/trs.md)); a dedicated file type such as `IO_SCHEMA` is deferred (see [Roadmap](../roadmap.md#deferred)).
 
 ## Structure of the meta-schema
 

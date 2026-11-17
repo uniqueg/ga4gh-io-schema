@@ -40,7 +40,7 @@ REQUESTS_DIR = VECTORS_DIR.parent / "wes-requests"
 REQUESTS = sorted(path.parent for path in REQUESTS_DIR.glob("*/*/schema.json"))
 FILE_VALUES = load_json(VECTORS_DIR.parent / "file-values" / "cases.json")
 PROFILE = (
-    "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/"
+    "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/"
     "ga4gh-io-profile.schema.json"
 )
 #: Files that a vector may have.

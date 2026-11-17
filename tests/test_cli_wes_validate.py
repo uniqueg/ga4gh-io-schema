@@ -23,7 +23,7 @@ CWL = VECTORS_DIR / "CWL" / "file-objects"
 EXAMPLE_WDL = TESTS_DIR / "data" / "example_wdl.schema.json"
 TOOL_PAGE = TESTS_DIR.parent / "docs" / "tools" / "wes-validate.md"
 PROFILE = (
-    "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/"
+    "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/"
     "ga4gh-io-profile.schema.json"
 )
 

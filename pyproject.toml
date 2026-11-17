@@ -9,7 +9,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ga4gh-io-schema"
-version = "0.3.0"
+# No releases before the move to GA4GH (see docs/development.md).
+version = "0.3.0.dev0"
 description = "GA4GH standard profile for workflow and tool inputs and outputs"
 readme = "README.md"
 license = "Apache-2.0"
