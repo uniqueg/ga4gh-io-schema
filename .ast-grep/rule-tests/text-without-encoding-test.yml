@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+id: text-without-encoding
+valid:
+  - open(path, encoding="utf-8")
+  - open(path, "w", encoding="utf-8")
+  - open(path, "rb")
+  - open(path, mode="wb")
+  - path.read_text(encoding="utf-8")
+  - path.write_text(text, encoding="utf-8")
+  - path.read_text("utf-8")
+  - path.write_text(text, "utf-8")
+  - path.read_bytes()
+invalid:
+  - open(path)
+  - open(path, "w")
+  - open("b.json")
+  - path.read_text()
+  - path.write_text(text)

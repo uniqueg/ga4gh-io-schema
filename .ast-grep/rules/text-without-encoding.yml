@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+id: text-without-encoding
+language: python
+severity: error
+message: Text file opened without an explicit encoding
+note: |
+  Schemas, descriptors and parameters are UTF-8 (JSON requires it); the
+  default encoding depends on the locale (e.g., cp1252 on Windows). Pass
+  `encoding="utf-8"`, or open the file in binary mode.
+rule:
+  any:
+    - all:
+        - pattern: open($$$ARGS)
+        - not:
+            has:
+              stopBy: end
+              kind: keyword_argument
+              has:
+                field: name
+                regex: ^encoding$
+        - not:
+            has:
+              stopBy: end
+              kind: string
+              # A mode with `b`, e.g. "rb" or "wb"
+              regex: ^["'][rwax+]*b[rwax+]*["']$
+    # Without arguments, or with the text only (`encoding` is the first
+    # positional argument of `read_text` and the second of `write_text`)
+    - pattern: $PATH.read_text()
+    - pattern: $PATH.write_text($TEXT)

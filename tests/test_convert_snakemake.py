@@ -213,7 +213,7 @@ def test_json_result_has_schema_and_notes(
         capsys: Pytest fixture capturing the output.
     """
     path = tmp_path / "config.schema.json"
-    path.write_text(json.dumps(config({"bam": {"type": "string"}})))
+    path.write_text(json.dumps(config({"bam": {"type": "string"}})), encoding="utf-8")
 
     status, out, err = run(["convert", "snakemake", "--json", str(path)], capsys)
 
@@ -253,9 +253,9 @@ def test_standard_input_and_output_file(
 
     assert status == 0
     assert out == ""
-    assert json.loads(target.read_text())["properties"]["inputs"]["properties"] == {
-        "threads": {"type": "integer"}
-    }
+    assert json.loads(target.read_text(encoding="utf-8"))["properties"]["inputs"][
+        "properties"
+    ] == {"threads": {"type": "integer"}}
 
 
 @pytest.mark.parametrize(
@@ -286,7 +286,7 @@ def test_unreadable_sources_exit_with_3(
         capsys: Pytest fixture capturing the output.
     """
     path = tmp_path / "config.schema.yaml"
-    path.write_text(source)
+    path.write_text(source, encoding="utf-8")
 
     status, out, err = run(["convert", "snakemake", str(path)], capsys)
 
@@ -307,7 +307,7 @@ def test_yaml_aliases_are_bounded(
     lines = ["a0: &a0 [x, x, x, x, x, x, x, x, x, x]"]
     lines += [f"a{i}: &a{i} [{', '.join([f'*a{i - 1}'] * 10)}]" for i in range(1, 7)]
     path = tmp_path / "bomb.yaml"
-    path.write_text("\n".join(lines))
+    path.write_text("\n".join(lines), encoding="utf-8")
 
     status, _, err = run(["convert", "snakemake", str(path)], capsys)
 
@@ -329,7 +329,7 @@ def test_yaml_needs_pyyaml(
     """
     monkeypatch.setitem(sys.modules, "yaml", None)
     path = tmp_path / "config.schema.yaml"
-    path.write_text("type: object\n")
+    path.write_text("type: object\n", encoding="utf-8")
 
     status, _, err = run(["convert", "snakemake", str(path)], capsys)
 
@@ -347,7 +347,7 @@ def test_conversion_errors_exit_with_1_and_location(
         capsys: Pytest fixture capturing the output.
     """
     path = tmp_path / "config.schema.json"
-    path.write_text(json.dumps(config({"a": 3})))
+    path.write_text(json.dumps(config({"a": 3})), encoding="utf-8")
 
     status, _, err = run(["convert", "snakemake", "--json", str(path)], capsys)
 
@@ -367,7 +367,7 @@ def test_results_that_dont_comply_exit_with_1(
         capsys: Pytest fixture capturing the output.
     """
     path = tmp_path / "config.schema.json"
-    path.write_text(json.dumps(config({}, **{"x-ga4gh-bogus": 1})))
+    path.write_text(json.dumps(config({}, **{"x-ga4gh-bogus": 1})), encoding="utf-8")
 
     status, out, err = run(["convert", "snakemake", str(path)], capsys)
 
@@ -394,7 +394,7 @@ def test_result_errors_at_the_root_have_no_location(
 
     monkeypatch.setattr(snakemake, "load_profile", lambda: {"$id": "urn:other"})
     path = tmp_path / "config.schema.json"
-    path.write_text(json.dumps(config({})))
+    path.write_text(json.dumps(config({})), encoding="utf-8")
 
     status, _, err = run(["convert", "snakemake", "--json", str(path)], capsys)
 
@@ -452,7 +452,7 @@ def test_no_guess_and_overrides_on_the_command_line(
     properties = {
         name: {"type": "string"} for name in ("genome_fasta", "out", "bed", "x")
     }
-    path.write_text(json.dumps(config(properties)))
+    path.write_text(json.dumps(config(properties)), encoding="utf-8")
 
     status, out, err = run(
         [
@@ -591,7 +591,7 @@ def test_output_options(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> N
         capsys: Pytest fixture capturing the output.
     """
     path = tmp_path / "config.schema.json"
-    path.write_text(json.dumps(config({})))
+    path.write_text(json.dumps(config({})), encoding="utf-8")
     command = ["convert", "snakemake", str(path)]
 
     status, out, err = run(
