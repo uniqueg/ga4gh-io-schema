@@ -75,15 +75,15 @@ they are opened.
    at all. A client can't find out from the WES API whether it resolves
    TRS URLs or which hosts it reaches. The [WES guide](wes.md) should say
    so, and the question belongs to the WES work stream.
-4. **The workflow block check (tools).** The host compares the ids of
-   `x-ga4gh-workflow` by hand and skips the checksum (step 2 of the
-   [guide](portals.md#2-check-the-workflow-block)). The package validates
-   schemas and builds requests, but has no function for this check; every
-   client writes its own, and the checksum part is the one that gets left
-   out. A helper that takes the schema, the TRS ids and the descriptor's
-   `FileWrapper` would close it. Since then: the [workflow block
-   check](../tools/verify.md) does, and the host uses it, with the
-   checksum ([#85](https://github.com/uniqueg/ga4gh-io-schema/issues/85)).
+4. **The workflow block check (tools).** Resolved by the [workflow block
+   check](../tools/verify.md)
+   ([#85](https://github.com/uniqueg/ga4gh-io-schema/issues/85)). At the
+   time of the evaluation, the host compared the ids of `x-ga4gh-workflow`
+   by hand and skipped the checksum (step 2 of the
+   [guide](portals.md#2-check-the-workflow-block)), and the package had no
+   function for this check: every client wrote its own, and the checksum
+   part was the one that got left out. The check takes the schema, the TRS
+   ids and the descriptor's `FileWrapper`, and the host now uses it.
 
 ## Limits of the prototype
 

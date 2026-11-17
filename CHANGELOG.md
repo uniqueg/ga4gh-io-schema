@@ -79,8 +79,8 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - A check of the workflow block for clients:
-  `ga4gh_io_schema.workflow.check_workflow()` and `ga4gh-io-schema
-  verify` compare `trs_tool_id`, `trs_version_id` and
+  `ga4gh_io_schema.workflow.check_workflow()` and
+  `ga4gh-io-schema verify` compare `trs_tool_id`, `trs_version_id` and
   `descriptor_type` of `x-ga4gh-workflow` with the tool version that a
   schema was fetched for, and its `checksum` with the checksums of the
   primary descriptor, from TRS (`FileWrapper.checksum`) or computed over

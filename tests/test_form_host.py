@@ -842,6 +842,7 @@ def test_load_trs_schema_without_descriptor(
     """
     demo = trs_stub.load_workflow(ROOT / "examples" / "demo")
     fetch = form_host._fetch_json
+    failed: list[str] = []
 
     def fail_on_descriptor(request: urllib.request.Request) -> Any:
         """Fail on the primary descriptor, fetch anything else.
@@ -857,6 +858,7 @@ def test_load_trs_schema_without_descriptor(
                 isn't JSON.
         """
         if request.full_url.endswith("/descriptor"):
+            failed.append(request.full_url)
             raise ValueError("not JSON")
         return fetch(request)
 
@@ -866,6 +868,7 @@ def test_load_trs_schema_without_descriptor(
             base, demo.tool_id, demo.version_id, "WDL"
         )
 
+    assert failed
     assert schema["x-ga4gh-workflow"]["trs_version_id"] == demo.version_id
 
 

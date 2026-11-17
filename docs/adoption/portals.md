@@ -63,8 +63,8 @@ supported algorithm, no access to the descriptor) is unverified; the client
 may use it, and may say so.
 
 The [workflow block check](../tools/verify.md)
-(`ga4gh_io_schema.workflow.check_workflow()`, or `ga4gh-io-schema
-verify`) does these comparisons: it takes the schema, the TRS ids,
+(`ga4gh_io_schema.workflow.check_workflow()`, or
+`ga4gh-io-schema verify`) does these comparisons: it takes the schema, the TRS ids,
 the descriptor type and the `FileWrapper` of the primary descriptor (or its
 checksums), and returns the mismatches and whether the schema is verified.
 
