@@ -61,6 +61,66 @@ TRS already provide.
 The [`wes-params`](../tools/wes-params.md) tool does steps 3 and 4 (except
 the submission).
 
+### Can the WES fetch the workflow?
+
+A run request with a TRS URL in `workflow_url` is only runnable if the WES
+server fetches that URL. WES 1.1 leaves this to the deployment: it
+defines `workflow_url` as the URL of the workflow document (or a relative
+path to an attached file), not which URLs a server must fetch, so a server
+may refuse or fail on URLs that it can't or won't fetch. Before it sends such a request, a client
+needs to know two things about the WES:
+
+- **TRS URL support:** whether the server fetches a remote `workflow_url`
+  over `http(s)` at all, and, for multi-file workflows, also the files that
+  the primary descriptor imports, relative to that URL (see [Run
+  requests](../specification/engine-bindings.md#run-requests)). Some
+  servers take only workflows attached to the request
+  (`workflow_attachment`), or only workflows from a list of their own.
+- **Reachable hosts:** whether the server can reach the host of the TRS,
+  and is allowed to. A TRS inside a private network (e.g., a stack of
+  containers, where the TRS has a name that only resolves inside it), a
+  firewall or egress policy of the WES, or an allow-list of hosts that
+  the server fetches workflows from can each make the URL unreachable
+  from the server, even if the client reaches it. A TRS that needs
+  authorisation is unreachable too, unless the deployment gives the
+  server its own credentials for it: the server doesn't get the user's.
+
+The WES API doesn't tell a client either of them. Its `service-info` lists
+the `workflow_type_versions` and the `supported_filesystem_protocols`, but
+doesn't say whether these protocols apply to `workflow_url`, and no field
+names the TRS hosts that the server reaches. Until it does
+(see [Open questions](../roadmap.md#open-questions)), deployments can tell
+clients in these ways:
+
+- **Configuration of the client:** the portal or gateway that builds run
+  requests is configured with the WES servers it submits to and, for each,
+  whether it takes TRS URLs and from which TRS base URLs (e.g., a WES and
+  the TRS of the same deployment). This is the most reliable way today,
+  because the deployment knows both sides.
+- **Service registry:** a deployment that registers its services in a
+  GA4GH Service Registry can describe the pairing in the WES entry: its
+  `description` and `documentationUrl` for people. For machines, a
+  deployment can add, as its own convention, an entry to the `tags` of the
+  WES `service-info` (a map of strings), e.g.,
+  `"trs_urls": "https://trs.example.org/ga4gh/trs/v2"`. Such tags are not
+  standardised: a generic client can't rely on them, and SHOULD treat a
+  missing tag as "unknown", not as "no".
+- **Trying:** a client MAY submit the request and handle the failure. A
+  server that can't fetch the `workflow_url` may only fail the run later
+  (state `SYSTEM_ERROR` or `EXECUTOR_ERROR`), not reject the request, so
+  the client SHOULD tell its user that the run may fail for this reason.
+
+Where a WES can't fetch from the TRS, the client can fetch the files
+itself and attach them: it downloads the primary descriptor and the files
+it imports (`GET .../{type}/files` lists them) as `workflow_attachment`,
+under their paths, and sets `workflow_url` to the relative path of the
+primary descriptor (e.g., `workflows/variant_calling.wdl`). The [form proof
+of concept](form.md) sets such a `workflow_url` when it knows no TRS URL,
+but attaches no files. With attachments, the
+server runs the files as sent; a server that validates requests still gets
+the IO schema from a trusted source, not from the attachments (see
+[Sources of schemas](../security.md#sources-of-schemas)).
+
 ### Validating run requests (servers)
 
 1. Get the IO schema of the workflow from a trusted source (the TRS entry

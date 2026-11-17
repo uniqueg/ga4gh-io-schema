@@ -275,6 +275,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   those of the wrong `class`. "File references" now says, like the engine
   bindings, that a branch of `anyOf` or `oneOf` that a value isn't valid
   against doesn't make it a file value. (#67)
+- WES guide, "Can the WES fetch the workflow?": what a client must know
+  about a WES before it sends a TRS URL as `workflow_url` (TRS URL
+  support, reachable hosts), how deployments tell it today (client
+  configuration, service registry, `service-info` tags), and the fallback
+  with `workflow_attachment`; an open question in the roadmap for a WES
+  `service-info` field. (#84)
 
 ### Fixed
 
