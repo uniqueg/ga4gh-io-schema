@@ -30,16 +30,13 @@ SCHEMA_BASE = (
 # A schema base in text; a version segment with a placeholder (e.g., `<sha>`,
 # or `$1` in a rewrite rule) is no base.
 SCHEMA_URL = re.compile(r"https?://[^\"\s<>`]*?/ga4gh-io-schema/[^/\"\s<>`$]+/schemas/")
-# Text files of the repository that may link to it, and the pages that
-# explain its move from `uniqueg` (the changelog's old `$id`s, the transfer
-# page).
-REPO_TEXT_FILES = [
-    REPO_ROOT / name
-    for name in ("README.md", "CHANGELOG.md", "mkdocs.yml", "pyproject.toml")
-]
+# Text files of the repository that may link to it: those at its root and
+# below these directories, by suffix, and the pages that explain its move
+# from `uniqueg` (the changelog's old `$id`s, the transfer page).
 REPO_TEXT_DIRS = (
     ".github",
     "docs",
+    "docs_hooks",
     "examples",
     "prototype",
     "schemas",
@@ -134,25 +131,31 @@ def test_no_links_to_the_former_repository() -> None:
 
     The repository moved from ``uniqueg`` to ``elixir-cloud-aai`` (#25).
     GitHub redirects the old URLs, but links name the new home. Only the
-    pages that explain the move (``MOVE_EXPLAINED``) name the old one.
+    pages that explain the move (``MOVE_EXPLAINED``) name the old one, and
+    not as a link to it on GitHub (they may name the old ``$id``s).
     """
     old_name = "uniqueg" + "/ga4gh-io-schema"
+    old_link = "github.com/" + old_name
     paths = [
-        *REPO_TEXT_FILES,
-        *(
-            path
-            for directory in REPO_TEXT_DIRS
-            for path in (REPO_ROOT / directory).rglob("*")
-            if path.is_file()
-            and path.suffix in REPO_TEXT_SUFFIXES
-            and not NOT_REPO_TEXT & set(path.parts)
-        ),
+        path
+        for path in [
+            *REPO_ROOT.glob("*"),
+            *(
+                path
+                for directory in REPO_TEXT_DIRS
+                for path in (REPO_ROOT / directory).rglob("*")
+            ),
+        ]
+        if path.is_file()
+        and path.suffix in REPO_TEXT_SUFFIXES
+        and not NOT_REPO_TEXT & set(path.parts)
     ]
-    assert REPO_ROOT / "docs" / "index.md" in paths
+    assert {REPO_ROOT / "CITATION.cff", REPO_ROOT / "docs" / "index.md"} <= set(paths)
     offending = [
         path.relative_to(REPO_ROOT).as_posix()
         for path in paths
-        if path not in MOVE_EXPLAINED and old_name in path.read_text(encoding="utf-8")
+        if (old_link if path in MOVE_EXPLAINED else old_name)
+        in path.read_text(encoding="utf-8")
     ]
     assert offending == []
 
