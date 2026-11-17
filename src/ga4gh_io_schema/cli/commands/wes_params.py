@@ -308,12 +308,18 @@ class WesParamsCommand(Command):
                     "A workflow URL from TRS needs x-ga4gh-workflow.trs_tool_id "
                     "and trs_version_id."
                 )
-            workflow_url = trs_descriptor_url(
-                args.trs_url,
-                block["trs_tool_id"],
-                block["trs_version_id"],
-                binding.descriptor_type,
-            )
+            try:
+                # With the path, relative imports of multi-file workflows
+                # resolve to files of the tool version in TRS
+                workflow_url = trs_descriptor_url(
+                    args.trs_url,
+                    block["trs_tool_id"],
+                    block["trs_version_id"],
+                    binding.descriptor_type,
+                    block.get("primary_descriptor_path"),
+                )
+            except ValueError as exc:
+                raise TranslationError(str(exc)) from exc
         return build_run_request(
             schema, values, workflow_url, binding, allowed, args.allow_absolute_paths
         )

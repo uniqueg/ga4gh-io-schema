@@ -243,10 +243,11 @@ def test_stub_serves_the_primary_descriptor(stub: str) -> None:
         wrapper = get_json(f"{version_url(stub)}/{path}")
         assert wrapper["content"] == DEMO_WDL
         assert wrapper["checksum"] == DEMO_SCHEMA["x-ga4gh-workflow"]["checksum"]
-        assert wrapper["url"] == f"{version_url(stub)}/PLAIN_WDL/descriptor"
-    status, media_type, body = get(f"{version_url(stub)}/PLAIN_WDL/descriptor")
-    assert (status, media_type) == (200, "text/plain; charset=utf-8")
-    assert body.decode("utf-8") == DEMO_WDL
+        assert wrapper["url"] == f"{version_url(stub)}/PLAIN_WDL/descriptor/demo.wdl"
+    for path in ("PLAIN_WDL/descriptor", "PLAIN_WDL/descriptor/demo.wdl"):
+        status, media_type, body = get(f"{version_url(stub)}/{path}")
+        assert (status, media_type) == (200, "text/plain; charset=utf-8")
+        assert body.decode("utf-8") == DEMO_WDL
 
 
 def test_stub_serves_the_schema(stub: str) -> None:
