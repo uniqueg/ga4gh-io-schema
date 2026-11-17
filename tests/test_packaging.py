@@ -27,6 +27,9 @@ PROFILE_PATH = SCHEMAS_DIR / "ga4gh-io-profile.schema.json"
 SCHEMA_BASE = (
     "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/"
 )
+# A schema base in text; a version segment with a placeholder (e.g., `<sha>`,
+# or `$1` in a rewrite rule) is no base.
+SCHEMA_URL = re.compile(r"https?://[^\"\s<>`]*?/ga4gh-io-schema/[^/\"\s<>`$]+/schemas/")
 # Docs that show CLI usage; mkdocs build --strict checks the links of docs/.
 USAGE_DOCS = [
     REPO_ROOT / "README.md",
@@ -66,13 +69,41 @@ def test_get_schemas_dir_falls_back_to_checkout(
     assert get_schemas_dir() == SCHEMAS_DIR
 
 
+@pytest.mark.parametrize(
+    ("text", "bases"),
+    [
+        (f"`{SCHEMA_BASE}ga4gh-io-profile.schema.json`", [SCHEMA_BASE]),
+        (
+            "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/",
+            [
+                "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/"
+            ],
+        ),
+        ("https://example.org/<owner>/ga4gh-io-schema/<sha>/schemas/x", []),
+        (
+            "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/$1/schemas/$2",
+            [],
+        ),
+    ],
+)
+def test_schema_url_pattern(text: str, bases: list[str]) -> None:
+    """Test which schema URLs are checked, and which are placeholders.
+
+    Args:
+        text: The text that names a URL.
+        bases: The schema bases found in it.
+    """
+    assert SCHEMA_URL.findall(text) == bases
+
+
 def test_schema_urls_use_the_schema_base() -> None:
     """Test that all schema URLs use the same base, ``SCHEMA_BASE``.
 
     There are no releases before the repository moves to GA4GH, so the
     ``$id``s name ``main``, the latest reviewed state (see "Schema
     identifiers" in ``docs/development.md``). URLs with placeholders (e.g.,
-    ``<owner>``, ``<sha>``) in the documentation are left out.
+    ``<owner>``, ``<sha>``, or ``$1`` in a rewrite rule) in the
+    documentation are left out.
     """
     found = set()
     for path in [
@@ -85,11 +116,7 @@ def test_schema_urls_use_the_schema_base() -> None:
         REPO_ROOT / "README.md",
     ]:
         text = path.read_text(encoding="utf-8")
-        bases = set(
-            re.findall(
-                r"https?://[^\"\s<>`]*?/ga4gh-io-schema/[^/\"\s<>`]+/schemas/", text
-            )
-        )
+        bases = set(SCHEMA_URL.findall(text))
         assert bases <= {SCHEMA_BASE}, (path, bases)
         found |= bases
     assert found == {SCHEMA_BASE}
