@@ -255,6 +255,20 @@ def test_inputs_of_the_wrong_type_are_absent(descriptor: Any, content: Any) -> N
     assert result == WorkflowCheck()
 
 
+@pytest.mark.parametrize("wrap", [bytes, bytearray, memoryview])
+def test_bytes_like_content_is_hashed(wrap: Any) -> None:
+    """Test that bytes, bytearray and memoryview content is compared.
+
+    Args:
+        wrap: The type of the content.
+    """
+    content = wrap(DESCRIPTOR.encode("utf-8"))
+
+    result = check_workflow(schema_with(checksum=sha256(DIGEST)), content=content)
+
+    assert result.verified
+
+
 def test_lone_surrogate_in_content_is_hashed() -> None:
     """Test that content with a lone surrogate, as JSON allows, is compared."""
     result = check_workflow(

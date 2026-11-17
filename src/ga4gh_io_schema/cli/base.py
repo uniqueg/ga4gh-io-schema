@@ -315,16 +315,19 @@ def read_text(source: str | Path) -> str:
             ``Path("-")`` is a file named ``-``).
 
     Returns:
-        The text.
+        The text; line endings of files are translated to newlines.
 
     Raises:
         CliError: If the input can't be read or isn't UTF-8.
     """
-    data = read_bytes(source)
     try:
-        # As UTF-8, like files, whatever the locale
-        return data.decode("utf-8")
-    except UnicodeDecodeError as exc:
+        if isinstance(source, str) and source == STDIN:
+            if sys.stdin is None:
+                raise CliError(ErrorKind.IO, "Can't read - standard input is closed")
+            # As UTF-8, like files, whatever the locale
+            return sys.stdin.buffer.read().decode("utf-8")
+        return Path(source).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
         raise read_error(exc, source) from exc
 
 

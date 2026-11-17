@@ -675,25 +675,17 @@ def test_cli_checksum_read_error(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Test that a file that can't be read for the checksum is an IO error."""
-    read = Path.read_bytes
-    calls: list[Path] = []
 
     def fail(self: Path) -> bytes:
-        """Read the text, then fail like a file that went away.
+        """Fail like a file that went away.
 
         Args:
             self: The path.
 
-        Returns:
-            The bytes, the first time.
-
         Raises:
-            OSError: After the first time.
+            OSError: Always.
         """
-        calls.append(self)
-        if len(calls) > 1:
-            raise OSError("gone")
-        return read(self)
+        raise OSError("gone")
 
     monkeypatch.setattr(Path, "read_bytes", fail)
 

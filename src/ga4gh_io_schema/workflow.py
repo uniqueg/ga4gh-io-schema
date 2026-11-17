@@ -149,7 +149,7 @@ def check_workflow(
     descriptor_type: str | None = None,
     descriptor: Mapping[str, Any] | None = None,
     checksums: Iterable[Mapping[str, Any]] = (),
-    content: bytes | str | None = None,
+    content: bytes | bytearray | memoryview | str | None = None,
 ) -> WorkflowCheck:
     """Check the workflow block of an IO schema against a workflow version.
 
@@ -244,7 +244,7 @@ def _checksums(entries: Iterable[Any]) -> list[tuple[str, str]]:
 def _references(
     descriptor: Mapping[str, Any] | None,
     checksums: Iterable[Mapping[str, Any]],
-    content: bytes | str | None,
+    content: bytes | bytearray | memoryview | str | None,
     wanted: Iterable[tuple[str, str]],
 ) -> dict[str, list[str]]:
     """Collect the checksums of the primary descriptor, by algorithm.
@@ -269,8 +269,8 @@ def _references(
     if isinstance(content, str):
         # A lone surrogate, which JSON allows, is hashed as such
         content = content.encode("utf-8", errors="surrogatepass")
-    if isinstance(content, bytes):
-        data = content
+    if isinstance(content, (bytes, bytearray, memoryview)):
+        data = bytes(content)
         found.extend(
             (algorithm, HASH_ALGORITHMS[algorithm](data).hexdigest())
             for algorithm in dict.fromkeys(algorithm for algorithm, _ in wanted)
