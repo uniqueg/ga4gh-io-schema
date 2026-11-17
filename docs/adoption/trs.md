@@ -130,8 +130,8 @@ implement them; a file type of its own avoids the comparison of paths
 altogether.
 
 [TRS-Filer](https://github.com/elixir-cloud-aai/trs-filer), the TRS
-implementation of ELIXIR On-Cloud, is getting `IO_SCHEMA` as an
-experimental extension of the TRS file types (on a branch, not yet in a
+implementation of ELIXIR On-Cloud, accepts `IO_SCHEMA` as an experimental
+extension of the TRS file types (on its development branch, not yet in a
 release); the [demo with TRS-Filer](demo-trs-filer.md) registers a schema
 of that type with it and discovers it as a client. The type is to be
 proposed to the TRS specification with this evidence. Until TRS adopts it:

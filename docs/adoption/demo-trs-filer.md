@@ -7,11 +7,13 @@ The demo shows discovery with a real TRS implementation and the [proposed
 `IO_SCHEMA`, a client finds the schema among the files of the tool version
 and checks it, and builds the WES run request. Nothing is submitted.
 
-**Experimental:** TRS-Filer accepts `IO_SCHEMA` as an extension of TRS
-only on the branch that adds it, not yet in a release; other versions
-reject the registration with `400 Bad Request`. With `SCHEMA_FILE_TYPE=OTHER`, the demo registers the schema as
-`OTHER` at `ga4gh-io.schema.json`, the fallback for TRS servers without the
-type, and the client finds it there.
+**Experimental:** TRS-Filer accepts `IO_SCHEMA` as an extension of TRS on
+its development branch `dev`
+([trs-filer#301](https://github.com/elixir-cloud-aai/trs-filer/pull/301)),
+not yet in a release; released versions reject the registration with `400
+Bad Request`. With `SCHEMA_FILE_TYPE=OTHER`, the demo registers the schema
+as `OTHER` at `ga4gh-io.schema.json`, the fallback for TRS servers without
+the type, and the client finds it there.
 
 ## What runs
 
@@ -74,8 +76,7 @@ first run builds TRS-Filer's image (a few minutes); later runs reuse it.
 
 ## Output
 
-An example, with TRS-Filer from the branch that adds `IO_SCHEMA` on port
-18082:
+An example, with TRS-Filer with `IO_SCHEMA` (`dev`) on port 18082:
 
 ```text
 == Register the demo workflow (IO schema of type IO_SCHEMA)
@@ -112,9 +113,9 @@ request is the same.
   (see [Can the WES fetch the
   `workflow_url`?](prototype-evaluation.md#where-the-spec-or-the-tools-fell-short)).
   To run the workflow, see the [end-to-end demo](demo.md).
-- **Not in CI yet:** the script needs a TRS-Filer with `IO_SCHEMA` on its
-  default branch; until then, it is run by hand. The client
-  (`trs_client.py`) is tested against a mock server with both file types.
+- **Not in CI:** the script needs a checkout of TRS-Filer and builds its
+  image, so it is run by hand. The client (`trs_client.py`) is tested
+  against a mock server with both file types.
 - **The check of TRS-Filer is off:** TRS-Filer can validate IO schemas when
   they are registered (`custom.io_schema.validation`), against the version
   of the profile that it vendors; the demo doesn't enable it.
