@@ -90,6 +90,17 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 
 ### Added
 
+- A check of the workflow block for clients:
+  `ga4gh_io_schema.workflow.check_workflow()` and
+  `ga4gh-io-schema verify` compare `trs_tool_id`, `trs_version_id` and
+  `descriptor_type` of `x-ga4gh-workflow` with the tool version that a
+  schema was fetched for, and its `checksum` with the checksums of the
+  primary descriptor, from TRS (`FileWrapper.checksum`) or computed over
+  its content; they return the mismatches and whether the schema is
+  verified (step 2 of the guide for portals). `--require-verified` also
+  fails on a schema whose checksum can't be compared. The form host of the
+  prototype uses it and now also rejects schemas whose checksum doesn't
+  match the primary descriptor. (#85)
 - A TRS stub for the laptop prototype in `prototype/trs-stub/`, documented
   on the page "Prototype": it serves the end-to-end demo and its IO schema
   over the read-only TRS v2 endpoints that a client needs, from files in

@@ -87,7 +87,9 @@ pull request that closed them.
    schemas and builds requests, but has no function for this check; every
    client writes its own, and the checksum part is the one that gets left
    out. A helper that takes the schema, the TRS ids and the descriptor's
-   `FileWrapper` would close it. Open: [#85](https://github.com/uniqueg/ga4gh-io-schema/issues/85).
+   `FileWrapper` would close it. Done in 0.3: the [workflow block
+   check](../tools/verify.md), which the host uses;
+   [#85](https://github.com/uniqueg/ga4gh-io-schema/issues/85), fixed by [#92](https://github.com/uniqueg/ga4gh-io-schema/pull/92).
 
 ## Limits of the prototype
 

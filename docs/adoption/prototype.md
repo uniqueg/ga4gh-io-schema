@@ -57,7 +57,9 @@ per tool version and descriptor type. Pick "I/O Schema demo 1.0.0 (WDL)".
 The host then lists the files of that tool version, finds the IO schema
 (`ga4gh-io.schema.json` of type `OTHER`, next to the primary descriptor),
 fetches it, validates it against the profile, and checks that its
-`x-ga4gh-workflow` names this tool version and descriptor type.
+`x-ga4gh-workflow` names this tool version and descriptor type, and the
+checksum of the primary descriptor that the stub serves (with the
+[workflow block check](../tools/verify.md)).
 
 **What it shows:** a client finds the schema of any tool version through
 the plain TRS API, by the [publishing convention](trs.md#publishing-convention)
@@ -163,10 +165,6 @@ python prototype/host/form_host.py --trs-url http://127.0.0.1:8080/ga4gh/trs/v2
 - **One workflow, one language:** the stub serves the WDL demo only
   (`--workflow` adds more); the host also builds run requests for CWL,
   Nextflow and Snakemake workflows, but the stack doesn't show them.
-- **No checksum check:** the host checks that the schema names the tool
-  version, but not the descriptor's checksum against
-  `x-ga4gh-workflow.checksum` (step 3 of the [guide for portals and
-  clients](portals.md#guide-for-portals-and-clients)).
 - **No security:** no authentication, no TLS, no credentials sent to a TRS
   or WES; the ports are bound to `127.0.0.1`. Keep it there.
 - **No persistence and no service registry:** the TRS and the WES are

@@ -16,6 +16,10 @@
 - [WES request validation](wes-validate.md): translate the
   `workflow_params` of a WES run request back into input values and validate
   them, as a WES server does, as a command-line tool and a Python API.
+- [Workflow block check](verify.md): compares the workflow block
+  of an IO schema with the TRS tool version and the checksum of the primary
+  descriptor (step 2 of the guide for portals), as a command-line tool and
+  a Python API.
 - [Output normaliser](outputs.md): builds the normalised outputs object of
   a WES run from what the server reports, as a command-line tool and a
   Python API.
