@@ -769,6 +769,62 @@ def test_main_rejects_urls_that_arent_http(option: str) -> None:
     assert exc.value.code == 2
 
 
+@pytest.mark.parametrize("option", ["--trs-url", "--wes-url"])
+def test_main_rejects_urls_with_user_information(
+    option: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a password in a URL can't reach error messages.
+
+    Args:
+        option: The option of the URL.
+        capsys: Captures the error message.
+    """
+    with pytest.raises(SystemExit) as exc:
+        form_host.main([option, "https://user:secret@trs.example.org/ga4gh"])
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert "user information" in error
+    assert "secret" not in error
+
+
+def test_host_rejects_answers_that_are_too_large(
+    wes: FakeWes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that the host reads at most MAX_ANSWER bytes of an answer.
+
+    Args:
+        wes: The fake WES.
+        monkeypatch: Lowers the limit.
+    """
+    monkeypatch.setattr(form_host, "MAX_ANSWER", 64)
+    wes.run_answer = (200, json.dumps({"run_id": "r" * 64}).encode())
+    with serve(DEMO_SCHEMA, workflow_url="demo.wdl", wes_url=wes.url) as host:
+        body = json.dumps(DEMO_VALUES).encode()
+        status, _, response = _request(f"{host}/api/runs", body, "POST")
+    assert status == 502
+    message = json.loads(response)["errors"][0]["message"]
+    assert message.endswith("The answer is larger than 64 bytes.")
+    # An answer of the limit is read
+    wes.run_answer = (200, b'{"run_id": "run-1"}'.ljust(64))
+    with serve(DEMO_SCHEMA, workflow_url="demo.wdl", wes_url=wes.url) as host:
+        status, _, response = _request(f"{host}/api/runs", body, "POST")
+    assert status == 200
+
+
+def test_schemas_from_urls_are_read_up_to_the_limit(
+    monkeypatch: pytest.MonkeyPatch, host: str
+) -> None:
+    """Test that a schema from a URL is read up to MAX_ANSWER bytes.
+
+    Args:
+        monkeypatch: Lowers the limit.
+        host: Base URL of a host that serves the demo schema.
+    """
+    monkeypatch.setattr(form_host, "MAX_ANSWER", 64)
+    with pytest.raises(ValueError, match="larger than 64 bytes"):
+        form_host.load_schema(f"{host}/api/schema")
+
+
 def test_empty_wes_url_is_no_wes() -> None:
     """Test that an empty WES URL (as Docker Compose passes it) means none."""
     assert form_host._parser().parse_args(["--wes-url", ""]).wes_url is None
