@@ -24,6 +24,9 @@ from typing import Any
 #: their Hash Name String in the GA4GH Checksum Hash Algorithm Registry.
 HASH_ALGORITHMS: Mapping[str, Callable[[bytes], Any]] = {
     "md5": lambda data: hashlib.md5(data, usedforsecurity=False),
+    # Only to compare with SHA-1 checksums that TRS or a schema names; a
+    # schema that names a stronger algorithm is compared by that one
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
     "sha-1": lambda data: hashlib.sha1(data, usedforsecurity=False),
     "sha-256": hashlib.sha256,
     "sha-512": hashlib.sha512,
