@@ -284,6 +284,29 @@ def input_name(source: str | Path) -> str:
     return "<stdin>" if source == STDIN else str(source)
 
 
+def read_bytes(source: str | Path) -> bytes:
+    """Read the bytes of a file or of standard input.
+
+    Args:
+        source: Path of the file, or the string ``-`` for standard input (a
+            ``Path("-")`` is a file named ``-``).
+
+    Returns:
+        The bytes.
+
+    Raises:
+        CliError: If the input can't be read.
+    """
+    try:
+        if isinstance(source, str) and source == STDIN:
+            if sys.stdin is None:
+                raise CliError(ErrorKind.IO, "Can't read - standard input is closed")
+            return sys.stdin.buffer.read()
+        return Path(source).read_bytes()
+    except OSError as exc:
+        raise read_error(exc, source) from exc
+
+
 def read_text(source: str | Path) -> str:
     """Read text from a file or from standard input.
 
@@ -292,7 +315,7 @@ def read_text(source: str | Path) -> str:
             ``Path("-")`` is a file named ``-``).
 
     Returns:
-        The text.
+        The text; line endings of files are translated to newlines.
 
     Raises:
         CliError: If the input can't be read or isn't UTF-8.

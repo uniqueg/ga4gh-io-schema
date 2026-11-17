@@ -31,9 +31,15 @@ After the run, it [shows the outputs](#after-the-run-outputs).
 ### 1. Fetch the schema from TRS
 
 Find the IO schema of the tool version as described in
-[Discovery by clients](trs.md#discovery-by-clients): the file of type
-`OTHER` with the path `ga4gh-io.schema.json` next to the primary descriptor
-of the descriptor type that the client wants to run. Keep the URL that the
+[Discovery by clients](trs.md#discovery-by-clients), among the files of
+the descriptor type that the client wants to run: the one file of type
+`IO_SCHEMA`, or, if there is none, the file of type `OTHER` with the path
+`ga4gh-io.schema.json` next to the primary descriptor. Compare file entries
+by `file_type` and normalised `path` only (strip `./` and empty segments,
+compare directories), ignoring other fields such as `checksum` and entries
+without a type or path (see [Matching file
+entries](trs.md#matching-file-entries)), and fetch the schema by its path
+as listed. Keep the URL that the
 schema came from: it is the base URI of a schema without `$id` (see step
 7). Keep also the checksum of the primary descriptor (`FileWrapper.checksum`)
 for step 2.
@@ -61,6 +67,12 @@ schema, or it shows a warning next to the form that the schema may not
 match the workflow. A schema that the client can't check (no checksum, no
 supported algorithm, no access to the descriptor) is unverified; the client
 may use it, and may say so.
+
+The [workflow block check](../tools/verify.md)
+(`ga4gh_io_schema.workflow.check_workflow()`, or
+`ga4gh-io-schema verify`) does these comparisons: it takes the schema, the TRS ids,
+the descriptor type and the `FileWrapper` of the primary descriptor (or its
+checksums), and returns the mismatches and whether the schema is verified.
 
 ### 3. Validate the schema offline
 

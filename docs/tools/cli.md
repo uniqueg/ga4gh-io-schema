@@ -12,12 +12,13 @@ tool:
 | `convert wdl` | Convert the inputs and outputs of a WDL workflow or task to an IO schema (see [WDL converter](convert-wdl.md)). |
 | `wes-params` | Validate input values against an IO schema and translate them into WES `workflow_params` or a `RunRequest` (see [WES parameters](wes-params.md)). |
 | `wes-validate` | Translate the `workflow_params` of a WES run request back into input values and validate them, as a WES server does; errors are located by a JSON Pointer into `workflow_params` (see [WES request validation](wes-validate.md)). |
+| `verify` | Check the workflow block (`x-ga4gh-workflow`) of an IO schema against the TRS ids, the descriptor type and the checksum of the primary descriptor (see [Workflow block check](verify.md)). |
 | `outputs` | Normalise the outputs of a WES run (see [Output normaliser](outputs.md)). |
 
 `ga4gh-io-schema --help` lists the subcommands, and
 `ga4gh-io-schema <subcommand> --help` their options.
 
-!!! note "Renamed in v0.3.0"
+!!! note "Renamed in v0.3"
     `ga4gh-io-schema validate` replaces the `ga4gh-io-schema-validator`
     command of earlier versions, which is gone without an alias.
 

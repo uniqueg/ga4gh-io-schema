@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from ga4gh_io_schema.cli import app, main
+from ga4gh_io_schema.cli import app, base, main
 from ga4gh_io_schema.cli.base import (
     ERROR_KINDS,
     EXIT_STATUS,
@@ -435,6 +435,19 @@ def test_json_internal_error(
         "error": {"kind": "internal", "message": "boom", "location": None},
         "exitCode": 4,
     }
+
+
+def test_read_text_translates_line_endings(tmp_path: Path) -> None:
+    """Test that files are read with universal newlines, unlike their bytes.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+    """
+    path = tmp_path / "windows.wdl"
+    path.write_bytes(b"version 1.0\r\nworkflow w {}\r")
+
+    assert base.read_text(str(path)) == "version 1.0\nworkflow w {}\n"
+    assert base.read_bytes(str(path)) == b"version 1.0\r\nworkflow w {}\r"
 
 
 def test_non_utf8_input_is_an_io_error(

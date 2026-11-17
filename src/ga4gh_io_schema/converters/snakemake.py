@@ -157,7 +157,8 @@ def _load_yaml(text: str, name: str) -> Any:
         import yaml
     except ImportError as exc:
         raise SourceError(
-            f"Reading YAML needs PyYAML - install 'ga4gh-io-schema[snakemake]': {name}"
+            f"Reading YAML needs PyYAML - install the extra 'snakemake' "
+            f"(in a clone: pip install '.[snakemake]'): {name}"
         ) from exc
 
     class Loader(yaml.SafeLoader):
@@ -444,6 +445,8 @@ class _Converter(SchemaConverter):
             return converted
         if "x-ga4gh-file" in converted:
             return converted
+        kind: str | None
+        reason: str | None
         if option == "sheet":
             kind, reason = "file", "it holds a sample sheet"
         elif option in ("file", "directory"):

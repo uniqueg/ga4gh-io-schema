@@ -334,7 +334,7 @@ def test_yaml_needs_pyyaml(
     status, _, err = run(["convert", "snakemake", str(path)], capsys)
 
     assert status == 3
-    assert "install 'ga4gh-io-schema[snakemake]'" in err
+    assert "pip install '.[snakemake]'" in err
 
 
 def test_conversion_errors_exit_with_1_and_location(
@@ -1446,7 +1446,7 @@ def test_sample_sheet_may_also_be_named_with_file() -> None:
 def test_sample_sheet_errors(
     source: dict[str, Any],
     sheets: list[SampleSheet],
-    options: dict[str, list[str]],
+    options: dict[str, Any],
     message: str,
 ) -> None:
     """Test sample sheets that can't be attached.

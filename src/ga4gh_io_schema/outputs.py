@@ -25,6 +25,7 @@ from referencing import Registry, Resource
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
+from ga4gh_io_schema.patterns import ValuesValidator
 from ga4gh_io_schema.validator import validate_schema
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -988,7 +989,7 @@ def _check_file_value(
 
 
 _OutputsValidator = jsonschema.validators.extend(
-    jsonschema.Draft202012Validator, {"x-ga4gh-file": _check_file_value}
+    ValuesValidator, {"x-ga4gh-file": _check_file_value}
 )
 
 

@@ -19,7 +19,7 @@ The profile is independent of workflow engines. Its integration with the GA4GH A
 
 With IO schemas served by TRS and used by clients and WES, a run goes through the following steps, without the client having to know the workflow's language:
 
-1. **Discovery (TRS):** A generic client or AI agent fetches a workflow version and its IO schema, a TRS file of type `OTHER` at the path `ga4gh-io.schema.json` (see [TRS](trs.md)), and checks that the schema belongs to that version.
+1. **Discovery (TRS):** A generic client or AI agent fetches a workflow version and its IO schema, a TRS file of the proposed type `IO_SCHEMA` or, on servers without it, of type `OTHER` at the path `ga4gh-io.schema.json` (see [TRS](trs.md)), and checks that the schema belongs to that version.
 
 2. **Configuration (Client/UI):** The client renders an input form from the schema, with a JSON Schema form library and an adapter for the `x-ga4gh-*` keywords (see [Portals and clients](portals.md)).
 
@@ -35,6 +35,6 @@ The success of this profile does not rely on modifying the core CWL, WDL, or Nex
 
 * **Platform Auto-Generation:** Registries like Dockstore or WorkflowHub can implement server-side parsers that automatically extract and generate this JSON Schema from existing `Schema Salad` (CWL) or `nextflow_schema.json` files during workflow ingestion, publishing them as IO schemas (see [TRS](trs.md)) automatically.
 
-* **Sidecar Files:** For WDL workflows or legacy pipelines, authors can write the IO schema themselves and add it to their TRS submission as the file `ga4gh-io.schema.json` of type `OTHER` (see [TRS](trs.md)).
+* **Sidecar Files:** For WDL workflows or legacy pipelines, authors can write the IO schema themselves and add it to their TRS submission as the file `ga4gh-io.schema.json` of type `IO_SCHEMA`, or `OTHER` where the TRS server lacks that type (see [TRS](trs.md)).
 
 See also [Converters](../tools/converters.md).

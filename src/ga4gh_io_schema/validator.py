@@ -20,6 +20,8 @@ from referencing import Registry, Resource
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
+from ga4gh_io_schema.patterns import is_pattern
+
 #: Schemas shipped inside the installed package (see ``pyproject.toml``).
 _PACKAGE_SCHEMAS_DIR = Path(__file__).resolve().parent / "schemas"
 #: Schemas of a source checkout, used by editable installs.
@@ -139,6 +141,7 @@ def validate_schema(
         jsonschema.exceptions.SchemaError: If the meta-schema itself is malformed.
     """
     schemas_dir = get_schemas_dir()
+    meta: dict[str, Any] | bool
     if meta_schema is None:
         meta = _cached_profile(schemas_dir)
         name = "the GA4GH IO Profile meta-schema"
@@ -307,7 +310,9 @@ def _build_validator(
     search_dirs = [schemas_dir] if schema_dir is None else [schemas_dir, schema_dir]
     registry = build_registry(search_dirs)
     validator_cls = validator_for(meta_schema)
-    validator_cls.check_schema(meta_schema)
+    # jsonschema checks boolean meta-schemas too; the stub of the protocol
+    # allows objects only
+    validator_cls.check_schema(meta_schema)  # type: ignore[arg-type]
     return validator_cls(
         meta_schema,
         registry=registry,
@@ -348,24 +353,27 @@ def _check_schema_keyword(
 
 
 def _format_checker(validator_cls: type[Validator]) -> jsonschema.FormatChecker:
-    r"""Return the format checker of a validator class, without ``regex``.
+    r"""Return the format checker of a validator class, with ECMA-262 ``regex``.
 
-    JSON Schema patterns are ECMA-262 regular expressions, which Python's
-    ``re`` module, used by the ``regex`` format check, can't always parse
-    (e.g. ``\p{L}``).
+    JSON Schema patterns are ECMA-262 regular expressions. The ``regex``
+    check of jsonschema uses Python's ``re`` module, which rejects some
+    valid patterns (e.g. ``\p{L}``) and accepts some invalid ones (e.g.
+    ``\-`` in Unicode mode); this checker uses
+    :func:`ga4gh_io_schema.patterns.is_pattern` instead, the engine that
+    matches values.
 
     Args:
         validator_cls: The validator class whose format checks to use.
 
     Returns:
-        A format checker for every format of the class except ``regex``.
+        A format checker for every format of the class, with ``regex``
+        checked as ECMA-262 in Unicode mode.
     """
     # Copy the draft's own checker: FormatChecker(formats=...) would take the
     # functions from the global registry, which holds other drafts' variants.
     checker = copy.copy(validator_cls.FORMAT_CHECKER)
     checker.checkers = {
-        name: check
-        for name, check in validator_cls.FORMAT_CHECKER.checkers.items()
-        if name != "regex"
+        **validator_cls.FORMAT_CHECKER.checkers,
+        "regex": (is_pattern, ()),
     }
     return checker

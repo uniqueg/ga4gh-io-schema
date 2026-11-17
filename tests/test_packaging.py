@@ -5,6 +5,7 @@
 """Tests for the packaging, schema identifiers and documentation of the project."""
 
 import re
+import tomllib
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -20,7 +21,15 @@ SCHEMAS_DIR = REPO_ROOT / "schemas"
 DATA_DIR = REPO_ROOT / "tests" / "data"
 SUITE_DIR = REPO_ROOT / "tests" / "conformance"
 VECTORS_DIR = REPO_ROOT / "tests" / "vectors"
+EXAMPLES_DIR = REPO_ROOT / "examples"
 PROFILE_PATH = SCHEMAS_DIR / "ga4gh-io-profile.schema.json"
+# Base of the schema `$id`s until there are releases (see docs/development.md).
+SCHEMA_BASE = (
+    "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/"
+)
+# A schema base in text; a version segment with a placeholder (e.g., `<sha>`,
+# or `$1` in a rewrite rule) is no base.
+SCHEMA_URL = re.compile(r"https?://[^\"\s<>`]*?/ga4gh-io-schema/[^/\"\s<>`$]+/schemas/")
 # Docs that show CLI usage; mkdocs build --strict checks the links of docs/.
 USAGE_DOCS = [
     REPO_ROOT / "README.md",
@@ -60,29 +69,70 @@ def test_get_schemas_dir_falls_back_to_checkout(
     assert get_schemas_dir() == SCHEMAS_DIR
 
 
-def test_schema_ids_share_one_release_tag() -> None:
-    """Test that all schema URLs name the same release tag, not a branch.
+@pytest.mark.parametrize(
+    ("text", "bases"),
+    [
+        (f"`{SCHEMA_BASE}ga4gh-io-profile.schema.json`", [SCHEMA_BASE]),
+        (
+            "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/",
+            [
+                "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/"
+            ],
+        ),
+        ("https://example.org/<owner>/ga4gh-io-schema/<sha>/schemas/x", []),
+        (
+            "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/$1/schemas/$2",
+            [],
+        ),
+    ],
+)
+def test_schema_url_pattern(text: str, bases: list[str]) -> None:
+    """Test which schema URLs are checked, and which are placeholders.
 
-    The tag must be bumped in every file at once for a new profile release
-    (see the release notes in ``docs/development.md``).
+    Args:
+        text: The text that names a URL.
+        bases: The schema bases found in it.
     """
-    tags = set()
-    meta_schema_doc = REPO_ROOT / "docs" / "specification" / "meta-schema.md"
+    assert SCHEMA_URL.findall(text) == bases
+
+
+def test_schema_urls_use_the_schema_base() -> None:
+    """Test that all schema URLs use the same base, ``SCHEMA_BASE``.
+
+    There are no releases before the repository moves to GA4GH, so the
+    ``$id``s name ``main``, the latest reviewed state (see "Schema
+    identifiers" in ``docs/development.md``). URLs with placeholders (e.g.,
+    ``<owner>``, ``<sha>``, or ``$1`` in a rewrite rule) in the
+    documentation are left out.
+    """
+    found = set()
     for path in [
         *SCHEMAS_DIR.rglob("*.json"),
         *DATA_DIR.rglob("*.json"),
         *SUITE_DIR.rglob("*.json"),
         *VECTORS_DIR.rglob("*.json"),
+        *EXAMPLES_DIR.rglob("*.json"),
+        *(REPO_ROOT / "docs").rglob("*.md"),
+        REPO_ROOT / "README.md",
     ]:
         text = path.read_text(encoding="utf-8")
-        assert "/main/" not in text, path
-        tags.update(re.findall(r"/ga4gh-io-schema/([^/]+)/schemas/", text))
-    doc_text = meta_schema_doc.read_text(encoding="utf-8")
-    tags.update(
-        re.findall(r'"\$schema": ".*?/ga4gh-io-schema/([^/]+)/schemas/', doc_text)
-    )
-    assert len(tags) == 1, tags
-    assert re.fullmatch(r"v\d+\.\d+\.\d+", tags.pop())
+        bases = set(SCHEMA_URL.findall(text))
+        assert bases <= {SCHEMA_BASE}, (path, bases)
+        found |= bases
+    assert found == {SCHEMA_BASE}
+    for path in SCHEMAS_DIR.rglob("*.json"):
+        assert load_json(path)["$id"].startswith(SCHEMA_BASE), path
+
+
+def test_package_version_is_a_development_version() -> None:
+    """Test that the package version doesn't claim a release.
+
+    There are no releases (and no tags) before the repository moves to
+    GA4GH, so ``version`` in ``pyproject.toml`` is a development version.
+    """
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text("utf-8"))
+
+    assert re.fullmatch(r"\d+\.\d+\.\d+\.dev\d+", pyproject["project"]["version"])
 
 
 def test_examples_reference_the_meta_schema() -> None:

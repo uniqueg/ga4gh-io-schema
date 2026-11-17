@@ -105,8 +105,8 @@ jobs:
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
-      # Ruff, semgrep, ast-grep, gitleaks, actionlint and the file checks of
-      # `.pre-commit-config.yaml`
+      # Ruff, mypy, semgrep, ast-grep, gitleaks, actionlint and the file
+      # checks of `.pre-commit-config.yaml`
       - name: Run linters and security checks
         run: |
           pre-commit run --all-files --show-diff-on-failure

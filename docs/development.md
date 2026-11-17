@@ -1,6 +1,11 @@
 # Development
 
-This project enforces a strict "full defense" CI/CD pipeline. All code must pass comprehensive unit tests, static analysis, and licensing checks before being merged.
+CI (`.github/workflows/ci.yml`) runs the checks below on every pull request:
+lint (the pre-commit hooks with Ruff and mypy, `CITATION.cff`, REUSE,
+Markdown, meta-schema syntax), the build of the wheel, the Python tests on
+every supported version, the JavaScript tests, the strict documentation
+build and the end-to-end test. Run them locally before you open a pull
+request.
 
 To install the package with all development dependencies, see
 [Installation](tools/validator.md#installation).
@@ -47,8 +52,8 @@ access to install the build backend and the dependencies; deselect it with
 `pytest -m "not wheel"` when offline. CI runs the tests on every supported
 Python version, from the lowest to the newest. The supported versions are set
 in `requires-python` and the classifiers of `pyproject.toml`, ruff's
-`target-version` and the test matrix of `.github/workflows/ci.yml`; change
-them together.
+`target-version`, mypy's `python_version` and the test matrix of
+`.github/workflows/ci.yml`; change them together.
 
 ## JavaScript tests (Node.js)
 
@@ -68,14 +73,50 @@ The versions of the validators are pinned in `package.json` and
 `package-lock.json`; update them together (`npm install --save-exact
 <package>@<version>`), and update the results on the page.
 
-## Schema versions
+## Schema identifiers
 
-The `$id`s of the schemas in `schemas/`, and the `$schema` of the examples in
-`tests/data/`, of the cases in `tests/conformance/` and `tests/vectors/` and
-of the snippet in the
-meta-schema documentation, name the release tag of the profile (e.g.,
-`v0.3.0`). For a new release, change the tag in all of them at once (the
-tests check that they agree), and push the tag so that the URLs resolve.
+The profile has no releases and no tags yet (see [Versioning and
+governance](governance.md#releases)). Until it has, the `$id`s of the
+schemas in `schemas/`, and the `$schema` of the examples in `tests/data/`
+and `examples/`, of the cases in `tests/conformance/` and `tests/vectors/`
+and of the snippets in the documentation, start with
+
+```text
+https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/
+```
+
+These URLs resolve once the repository has moved to elixir-cloud-aai and
+version 0.3 is merged into its `main` branch. `main` holds the latest
+reviewed state, so the content behind them changes, also with breaking
+changes: until the first release, `$schema` doesn't tell versions of the
+profile apart, and the commit you pin does.
+
+To use fixed content, pin a commit SHA (`<owner>` is the owner of the
+repository at that time: `uniqueg` before the move, `elixir-cloud-aai`
+after it):
+
+- In Python, install the package from that commit (`pip install
+  "git+https://github.com/<owner>/ga4gh-io-schema@<sha>"`); it ships the
+  schemas and never fetches them.
+- Elsewhere, download every file of `schemas/` from
+  `https://raw.githubusercontent.com/<owner>/ga4gh-io-schema/<sha>/schemas/...`,
+  register each under its `$id`, and turn off the fetching of remote
+  references, as [JavaScript validators](tools/javascript.md) describes. The
+  `$ref`s between the schemas name `main`, so a validator that fetches them
+  would mix the pinned file with the current ones.
+
+The `$schema` of your IO schemas stays as above: it identifies the profile,
+it isn't the place you fetch the meta-schema from. `version` in
+`pyproject.toml` is a development version (e.g., `0.3.0.dev0`), which
+isn't bumped per commit (pin the commit, not the version); the tests check
+both.
+
+## Releases
+
+Releases (tags `vMAJOR.MINOR.PATCH`) come with the move of the repository
+to GA4GH. A stable identifier for the schemas
+([#26](https://github.com/uniqueg/ga4gh-io-schema/issues/26)) then replaces
+the URLs above.
 
 ## Changelog and conformance suite
 
@@ -96,7 +137,7 @@ Keywords live in one vocabulary file per keyword group in
 `schemas/vocabularies/`. To add a keyword or a group:
 
 1. Add the keyword to the `properties` of its vocabulary file, or create a new
-   file (with a versioned `$id`, like the others) and add a `$ref` to it to the
+   file (with an `$id` on the base of [Schema identifiers](#schema-identifiers)) and add a `$ref` to it to the
    `allOf` of `$defs/node/$defs/keywords` in
    `schemas/ga4gh-io-profile.schema.json`. A keyword that is allowed only at
    the top level (like `x-ga4gh-workflow`) goes into
@@ -243,6 +284,7 @@ The checks of `.pre-commit-config.yaml` run on each commit once you
 install the hooks, and in CI's job `Lint`:
 
 - Ruff: formatting, linting and Google-style docstrings
+- mypy: type checking (see [Type checking](#type-checking-mypy))
 - semgrep with the rules of `.semgrep/` (security issues that Ruff's rules
   don't cover, e.g., YAML loaders that construct objects, requests without
   a timeout)
@@ -272,6 +314,31 @@ A new semgrep or ast-grep rule comes with test cases that it finds and
 cases that it must not find: in `.semgrep/ga4gh-io-schema.py` (`# ruleid:`
 and `# ok:` comments) and in `.ast-grep/rule-tests/`. The hooks
 `semgrep-test` and `ast-grep-test` run them.
+
+## Type checking (mypy)
+
+The code is checked with [mypy](https://mypy.readthedocs.io/), which the
+`dev` extra installs with the stubs of the dependencies that ship no type
+information (`types-jsonschema`, `types-PyYAML`). `[tool.mypy]` in
+`pyproject.toml` lists the files (the package, the tests, the demo scripts,
+the prototype and the hooks of the documentation) and the options: every
+function has complete type hints (`disallow_untyped_defs`), generic types
+have their parameters (`disallow_any_generics`), and the checks run for the
+lowest supported Python version. It runs as a pre-commit hook (see
+above); to run it alone, call it without arguments, as the hook does:
+
+```bash
+mypy
+```
+
+Fix the errors instead of ignoring them. Where a stub is wrong or misses a
+private attribute that the code needs, ignore the one error with its code
+and a comment that says why (`# type: ignore[attr-defined]`);
+`warn_unused_ignores` reports comments that are no longer needed. Packages
+without type information and without stubs (`jsonschema-specifications`),
+or that the `dev` extra doesn't install (Playwright, in the `e2e` extra),
+get an override with `ignore_missing_imports` in `pyproject.toml`, with the
+reason.
 
 ## Meta-schema validation
 

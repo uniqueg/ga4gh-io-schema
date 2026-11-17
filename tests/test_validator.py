@@ -156,6 +156,7 @@ def test_validate_schema_uses_profile_whatever_schema_says() -> None:
 def test_validate_schema_rejects_non_object() -> None:
     """Test that a JSON document that isn't an object is reported."""
     with pytest.raises(jsonschema.exceptions.ValidationError, match="JSON object"):
+        # A list on purpose: the error for a document that isn't an object
         validate_schema([])  # type: ignore[arg-type]
 
 
@@ -328,9 +329,10 @@ def test_validate_schema_uses_meta_schema_that_json_would_change() -> None:
     for _ in range(2):
         with pytest.raises(jsonschema.exceptions.SchemaError, match="not of type"):
             validate_schema({}, malformed)
-    validate_schema({}, {1: "a", "maxProperties": 0})
+    not_json: dict[Any, Any] = {1: "a", "maxProperties": 0}
+    validate_schema({}, not_json)
     with pytest.raises(jsonschema.exceptions.ValidationError, match="empty"):
-        validate_schema({"inputs": {}}, {1: "a", "maxProperties": 0})
+        validate_schema({"inputs": {}}, not_json)
     assert validator._cached_validator.cache_info().currsize == 0
 
 
@@ -627,3 +629,45 @@ def test_validate_schema_accepts_output_glob_outside_outputs() -> None:
     }
 
     validate_schema(schema)
+
+
+@pytest.mark.parametrize("pattern", ["(", "^a\\-b$", "^\\w{,3}$"])
+def test_validate_schema_rejects_patterns_that_arent_ecma_262(pattern: str) -> None:
+    r"""Test that patterns that aren't ECMA-262 (Unicode mode) are rejected.
+
+    Python's ``re`` accepts some of them (e.g., ``\-``), but values are
+    matched with ECMA-262 semantics, which would reject the pattern later.
+
+    Args:
+        pattern: A pattern that ECMA-262 rejects in Unicode mode.
+    """
+    meta_schema: dict[str, Any] = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {"pattern": {"type": "string", "format": "regex"}},
+    }
+
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="is not a 'regex'"):
+        validate_schema({"pattern": pattern}, meta_schema)
+
+
+def test_profile_rejects_patterns_that_arent_ecma_262() -> None:
+    """Test that the profile checks ``pattern`` and ``patternProperties``."""
+    schema: dict[str, Any] = json.loads(
+        (Path(__file__).parent / "data" / "example_workflow.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    inputs = schema["properties"]["inputs"]
+    validate_schema(schema)
+
+    inputs["properties"]["bad"] = {"type": "string", "pattern": "^a\\-b$"}
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="regex"):
+        validate_schema(schema)
+
+    del inputs["properties"]["bad"]
+    inputs["properties"]["map"] = {
+        "type": "object",
+        "patternProperties": {"(": {"type": "string"}},
+    }
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="regex"):
+        validate_schema(schema)

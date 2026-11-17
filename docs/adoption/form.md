@@ -57,10 +57,15 @@ Options:
   `http://127.0.0.1:8080/ga4gh/trs/v2` for the [TRS
   stub](prototype.md#trs-stub)). The page lists its tool versions, per
   descriptor type, and users pick one: the host takes the IO schema from
-  the files of the tool version (`ga4gh-io.schema.json` of type `OTHER`
-  in the directory of the primary descriptor), validates it against the
+  the files of the tool version (the file of type `IO_SCHEMA`, or else
+  `ga4gh-io.schema.json` of type `OTHER` in the directory of the primary
+  descriptor, matched as [Matching file
+  entries](trs.md#matching-file-entries) says), validates it against the
   profile, and rejects it if its `x-ga4gh-workflow` names another tool,
-  version or descriptor type (step 2 of the guide, without the checksum).
+  version or descriptor type, or a checksum that the primary descriptor
+  doesn't have (step 2 of the guide, with the [workflow block
+  check](../tools/verify.md)). A schema whose checksum can't be
+  compared is used, unverified, without a note on the page.
   The `workflow_url` of the run request is the TRS URL of the plain
   primary descriptor, by the path that TRS lists for it
   (`.../PLAIN_{type}/descriptor/{path}`, see [Workflow URLs in
@@ -160,8 +165,8 @@ What the proof of concept leaves out, on purpose:
   state once and doesn't follow the run. The [end-to-end demo](demo.md)
   submits runs to Conquest from the command line (`conquest.py`), with the
   engine parameters that Conquest needs.
-- **No checks of the workflow block** (step 2 of the guide): it doesn't
-  compare `x-ga4gh-workflow` with a TRS tool version or a checksum. The
+- **No checks of the workflow block of the default schema** (step 2 of
+  the guide): only schemas picked in a TRS are checked. The
   engine binding comes from `x-ga4gh-workflow` only: a schema without a
   descriptor type (or, for WDL, an entry point) renders, but its values get
   the error that the binding is unknown, after they have passed validation.

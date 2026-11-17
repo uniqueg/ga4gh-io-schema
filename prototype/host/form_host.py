@@ -21,8 +21,6 @@ http://127.0.0.1:8000/.
 
 import argparse
 import json
-import posixpath
-import re
 import sys
 import urllib.error
 import urllib.parse
@@ -41,6 +39,8 @@ from referencing import Registry
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
+from ga4gh_io_schema.patterns import PatternError, ValuesValidator, search
+from ga4gh_io_schema.trs import find_primary_descriptor_path, find_schema_file
 from ga4gh_io_schema.validator import validate_schema
 from ga4gh_io_schema.wes import (
     DEFAULT_ALLOWED_SCHEMES,
@@ -49,6 +49,7 @@ from ga4gh_io_schema.wes import (
     build_run_request,
     trs_descriptor_url,
 )
+from ga4gh_io_schema.workflow import check_workflow
 
 HERE = Path(__file__).resolve().parent
 #: The schema of the end-to-end demo, the default.
@@ -164,11 +165,15 @@ def load_trs_schema(
 ) -> tuple[dict[str, Any], str]:
     """Load the IO schema of a tool version from TRS, as a client does.
 
-    The schema is the file ``ga4gh-io.schema.json`` of type ``OTHER`` in the
-    directory of the primary descriptor (see "Publishing convention" in
-    ``docs/adoption/trs.md``). It must name the tool version and the
-    descriptor type that it was fetched for, where it names them (step 2 of
-    the guide for portals and clients, without the checksum).
+    The schema is the file of type ``IO_SCHEMA``, or else the file
+    ``ga4gh-io.schema.json`` of type ``OTHER`` in the directory of the
+    primary descriptor, as :func:`ga4gh_io_schema.trs.find_schema_file`
+    matches them (see "Discovery by clients" in ``docs/adoption/trs.md``).
+    Its workflow block must match the tool version, the descriptor type and
+    the primary descriptor (``FileWrapper`` with its checksum and content)
+    that it was fetched for, where it names them (step 2 of the guide for
+    portals and clients, with :func:`ga4gh_io_schema.workflow.check_workflow`);
+    a schema whose checksum can't be compared is used unverified.
 
     Args:
         trs_url: Base URL of the TRS API.
@@ -179,16 +184,16 @@ def load_trs_schema(
     Returns:
         The schema, valid against the profile, and the ``workflow_url`` of
         run requests: the TRS URL of the plain primary descriptor, by the
-        path that TRS lists for it, so that relative imports of multi-file
-        workflows resolve to files of the tool version.
+        path that TRS lists for it, normalised, so that relative imports of
+        multi-file workflows resolve to files of the tool version (see
+        :func:`ga4gh_io_schema.trs.find_primary_descriptor_path`).
 
     Raises:
         OSError: If the TRS can't be reached or fails (also
             ``urllib.error.HTTPError``).
         ValueError: If an id is empty, ``.`` or ``..``, the tool version
-            has no IO schema, the path of its primary descriptor has empty,
-            ``.`` or ``..`` segments, or the schema isn't JSON or names
-            another tool version or descriptor type.
+            has no IO schema, or the schema isn't JSON or doesn't match the
+            tool version, the descriptor type or the primary descriptor.
         jsonschema.exceptions.ValidationError: If the schema doesn't comply
             with the profile.
     """
@@ -200,36 +205,33 @@ def load_trs_schema(
         f"/{urllib.parse.quote(descriptor_type, safe='')}"
     )
     files = _fetch_json(urllib.request.Request(f"{version}/files"))
-    try:
-        # path and file_type are optional in TRS: skip entries without them
-        primary = next(
-            f["path"] for f in files if f.get("file_type") == "PRIMARY_DESCRIPTOR"
-        )
-        path = posixpath.join(posixpath.dirname(primary), SCHEMA_NAME)
-        # Entries may have more fields, e.g., checksum
-        found = any(
-            f.get("path") == path and f.get("file_type") == "OTHER" for f in files
-        )
-    except (KeyError, TypeError, AttributeError, StopIteration):
-        found = False
-    if not found:
+    # Entries are matched by file type and normalised path only
+    found = find_schema_file(files)
+    if found is None:
         raise ValueError(
-            f"The tool version has no IO schema ({SCHEMA_NAME} of type OTHER "
-            "next to the primary descriptor)."
+            "The tool version has no IO schema (one file of type IO_SCHEMA, or "
+            f"{SCHEMA_NAME} of type OTHER next to the primary descriptor)."
         )
-    schema = load_schema(f"{version}/descriptor/{urllib.parse.quote(path, safe='')}")
-    block = schema.get("x-ga4gh-workflow") or {}
-    expected = {
-        "trs_tool_id": tool_id,
-        "trs_version_id": version_id,
-        "descriptor_type": descriptor_type,
-    }
-    for key, value in expected.items():
-        if key in block and block[key] != value:
-            raise ValueError(
-                f"The schema is for another workflow: x-ga4gh-workflow.{key} is "
-                f"{block[key]!r}, not {value!r}."
-            )
+    path = urllib.parse.quote(found.path, safe="")
+    schema = load_schema(f"{version}/descriptor/{path}")
+    # The FileWrapper of the primary descriptor, with its checksum
+    # A descriptor that can't be fetched leaves the schema unverified
+    try:
+        descriptor = _fetch_json(urllib.request.Request(f"{version}/descriptor"))
+    except (OSError, ValueError):
+        descriptor = None
+    result = check_workflow(
+        schema,
+        trs_tool_id=tool_id,
+        trs_version_id=version_id,
+        descriptor_type=descriptor_type,
+        descriptor=descriptor if isinstance(descriptor, dict) else None,
+    )
+    if result.mismatches:
+        raise ValueError(result.mismatch_message)
+    # Without a primary descriptor (an IO_SCHEMA file needs none), the URL
+    # has no path
+    primary = find_primary_descriptor_path(files)
     url = trs_descriptor_url(trs_url, tool_id, version_id, descriptor_type, primary)
     return schema, url
 
@@ -253,11 +255,14 @@ def workflow_url(schema: dict[str, Any], trs_url: str | None = None) -> str | No
             empty, ``.`` or ``..`` segments.
     """
     block = schema.get("x-ga4gh-workflow") or {}
-    ids = [block.get(key) for key in ("trs_tool_id", "trs_version_id")]
+    tool_id = block.get("trs_tool_id")
+    version_id = block.get("trs_version_id")
     path = block.get("primary_descriptor_path")
     path = path if isinstance(path, str) else None
-    if trs_url and all(isinstance(value, str) for value in ids):
-        return trs_descriptor_url(trs_url, *ids, block["descriptor_type"], path)
+    if trs_url and isinstance(tool_id, str) and isinstance(version_id, str):
+        return trs_descriptor_url(
+            trs_url, tool_id, version_id, block["descriptor_type"], path
+        )
     return path
 
 
@@ -286,6 +291,8 @@ def check_values(
     except Unresolvable as exc:
         message = f"The schema references '{exc.ref}', which can't be resolved."
         return None, [{"pointer": "", "message": message}]
+    except PatternError as exc:
+        return None, [{"pointer": "", "message": str(exc)}]
     if errors:
         return None, errors
     if url is None:
@@ -392,7 +399,7 @@ def validation_errors(schema: dict[str, Any], values: Any) -> list[dict[str, str
     registry: Registry = Registry().with_resource(
         uri, DRAFT202012.create_resource(schema)
     )
-    validator = Draft202012Validator(
+    validator = ValuesValidator(
         {"$ref": f"{uri}#/properties/inputs"},
         registry=registry,
         format_checker=Draft202012Validator.FORMAT_CHECKER,
@@ -507,7 +514,7 @@ def _children(scopes: Iterable[Scope], key: str | int) -> list[Scope]:
         patterns = [
             item
             for pattern, item in (subschema.get("patternProperties") or {}).items()
-            if re.search(pattern, key)
+            if search(pattern, key)
         ]
         if key in properties:
             children.append(_descend(resolver, properties[key]))
@@ -867,7 +874,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     server = FormHost(
         (args.host, args.port), schema, schemes, url, args.wes_url, args.trs_url
     )
-    host, port = server.server_address[:2]
+    # The bound address, which `server_address` is set to as well; typeshed
+    # types `server_address` with bytes, which f-strings would print as b'...'
+    host, port = server.socket.getsockname()[:2]
     print(f"Serving the form on http://{host}:{port}/ (Ctrl+C stops)")
     if args.trs_url:
         print(f"  Workflows are picked from {args.trs_url}")

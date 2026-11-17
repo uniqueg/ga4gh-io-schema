@@ -31,6 +31,7 @@ from referencing import Registry
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
+from ga4gh_io_schema.patterns import ValuesValidator, search
 from ga4gh_io_schema.validator import (
     _format_checker,
     build_registry,
@@ -207,7 +208,13 @@ def _memoised_descend(
     errors = _DESCEND(self, instance, schema, path, schema_path, resolver)
     if known is None:
         return errors
-    key = _validity_key(schema, resolver or self._resolver, instance)
+    # `_resolver` is private, and not in the stubs, but the only resolver in
+    # scope (as in `ga4gh_io_schema.patterns`)
+    key = _validity_key(
+        schema,
+        resolver or self._resolver,  # type: ignore[attr-defined]
+        instance,
+    )
     if known.get(key):
         return iter(())
     return _recorded(errors, known, key)
@@ -238,8 +245,8 @@ def _recorded(
 _DESCEND = Draft202012Validator.descend
 #: Validator of the input values, which keeps the validity of subschemas
 #: during a translation (see :func:`_memoised_descend`)
-_MemoisingValidator = jsonschema.validators.extend(Draft202012Validator)
-_MemoisingValidator.descend = _memoised_descend  # type: ignore[method-assign]
+_MemoisingValidator = jsonschema.validators.extend(ValuesValidator)
+_MemoisingValidator.descend = _memoised_descend
 
 
 class TranslationError(ValueError):
@@ -987,17 +994,22 @@ class _Translator:
         if keyword is None:
             # The schema `false`, which has no keywords
             return "The schema doesn't allow a value here."
-        if keyword in ("anyOf", "oneOf") and error.context:
+        # The value of the keyword: a list for `anyOf`, `oneOf` and
+        # `required` (the checks of its type are for type checkers)
+        value = error.validator_value
+        if keyword in ("anyOf", "oneOf") and error.context and isinstance(value, list):
             # No branch accepts the value: the first branch with a message
             # covers the failure
-            for branch in error.validator_value:
+            for branch in value:
                 custom = _error_message(branch)
                 if custom is not None:
                     return custom
-        if keyword == "required" and isinstance(error.instance, dict):
-            missing = next(
-                name for name in error.validator_value if name not in error.instance
-            )
+        if (
+            keyword == "required"
+            and isinstance(value, list)
+            and isinstance(error.instance, dict)
+        ):
+            missing = next(name for name in value if name not in error.instance)
             if not error.absolute_path:
                 # A property of `inputs`: name its key in `workflow_params`
                 missing = self.input_keys().get(missing, [missing])[0]
@@ -1312,7 +1324,7 @@ class _Translator:
         patterns = schema.get("patternProperties")
         # The values passed validation, which compiled the same patterns
         for pattern, sub in patterns.items() if isinstance(patterns, dict) else ():
-            if re.search(pattern, key):
+            if search(pattern, key):
                 children.append(self._descend(scope, sub))
                 matched = True
         if not matched and "additionalProperties" in schema:

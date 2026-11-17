@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json",
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
   "$id": "https://example.org/schemas/nested.schema.json",
   "$comment": "Deeply nested parameters: an array of arrays, 8 levels deep, and records nested 4 levels deep with 2 or 3 fields each. A validator that evaluates nested schemas several times per level takes time exponential in the depth here.",
   "type": "object",

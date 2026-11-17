@@ -39,7 +39,7 @@ from ga4gh_io_schema.validator import load_profile
 SUPPORTED_VERSIONS = ("1.0", "1.1", "1.2")
 
 #: How to install the optional dependency.
-INSTALL_HINT = "pip install 'ga4gh-io-schema[wdl]'"
+INSTALL_HINT = "the extra 'wdl' (in a clone: pip install '.[wdl]')"
 
 #: Keys of ``parameter_meta`` objects that the converter maps.
 META_KEYS = frozenset(
@@ -78,7 +78,7 @@ def miniwdl() -> ModuleType:
         import WDL
     except ImportError as exc:
         raise MissingDependencyError(
-            f"Converting WDL needs miniwdl; install it with: {INSTALL_HINT}"
+            f"Converting WDL needs miniwdl; install {INSTALL_HINT}"
         ) from exc
     return WDL
 

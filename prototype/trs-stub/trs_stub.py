@@ -368,7 +368,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, ValueError) as exc:
         print(f"Can't start the stub: {exc}", file=sys.stderr)
         return 1
-    host, port = server.server_address[:2]
+    # The bound address, which `server_address` is set to as well; typeshed
+    # types `server_address` with bytes, which f-strings would print as b'...'
+    host, port = server.socket.getsockname()[:2]
     print("TRS stub of the prototype (a proof of concept, not a TRS)")
     print(f"Serving TRS on http://{host}:{port}{API}/tools (Ctrl+C stops)")
     for workflow in workflows:

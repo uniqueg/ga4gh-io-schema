@@ -12,7 +12,19 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Version 0.3 of the profile; not released (no tag). Releases come with the
+move of the repository to GA4GH; until then, pin a commit SHA (see
+[Development](https://ga4gh-io-schema.readthedocs.io/en/latest/development/#schema-identifiers)).
+
 ### Breaking changes
+
+- The `$id`s of the meta-schema and its vocabularies, and with them the
+  `$schema` of IO schemas, start with
+  `https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/`
+  instead of `https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/`,
+  because the repository moves to elixir-cloud-aai. A stable identifier
+  follows later (#26). To migrate, change `$schema` in your IO schemas.
+  (#77)
 
 - Widgets of `x-ga4gh-ui-widget` must fit their schema: the meta-schema
   rejects, for example, a `slider` without a numeric type and both bounds, a
@@ -60,8 +72,6 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     validation of tabular files is deferred.
   - Servers no longer accept IO schemas supplied by clients in a run request
     (cut); they use schemas from trusted sources only.
-  - The proposed TRS file type `IO_SCHEMA` is deferred; IO schemas are
-    published as TRS files of type `OTHER`.
   - The proposal no longer covers chaining workflows by ontology terms
     (deferred), drafting of IO schemas by AI agents (cut), or the claim that
     the profile suits machine learning pipelines (cut; an open question on
@@ -78,6 +88,17 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A check of the workflow block for clients:
+  `ga4gh_io_schema.workflow.check_workflow()` and
+  `ga4gh-io-schema verify` compare `trs_tool_id`, `trs_version_id` and
+  `descriptor_type` of `x-ga4gh-workflow` with the tool version that a
+  schema was fetched for, and its `checksum` with the checksums of the
+  primary descriptor, from TRS (`FileWrapper.checksum`) or computed over
+  its content; they return the mismatches and whether the schema is
+  verified (step 2 of the guide for portals). `--require-verified` also
+  fails on a schema whose checksum can't be compared. The form host of the
+  prototype uses it and now also rejects schemas whose checksum doesn't
+  match the primary descriptor. (#85)
 - A TRS stub for the laptop prototype in `prototype/trs-stub/`, documented
   on the page "Prototype": it serves the end-to-end demo and its IO schema
   over the read-only TRS v2 endpoints that a client needs, from files in
@@ -168,8 +189,8 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   engine binding" with the rules for `$id`s and for drift. (#12)
 - A convention for publishing IO schemas in TRS without a change of TRS:
   file type `OTHER`, path `ga4gh-io.schema.json` next to the primary
-  descriptor, identified by `$schema`; an `IO_SCHEMA` file type is deferred.
-  (#12)
+  descriptor, identified by `$schema`; it is the fallback for TRS servers
+  without the file type `IO_SCHEMA` that is proposed now (see below). (#12)
 - Shared conventions of all subcommands: input from a path or `-` (standard
   input), `--output` for the result, `--json` for results and errors as JSON
   objects. (#9)
@@ -275,6 +296,21 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   those of the wrong `class`. "File references" now says, like the engine
   bindings, that a branch of `anyOf` or `oneOf` that a value isn't valid
   against doesn't make it a file value. (#67)
+- The TRS file type `IO_SCHEMA` is proposed for IO schemas, no longer
+  deferred: clients look for the one file of that type first, and fall back
+  to the file `ga4gh-io.schema.json` of type `OTHER` next to the primary
+  descriptor, for TRS servers without it. "Discovery by clients" says how
+  to match file entries: by `file_type` and normalised `path` only (empty
+  and `.` segments removed), ignoring other fields such as `checksum`, with
+  test vectors in `tests/vectors/trs-files/`. The module
+  `ga4gh_io_schema.trs` implements the matching (`find_schema_file`) and
+  finds the path of the primary descriptor for the `workflow_url`
+  (`find_primary_descriptor_path`), normalised: "Workflow URLs in TRS" now
+  says to use `main.wdl` for a listed `./main.wdl`. The
+  host of the prototype uses it, the demo's `register.py` registers the
+  schema as `IO_SCHEMA` with `--schema-file-type IO_SCHEMA`, and
+  `trs_client.py` and a new page show discovery with TRS-Filer end to end.
+  (#82)
 - Engine bindings, "Workflow URLs in TRS": the recommended `workflow_url`
   is the plain primary descriptor by its path,
   `.../PLAIN_{type}/descriptor/{path}`, so that relative imports of
@@ -290,9 +326,20 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   configuration, service registry, `service-info` tags), and the fallback
   with `workflow_attachment`; an open question in the roadmap for a WES
   `service-info` field. (#84)
+- Prototype evaluation: each gap links to its issue (#82 to #85) and, for
+  the fixed ones, to the pull request that closed it. (#74)
+- A page "Transfer to GA4GH" with proposals for the transfer of the
+  repository: naming (`ga4gh/io-schema`), the licence checked against the
+  GA4GH Copyright Policy and GA4GH repositories, consistent copyright
+  notices, a governance note (work stream, leads, approval path, status of
+  the two-implementations requirement) and an identifier plan with
+  `$id`s under `https://w3id.org/ga4gh/schema/io-schema/`. (#26)
 
 ### Fixed
 
+- The transfer page names the `main` URL of the schemas, as the `$id`s of
+  0.3 do, instead of a `v0.3.0` tag that doesn't exist; the check of
+  schema URLs leaves out `$`-placeholders of rewrite rules. (#96)
 - Validation against the meta-schema takes time roughly linear in the size
   of the schema, no longer exponential in its depth of nesting: deeply
   nested parameters (e.g., arrays of arrays, nested records) validate in
@@ -318,6 +365,28 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Clients that use hyperjump no longer need a copy of the IO schema that
   names Draft 2020-12 to validate values, unless an embedded resource of
   the IO schema names the profile. (#61)
+- Values are matched against `pattern`, `patternProperties` and the names
+  that `additionalProperties` and `unevaluatedProperties` check with
+  ECMA-262 semantics in Unicode mode (regress, a new dependency), as
+  JavaScript clients match them, in `wes-params`, `wes-validate`, `outputs`
+  and the form proof of concept: `$` no longer matches before a trailing
+  newline (`^[a-z]+$` rejected `"abc\n"` in clients but not on servers),
+  and patterns such as `\p{L}`, which Python's `re` can't parse, work
+  instead of failing with an unexpected error. `\w` and `\d` match ASCII
+  only, as in ECMA-262. A new test vector, `NFL/pattern-trailing-newline`,
+  covers the newline. (#77)
+- `validate` checks the `regex` format of `pattern` and of the names in
+  `patternProperties` as ECMA-262 in Unicode mode, so a schema with an
+  invalid pattern (e.g., `(`, or `\-` outside a character class, which
+  Python accepted) no longer passes and then fails on the first request
+  that sets the input. Before, the format wasn't checked. (#77)
+- `convert cwl` leaves out default files and directories with a forbidden
+  scheme (e.g., `javascript:`), with a note, instead of copying them into
+  the IO schema. (#77)
+- The messages for missing extras name the extra and how to install it
+  from a clone, instead of a package on PyPI, which doesn't exist. (#77)
+- The wheel declares its licence (`Apache-2.0`) and ships the licence
+  texts. (#77)
 - Translating `workflow_params` back into input values
   (`from_workflow_params()`, `ga4gh-io-schema wes-validate`), and input
   values into `workflow_params`, takes time roughly linear in the size of

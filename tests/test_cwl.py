@@ -630,7 +630,6 @@ def test_format_that_is_not_an_iri_is_reported(tmp_path: Path) -> None:
         "$namespaces?); it is left out."
     )
     notes: list[cwl.ConversionNote] = []
-    notes: list[cwl.ConversionNote] = []
     converter = empty_converter(notes)
 
     assert converter.ontology([3], "$") is None
@@ -752,6 +751,14 @@ def test_defaults(tmp_path: Path) -> None:
         (
             "{class: File, location: 'file:///data/x.txt'}",
             "a File next to the CWL document, 'x.txt'",
+        ),
+        (
+            "{class: File, location: 'javascript:alert(1)'}",
+            "a File with the forbidden scheme 'javascript'",
+        ),
+        (
+            "{class: File, location: 'DATA:text/plain,abc'}",
+            "a File with the forbidden scheme 'data'",
         ),
     ],
 )
@@ -1260,7 +1267,7 @@ def test_cli_without_cwl_utils(
 
     assert capsys.readouterr().err == (
         "Error: The CWL converter needs the optional dependency cwl-utils; "
-        "install it with: pip install 'ga4gh-io-schema[cwl]'\n"
+        "install the extra 'cwl' (in a clone: pip install '.[cwl]')\n"
     )
 
 
