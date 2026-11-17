@@ -45,6 +45,10 @@ jobs:
       - name: Lint Python code (Ruff)
         run: ruff check .
 
+      # Files and options in `[tool.mypy]` of pyproject.toml
+      - name: Check types (mypy)
+        run: mypy
+
       - name: Validate GA4GH Meta-Schema syntax
         run: |
           check-jsonschema --check-metaschema schemas/ga4gh-io-profile.schema.json
