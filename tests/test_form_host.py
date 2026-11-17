@@ -865,6 +865,20 @@ def test_load_trs_schema_takes_entries_with_more_fields(
     assert url == "http://trs/tools/t/versions/v/PLAIN_WDL/descriptor/main.wdl"
 
 
+def test_load_trs_schema_rejects_a_bad_primary_descriptor_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that a listed primary descriptor path with ``..`` is an error."""
+    files = [
+        {"path": "../main.wdl", "file_type": "PRIMARY_DESCRIPTOR"},
+        {"path": "../ga4gh-io.schema.json", "file_type": "OTHER"},
+    ]
+    monkeypatch.setattr(form_host, "_fetch_json", lambda *args: files)
+    monkeypatch.setattr(form_host, "load_schema", lambda source: {})
+    with pytest.raises(ValueError, match="primary descriptor path"):
+        form_host.load_trs_schema("http://trs", "t", "v", "WDL")
+
+
 def test_load_trs_schema_names_a_nested_primary_descriptor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

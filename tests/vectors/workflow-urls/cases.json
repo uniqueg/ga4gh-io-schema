@@ -70,7 +70,7 @@
     "toolId": "align",
     "versionId": "2",
     "descriptorType": "CWL",
-    "primaryDescriptorPath": "/Dockstore.cwl",
+    "primaryDescriptorPath": "Dockstore.cwl",
     "workflowUrl": "https://trs.example.org/ga4gh/trs/v2/tools/align/versions/2/PLAIN_CWL/descriptor/Dockstore.cwl",
     "imports": [
       {
@@ -78,6 +78,15 @@
         "url": "https://trs.example.org/ga4gh/trs/v2/tools/align/versions/2/PLAIN_CWL/descriptor/tools/bwa-mem.cwl"
       }
     ]
+  },
+  {
+    "name": "leading-slash-bare",
+    "trsUrl": "https://trs.example.org/ga4gh/trs/v2",
+    "toolId": "align",
+    "versionId": "2",
+    "descriptorType": "CWL",
+    "primaryDescriptorPath": "/Dockstore.cwl",
+    "workflowUrl": "https://trs.example.org/ga4gh/trs/v2/tools/align/versions/2/PLAIN_CWL/descriptor"
   },
   {
     "name": "path-segments-percent-encoded",
@@ -136,7 +145,7 @@
     "toolId": "demo",
     "versionId": "1.0.0",
     "descriptorType": "WDL",
-    "primaryDescriptorPath": "/",
+    "primaryDescriptorPath": "",
     "error": true
   }
 ]

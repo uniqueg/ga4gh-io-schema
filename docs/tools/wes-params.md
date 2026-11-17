@@ -72,9 +72,11 @@ Options:
   (`.../PLAIN_{type}/descriptor/{path}`), so that relative imports of
   multi-file workflows resolve to files in TRS (see [Workflow URLs in
   TRS](../specification/engine-bindings.md#workflow-urls-in-trs)); without
-  `primary_descriptor_path`, it is `.../PLAIN_{type}/descriptor`, which
-  suits single-file workflows only. For CWL, the entry point becomes the
-  fragment of the URL.
+  `primary_descriptor_path`, or if it starts with `/`, it is
+  `.../PLAIN_{type}/descriptor`, which suits single-file workflows only.
+  The tool doesn't read TRS: `primary_descriptor_path` must be the path
+  exactly as TRS lists it. For CWL, the entry point becomes the fragment of
+  the URL.
 
 ```bash
 ga4gh-io-schema wes-params --schema workflow.schema.json --values values.json \

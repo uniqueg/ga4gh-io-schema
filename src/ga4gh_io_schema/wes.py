@@ -466,7 +466,7 @@ def trs_descriptor_url(
     WDL ``import "tasks/sub.wdl"``) resolve (RFC 3986) to files that TRS
     serves under ``.../descriptor/``. Without it, the URL is that of
     ``GET .../PLAIN_{type}/descriptor``, which suits single-file workflows
-    only (see "Run requests" of the page "Engine bindings").
+    only (see "Workflow URLs in TRS" of the page "Engine bindings").
 
     Args:
         trs_url: Base URL of the TRS API, e.g.,
@@ -476,8 +476,10 @@ def trs_descriptor_url(
         descriptor_type: TRS descriptor type, e.g., ``WDL``.
         primary_descriptor_path: Path of the primary descriptor as TRS lists
             it (``ToolFile.path`` of the ``PRIMARY_DESCRIPTOR``), e.g.,
-            ``x-ga4gh-workflow.primary_descriptor_path``; a leading ``/`` is
-            dropped.
+            ``x-ga4gh-workflow.primary_descriptor_path``. A path with a
+            leading ``/`` gives the URL without path: TRS servers differ in
+            how they serve such paths, and the path without the ``/`` is
+            not one that TRS listed.
 
     Returns:
         The URL, with the ids and each segment of the path percent-encoded.
@@ -491,9 +493,9 @@ def trs_descriptor_url(
         f"/versions/{quote(version_id, safe='')}"
         f"/PLAIN_{descriptor_type}/descriptor"
     )
-    if primary_descriptor_path is None:
+    if primary_descriptor_path is None or primary_descriptor_path.startswith("/"):
         return url
-    segments = primary_descriptor_path.lstrip("/").split("/")
+    segments = primary_descriptor_path.split("/")
     if any(segment in ("", ".", "..") for segment in segments):
         raise ValueError(
             "The primary descriptor path must be a relative file path without "

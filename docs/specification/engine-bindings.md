@@ -198,13 +198,24 @@ plain primary descriptor by its path:
 {trs}/tools/{id}/versions/{version_id}/PLAIN_{descriptor_type}/descriptor/{path}
 ```
 
-`{path}` is the path of the primary descriptor as TRS lists it
+`{path}` is the path of the primary descriptor exactly as TRS lists it
 (`ToolFile.path` of the `PRIMARY_DESCRIPTOR` in
-`GET .../{descriptor_type}/files`, which `primary_descriptor_path` of the
-workflow block records), without a leading `/`. The ids are percent-encoded
-as path segments; the path keeps its `/` separators and has each segment
+`GET .../{descriptor_type}/files`). TRS takes the paths that `/files` lists
+as `{relative_path}`, so only a listed path is sure to be served. The
+`primary_descriptor_path` of the workflow block SHOULD be that same path
+(see [Identity](identity.md)); a request builder that can read `/files`
+SHOULD prefer the listed path. The ids are percent-encoded as path
+segments; the path keeps its `/` separators and has each segment
 percent-encoded. A path with empty, `.` or `..` segments MUST NOT be used:
-it would change where relative references resolve.
+it would change where relative references resolve. For a path with a
+leading `/` (some TRS servers list paths so), a request builder SHOULD use
+the bare form below: servers differ in how they serve such paths in a URL,
+and the path without its `/` is not one that TRS listed.
+
+The form with the path needs a TRS that accepts unencoded `/` in
+`{relative_path}`, which TRS 2 allows ("unencoded paths ... are also
+allowed") but older servers may not; a workflow whose primary descriptor
+is at the top level (a path without `/`) works with every server.
 
 Engines resolve the imports of a multi-file workflow (e.g., a WDL
 `import "tasks/align.wdl"` or a CWL `run: tools/bwa-mem.cwl`) against the

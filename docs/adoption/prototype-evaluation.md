@@ -61,14 +61,13 @@ they are opened.
    adds to the case for the [deferred `IO_SCHEMA` file
    type](trs.md#deferred-an-io_schema-file-type).
 2. **Imports of multi-file workflows (spec).** The `workflow_url` that the
-   binding recommends, `.../PLAIN_{type}/descriptor`, has no file name, so a
+   binding recommended, `.../PLAIN_{type}/descriptor`, has no file name, so a
    relative import such as `tasks/sub.wdl` resolves to
    `.../PLAIN_{type}/tasks/sub.wdl`, which TRS doesn't serve;
    `.../PLAIN_{type}/descriptor/{primary path}` would resolve it to
    `.../descriptor/tasks/sub.wdl`. The demo is one file, so the prototype
-   didn't hit this; it follows from URL resolution (RFC 3986) and needs a
-   decision in [Run requests](../specification/engine-bindings.md#run-requests).
-   Decided in 0.3: the form with the path is recommended ([Workflow URLs in
+   didn't hit this; it follows from URL resolution (RFC 3986). Decided in
+   0.3: the form with the path is recommended ([Workflow URLs in
    TRS](../specification/engine-bindings.md#workflow-urls-in-trs)).
 3. **Can the WES fetch the `workflow_url`? (docs).** The run request is
    only useful if the WES can fetch the TRS URL. In the prototype, the stub
