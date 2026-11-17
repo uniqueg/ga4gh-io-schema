@@ -67,8 +67,16 @@ Options:
   the version of the workflow language and either `--workflow-url URL` or
   `--trs-url URL`. With `--trs-url` (the base URL of a TRS API, e.g.,
   `https://trs.example.org/ga4gh/trs/v2`), the `workflow_url` is the plain
-  primary descriptor of the tool version that `x-ga4gh-workflow` names. For
-  CWL, the entry point becomes the fragment of the URL.
+  primary descriptor of the tool version that `x-ga4gh-workflow` names, by
+  its `primary_descriptor_path`
+  (`.../PLAIN_{type}/descriptor/{path}`), so that relative imports of
+  multi-file workflows resolve to files in TRS (see [Workflow URLs in
+  TRS](../specification/engine-bindings.md#workflow-urls-in-trs)); without
+  `primary_descriptor_path`, or if it starts with `/`, it is
+  `.../PLAIN_{type}/descriptor`, which suits single-file workflows only.
+  The tool doesn't read TRS: `primary_descriptor_path` must be the path
+  exactly as TRS lists it. For CWL, the entry point becomes the fragment of
+  the URL.
 
 ```bash
 ga4gh-io-schema wes-params --schema workflow.schema.json --values values.json \
@@ -91,10 +99,15 @@ don't repeat the value.
 ## Python API
 
 ```python
-from ga4gh_io_schema.wes import build_run_request, to_workflow_params
+from ga4gh_io_schema.wes import (
+    build_run_request,
+    to_workflow_params,
+    trs_descriptor_url,
+)
 
 params = to_workflow_params(schema, values, allowed_schemes=["drs", "https", "s3"])
-request = build_run_request(schema, values, workflow_url="https://…")
+url = trs_descriptor_url(trs, tool_id, version_id, "WDL", "workflows/main.wdl")
+request = build_run_request(schema, values, workflow_url=url)
 ```
 
 A `TranslationError` names the location of the offending value both as a

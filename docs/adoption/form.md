@@ -62,9 +62,12 @@ Options:
   profile, and rejects it if its `x-ga4gh-workflow` names another tool,
   version or descriptor type (step 2 of the guide, without the checksum).
   The `workflow_url` of the run request is the TRS URL of the plain
-  primary descriptor. For the default schema, the `workflow_url` is the
-  same URL for the tool version that `x-ga4gh-workflow` names
-  (`trs_tool_id`, `trs_version_id`). Without `--trs-url`, or if the
+  primary descriptor, by the path that TRS lists for it
+  (`.../PLAIN_{type}/descriptor/{path}`, see [Workflow URLs in
+  TRS](../specification/engine-bindings.md#workflow-urls-in-trs)). For the
+  default schema, the `workflow_url` is the same URL for the tool version
+  that `x-ga4gh-workflow` names (`trs_tool_id`, `trs_version_id`), by its
+  `primary_descriptor_path` if it has one. Without `--trs-url`, or if the
   schema names no tool version, the `workflow_url` is
   `primary_descriptor_path`, which a WES resolves against files attached
   to the request; the host attaches none. Without either, valid values get
