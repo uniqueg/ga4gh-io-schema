@@ -966,19 +966,28 @@ def test_load_trs_schema_takes_entries_with_more_fields(
     assert url == "http://trs/tools/t/versions/v/PLAIN_WDL/descriptor/main.wdl"
 
 
-@pytest.mark.parametrize("primary", ["../main.wdl", "./main.wdl", "wdl//main.wdl"])
-def test_load_trs_schema_ignores_an_unusable_primary_descriptor_path(
-    monkeypatch: pytest.MonkeyPatch, primary: str
+@pytest.mark.parametrize(
+    ("primary", "suffix"),
+    [
+        ("./main.wdl", "/main.wdl"),
+        ("wdl//main.wdl", "/wdl/main.wdl"),
+        ("/main.wdl", ""),
+        ("../main.wdl", ""),
+    ],
+)
+def test_load_trs_schema_normalises_the_primary_descriptor_path(
+    monkeypatch: pytest.MonkeyPatch, primary: str, suffix: str
 ) -> None:
-    """Test that a primary descriptor path not in normalised form isn't used.
+    """Test that the workflow URL takes the normalised primary descriptor path.
 
-    The workflow URL is then that without a path, as for a leading ``/``;
-    the schema is of type ``IO_SCHEMA``, which is found whatever the path of
-    the primary descriptor.
+    A leading ``/`` gives the URL without a path, as does a path with
+    ``..``, which isn't usable; the schema is of type ``IO_SCHEMA``, which
+    is found whatever the path of the primary descriptor.
 
     Args:
         monkeypatch: Pytest fixture.
         primary: The path of the primary descriptor, as listed.
+        suffix: The end of the expected URL after ``.../descriptor``.
     """
     files = [
         {"path": primary, "file_type": "PRIMARY_DESCRIPTOR"},
@@ -987,7 +996,7 @@ def test_load_trs_schema_ignores_an_unusable_primary_descriptor_path(
     monkeypatch.setattr(form_host, "_fetch_json", lambda *args: files)
     monkeypatch.setattr(form_host, "load_schema", lambda source: {})
     _, url = form_host.load_trs_schema("http://trs", "t", "v", "WDL")
-    assert url == "http://trs/tools/t/versions/v/PLAIN_WDL/descriptor"
+    assert url == f"http://trs/tools/t/versions/v/PLAIN_WDL/descriptor{suffix}"
 
 
 def test_load_trs_schema_names_a_nested_primary_descriptor(

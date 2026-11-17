@@ -303,7 +303,10 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   to match file entries: by `file_type` and normalised `path` only (empty
   and `.` segments removed), ignoring other fields such as `checksum`, with
   test vectors in `tests/vectors/trs-files/`. The module
-  `ga4gh_io_schema.trs` implements the matching (`find_schema_file`); the
+  `ga4gh_io_schema.trs` implements the matching (`find_schema_file`) and
+  finds the path of the primary descriptor for the `workflow_url`
+  (`find_primary_descriptor_path`), normalised: "Workflow URLs in TRS" now
+  says to use `main.wdl` for a listed `./main.wdl`. The
   host of the prototype uses it, the demo's `register.py` registers the
   schema as `IO_SCHEMA` with `--schema-file-type IO_SCHEMA`, and
   `trs_client.py` and a new page show discovery with TRS-Filer end to end.

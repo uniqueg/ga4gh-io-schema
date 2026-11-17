@@ -14,7 +14,8 @@
     "schemaFile": {
       "path": "ga4gh-io.schema.json",
       "file_type": "OTHER"
-    }
+    },
+    "primaryDescriptorPath": "main.wdl"
   },
   {
     "name": "extra-fields-ignored",
@@ -61,7 +62,8 @@
     "schemaFile": {
       "path": "./ga4gh-io.schema.json",
       "file_type": "OTHER"
-    }
+    },
+    "primaryDescriptorPath": "main.wdl"
   },
   {
     "name": "dot-slash-primary-in-directory",
@@ -78,7 +80,26 @@
     "schemaFile": {
       "path": "wdl/ga4gh-io.schema.json",
       "file_type": "OTHER"
-    }
+    },
+    "primaryDescriptorPath": "wdl/main.wdl"
+  },
+  {
+    "name": "dot-slash-primary",
+    "files": [
+      {
+        "path": "./main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "./ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
+    ],
+    "schemaFile": {
+      "path": "./ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    },
+    "primaryDescriptorPath": "main.wdl"
   },
   {
     "name": "leading-slash",
@@ -95,7 +116,8 @@
     "schemaFile": {
       "path": "/ga4gh-io.schema.json",
       "file_type": "OTHER"
-    }
+    },
+    "primaryDescriptorPath": "/main.wdl"
   },
   {
     "name": "double-slash",
@@ -112,7 +134,8 @@
     "schemaFile": {
       "path": "wdl//ga4gh-io.schema.json",
       "file_type": "OTHER"
-    }
+    },
+    "primaryDescriptorPath": "wdl/main.wdl"
   },
   {
     "name": "entries-without-type-or-path-ignored",
@@ -284,7 +307,8 @@
     "schemaFile": {
       "path": "ga4gh-io.schema.json",
       "file_type": "IO_SCHEMA"
-    }
+    },
+    "primaryDescriptorPath": null
   },
   {
     "name": "io-schema-type-preferred",
@@ -386,7 +410,8 @@
     "schemaFile": {
       "path": "wdl/ga4gh-io.schema.json",
       "file_type": "OTHER"
-    }
+    },
+    "primaryDescriptorPath": "wdl/main.wdl"
   },
   {
     "name": "io-schema-type-dot-dot-ignored",

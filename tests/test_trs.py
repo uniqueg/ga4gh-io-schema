@@ -22,6 +22,7 @@ from ga4gh_io_schema.trs import (
     find_schema_file,
     normalise_path,
 )
+from ga4gh_io_schema.wes import trs_descriptor_url
 
 #: The test vectors of the matching of TRS file entries.
 CASES = json.loads(
@@ -52,6 +53,29 @@ def test_vectors(case: dict[str, Any]) -> None:
     expected = case["schemaFile"]
     found = find_schema_file(case["files"])
     assert found == (SchemaFile(**expected) if expected else None)
+
+
+PATH_CASES = [case for case in CASES if "primaryDescriptorPath" in case]
+
+
+@pytest.mark.parametrize("case", PATH_CASES, ids=[c["name"] for c in PATH_CASES])
+def test_vectors_primary_descriptor_path(case: dict[str, Any]) -> None:
+    """Test the path of the primary descriptor for the ``workflow_url``.
+
+    The path is one that ``trs_descriptor_url`` takes: normalised, or with a
+    leading ``/``, which gives the URL without a path.
+
+    Args:
+        case: A test vector with the expected ``primaryDescriptorPath``.
+    """
+    path = find_primary_descriptor_path(case["files"])
+    assert path == case["primaryDescriptorPath"]
+    url = trs_descriptor_url("https://trs.example.org", "t", "v", "WDL", path)
+    base = "https://trs.example.org/tools/t/versions/v/PLAIN_WDL/descriptor"
+    if path is None or path.startswith("/"):
+        assert url == base
+    else:
+        assert url == f"{base}/{path}"
 
 
 @pytest.mark.parametrize(
@@ -113,8 +137,12 @@ def test_find_schema_file_skips_entries_that_are_no_objects() -> None:
             ],
             "wdl/main.wdl",
         ),
-        ([{"path": "./main.wdl", "file_type": "PRIMARY_DESCRIPTOR"}], None),
-        ([{"path": "wdl//main.wdl", "file_type": "PRIMARY_DESCRIPTOR"}], None),
+        ([{"path": "./main.wdl", "file_type": "PRIMARY_DESCRIPTOR"}], "main.wdl"),
+        (
+            [{"path": "wdl//main.wdl", "file_type": "PRIMARY_DESCRIPTOR"}],
+            "wdl/main.wdl",
+        ),
+        ([{"path": "/main.wdl", "file_type": "PRIMARY_DESCRIPTOR"}], "/main.wdl"),
         ([{"path": "ga4gh-io.schema.json", "file_type": "IO_SCHEMA"}], None),
         ({"path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR"}, None),
     ],

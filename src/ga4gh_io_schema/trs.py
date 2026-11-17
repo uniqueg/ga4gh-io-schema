@@ -80,21 +80,21 @@ def find_primary_descriptor_path(files: Any) -> str | None:
     """Find the path of the primary descriptor in the files of a TRS tool version.
 
     For the ``workflow_url`` of run requests (see
-    :func:`ga4gh_io_schema.wes.trs_descriptor_url`), which takes the path as
-    TRS lists it.
+    :func:`ga4gh_io_schema.wes.trs_descriptor_url` and "Workflow URLs in
+    TRS" of the page "Engine bindings"), which takes a path without empty,
+    ``.`` or ``..`` segments.
 
     Args:
         files: The answer of ``GET .../{type}/files``: a list of ``ToolFile``
             entries; anything else has no primary descriptor.
 
     Returns:
-        The path of the first entry of type ``PRIMARY_DESCRIPTOR`` with a
-        usable path (as :func:`find_schema_file` counts them), if TRS lists
-        it in normalised form (e.g., ``wdl/main.wdl``). ``None`` if there is
-        no such entry, or if its path has another form (e.g., ``./main.wdl``
-        or ``wdl//main.wdl``), which ``trs_descriptor_url`` doesn't take: the
-        URL without a path suits single-file workflows, as for a leading
-        ``/``.
+        The normalised path (see :func:`normalise_path`) of the first entry
+        of type ``PRIMARY_DESCRIPTOR`` with a usable path (as
+        :func:`find_schema_file` counts them), e.g., ``main.wdl`` for
+        ``./main.wdl`` and ``wdl/main.wdl`` for ``wdl//main.wdl``; a path
+        with a leading ``/`` as listed, for which ``trs_descriptor_url``
+        gives the URL without a path. ``None`` if there is no such entry.
     """
     if not isinstance(files, list):
         return None
@@ -104,7 +104,8 @@ def find_primary_descriptor_path(files: Any) -> str | None:
         path = entry.get("path")
         normalised = normalise_path(path)
         if entry.get("file_type") == PRIMARY_DESCRIPTOR_FILE_TYPE and normalised:
-            return path if path == normalised else None
+            # A leading "/" keeps the URL without a path (servers differ)
+            return path if path.startswith("/") else normalised
     return None
 
 

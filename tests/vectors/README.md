@@ -30,7 +30,11 @@ conformance suite.
   TRS tool version, by clients. Each case has a `name`, the `files` (the
   answer of `GET .../{type}/files`, a list of TRS `ToolFile` entries) and
   the `schemaFile` that a client finds: its `path` as listed and its
-  `file_type`, or `null` for none.
+  `file_type`, or `null` for none. An optional `primaryDescriptorPath` is
+  the path of the primary descriptor for the `workflow_url` (the
+  `primaryDescriptorPath` of `workflow-urls/`): normalised (e.g.,
+  `main.wdl` for `./main.wdl`), as listed if it starts with `/`, or `null`
+  for none.
 - `workflow-urls/cases.json`: the `workflow_url` of a run request from
   TRS. Each case has a `name`, the TRS base URL (`trsUrl`), `toolId`,
   `versionId`, `descriptorType` and an optional `primaryDescriptorPath`, and

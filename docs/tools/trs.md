@@ -25,12 +25,12 @@ found = find_schema_file(files)
 `None` means that the tool version has no IO schema for the descriptor
 type (or several files of type `IO_SCHEMA`, or several of type `OTHER` at
 the conventional path). `find_primary_descriptor_path(files)` returns the
-path of the primary descriptor as listed, for the `workflow_url` of run
-requests (`ga4gh_io_schema.wes.trs_descriptor_url`), or `None` if TRS lists
-it in another form than the normalised one (e.g., `./main.wdl`): the
-`workflow_url` is then that without a path, which suits single-file
-workflows. The test vectors of the rules are in
-`tests/vectors/trs-files/cases.json`. The [demo with
+path of the primary descriptor for the `workflow_url` of run requests
+(`ga4gh_io_schema.wes.trs_descriptor_url`): normalised, e.g., `main.wdl`
+for `./main.wdl` (see [Workflow URLs in
+TRS](../specification/engine-bindings.md)); a path with a leading `/` as
+listed, for which the `workflow_url` has no path. The test vectors of the
+rules are in `tests/vectors/trs-files/cases.json`. The [demo with
 TRS-Filer](../adoption/demo-trs-filer.md) uses the module in a complete
 client (`examples/demo/trs_client.py`).
 
