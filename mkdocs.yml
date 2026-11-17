@@ -136,4 +136,5 @@ nav:
   - Roadmap: roadmap.md
   - Changelog: changelog.md
   - Versioning and governance: governance.md
+  - Transfer to GA4GH: transfer.md
   - Development: development.md
