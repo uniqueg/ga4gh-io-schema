@@ -10,6 +10,8 @@ standard. The goal is to submit it to the GA4GH
 applies, and this page will be replaced by it. GA4GH approval also needs at
 least two independent, interoperating implementations (see
 [Implementations](specification/conformance.md#implementations)).
+[Transfer to GA4GH](transfer.md) proposes the naming, licence, governance
+and identifiers for the transfer of the repository to GA4GH.
 
 ## Versions of the profile
 

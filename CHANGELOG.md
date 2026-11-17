@@ -290,6 +290,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   configuration, service registry, `service-info` tags), and the fallback
   with `workflow_attachment`; an open question in the roadmap for a WES
   `service-info` field. (#84)
+- A page "Transfer to GA4GH" with proposals for the transfer of the
+  repository: naming (`ga4gh/io-schema`), the licence checked against the
+  GA4GH Copyright Policy and GA4GH repositories, consistent copyright
+  notices, a governance note (work stream, leads, approval path, status of
+  the two-implementations requirement) and an identifier plan with
+  `$id`s under `https://w3id.org/ga4gh/schema/io-schema/`. (#26)
 
 ### Fixed
 
