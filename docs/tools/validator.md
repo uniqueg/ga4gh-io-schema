@@ -34,7 +34,7 @@ ga4gh-io-schema validate path/to/your-schema.json
 Without further options, the validator always checks the schema against the
 GA4GH IO Profile meta-schema that the package ships, whatever the schema's
 `$schema` says. The schema's `$schema` must name that meta-schema by its
-versioned `$id` (see [Referencing the
+`$id` (see [Referencing the
 meta-schema](../specification/meta-schema.md#referencing-the-meta-schema)); a
 missing `$schema`, or one that names another meta-schema (e.g., plain JSON
 Schema), is an error. To validate against another meta-schema file, pass it

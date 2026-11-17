@@ -20,6 +20,8 @@ Two identifiers and their versions are involved:
   has no releases yet, so its `$id`s name the `main` branch of the
   repository; released versions will get versioned `$id`s that never name
   a branch (see [Schema identifiers](../development.md#schema-identifiers)).
+  This is a temporary exception for the profile itself; the rules below
+  for the `$id` of IO schemas apply in full.
 - **The IO schema itself:** `$id` identifies the schema.
 
 Rules for the `$id` of an IO schema:

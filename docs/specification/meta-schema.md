@@ -105,7 +105,7 @@ The meta-schema has two parts.
 **Top level** (`ga4gh-io-profile.schema.json`): an IO schema is a JSON object
 that
 
-- names the meta-schema in `$schema`, by its versioned `$id`, if it sets
+- names the meta-schema in `$schema`, by its `$id`, if it sets
   `$schema` (see above for why the meta-schema doesn't require it);
 - has an absolute URI as `$id`, if it sets `$id`, and not the URL of a
   branch (see [Identifiers and
@@ -186,6 +186,6 @@ schema once for each of its ancestors. Changes of the meta-schema keep this
 structure (`tests/test_packaging.py` and `tests/test_meta_schema.py` check
 it).
 
-The `$ref`s between the schemas use the versioned `$id`s; the validator
+The `$ref`s between the schemas use the `$id`s; the validator
 resolves them from the copies that the package ships and never fetches them
 from the network.

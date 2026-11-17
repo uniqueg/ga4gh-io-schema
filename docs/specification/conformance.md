@@ -304,7 +304,7 @@ tests/conformance/
   names (a few, such as `empty`, also break others). The valid cases, and
   the negative cases other than those about `$schema` (`empty`,
   `foreign-schema`, `missing-schema`, `plain-json-schema`), name the
-  meta-schema by its versioned `$id`; no case has other references, so a
+  meta-schema by its `$id`; no case has other references, so a
   runner needs only the
   meta-schema and vocabularies of
   [`schemas/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/schemas),

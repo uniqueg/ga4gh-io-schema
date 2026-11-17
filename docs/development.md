@@ -77,14 +77,17 @@ The profile has no releases and no tags yet (see [Versioning and
 governance](governance.md#releases)). Until it has, the `$id`s of the
 schemas in `schemas/`, and the `$schema` of the examples in `tests/data/`
 and `examples/`, of the cases in `tests/conformance/` and `tests/vectors/`
-and of the snippet in the meta-schema documentation, start with
+and of the snippets in the documentation, start with
 
 ```text
 https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/
 ```
 
-`main` holds the latest reviewed state, so the content behind these URLs
-changes. To use fixed content, pin a commit SHA: fetch the files from
+These URLs resolve once the repository has moved to elixir-cloud-aai.
+`main` holds the latest reviewed state, so the content behind them
+changes. To use fixed content, pin a commit SHA (`<owner>` is the owner of
+the repository at that time: `uniqueg` before the move, `elixir-cloud-aai`
+after it): fetch the files from
 
 ```text
 https://raw.githubusercontent.com/<owner>/ga4gh-io-schema/<sha>/schemas/...
@@ -122,7 +125,7 @@ Keywords live in one vocabulary file per keyword group in
 `schemas/vocabularies/`. To add a keyword or a group:
 
 1. Add the keyword to the `properties` of its vocabulary file, or create a new
-   file (with a versioned `$id`, like the others) and add a `$ref` to it to the
+   file (with an `$id` of the same base, like the others) and add a `$ref` to it to the
    `allOf` of `$defs/node/$defs/keywords` in
    `schemas/ga4gh-io-profile.schema.json`. A keyword that is allowed only at
    the top level (like `x-ga4gh-workflow`) goes into

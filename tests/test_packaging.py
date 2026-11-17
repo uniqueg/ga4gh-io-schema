@@ -71,9 +71,9 @@ def test_schema_urls_use_the_schema_base() -> None:
 
     There are no releases before the repository moves to GA4GH, so the
     ``$id``s name ``main``, the latest reviewed state (see "Schema
-    identifiers" in ``docs/development.md``).
+    identifiers" in ``docs/development.md``). URLs with placeholders (e.g.,
+    ``<owner>``, ``<sha>``) in the documentation are left out.
     """
-    meta_schema_doc = REPO_ROOT / "docs" / "specification" / "meta-schema.md"
     found = set()
     for path in [
         *SCHEMAS_DIR.rglob("*.json"),
@@ -81,11 +81,14 @@ def test_schema_urls_use_the_schema_base() -> None:
         *SUITE_DIR.rglob("*.json"),
         *VECTORS_DIR.rglob("*.json"),
         *EXAMPLES_DIR.rglob("*.json"),
-        meta_schema_doc,
+        *(REPO_ROOT / "docs").rglob("*.md"),
+        REPO_ROOT / "README.md",
     ]:
         text = path.read_text(encoding="utf-8")
         bases = set(
-            re.findall(r"https?://[^\"\s]*?/ga4gh-io-schema/[^/]+/schemas/", text)
+            re.findall(
+                r"https?://[^\"\s<>`]*?/ga4gh-io-schema/[^/\"\s<>`]+/schemas/", text
+            )
         )
         assert bases <= {SCHEMA_BASE}, (path, bases)
         found |= bases

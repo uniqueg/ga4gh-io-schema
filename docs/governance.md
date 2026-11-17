@@ -50,7 +50,7 @@ conformance suite for existing rules.
   semantic versioning allows. The [changelog](changelog.md) lists them under
   "Breaking changes", with what to change.
 - Each schema document names the version that it targets: `$schema` is the
-  versioned `$id` of that version's meta-schema (see
+  `$id` of that version's meta-schema (see
   [Referencing the meta-schema](specification/meta-schema.md#referencing-the-meta-schema)).
   A new version of the profile doesn't change what an existing schema
   document means; for a non-breaking version, changing `$schema` is all
