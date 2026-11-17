@@ -83,21 +83,31 @@ and of the snippets in the documentation, start with
 https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/
 ```
 
-These URLs resolve once the repository has moved to elixir-cloud-aai.
-`main` holds the latest reviewed state, so the content behind them
-changes. To use fixed content, pin a commit SHA (`<owner>` is the owner of
-the repository at that time: `uniqueg` before the move, `elixir-cloud-aai`
-after it): fetch the files from
+These URLs resolve once the repository has moved to elixir-cloud-aai and
+version 0.3 is merged into its `main` branch. `main` holds the latest
+reviewed state, so the content behind them changes, also with breaking
+changes: until the first release, `$schema` doesn't tell versions of the
+profile apart, and the commit you pin does.
 
-```text
-https://raw.githubusercontent.com/<owner>/ga4gh-io-schema/<sha>/schemas/...
-```
+To use fixed content, pin a commit SHA (`<owner>` is the owner of the
+repository at that time: `uniqueg` before the move, `elixir-cloud-aai`
+after it):
 
-or install the package from that commit (`pip install
-"git+https://github.com/<owner>/ga4gh-io-schema@<sha>"`). The `$schema` of
-your IO schemas stays as above: it identifies the profile, it isn't the
-place you fetch the meta-schema from. `version` in `pyproject.toml` is a
-development version (e.g., `0.3.0.dev0`); the tests check both.
+- In Python, install the package from that commit (`pip install
+  "git+https://github.com/<owner>/ga4gh-io-schema@<sha>"`); it ships the
+  schemas and never fetches them.
+- Elsewhere, download every file of `schemas/` from
+  `https://raw.githubusercontent.com/<owner>/ga4gh-io-schema/<sha>/schemas/...`,
+  register each under its `$id`, and turn off the fetching of remote
+  references, as [JavaScript validators](tools/javascript.md) describes. The
+  `$ref`s between the schemas name `main`, so a validator that fetches them
+  would mix the pinned file with the current ones.
+
+The `$schema` of your IO schemas stays as above: it identifies the profile,
+it isn't the place you fetch the meta-schema from. `version` in
+`pyproject.toml` is a development version (e.g., `0.3.0.dev0`), which
+isn't bumped per commit (pin the commit, not the version); the tests check
+both.
 
 ## Releases
 

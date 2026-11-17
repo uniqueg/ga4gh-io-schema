@@ -20,6 +20,14 @@ version covers the normative text (see
 meta-schema and vocabularies in `schemas/`, and the
 [conformance suite](specification/conformance.md#conformance-suite).
 
+!!! note "Until the first release"
+    There are no releases yet (see [Releases](#releases)). Until the first
+    one, the `$id` of the meta-schema names the `main` branch, so `$schema`
+    doesn't tell versions apart, and breaking changes on `main` keep it as
+    it is. Pin a commit to fix the version that you use (see [Schema
+    identifiers](development.md#schema-identifiers)). The rules below apply
+    from the first release on.
+
 Each release has a meta-schema of its own, with the release in its `$id`,
 and a schema document names the release that it targets in `$schema`. To
 move a document to a new release, its author changes `$schema` (a
@@ -62,8 +70,9 @@ conformance suite for existing rules.
   [Changelog](changelog.md)). Releases, as Git tags `vMAJOR.MINOR.PATCH`,
   come with the move of the repository to GA4GH.
 - Until then, the `$id`s of the meta-schema and vocabularies name the
-  `main` branch of the repository, which holds the latest reviewed state.
-  To use fixed content, pin a commit SHA (see [Schema
+  `main` branch of the repository, which holds the latest reviewed state
+  (they resolve once version 0.3 is merged into `main` at
+  elixir-cloud-aai). To use fixed content, pin a commit SHA (see [Schema
   identifiers](development.md#schema-identifiers)). A stable identifier for
   released versions follows with the first release.
 - The Python package `ga4gh-io-schema` isn't published on PyPI; install it
