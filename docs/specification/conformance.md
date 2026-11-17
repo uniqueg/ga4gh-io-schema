@@ -53,8 +53,7 @@ together with the workflow engine that it runs.
 
 1. A schema document MUST be a JSON object that is valid against the
    [meta-schema](meta-schema.md) of the version of the profile that it
-   targets, and MUST name that meta-schema in `$schema`, by its versioned
-   `$id`. Valid means valid with the `format` keywords of the meta-schema
+   targets, and MUST name that meta-schema in `$schema`, by its `$id`. Valid means valid with the `format` keywords of the meta-schema
    treated as assertions (e.g., `uri` for `x-ga4gh-ontology`, `regex` for
    `pattern`); JSON Schema 2020-12 treats `format` as an annotation by
    default.

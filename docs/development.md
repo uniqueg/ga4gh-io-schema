@@ -135,7 +135,7 @@ Keywords live in one vocabulary file per keyword group in
 `schemas/vocabularies/`. To add a keyword or a group:
 
 1. Add the keyword to the `properties` of its vocabulary file, or create a new
-   file (with an `$id` of the same base, like the others) and add a `$ref` to it to the
+   file (with an `$id` on the base of [Schema identifiers](#schema-identifiers)) and add a `$ref` to it to the
    `allOf` of `$defs/node/$defs/keywords` in
    `schemas/ga4gh-io-profile.schema.json`. A keyword that is allowed only at
    the top level (like `x-ga4gh-workflow`) goes into
