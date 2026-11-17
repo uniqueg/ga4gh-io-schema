@@ -24,6 +24,7 @@ from unittest.mock import Mock
 
 import jsonschema
 import pytest
+from test_wes import nested_list, recursive_schema
 
 from ga4gh_io_schema import validator
 from ga4gh_io_schema.converters.snakemake import load_schema, to_ga4gh
@@ -355,23 +356,12 @@ def test_translation_of_recursive_values(keyword: str, depth: int) -> None:
         keyword: ``anyOf`` or ``oneOf``.
         depth: The number of nested lists.
     """
-    schema = io_schema({"$ref": "#/$defs/n"})
-    schema["$defs"] = {
-        "n": {
-            keyword: [
-                {"type": "string"},
-                {"type": "array", "items": {"$ref": "#/$defs/n"}},
-            ]
-        }
-    }
-    schema["x-ga4gh-workflow"] = {"descriptor_type": "NFL"}
-    value: list[Any] = ["x"] * 10_000
-    for _ in range(depth - 1):
-        value = [value]
+    schema = recursive_schema(keyword)
+    values = {"a": nested_list(depth, 10_000)}
 
     with time_budget(BUDGET * 2):
-        params = to_workflow_params(schema, {"parameter": value})
-        assert from_workflow_params(schema, params) == {"parameter": value}
+        params = to_workflow_params(schema, values)
+        assert from_workflow_params(schema, params) == values
 
 
 def test_time_budget_stops_slow_blocks() -> None:

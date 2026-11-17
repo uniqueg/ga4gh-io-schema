@@ -10,6 +10,7 @@ implementations run them with their own runner (see
 ``docs/specification/engine-bindings.md``).
 """
 
+import contextlib
 import copy
 import sys
 from pathlib import Path
@@ -1376,18 +1377,23 @@ def test_each_subschema_is_validated_once_per_value(
         monkeypatch: Pytest fixture for patching module attributes.
         keyword: ``anyOf`` or ``oneOf``.
     """
+    leaves = 200
     schema = recursive_schema(keyword)
+    original = wes._DESCEND
     counts = {}
-    for depth in (1, 40):
-        values = {"a": nested_list(depth, 200)}
-        descend = Mock(wraps=wes._DESCEND)
+    for depth in (1, 2, 40):
+        values = {"a": nested_list(depth, leaves)}
+        descend = Mock(wraps=original)
         monkeypatch.setattr(wes, "_DESCEND", descend)
         params = to_workflow_params(schema, values)
         assert from_workflow_params(schema, params) == values
         counts[depth] = descend.call_count
 
-    # 39 more lists, each with a few validations; not 40 times as many
-    assert counts[40] < counts[1] + 39 * 20
+    per_level = counts[2] - counts[1]
+    # Each list around the strings adds the same few validations (8), not a
+    # validation of everything below it
+    assert 0 < per_level < leaves
+    assert counts[40] - counts[1] == 39 * per_level
 
 
 def test_errors_deep_in_recursive_values() -> None:
@@ -1404,7 +1410,7 @@ def test_errors_deep_in_recursive_values() -> None:
     assert error.message == "The value fails the keyword 'anyOf' of the schema."
 
 
-def dynamic_scope_schema(first: str, second: str) -> dict[str, Any]:
+def dynamic_scope_schema(first: str, second: str, keyword: str) -> dict[str, Any]:
     """Build an IO schema whose subschema ``s`` depends on the dynamic scope.
 
     ``s`` is valid for a string where ``a`` brings it into scope, and not
@@ -1413,6 +1419,8 @@ def dynamic_scope_schema(first: str, second: str) -> dict[str, Any]:
     Args:
         first: ``a`` or ``b``.
         second: The other one.
+        keyword: ``$dynamicRef``, or ``$ref``, which also resolves through
+            the dynamic scope where it points to a ``$dynamicAnchor``.
 
     Returns:
         The schema.
@@ -1433,7 +1441,7 @@ def dynamic_scope_schema(first: str, second: str) -> dict[str, Any]:
                 "s": {
                     "$id": "urn:example:s",
                     "$defs": {"t": anchor},
-                    "$dynamicRef": "#t",
+                    keyword: "#t",
                 },
                 "a": {
                     "$id": "urn:example:a",
@@ -1450,27 +1458,48 @@ def dynamic_scope_schema(first: str, second: str) -> dict[str, Any]:
     )
 
 
+@pytest.mark.parametrize("keyword", ["$dynamicRef", "$ref"])
 @pytest.mark.parametrize(("first", "second"), [("a", "b"), ("b", "a")])
-def test_results_of_dynamic_references_are_not_kept(first: str, second: str) -> None:
-    """Test that a subschema with ``$dynamicRef`` is validated in each scope.
+def test_results_of_dynamic_references_are_not_kept(
+    first: str, second: str, keyword: str
+) -> None:
+    """Test that a subschema that resolves dynamically is validated in each scope.
 
     Keeping the first result of ``s`` would accept the value.
 
     Args:
         first: The scope that validates ``s`` first.
         second: The other scope.
+        keyword: The keyword of the reference in ``s``.
     """
-    error = reject(dynamic_scope_schema(first, second), {"v": "x"})
+    error = reject(dynamic_scope_schema(first, second, keyword), {"v": "x"})
 
     assert error.pointer == "/v"
 
 
-def test_validity_is_kept_only_during_a_translation() -> None:
-    """Test that the validator works as plain Draft 2020-12 outside of one.
+@pytest.mark.parametrize(
+    ("schema", "static"),
+    [
+        ({"$defs": {"n": {"$ref": "#/$defs/n"}}, "items": [{"$ref": "#n"}]}, True),
+        ({"properties": {"a": {"$dynamicRef": "#t"}}}, False),
+        ({"$defs": {"t": {"$dynamicAnchor": "t"}}}, False),
+        ({"anyOf": [{"$ref": "urn:example:s"}]}, False),
+    ],
+)
+def test_validity_is_kept_only_for_static_schemas(
+    schema: dict[str, Any], static: bool
+) -> None:
+    """Test which schemas can't depend on the dynamic scope.
 
-    The identities of values are reused once they are gone, so the validity
-    of subschemas is kept during one translation only.
+    Args:
+        schema: The schema.
+        static: Whether results can be kept for it.
     """
+    assert wes._static(schema) is static
+
+
+def test_validator_outside_of_a_translation() -> None:
+    """Test that the validator works as plain Draft 2020-12 outside of one."""
     schema = {
         "$defs": {"t": {"$dynamicAnchor": "t", "type": "string"}},
         "anyOf": [{"$dynamicRef": "#t"}, {"type": "array"}],
@@ -1479,7 +1508,18 @@ def test_validity_is_kept_only_during_a_translation() -> None:
 
     assert validator.is_valid("x")
     assert not validator.is_valid(1)
-    assert from_workflow_params(make_schema({"a": {}}, NFL), {"a": 1}) == {"a": 1}
-    with pytest.raises(WorkflowParamsError):
-        from_workflow_params(recursive_schema("anyOf"), {"a": [1]})
+
+
+@pytest.mark.parametrize("values", [{"a": ["x"]}, {"a": [1]}])
+def test_validity_is_kept_only_during_a_translation(values: dict[str, Any]) -> None:
+    """Test that the validity is dropped after a translation, also a failed one.
+
+    The identities of values are reused once they are gone.
+
+    Args:
+        values: The input values, valid or not.
+    """
+    with contextlib.suppress(WorkflowParamsError):
+        from_workflow_params(recursive_schema("anyOf"), values)
+
     assert wes._VALIDITY.get() is None

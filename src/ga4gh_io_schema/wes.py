@@ -99,41 +99,65 @@ _MAX_REFERENCES = 32
 Path = tuple[str | int, ...]
 
 
-class _Validity:
-    """Validity of subschemas for values, kept during one translation.
-
-    Attributes:
-        known: Whether each subschema is valid for each value, by the
-            identity of the subschema, the base URI against which it
-            resolves references, and the identity of the value.
-        dynamic: The number of ``$dynamicRef`` evaluated so far. The result
-            of a ``$dynamicRef`` depends on the dynamic scope, which isn't
-            part of the key: results that evaluated one aren't kept.
-    """
-
-    def __init__(self) -> None:
-        """Start with nothing known."""
-        self.known: dict[tuple[int, str, int], bool] = {}
-        self.dynamic = 0
-
+#: Key of the validity of a subschema for a value (see :func:`_validity_key`)
+_ValidityKey = tuple[int, str, int]
 
 # Validity of subschemas for values during a translation (see
-# `_Translator.bind`); `None` outside of one
-_VALIDITY: ContextVar[_Validity | None] = ContextVar("_VALIDITY", default=None)
+# `_Translator.bind`); `None` outside of one, and for schemas whose results
+# may depend on the dynamic scope (see `_static`)
+_VALIDITY: ContextVar[dict[_ValidityKey, bool] | None] = ContextVar(
+    "_VALIDITY", default=None
+)
 
 
-def _base_uri(resolver: Resolver) -> str:
-    """Get the base URI of a resolver.
+def _validity_key(schema: Any, resolver: Resolver, value: Any) -> _ValidityKey:
+    """Get the key of the validity of a subschema for a value.
 
     Args:
-        resolver: The resolver.
+        schema: The subschema.
+        resolver: Resolver of the schema that applies the subschema.
+        value: The value.
 
     Returns:
-        The base URI against which it resolves references.
+        The identity of the subschema, the base URI against which it
+        resolves references, and the identity of the value.
     """
-    # `referencing` has no public accessor of the base URI
+    # `referencing` has no public accessor of the base URI; the tests of the
+    # translation fail if it goes away
     base_uri: str = resolver._base_uri
-    return base_uri
+    return (id(schema), base_uri, id(value))
+
+
+def _static(schema: Any) -> bool:
+    """Check that the results of a schema can't depend on the dynamic scope.
+
+    The validity of a subschema for a value is kept by the subschema, its
+    base URI and the value, not by the dynamic scope. Only ``$dynamicRef``,
+    and ``$ref`` to a ``$dynamicAnchor``, resolve through the dynamic scope;
+    a schema without either keyword and with local references only (which
+    can't reach a document with them) is safe to keep results for.
+
+    Args:
+        schema: The IO schema.
+
+    Returns:
+        Whether the schema has no ``$dynamicRef`` and no ``$dynamicAnchor``
+        anywhere (also as names of properties, to be safe), and only
+        references that start with ``#``.
+    """
+    stack = [schema]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, list):
+            stack.extend(node)
+        elif isinstance(node, dict):
+            if "$dynamicRef" in node or "$dynamicAnchor" in node:
+                return False
+            reference = node.get("$ref")
+            if isinstance(reference, str) and not reference.startswith("#"):
+                return False
+            stack.extend(node.values())
+    return True
 
 
 def _memoised_descend(
@@ -156,6 +180,10 @@ def _memoised_descend(
     value is known to be valid against isn't validated again. Failures are
     validated again, to report their errors.
 
+    Relies on jsonschema descending into every subschema through
+    ``descend``, with this signature, as its keywords and ``$ref`` do; the
+    tests of the translation count the calls.
+
     Args:
         self: The validator.
         instance: The value.
@@ -165,64 +193,45 @@ def _memoised_descend(
             validator.
         resolver: Resolver of the subschema, if not that of the validator.
 
-    Yields:
-        The errors, as :meth:`Draft202012Validator.descend` does.
+    Returns:
+        The errors, as :meth:`Draft202012Validator.descend` gives them.
     """
-    validity = _VALIDITY.get()
+    known = _VALIDITY.get()
     errors = _DESCEND(self, instance, schema, path, schema_path, resolver)
-    if validity is None:
-        yield from errors
-        return
-    key = (id(schema), _base_uri(resolver or self._resolver), id(instance))
-    if validity.known.get(key):
-        return
-    dynamic = validity.dynamic
-    valid = True
-    for error in errors:
-        # Before the error goes out: the caller may stop at the first one. An
-        # error found before any `$dynamicRef` fails the subschema whatever
-        # the dynamic scope.
-        if valid and validity.dynamic == dynamic:
-            validity.known[key] = False
-        valid = False
-        yield error
-    if valid and validity.dynamic == dynamic:
-        validity.known[key] = True
+    if known is None:
+        return errors
+    key = _validity_key(schema, resolver or self._resolver, instance)
+    if known.get(key):
+        return iter(())
+    return _recorded(errors, known, key)
 
 
-def _counted_dynamic_ref(
-    validator: Draft202012Validator,
-    dynamic_ref: str,
-    instance: Any,
-    schema: dict[str, Any],
-) -> Iterable[jsonschema.exceptions.ValidationError]:
-    """Count the evaluation of a ``$dynamicRef``, then evaluate it.
+def _recorded(
+    errors: Iterator[jsonschema.exceptions.ValidationError],
+    known: dict[_ValidityKey, bool],
+    key: _ValidityKey,
+) -> Iterator[jsonschema.exceptions.ValidationError]:
+    """Pass on the errors of a validation, and keep whether there were any.
 
     Args:
-        validator: The validator.
-        dynamic_ref: The value of ``$dynamicRef``.
-        instance: The value.
-        schema: The subschema with the ``$dynamicRef``.
+        errors: The errors of validating a value against a subschema.
+        known: The validity of subschemas for values.
+        key: The key of the subschema and the value.
 
-    Returns:
-        The errors, as the keyword of :class:`Draft202012Validator` gives.
+    Yields:
+        The errors.
     """
-    validity = _VALIDITY.get()
-    if validity is not None:
-        validity.dynamic += 1
-    errors: Iterable[jsonschema.exceptions.ValidationError] = _DYNAMIC_REF(
-        validator, dynamic_ref, instance, schema
-    )
-    return errors
+    for error in errors:
+        # Before the error goes out: the caller may stop at the first one
+        known[key] = False
+        yield error
+    known.setdefault(key, True)
 
 
 _DESCEND = Draft202012Validator.descend
-_DYNAMIC_REF = Draft202012Validator.VALIDATORS["$dynamicRef"]
 #: Validator of the input values, which keeps the validity of subschemas
 #: during a translation (see :func:`_memoised_descend`)
-_MemoisingValidator = jsonschema.validators.extend(
-    Draft202012Validator, {"$dynamicRef": _counted_dynamic_ref}
-)
+_MemoisingValidator = jsonschema.validators.extend(Draft202012Validator)
 _MemoisingValidator.descend = _memoised_descend  # type: ignore[method-assign]
 
 
@@ -777,6 +786,8 @@ class _Translator:
         )
         root = _Scope(schema, registry.resolver(base_uri=uri))
         self.inputs = self._descend(root, schema["properties"]["inputs"])
+        # Whether the validity of subschemas can be kept during a translation
+        self._static = _static(schema)
         self.validator = _MemoisingValidator(
             schema,
             registry=registry,
@@ -815,7 +826,7 @@ class _Translator:
         self._in_place_cache.clear()
         # The values outlive the memo, so the identities of their parts
         # aren't reused while it is kept
-        token = _VALIDITY.set(_Validity())
+        token = _VALIDITY.set({} if self._static else None)
         try:
             with _fail_closed():
                 return self._bind(values)
@@ -1032,8 +1043,8 @@ class _Translator:
     def _valid(self, scope: _Scope, schema: Any, value: Any) -> bool:
         """Check whether a value is valid against a subschema of a schema.
 
-        Within :meth:`bind`, the validity of each subschema for each value is
-        computed once (see :func:`_memoised_descend`).
+        Within :meth:`bind`, a known result is reused, also a failure, which
+        :func:`_memoised_descend` validates again to report its errors.
 
         Args:
             scope: The schema.
@@ -1043,10 +1054,10 @@ class _Translator:
         Returns:
             Whether the value is valid against the subschema.
         """
-        validity = _VALIDITY.get()
-        key = (id(schema), _base_uri(scope.resolver), id(value))
-        if validity is not None and key in validity.known:
-            return validity.known[key]
+        known = _VALIDITY.get()
+        key = _validity_key(schema, scope.resolver, value)
+        if known is not None and key in known:
+            return known[key]
         errors = self._validator(scope).descend(value, schema)
         return next(errors, None) is None
 

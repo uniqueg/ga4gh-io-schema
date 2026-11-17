@@ -33,7 +33,7 @@ The `pattern` and `patternProperties` keywords run regular expressions from the 
 - Servers SHOULD reject schemas with patterns longer than a limit set by the deployment (e.g., 1,000 characters).
 - Servers MUST limit the size of the `workflow_params` they validate (e.g., 1 MiB) and SHOULD limit the depth of nested values; requests above the limits are rejected before validation.
 
-The size limit bounds the time of validation where it grows linearly with the size of the request. The `ga4gh-io-schema` package translates and validates `workflow_params` in such time, also where the translation looks up, at every level of a recursive schema, which branches of `anyOf` and `oneOf` apply: it validates each subschema once for each value ([#86](https://github.com/uniqueg/ga4gh-io-schema/issues/86)). An implementation that validates the value again for each branch at each level takes time that grows with the size times the depth. The depth limit also protects validators and parsers that recurse without a limit of their own; the package rejects values nested too deeply to validate.
+The size limit bounds the time of validation only if that time grows linearly with the size of the request. A translator that finds the branches of `anyOf` and `oneOf` that apply at each level by validating the value below again takes time that grows with the size times the depth. The `ga4gh-io-schema` package keeps the results of such checks during a translation, so its time stays linear ([#86](https://github.com/uniqueg/ga4gh-io-schema/issues/86)).
 
 ## URIs and file references
 

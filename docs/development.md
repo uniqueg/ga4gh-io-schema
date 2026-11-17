@@ -172,9 +172,12 @@ The translation between input values and `workflow_params` (`wes.py`)
 asks, at every level of the values, which branches of `anyOf` and `oneOf`
 and which conditions of `if` and `contains` a value is valid against.
 During one translation, its validator keeps the validity of each subschema
-for each value (by their identities), so that a subtree is validated once,
-not again at every level above it (#86); results that evaluated a
-`$dynamicRef` aren't kept, as they depend on the dynamic scope.
+for each value (by their identities), so that a valid subtree isn't
+validated again at every level above it (#86); failures are validated
+again to report their errors. Schemas with `$dynamicRef`,
+`$dynamicAnchor` or references that don't start with `#` keep nothing:
+their results can depend on the dynamic scope, which isn't part of the key
+(a `$ref` to a `$dynamicAnchor` resolves through it too).
 `tests/test_performance.py` times recursive values at several depths, and
 `tests/test_wes.py` counts the validations.
 
