@@ -2,11 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Find the I/O Schema of a workflow in TRS, as a client, and build a run request.
+"""Find the IO schema of a workflow in TRS, as a client, and build a run request.
 
 The steps of "Discovery by clients" (``docs/adoption/trs.md``) with the
 package: list the files of the tool version for the descriptor type, find
-the I/O Schema among them (:func:`ga4gh_io_schema.trs.find_schema_file`:
+the IO schema among them (:func:`ga4gh_io_schema.trs.find_schema_file`:
 the file of type ``IO_SCHEMA``, or else ``ga4gh-io.schema.json`` of type
 ``OTHER`` next to the primary descriptor), fetch it, validate it against the
 profile, check its ``x-ga4gh-workflow`` against the tool version and the
@@ -40,14 +40,14 @@ from ga4gh_io_schema.wes import build_run_request, trs_descriptor_url
 
 #: Directory of the demo.
 DEMO_DIR = Path(__file__).resolve().parent
-#: The ``x-ga4gh-workflow`` block of the demo's I/O Schema, for the defaults.
+#: The ``x-ga4gh-workflow`` block of the demo's IO schema, for the defaults.
 DEMO_WORKFLOW = json.loads(
     (DEMO_DIR / "ga4gh-io.schema.json").read_text(encoding="utf-8")
 )["x-ga4gh-workflow"]
 
 
 class ClientError(RuntimeError):
-    """The tool version has no usable I/O Schema."""
+    """The tool version has no usable IO schema."""
 
 
 def _report(message: str) -> None:
@@ -84,19 +84,25 @@ def version_url(
 def _sha256(wrapper: Any) -> set[str]:
     """Return the SHA-256 checksums of a ``FileWrapper`` or a checksum list.
 
+    Algorithm names are compared case-insensitively (see "Drift" in the
+    specification); ``sha256`` is taken as ``sha-256``.
+
     Args:
         wrapper: A ``FileWrapper`` (with ``checksum``), or a list of
-            checksums.
+            checksums; anything else has none.
 
     Returns:
         The hex digests of type ``sha-256``, in lowercase.
     """
     checksums = wrapper.get("checksum") if isinstance(wrapper, dict) else wrapper
+    if not isinstance(checksums, list):
+        return set()
     return {
         c["checksum"].lower()
-        for c in checksums or []
+        for c in checksums
         if isinstance(c, dict)
-        and c.get("type") == "sha-256"
+        and isinstance(c.get("type"), str)
+        and c["type"].lower() in ("sha-256", "sha256")
         and isinstance(c.get("checksum"), str)
     }
 
@@ -104,7 +110,7 @@ def _sha256(wrapper: Any) -> set[str]:
 def discover(
     trs_url: str, tool_id: str, version_id: str, descriptor_type: str
 ) -> dict[str, Any]:
-    """Find, fetch and check the I/O Schema of a tool version in TRS.
+    """Find, fetch and check the IO schema of a tool version in TRS.
 
     Args:
         trs_url: Base URL of the TRS API.
@@ -113,12 +119,12 @@ def discover(
         descriptor_type: TRS descriptor type, e.g., ``WDL``.
 
     Returns:
-        The I/O Schema, valid against the profile and bound to the tool
+        The IO schema, valid against the profile and bound to the tool
         version.
 
     Raises:
         HTTPError: If a request to TRS fails.
-        ClientError: If the tool version has no I/O Schema, or its schema
+        ClientError: If the tool version has no IO schema, or its schema
             isn't JSON, names another tool version or descriptor type, or
             names a checksum that the primary descriptor doesn't have.
         jsonschema.exceptions.ValidationError: If the schema doesn't comply
@@ -129,14 +135,14 @@ def discover(
     _report(f"1. Files of the tool version: {json.dumps(files)}")
     found = find_schema_file(files)
     if found is None:
-        raise ClientError("The tool version has no I/O Schema.")
-    _report(f"2. I/O Schema: {found.path} (file type {found.file_type})")
+        raise ClientError("The tool version has no IO schema.")
+    _report(f"2. IO schema: {found.path} (file type {found.file_type})")
     path = urllib.parse.quote(found.path, safe="")
     wrapper = request_json("GET", f"{base}/descriptor/{path}")
     try:
         schema = json.loads(wrapper["content"])
     except (TypeError, KeyError, ValueError) as exc:
-        raise ClientError("The I/O Schema isn't JSON in a FileWrapper.") from exc
+        raise ClientError("The IO schema isn't JSON in a FileWrapper.") from exc
     validate_schema(schema)
     _report(f"3. Valid against the profile: {schema.get('$schema')}")
     block = schema.get("x-ga4gh-workflow") or {}
@@ -148,7 +154,7 @@ def discover(
     for key, value in expected.items():
         if key in block and block[key] != value:
             raise ClientError(
-                f"The I/O Schema is for another workflow: x-ga4gh-workflow.{key} "
+                f"The IO schema is for another workflow: x-ga4gh-workflow.{key} "
                 f"is {block[key]!r}, not {value!r}."
             )
     named = _sha256(block.get("checksum"))
@@ -160,7 +166,7 @@ def discover(
             _report("4. Bound to the tool version; checksum matches")
         else:
             raise ClientError(
-                "The I/O Schema names another checksum of the primary descriptor "
+                "The IO schema names another checksum of the primary descriptor "
                 "than TRS (drift)."
             )
     else:
@@ -169,7 +175,7 @@ def discover(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Find the I/O Schema of a tool version and print a run request.
+    """Find the IO schema of a tool version and print a run request.
 
     Args:
         argv: Command-line arguments, without the program name.
@@ -204,7 +210,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         request = build_run_request(schema, values, workflow_url=url)
     except ValidationError as exc:
-        print(f"Error: the I/O Schema is invalid: {exc.message}", file=sys.stderr)
+        print(f"Error: the IO schema is invalid: {exc.message}", file=sys.stderr)
         return 1
     # TranslationError (invalid values) is a ValueError, as is invalid JSON
     except (OSError, ValueError, HTTPError, ClientError) as exc:

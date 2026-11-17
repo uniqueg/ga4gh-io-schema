@@ -57,8 +57,8 @@ and `cwl/ga4gh-io.schema.json`).
    `ga4gh-io.schema.json` in the directory of the `PRIMARY_DESCRIPTOR`.
 3. Fetch it by its path as listed (percent-encoded):
    `GET /tools/{id}/versions/{version_id}/{type}/descriptor/{relative_path}`
-   returns a `FileWrapper`; the schema is its `content` (or the file at its
-   `url`).
+   returns a `FileWrapper`; the schema is its `content` (or, if it has no
+   `content`, the file at its `url`).
 4. Validate the schema against the meta-schema of the profile version that
    the client supports, from a local copy (see [Sources of
    schemas](../security.md#sources-of-schemas)).
@@ -91,10 +91,12 @@ normalised `path` only:
 - **Then `OTHER` at the conventional path:** the directory of the primary
   descriptor is that of the normalised path of the entries of type
   `PRIMARY_DESCRIPTOR`; if there is none, or they are in different
-  directories, there is no IO schema. Otherwise, the IO schema is the first
+  directories, there is no IO schema. Otherwise, the IO schema is the
   entry of type `OTHER` whose normalised path is `ga4gh-io.schema.json` in
   that directory; entries of other types at that path (e.g., `TEST_FILE`)
-  don't count.
+  don't count. If several entries of type `OTHER` have that normalised path
+  (e.g., `ga4gh-io.schema.json` and `./ga4gh-io.schema.json`), the client
+  takes none, as for several entries of type `IO_SCHEMA`.
 
 The client fetches the schema by the path as the entry lists it, not by the
 normalised one, as servers may store paths as they were registered.
@@ -128,10 +130,10 @@ implement them; a file type of its own avoids the comparison of paths
 altogether.
 
 [TRS-Filer](https://github.com/elixir-cloud-aai/trs-filer), the TRS
-implementation of ELIXIR On-Cloud, accepts `IO_SCHEMA` as an experimental
-extension of the TRS file types; the [demo with
-TRS-Filer](demo-trs-filer.md) registers a schema of that type and discovers
-it as a client. The type is to be proposed to the TRS specification with
+implementation of ELIXIR On-Cloud, is getting `IO_SCHEMA` as an
+experimental extension of the TRS file types (on a branch, not yet in a
+release); the [demo with TRS-Filer](demo-trs-filer.md) registers a schema
+of that type with it and discovers it as a client. The type is to be proposed to the TRS specification with
 this evidence. Until TRS adopts it:
 
 - **TRS servers without `IO_SCHEMA`** reject or don't list files of that

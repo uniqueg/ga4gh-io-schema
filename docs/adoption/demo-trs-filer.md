@@ -7,11 +7,9 @@ The demo shows discovery with a real TRS implementation and the [proposed
 `IO_SCHEMA`, a client finds the schema among the files of the tool version
 and checks it, and builds the WES run request. Nothing is submitted.
 
-**Experimental:** TRS-Filer accepts `IO_SCHEMA` as an extension of TRS, from
-the version that has it (see [I/O
-Schemas](https://trs-filer.readthedocs.io/en/latest/io-schema/) in its
-documentation); older versions reject the registration with `400 Bad
-Request`. With `SCHEMA_FILE_TYPE=OTHER`, the demo registers the schema as
+**Experimental:** TRS-Filer accepts `IO_SCHEMA` as an extension of TRS
+only on the branch that adds it, not yet in a release; other versions
+reject the registration with `400 Bad Request`. With `SCHEMA_FILE_TYPE=OTHER`, the demo registers the schema as
 `OTHER` at `ga4gh-io.schema.json`, the fallback for TRS servers without the
 type, and the client finds it there.
 
@@ -33,13 +31,22 @@ type, and the client finds it there.
     2. finds the IO schema with
        [`find_schema_file`](../tools/trs.md), by `file_type` and normalised
        `path` only;
-    3. fetches it by its path and validates it against the profile;
+    3. fetches it by its path and validates it against the profile (from
+       the `content` of the `FileWrapper`; unlike the steps of the profile,
+       the client doesn't fetch a schema that TRS serves only by `url`);
     4. checks `x-ga4gh-workflow` against the tool version, and its checksum
        against the `FileWrapper` of the primary descriptor;
     5. builds the run request from `values.json`, with the TRS URL of the
        plain primary descriptor as `workflow_url`
        ([`build_run_request`](../tools/wes-params.md)).
-4. Stops TRS-Filer and removes its data (`KEEP=1` leaves it running).
+4. Stops TRS-Filer and removes its data. With `KEEP=1`, it leaves
+   TRS-Filer running; stop it later with:
+
+    ```bash
+    docker compose --project-name io-schema-trs-filer-demo \
+      --project-directory "$TRS_FILER_DIR" \
+      -f "$TRS_FILER_DIR/docker-compose.yaml" down --volumes
+    ```
 
 ## Running it
 
@@ -67,7 +74,8 @@ first run builds TRS-Filer's image (a few minutes); later runs reuse it.
 
 ## Output
 
-A run on 2026-11-17, with TRS-Filer from the branch that adds `IO_SCHEMA`:
+An example, with TRS-Filer from the branch that adds `IO_SCHEMA` on port
+18082:
 
 ```text
 == Register the demo workflow (I/O Schema of type IO_SCHEMA)

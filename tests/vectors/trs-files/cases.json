@@ -2,10 +2,19 @@
   {
     "name": "other-next-to-primary",
     "files": [
-      { "path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
-    "schemaFile": { "path": "ga4gh-io.schema.json", "file_type": "OTHER" }
+    "schemaFile": {
+      "path": "ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
   },
   {
     "name": "extra-fields-ignored",
@@ -32,152 +41,436 @@
         "x-registry-note": "fields that clients don't know are ignored"
       }
     ],
-    "schemaFile": { "path": "ga4gh-io.schema.json", "file_type": "OTHER" }
+    "schemaFile": {
+      "path": "ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
   },
   {
     "name": "dot-slash-path",
     "files": [
-      { "path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "./ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "./ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
-    "schemaFile": { "path": "./ga4gh-io.schema.json", "file_type": "OTHER" }
+    "schemaFile": {
+      "path": "./ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
   },
   {
     "name": "dot-slash-primary-in-directory",
     "files": [
-      { "path": "./wdl/main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "wdl/ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "path": "./wdl/main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "wdl/ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
-    "schemaFile": { "path": "wdl/ga4gh-io.schema.json", "file_type": "OTHER" }
+    "schemaFile": {
+      "path": "wdl/ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
   },
   {
     "name": "leading-slash",
     "files": [
-      { "path": "/main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "/ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "path": "/main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "/ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
-    "schemaFile": { "path": "/ga4gh-io.schema.json", "file_type": "OTHER" }
+    "schemaFile": {
+      "path": "/ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
   },
   {
     "name": "double-slash",
     "files": [
-      { "path": "wdl/main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "wdl//ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "path": "wdl/main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "wdl//ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
-    "schemaFile": { "path": "wdl//ga4gh-io.schema.json", "file_type": "OTHER" }
+    "schemaFile": {
+      "path": "wdl//ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
   },
   {
     "name": "entries-without-type-or-path-ignored",
     "files": [
-      { "path": "README.md" },
-      { "file_type": "OTHER" },
-      { "path": null, "file_type": "OTHER" },
-      { "path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "path": "README.md"
+      },
+      {
+        "file_type": "OTHER"
+      },
+      {
+        "path": null,
+        "file_type": "OTHER"
+      },
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
-    "schemaFile": { "path": "ga4gh-io.schema.json", "file_type": "OTHER" }
+    "schemaFile": {
+      "path": "ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
   },
   {
     "name": "other-in-another-directory",
     "files": [
-      { "path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "other/ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "other/ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
     "schemaFile": null
   },
   {
     "name": "other-above-primary",
     "files": [
-      { "path": "wdl/main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "path": "wdl/main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
     "schemaFile": null
   },
   {
     "name": "dot-dot-segment",
     "files": [
-      { "path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "wdl/../ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "wdl/../ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
     "schemaFile": null
   },
   {
     "name": "other-name-case-differs",
     "files": [
-      { "path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "GA4GH-IO.schema.json", "file_type": "OTHER" }
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "GA4GH-IO.schema.json",
+        "file_type": "OTHER"
+      }
     ],
     "schemaFile": null
   },
   {
     "name": "test-file-at-schema-path",
     "files": [
-      { "path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "ga4gh-io.schema.json", "file_type": "TEST_FILE" }
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "TEST_FILE"
+      }
     ],
     "schemaFile": null
   },
   {
     "name": "no-primary-descriptor",
-    "files": [{ "path": "ga4gh-io.schema.json", "file_type": "OTHER" }],
+    "files": [
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
+    ],
     "schemaFile": null
   },
   {
     "name": "primary-descriptors-in-two-directories",
     "files": [
-      { "path": "a/main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "b/main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "a/ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "path": "a/main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "b/main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "a/ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
     "schemaFile": null
   },
   {
     "name": "io-schema-type",
     "files": [
-      { "path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "ga4gh-io.schema.json", "file_type": "IO_SCHEMA" }
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "IO_SCHEMA"
+      }
     ],
-    "schemaFile": { "path": "ga4gh-io.schema.json", "file_type": "IO_SCHEMA" }
+    "schemaFile": {
+      "path": "ga4gh-io.schema.json",
+      "file_type": "IO_SCHEMA"
+    }
   },
   {
     "name": "io-schema-type-at-any-path",
     "files": [
-      { "path": "wdl/main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "schemas/inputs.json", "file_type": "IO_SCHEMA" }
+      {
+        "path": "wdl/main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "schemas/inputs.json",
+        "file_type": "IO_SCHEMA"
+      }
     ],
-    "schemaFile": { "path": "schemas/inputs.json", "file_type": "IO_SCHEMA" }
+    "schemaFile": {
+      "path": "schemas/inputs.json",
+      "file_type": "IO_SCHEMA"
+    }
   },
   {
     "name": "io-schema-type-without-primary-descriptor",
-    "files": [{ "path": "ga4gh-io.schema.json", "file_type": "IO_SCHEMA" }],
-    "schemaFile": { "path": "ga4gh-io.schema.json", "file_type": "IO_SCHEMA" }
+    "files": [
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "IO_SCHEMA"
+      }
+    ],
+    "schemaFile": {
+      "path": "ga4gh-io.schema.json",
+      "file_type": "IO_SCHEMA"
+    }
   },
   {
     "name": "io-schema-type-preferred",
     "files": [
-      { "path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "ga4gh-io.schema.json", "file_type": "OTHER" },
-      { "path": "io/ga4gh-io.schema.json", "file_type": "IO_SCHEMA" }
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      },
+      {
+        "path": "io/ga4gh-io.schema.json",
+        "file_type": "IO_SCHEMA"
+      }
     ],
-    "schemaFile": { "path": "io/ga4gh-io.schema.json", "file_type": "IO_SCHEMA" }
+    "schemaFile": {
+      "path": "io/ga4gh-io.schema.json",
+      "file_type": "IO_SCHEMA"
+    }
   },
   {
     "name": "io-schema-type-twice",
     "files": [
-      { "path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "ga4gh-io.schema.json", "file_type": "IO_SCHEMA" },
-      { "path": "other.schema.json", "file_type": "IO_SCHEMA" },
-      { "path": "ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "IO_SCHEMA"
+      },
+      {
+        "path": "other.schema.json",
+        "file_type": "IO_SCHEMA"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
     "schemaFile": null
   },
   {
     "name": "io-schema-type-without-path-ignored",
     "files": [
-      { "file_type": "IO_SCHEMA" },
-      { "path": "main.wdl", "file_type": "PRIMARY_DESCRIPTOR" },
-      { "path": "ga4gh-io.schema.json", "file_type": "OTHER" }
+      {
+        "file_type": "IO_SCHEMA"
+      },
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
     ],
-    "schemaFile": { "path": "ga4gh-io.schema.json", "file_type": "OTHER" }
+    "schemaFile": {
+      "path": "ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
+  },
+  {
+    "name": "other-twice",
+    "files": [
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      },
+      {
+        "path": "./ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
+    ],
+    "schemaFile": null
+  },
+  {
+    "name": "primary-descriptors-in-one-directory",
+    "files": [
+      {
+        "path": "wdl/main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "./wdl/alt.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "wdl/ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
+    ],
+    "schemaFile": {
+      "path": "wdl/ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
+  },
+  {
+    "name": "io-schema-type-dot-dot-ignored",
+    "files": [
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "../ga4gh-io.schema.json",
+        "file_type": "IO_SCHEMA"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
+    ],
+    "schemaFile": {
+      "path": "ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
+  },
+  {
+    "name": "io-schema-type-non-string-path-ignored",
+    "files": [
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": 5,
+        "file_type": "IO_SCHEMA"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
+    ],
+    "schemaFile": {
+      "path": "ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
+  },
+  {
+    "name": "io-schema-type-with-other-elsewhere",
+    "files": [
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "other/ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      },
+      {
+        "path": "inputs.json",
+        "file_type": "IO_SCHEMA"
+      }
+    ],
+    "schemaFile": {
+      "path": "inputs.json",
+      "file_type": "IO_SCHEMA"
+    }
+  },
+  {
+    "name": "entries-that-are-no-objects-ignored",
+    "files": [
+      "ga4gh-io.schema.json",
+      null,
+      [
+        "OTHER"
+      ],
+      {
+        "path": "main.wdl",
+        "file_type": "PRIMARY_DESCRIPTOR"
+      },
+      {
+        "path": "ga4gh-io.schema.json",
+        "file_type": "OTHER"
+      }
+    ],
+    "schemaFile": {
+      "path": "ga4gh-io.schema.json",
+      "file_type": "OTHER"
+    }
   }
 ]

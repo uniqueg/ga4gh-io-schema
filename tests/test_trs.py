@@ -30,7 +30,7 @@ CASES = json.loads(
 )
 
 
-def test_vectors_exist() -> None:
+def test_vectors_cover_both_types_and_no_match() -> None:
     """Test that the vectors cover both file types and entries without a match."""
     expected = [case["schemaFile"] for case in CASES]
     assert {e["file_type"] for e in expected if e} == {

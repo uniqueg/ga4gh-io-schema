@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import posixpath
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 #: The TRS file type of IO schemas that the profile proposes.
 IO_SCHEMA_FILE_TYPE = "IO_SCHEMA"
@@ -50,7 +50,7 @@ class SchemaFile:
     """
 
     path: str
-    file_type: str
+    file_type: Literal["IO_SCHEMA", "OTHER"]
 
 
 def normalise_path(path: Any) -> str | None:
@@ -85,12 +85,13 @@ def find_schema_file(files: Any) -> SchemaFile | None:
 
     Returns:
         The entry of type ``IO_SCHEMA``, if there is exactly one; else, if
-        there is none, the first entry of type ``OTHER`` whose normalised
-        path is ``ga4gh-io.schema.json`` in the directory of the primary
-        descriptor (``PRIMARY_DESCRIPTOR``; there must be primary
-        descriptors in one directory only). ``None`` if no entry matches,
-        or if there are several entries of type ``IO_SCHEMA``: a client
-        doesn't guess between them.
+        there is none, the entry of type ``OTHER`` whose normalised path is
+        ``ga4gh-io.schema.json`` in the directory of the primary descriptor
+        (the entries of type ``PRIMARY_DESCRIPTOR``, which must all be in
+        the same directory). ``None`` if no entry matches, or if several
+        entries of type ``IO_SCHEMA``, or several of type ``OTHER`` at that
+        path (e.g., ``ga4gh-io.schema.json`` and ``./ga4gh-io.schema.json``),
+        match: a client doesn't guess between them.
     """
     if not isinstance(files, list):
         return None
@@ -114,7 +115,9 @@ def find_schema_file(files: Any) -> SchemaFile | None:
     if len(directories) != 1:
         return None
     expected = posixpath.join(directories.pop(), SCHEMA_FILE_NAME)
-    for file_type, normalised, path in entries:
-        if file_type == OTHER_FILE_TYPE and normalised == expected:
-            return SchemaFile(path, OTHER_FILE_TYPE)
-    return None
+    other = [
+        path
+        for file_type, normalised, path in entries
+        if file_type == OTHER_FILE_TYPE and normalised == expected
+    ]
+    return SchemaFile(other[0], OTHER_FILE_TYPE) if len(other) == 1 else None

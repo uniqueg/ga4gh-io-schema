@@ -725,7 +725,14 @@ def test_trs_client(
     ("checksum", "message"),
     [
         (None, "checksum unverified"),
+        (5, "checksum unverified"),
         ([{"type": "sha-256", "checksum": "1" * 64}], None),
+        ([{"type": "SHA-256", "checksum": "1" * 64}], None),
+        ([{"type": "sha256", "checksum": "1" * 64}], None),
+        (
+            [{"type": "SHA256", "checksum": DESCRIPTOR["checksum"][0]["checksum"]}],
+            "checksum matches",
+        ),
     ],
 )
 def test_trs_client_checksum(
@@ -773,7 +780,7 @@ def test_trs_client_no_schema(mock: Mock, capsys: pytest.CaptureFixture[str]) ->
     """A tool version without I/O Schema is an error."""
     _serve_demo(mock, file_type="TEST_FILE")
     assert trs_client.main(["--trs-url", f"{mock.url}{API}"]) == 1
-    assert "has no I/O Schema" in capsys.readouterr().err
+    assert "has no IO schema" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("wrapper", [{"content": "{"}, {"url": "x"}, ["x"]])
@@ -793,7 +800,7 @@ def test_trs_client_schema_invalid(
     """A schema that doesn't comply with the profile is an error."""
     _serve_demo(mock, schema={**SCHEMA, "type": "array"})
     assert trs_client.main(["--trs-url", f"{mock.url}{API}"]) == 1
-    assert "the I/O Schema is invalid" in capsys.readouterr().err
+    assert "the IO schema is invalid" in capsys.readouterr().err
 
 
 def test_trs_client_schema_of_another_workflow(

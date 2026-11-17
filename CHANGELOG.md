@@ -60,8 +60,6 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     validation of tabular files is deferred.
   - Servers no longer accept IO schemas supplied by clients in a run request
     (cut); they use schemas from trusted sources only.
-  - The proposed TRS file type `IO_SCHEMA` is deferred; IO schemas are
-    published as TRS files of type `OTHER`.
   - The proposal no longer covers chaining workflows by ontology terms
     (deferred), drafting of IO schemas by AI agents (cut), or the claim that
     the profile suits machine learning pipelines (cut; an open question on
@@ -168,8 +166,8 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   engine binding" with the rules for `$id`s and for drift. (#12)
 - A convention for publishing IO schemas in TRS without a change of TRS:
   file type `OTHER`, path `ga4gh-io.schema.json` next to the primary
-  descriptor, identified by `$schema`; an `IO_SCHEMA` file type is deferred.
-  (#12)
+  descriptor, identified by `$schema`; it is the fallback for TRS servers
+  without the file type `IO_SCHEMA` that is proposed now (see below). (#12)
 - Shared conventions of all subcommands: input from a path or `-` (standard
   input), `--output` for the result, `--json` for results and errors as JSON
   objects. (#9)

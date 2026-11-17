@@ -5,7 +5,7 @@
 #
 # The demo with TRS-Filer (docs/adoption/demo-trs-filer.md): starts
 # TRS-Filer locally with Docker Compose (without authentication, on the
-# loopback interface only), registers the demo workflow with its I/O Schema
+# loopback interface only), registers the demo workflow with its IO schema
 # as a file of type IO_SCHEMA, finds the schema as a client and builds the
 # WES run request; then stops TRS-Filer and removes its data.
 #
@@ -27,6 +27,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(cd "${here}/../.." && pwd)"
 revision="${REVISION:-$(git -C "${root}" rev-parse HEAD)}"
 trs_url="http://127.0.0.1:${port}/ga4gh/trs/v2"
+schema_file_type="${SCHEMA_FILE_TYPE:-IO_SCHEMA}"
 
 # The port of the demo, in place of TRS-Filer's 8080, and a project and an
 # image name of its own, so that other Compose projects of the checkout, and
@@ -38,10 +39,10 @@ compose=(docker compose --project-name io-schema-trs-filer-demo
   --project-directory "${TRS_FILER_DIR}"
   -f "${TRS_FILER_DIR}/docker-compose.yaml" -f "${override}")
 cleanup() {
-  if [[ "${KEEP:-0}" != 1 ]]; then
-    "${compose[@]}" down --volumes >&2
-  fi
   rm -f "${override}"
+  if [[ "${KEEP:-0}" != 1 ]]; then
+    "${compose[@]}" down --volumes >&2 || true
+  fi
 }
 trap cleanup EXIT
 
@@ -50,9 +51,9 @@ trap cleanup EXIT
 TRS_FILER_CONFIG_OVERLAY=/etc/trs-filer/config.dev.yaml:/etc/trs-filer/config.noauth.yaml \
   "${compose[@]}" up --detach --build --wait --wait-timeout 300 >&2
 
-echo "== Register the demo workflow (I/O Schema of type ${SCHEMA_FILE_TYPE:-IO_SCHEMA})" >&2
+echo "== Register the demo workflow (IO schema of type ${schema_file_type})" >&2
 "${python}" "${here}/register.py" --trs-url "${trs_url}" --revision "${revision}" \
-  --schema-file-type "${SCHEMA_FILE_TYPE:-IO_SCHEMA}" >&2
+  --schema-file-type "${schema_file_type}" >&2
 
-echo "== Find the I/O Schema as a client and build the run request" >&2
+echo "== Find the IO schema as a client and build the run request" >&2
 "${python}" "${here}/trs_client.py" --trs-url "${trs_url}"
