@@ -83,7 +83,7 @@ http://127.0.0.1:18082/ga4gh/trs/v2/tools/ga4gh-io-schema-demo/versions/1.0.0/WD
 == Find the IO schema as a client and build the run request
 1. Files of the tool version: [{"file_type": "PRIMARY_DESCRIPTOR", "path": "demo.wdl"}, {"file_type": "IO_SCHEMA", "path": "ga4gh-io.schema.json"}]
 2. IO schema: ga4gh-io.schema.json (file type IO_SCHEMA)
-3. Valid against the profile: https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json
+3. Valid against the profile: https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json
 4. Bound to the tool version; checksum matches
 5. Run request (not submitted):
 ```

@@ -118,7 +118,7 @@ The types map as follows:
 | union, e.g., `[File, string]` | `anyOf`, one branch per type |
 | `null` in the type of a parameter or a record field, e.g., `File?` or `"null"` | not in `required`; elsewhere (e.g., in the items of an array), a `{"type": "null"}` branch |
 | named types (`SchemaDefRequirement`, also with `$import`) | inlined where they are used |
-| `default` | `default`; a file or directory becomes its location, if that is an absolute URI other than `file:` (e.g., `https:` or `s3:`) |
+| `default` | `default`; a file or directory becomes its location, if that is an absolute URI other than `file:` (e.g., `https:` or `s3:`) and its scheme isn't [forbidden](../specification/files.md#values) (e.g., `javascript:`) |
 | an input with a `default` | not in `required` |
 | `Any` | `{"not": {"type": "null"}}` (any value but `null`), with a warning |
 

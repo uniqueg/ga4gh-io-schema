@@ -25,7 +25,7 @@ repeats a requirement, the normative page that it links to governs.
 
 A conformance claim names the conformance classes that a document or an
 implementation meets, and the version of the profile, e.g., "Validator and
-Form renderer of the GA4GH IO Schema Profile v0.3.0". An implementation
+Form renderer of the GA4GH IO Schema Profile v0.3". An implementation
 conforms to a class if it meets every MUST and MUST NOT requirement of that
 class; it SHOULD meet the SHOULD requirements, and documents the ones it
 doesn't meet and why.
@@ -53,8 +53,7 @@ together with the workflow engine that it runs.
 
 1. A schema document MUST be a JSON object that is valid against the
    [meta-schema](meta-schema.md) of the version of the profile that it
-   targets, and MUST name that meta-schema in `$schema`, by its versioned
-   `$id`. Valid means valid with the `format` keywords of the meta-schema
+   targets, and MUST name that meta-schema in `$schema`, by its `$id`. Valid means valid with the `format` keywords of the meta-schema
    treated as assertions (e.g., `uri` for `x-ga4gh-ontology`, `regex` for
    `pattern`); JSON Schema 2020-12 treats `format` as an annotation by
    default.
@@ -304,7 +303,7 @@ tests/conformance/
   names (a few, such as `empty`, also break others). The valid cases, and
   the negative cases other than those about `$schema` (`empty`,
   `foreign-schema`, `missing-schema`, `plain-json-schema`), name the
-  meta-schema by its versioned `$id`; no case has other references, so a
+  meta-schema by its `$id`; no case has other references, so a
   runner needs only the
   meta-schema and vocabularies of
   [`schemas/`](https://github.com/uniqueg/ga4gh-io-schema/tree/main/schemas),
@@ -364,7 +363,7 @@ that they implement or plan to implement:
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Request builder (translation and checks; submission is left to the caller) | Available (`ga4gh-io-schema wes-params`); passes the test vectors |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | WES server (translation and validation; HTTP is left to the server) | Available (`ga4gh-io-schema wes-validate`); passes the `wes-requests` test vectors |
 | [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Output normaliser | Available (`ga4gh-io-schema outputs`); passes the `wes-outputs` test vectors |
-| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Producer | Planned (converters) |
+| [`ga4gh-io-schema`](../tools/index.md) (this repository) | Python | Producer | Available (`ga4gh-io-schema convert cwl`, `nextflow`, `snakemake` and `wdl`); their outputs pass the validator |
 | [ELIXIR Cloud Components](https://github.com/elixir-cloud-aai/cloud-components) | TypeScript | Form renderer, Request builder, Output normaliser | Planned |
 
 Further implementations are welcome: propose an entry for this table with a

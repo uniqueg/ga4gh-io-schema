@@ -157,7 +157,8 @@ def _load_yaml(text: str, name: str) -> Any:
         import yaml
     except ImportError as exc:
         raise SourceError(
-            f"Reading YAML needs PyYAML - install 'ga4gh-io-schema[snakemake]': {name}"
+            f"Reading YAML needs PyYAML - install the extra 'snakemake' "
+            f"(in a clone: pip install '.[snakemake]'): {name}"
         ) from exc
 
     class Loader(yaml.SafeLoader):

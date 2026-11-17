@@ -43,7 +43,7 @@ REQUESTS_DIR = VECTORS_DIR.parent / "wes-requests"
 REQUESTS = sorted(path.parent for path in REQUESTS_DIR.glob("*/*/schema.json"))
 FILE_VALUES = load_json(VECTORS_DIR.parent / "file-values" / "cases.json")
 PROFILE = (
-    "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/"
+    "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/"
     "ga4gh-io-profile.schema.json"
 )
 #: Files that a vector may have.
@@ -1319,6 +1319,101 @@ def test_deep_nesting_rejects_the_request() -> None:
     error = reject(schema, {"a": nested})
 
     assert "too deeply nested" in error.message
+
+
+@pytest.mark.parametrize("value", ["abc\n", "a b"])
+def test_patterns_are_ecma_262(value: str) -> None:
+    """Test that anchored patterns reject a trailing newline, as clients do.
+
+    Python's ``$`` also matches before a trailing newline; ECMA-262's doesn't.
+
+    Args:
+        value: A value that the pattern must reject.
+    """
+    schema = make_schema(
+        {"sample": {"type": "string", "pattern": "^[A-Za-z0-9_]+$"}}, NFL
+    )
+
+    with pytest.raises(TranslationError, match="does not match"):
+        to_workflow_params(schema, {"sample": value})
+    with pytest.raises(WorkflowParamsError, match="keyword .pattern."):
+        from_workflow_params(schema, {"sample": value})
+
+
+def test_unicode_property_escapes_in_patterns() -> None:
+    r"""Test patterns that Python's ``re`` can't parse (``\p{L}``)."""
+    schema = make_schema({"name": {"type": "string", "pattern": r"^\p{L}+$"}}, NFL)
+
+    assert to_workflow_params(schema, {"name": "äbc"}) == {"name": "äbc"}
+    assert from_workflow_params(schema, {"name": "äbc"}) == {"name": "äbc"}
+    with pytest.raises(WorkflowParamsError, match="keyword .pattern."):
+        from_workflow_params(schema, {"name": "a1"})
+
+
+def test_pattern_properties_are_ecma_262() -> None:
+    r"""Test ``patternProperties`` with ``\p{L}``, also for nested objects."""
+    labels = {
+        "type": "object",
+        "patternProperties": {r"^\p{L}+$": {"type": "integer"}},
+        "additionalProperties": False,
+    }
+    schema = make_schema({"labels": labels}, NFL)
+
+    assert from_workflow_params(schema, {"labels": {"ä": 1}}) == {"labels": {"ä": 1}}
+    with pytest.raises(WorkflowParamsError, match="keyword .additionalProperties."):
+        from_workflow_params(schema, {"labels": {"1": 1}})
+
+
+def test_unevaluated_properties_are_ecma_262() -> None:
+    r"""Test that ``unevaluatedProperties`` matches names as ECMA-262.
+
+    A name with a trailing newline doesn't match ``^[a-z]+$``, so it is
+    unevaluated; ``\p{L}`` works.
+    """
+    options = {
+        "type": "object",
+        "patternProperties": {"^[a-z]+$": {"type": "string"}, r"^\p{Lu}$": {}},
+        "unevaluatedProperties": False,
+    }
+    schema = make_schema({"opts": options}, NFL)
+
+    assert to_workflow_params(schema, {"opts": {"abc": "x", "Ä": 1}}) == {
+        "opts": {"abc": "x", "Ä": 1}
+    }
+    with pytest.raises(TranslationError, match="Unevaluated properties"):
+        to_workflow_params(schema, {"opts": {"abc\n": "x"}})
+
+
+@pytest.mark.parametrize(
+    "inputs",
+    [
+        {"x": {"type": "string", "pattern": "("}},
+        {
+            "x": {
+                "type": "object",
+                "patternProperties": {"(": True},
+                "unevaluatedProperties": False,
+            }
+        },
+    ],
+)
+def test_invalid_patterns_fail_closed(inputs: dict[str, Any]) -> None:
+    """Test that invalid patterns are errors of the schema.
+
+    The ``regex`` format of the meta-schema rejects an invalid pattern of
+    ``pattern`` or ``patternProperties`` before any value is matched, as for
+    any schema that doesn't comply with the profile.
+
+    Args:
+        inputs: Properties of ``inputs`` with such a pattern.
+    """
+    schema = make_schema(inputs, NFL)
+    value = "a" if inputs["x"]["type"] == "string" else {"a": 1}
+
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="regex"):
+        to_workflow_params(schema, {"x": value})
+    with pytest.raises(jsonschema.exceptions.ValidationError, match="regex"):
+        from_workflow_params(schema, {"x": value})
 
 
 def recursive_schema(keyword: str) -> dict[str, Any]:

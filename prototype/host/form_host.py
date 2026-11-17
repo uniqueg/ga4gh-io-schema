@@ -21,7 +21,6 @@ http://127.0.0.1:8000/.
 
 import argparse
 import json
-import re
 import sys
 import urllib.error
 import urllib.parse
@@ -40,6 +39,7 @@ from referencing import Registry
 from referencing.exceptions import Unresolvable
 from referencing.jsonschema import DRAFT202012
 
+from ga4gh_io_schema.patterns import PatternError, ValuesValidator, search
 from ga4gh_io_schema.trs import find_primary_descriptor_path, find_schema_file
 from ga4gh_io_schema.validator import validate_schema
 from ga4gh_io_schema.wes import (
@@ -283,6 +283,8 @@ def check_values(
     except Unresolvable as exc:
         message = f"The schema references '{exc.ref}', which can't be resolved."
         return None, [{"pointer": "", "message": message}]
+    except PatternError as exc:
+        return None, [{"pointer": "", "message": str(exc)}]
     if errors:
         return None, errors
     if url is None:
@@ -389,7 +391,7 @@ def validation_errors(schema: dict[str, Any], values: Any) -> list[dict[str, str
     registry: Registry = Registry().with_resource(
         uri, DRAFT202012.create_resource(schema)
     )
-    validator = Draft202012Validator(
+    validator = ValuesValidator(
         {"$ref": f"{uri}#/properties/inputs"},
         registry=registry,
         format_checker=Draft202012Validator.FORMAT_CHECKER,
@@ -504,7 +506,7 @@ def _children(scopes: Iterable[Scope], key: str | int) -> list[Scope]:
         patterns = [
             item
             for pattern, item in (subschema.get("patternProperties") or {}).items()
-            if re.search(pattern, key)
+            if search(pattern, key)
         ]
         if key in properties:
             children.append(_descend(resolver, properties[key]))

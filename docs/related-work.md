@@ -84,7 +84,7 @@ To derive an MCP tool definition from an IO schema:
 
 [cwl-utils](https://github.com/common-workflow-language/cwl-utils) has a command, `cwl-inputs-schema-gen`, that "generates a JSON Schema for workflow input parameters from a CWL document".
 
-- **Relation: adopt.** The planned CWL converter ([#21](https://github.com/uniqueg/ga4gh-io-schema/issues/21)) builds on it where possible, and adds outputs, file references and the profile's keywords.
+- **Relation: adopt.** The [CWL converter](tools/cwl.md) (`ga4gh-io-schema convert cwl`) builds on it where possible, and adds outputs, file references and the profile's keywords.
 
 ## Galaxy tool parameter schemas
 

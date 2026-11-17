@@ -49,8 +49,8 @@ results of a production deployment.
 
 ## Where the spec or the tools fell short
 
-Each gap is drafted as an issue for this repository; links follow once
-they are opened.
+Each gap has an issue in this repository; the fixed ones link to the
+pull request that closed them.
 
 1. **Matching TRS file entries (docs).** The first version of the host
    compared whole file entries and missed the schema as soon as an entry
@@ -70,7 +70,8 @@ they are opened.
    `.../descriptor/tasks/sub.wdl`. The demo is one file, so the prototype
    didn't hit this; it follows from URL resolution (RFC 3986). Decided in
    0.3: the form with the path is recommended ([Workflow URLs in
-   TRS](../specification/engine-bindings.md#workflow-urls-in-trs)).
+   TRS](../specification/engine-bindings.md#workflow-urls-in-trs));
+   [#83](https://github.com/uniqueg/ga4gh-io-schema/issues/83), fixed by [#89](https://github.com/uniqueg/ga4gh-io-schema/pull/89).
 3. **Can the WES fetch the `workflow_url`? (docs).** The run request is
    only useful if the WES can fetch the TRS URL. In the prototype, the stub
    is reachable inside the stack only, so the stack sends nothing by
@@ -79,14 +80,15 @@ they are opened.
    TRS URLs or which hosts it reaches. The [WES guide](wes.md) should say
    so, and the question belongs to the WES work stream. Done in 0.3: [Can
    the WES fetch the workflow?](wes.md#can-the-wes-fetch-the-workflow) and
-   an [open question](../roadmap.md#open-questions).
+   an [open question](../roadmap.md#open-questions);
+   [#84](https://github.com/uniqueg/ga4gh-io-schema/issues/84), fixed by [#87](https://github.com/uniqueg/ga4gh-io-schema/pull/87).
 4. **The workflow block check (tools).** The host compares the ids of
    `x-ga4gh-workflow` by hand and skips the checksum (step 2 of the
    [guide](portals.md#2-check-the-workflow-block)). The package validates
    schemas and builds requests, but has no function for this check; every
    client writes its own, and the checksum part is the one that gets left
    out. A helper that takes the schema, the TRS ids and the descriptor's
-   `FileWrapper` would close it.
+   `FileWrapper` would close it. Open: [#85](https://github.com/uniqueg/ga4gh-io-schema/issues/85).
 
 ## Limits of the prototype
 

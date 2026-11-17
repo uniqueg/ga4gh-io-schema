@@ -12,7 +12,19 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Version 0.3 of the profile; not released (no tag). Releases come with the
+move of the repository to GA4GH; until then, pin a commit SHA (see
+[Development](https://ga4gh-io-schema.readthedocs.io/en/latest/development/#schema-identifiers)).
+
 ### Breaking changes
+
+- The `$id`s of the meta-schema and its vocabularies, and with them the
+  `$schema` of IO schemas, start with
+  `https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/`
+  instead of `https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/`,
+  because the repository moves to elixir-cloud-aai. A stable identifier
+  follows later (#26). To migrate, change `$schema` in your IO schemas.
+  (#77)
 
 - Widgets of `x-ga4gh-ui-widget` must fit their schema: the meta-schema
   rejects, for example, a `slider` without a numeric type and both bounds, a
@@ -300,6 +312,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   configuration, service registry, `service-info` tags), and the fallback
   with `workflow_attachment`; an open question in the roadmap for a WES
   `service-info` field. (#84)
+- Prototype evaluation: each gap links to its issue (#82 to #85) and, for
+  the fixed ones, to the pull request that closed it. (#74)
+- A page "Transfer to GA4GH" with proposals for the transfer of the
+  repository: naming (`ga4gh/io-schema`), the licence checked against the
+  GA4GH Copyright Policy and GA4GH repositories, consistent copyright
+  notices, a governance note (work stream, leads, approval path, status of
+  the two-implementations requirement) and an identifier plan with
+  `$id`s under `https://w3id.org/ga4gh/schema/io-schema/`. (#26)
 
 ### Fixed
 
@@ -328,6 +348,28 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Clients that use hyperjump no longer need a copy of the IO schema that
   names Draft 2020-12 to validate values, unless an embedded resource of
   the IO schema names the profile. (#61)
+- Values are matched against `pattern`, `patternProperties` and the names
+  that `additionalProperties` and `unevaluatedProperties` check with
+  ECMA-262 semantics in Unicode mode (regress, a new dependency), as
+  JavaScript clients match them, in `wes-params`, `wes-validate`, `outputs`
+  and the form proof of concept: `$` no longer matches before a trailing
+  newline (`^[a-z]+$` rejected `"abc\n"` in clients but not on servers),
+  and patterns such as `\p{L}`, which Python's `re` can't parse, work
+  instead of failing with an unexpected error. `\w` and `\d` match ASCII
+  only, as in ECMA-262. A new test vector, `NFL/pattern-trailing-newline`,
+  covers the newline. (#77)
+- `validate` checks the `regex` format of `pattern` and of the names in
+  `patternProperties` as ECMA-262 in Unicode mode, so a schema with an
+  invalid pattern (e.g., `(`, or `\-` outside a character class, which
+  Python accepted) no longer passes and then fails on the first request
+  that sets the input. Before, the format wasn't checked. (#77)
+- `convert cwl` leaves out default files and directories with a forbidden
+  scheme (e.g., `javascript:`), with a note, instead of copying them into
+  the IO schema. (#77)
+- The messages for missing extras name the extra and how to install it
+  from a clone, instead of a package on PyPI, which doesn't exist. (#77)
+- The wheel declares its licence (`Apache-2.0`) and ships the licence
+  texts. (#77)
 - Translating `workflow_params` back into input values
   (`from_workflow_params()`, `ga4gh-io-schema wes-validate`), and input
   values into `workflow_params`, takes time roughly linear in the size of

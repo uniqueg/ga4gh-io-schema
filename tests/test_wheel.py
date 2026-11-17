@@ -95,6 +95,22 @@ def test_wheel_ships_schemas(wheel: Path) -> None:
         assert name in names
 
 
+def test_wheel_ships_its_licence(wheel: Path) -> None:
+    """Test that the wheel declares its licence and ships the licence texts.
+
+    Args:
+        wheel: Path to the built wheel.
+    """
+    with zipfile.ZipFile(wheel) as archive:
+        names = archive.namelist()
+        metadata_name = next(n for n in names if n.endswith(".dist-info/METADATA"))
+        metadata = archive.read(metadata_name).decode("utf-8")
+
+    assert "License-Expression: Apache-2.0" in metadata.splitlines()
+    for licence in ("LICENSE", "LICENSES/Apache-2.0.txt"):
+        assert any(n.endswith(f".dist-info/licenses/{licence}") for n in names)
+
+
 @pytest.mark.parametrize("example", EXAMPLES, ids=lambda path: path.name)
 def test_installed_cli_validates_example(
     installed_cli: Path, example: Path, tmp_path: Path
@@ -209,4 +225,4 @@ def test_installed_cli_converts_snakemake_json(
     inputs = json.loads(result.stdout)["properties"]["inputs"]
     assert inputs["properties"]["genome_fasta"]["x-ga4gh-file"] == {"kind": "file"}
     assert yaml_result.returncode == 3
-    assert "install 'ga4gh-io-schema[snakemake]'" in yaml_result.stderr
+    assert "pip install '.[snakemake]'" in yaml_result.stderr

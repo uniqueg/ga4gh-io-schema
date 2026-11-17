@@ -23,7 +23,7 @@ NFL_S3 = VECTORS_DIR / "NFL" / "deployment-scheme"
 EXAMPLE_WDL = Path(__file__).resolve().parent / "data" / "example_wdl.schema.json"
 TOOL_PAGE = Path(__file__).resolve().parents[1] / "docs" / "tools" / "wes-params.md"
 PROFILE = (
-    "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/"
+    "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/"
     "ga4gh-io-profile.schema.json"
 )
 

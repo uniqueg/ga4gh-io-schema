@@ -17,7 +17,7 @@ tool:
 `ga4gh-io-schema --help` lists the subcommands, and
 `ga4gh-io-schema <subcommand> --help` their options.
 
-!!! note "Renamed in v0.3.0"
+!!! note "Renamed in v0.3"
     `ga4gh-io-schema validate` replaces the `ga4gh-io-schema-validator`
     command of earlier versions, which is gone without an alias.
 

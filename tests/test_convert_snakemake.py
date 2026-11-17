@@ -334,7 +334,7 @@ def test_yaml_needs_pyyaml(
     status, _, err = run(["convert", "snakemake", str(path)], capsys)
 
     assert status == 3
-    assert "install 'ga4gh-io-schema[snakemake]'" in err
+    assert "pip install '.[snakemake]'" in err
 
 
 def test_conversion_errors_exit_with_1_and_location(

@@ -753,6 +753,14 @@ def test_defaults(tmp_path: Path) -> None:
             "{class: File, location: 'file:///data/x.txt'}",
             "a File next to the CWL document, 'x.txt'",
         ),
+        (
+            "{class: File, location: 'javascript:alert(1)'}",
+            "a File with the forbidden scheme 'javascript'",
+        ),
+        (
+            "{class: File, location: 'DATA:text/plain,abc'}",
+            "a File with the forbidden scheme 'data'",
+        ),
     ],
 )
 def test_default_files_without_uri_are_reported(
@@ -1260,7 +1268,7 @@ def test_cli_without_cwl_utils(
 
     assert capsys.readouterr().err == (
         "Error: The CWL converter needs the optional dependency cwl-utils; "
-        "install it with: pip install 'ga4gh-io-schema[cwl]'\n"
+        "install the extra 'cwl' (in a clone: pip install '.[cwl]')\n"
     )
 
 
