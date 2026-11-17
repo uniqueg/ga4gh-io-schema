@@ -172,15 +172,16 @@ that holds the copyright. Proposal:
 
 **Status.**
 
-- **0.3:** the `$id`s and `$schema` of the profile name the GitHub
-  repository, e.g., `https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/ga4gh-io-profile.schema.json`.
-- **This week ([#25](https://github.com/uniqueg/ga4gh-io-schema/issues/25)):**
-  they change to the `main` branch of the repository's new home, e.g.,
+- **0.3 (no tag, [#78](https://github.com/uniqueg/ga4gh-io-schema/pull/78)):**
+  the `$id`s and `$schema` of the profile name the `main` branch of the
+  repository's new home
+  ([#25](https://github.com/uniqueg/ga4gh-io-schema/issues/25)), e.g.,
   `https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json`.
 
-Both forms bind the identifier to a host organisation and a repository
-name, so each transfer changes them. The `main` form also changes its
-content over time. That is acceptable while there are no releases. It must
+Drafts of 0.3 named the repository under `uniqueg` and a `v0.3.0` tag,
+which was never created. Both forms bind the identifier to a host
+organisation and a repository name, so each transfer changes them. The
+`main` form also changes its content over time. That is acceptable while there are no releases. It must
 end with the first release, which needs `$id`s that keep naming the same
 content (see [Releases](governance.md#releases)).
 
