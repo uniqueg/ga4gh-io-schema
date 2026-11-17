@@ -19,3 +19,5 @@
 - [Output normaliser](outputs.md): builds the normalised outputs object of
   a WES run from what the server reports, as a command-line tool and a
   Python API.
+- [TRS discovery](trs.md): finds the IO schema among the files of a TRS
+  tool version, as a Python API.

@@ -27,6 +27,7 @@ Everything is in
 | `build_schema.py` | Regenerates the schema (`--check` fails if the checked-in schema is outdated; the tests run it). |
 | `values.json` | Input values for a run, with public `https` test data. |
 | `register.py` | Registers the workflow and its schema in TRS-Filer. |
+| `trs_client.py` | Finds the schema in TRS as a client, checks it and builds the WES run request (see [Demo with TRS-Filer](demo-trs-filer.md)). |
 | `conquest.py` | Adds Conquest's engine parameters to a run request, submits it, waits for the run and normalises its outputs. |
 | `demo_http.py` | JSON over HTTP for the scripts (standard library only). |
 | `expected/` | A run log as Conquest reports it, and the normalised outputs of it. |
@@ -107,7 +108,9 @@ convention](trs.md#publishing-convention) says:
   its SHA-256 checksum and a URL pinned to the commit
   (`https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/<SHA>/examples/demo/demo.wdl`);
 - the IO schema, of type `OTHER` at the path `ga4gh-io.schema.json` next to
-  it, with its content and checksum.
+  it, with its content and checksum; with `--schema-file-type IO_SCHEMA`, of
+  the [proposed type](trs.md#proposed-the-io_schema-file-type) `IO_SCHEMA`,
+  for TRS-Filer versions that accept it.
 
 `--dry-run` prints the registration (the body of the `PUT` request) and
 sends nothing. Check the result as a client would (see [Discovery by
@@ -120,6 +123,9 @@ curl "$TRS_URL/tools/ga4gh-io-schema-demo/versions/1.0.0/WDL/descriptor/ga4gh-io
 
 The first lists `ga4gh-io.schema.json` (`OTHER`) next to `demo.wdl`
 (`PRIMARY_DESCRIPTOR`); the second returns the schema in `content`.
+`trs_client.py` does the whole discovery and builds the run request with
+the TRS URL as `workflow_url` (see [Demo with TRS-Filer](demo-trs-filer.md),
+which runs TRS-Filer locally).
 
 ## 2. Run it from the command line
 

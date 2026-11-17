@@ -55,8 +55,9 @@ pick.](../assets/prototype/pick.png)
 The list "Workflow in TRS" comes from `GET /tools` of the stub: one entry
 per tool version and descriptor type. Pick "I/O Schema demo 1.0.0 (WDL)".
 The host then lists the files of that tool version, finds the IO schema
-(`ga4gh-io.schema.json` of type `OTHER`, next to the primary descriptor),
-fetches it, validates it against the profile, and checks that its
+(`ga4gh-io.schema.json` of type `OTHER`, next to the primary descriptor, as
+the stub serves it; a file of type `IO_SCHEMA` would come first, see
+[Discovery by clients](trs.md#discovery-by-clients)), fetches it, validates it against the profile, and checks that its
 `x-ga4gh-workflow` names this tool version and descriptor type.
 
 **What it shows:** a client finds the schema of any tool version through

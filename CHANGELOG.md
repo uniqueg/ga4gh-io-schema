@@ -275,6 +275,18 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   those of the wrong `class`. "File references" now says, like the engine
   bindings, that a branch of `anyOf` or `oneOf` that a value isn't valid
   against doesn't make it a file value. (#67)
+- The TRS file type `IO_SCHEMA` is proposed for IO schemas, no longer
+  deferred: clients look for the one file of that type first, and fall back
+  to the file `ga4gh-io.schema.json` of type `OTHER` next to the primary
+  descriptor, for TRS servers without it. "Discovery by clients" says how
+  to match file entries: by `file_type` and normalised `path` only (empty
+  and `.` segments removed), ignoring other fields such as `checksum`, with
+  test vectors in `tests/vectors/trs-files/`. The module
+  `ga4gh_io_schema.trs` implements the matching (`find_schema_file`); the
+  host of the prototype uses it, the demo's `register.py` registers the
+  schema as `IO_SCHEMA` with `--schema-file-type IO_SCHEMA`, and
+  `trs_client.py` and a new page show discovery with TRS-Filer end to end.
+  (#82)
 
 ### Fixed
 

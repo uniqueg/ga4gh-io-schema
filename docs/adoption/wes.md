@@ -46,8 +46,9 @@ TRS already provide.
 ### Building run requests (clients)
 
 1. Find the IO schema of the workflow in TRS and check it, as described in
-   [Discovery by clients](trs.md#discovery-by-clients) (file type `OTHER`,
-   path `ga4gh-io.schema.json`, `$schema`, `x-ga4gh-workflow`, drift).
+   [Discovery by clients](trs.md#discovery-by-clients) (file type
+   `IO_SCHEMA`, or `OTHER` at the path `ga4gh-io.schema.json`; `$schema`,
+   `x-ga4gh-workflow`, drift).
 2. Collect the input values, e.g., with a form rendered from the schema
    (see [Portals and clients](portals.md)).
 3. Validate the values against `inputs`, check every file reference value

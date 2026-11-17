@@ -55,11 +55,13 @@ they are opened.
 1. **Matching TRS file entries (docs).** The first version of the host
    compared whole file entries and missed the schema as soon as an entry
    had a `checksum`. TRS `ToolFile` fields are all optional, and paths may
-   have forms such as `./ga4gh-io.schema.json`. [Discovery by
-   clients](trs.md#discovery-by-clients) should say how to compare entries:
-   by `file_type` and normalised `path` only, ignoring other fields. This
-   adds to the case for the [deferred `IO_SCHEMA` file
-   type](trs.md#deferred-an-io_schema-file-type).
+   have forms such as `./ga4gh-io.schema.json`. Addressed
+   ([#82](https://github.com/uniqueg/ga4gh-io-schema/issues/82)):
+   [Matching file entries](trs.md#matching-file-entries) says to compare
+   entries by `file_type` and normalised `path` only, ignoring other
+   fields, with test vectors; and this is the evidence for the [proposed
+   `IO_SCHEMA` file type](trs.md#proposed-the-io_schema-file-type), which
+   clients now look for first.
 2. **Imports of multi-file workflows (spec).** The `workflow_url` that the
    binding recommends, `.../PLAIN_{type}/descriptor`, has no file name, so a
    relative import such as `tasks/sub.wdl` resolves to
@@ -103,8 +105,8 @@ they are opened.
   equality; check `x-ga4gh-workflow` against the tool version before
   rendering; build the `workflow_url` for the WES that will run it, not for
   the portal's own network; treat a missing schema as a normal case.
-- **TRS implementers:** serve the schema as an `OTHER` file next to the
-  primary descriptor, with a checksum, and serve the `PLAIN_` endpoints,
+- **TRS implementers:** serve the schema as an `IO_SCHEMA` file, or an
+  `OTHER` file next to the primary descriptor, with a checksum, and serve the `PLAIN_` endpoints,
   which a WES can fetch without unwrapping a `FileWrapper`.
 - **WES implementers:** accepting TRS URLs as `workflow_url` (including
   the imports next to the primary descriptor) is what makes the request
