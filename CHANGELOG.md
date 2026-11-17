@@ -275,6 +275,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   those of the wrong `class`. "File references" now says, like the engine
   bindings, that a branch of `anyOf` or `oneOf` that a value isn't valid
   against doesn't make it a file value. (#67)
+- A page "Transfer to GA4GH" with proposals for the transfer of the
+  repository: naming (`ga4gh/io-schema`), the licence checked against the
+  GA4GH Copyright Policy and GA4GH repositories, consistent copyright
+  notices, a governance note (work stream, leads, approval path, status of
+  the two-implementations requirement) and an identifier plan with
+  `$id`s under `https://w3id.org/ga4gh/schema/io-schema/`. (#26)
 
 ### Fixed
 
