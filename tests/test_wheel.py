@@ -16,6 +16,7 @@ import sys
 import venv
 import zipfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -33,7 +34,7 @@ PACKAGED_SCHEMAS = sorted(
 )
 
 
-def _run(command: list[str | Path], **kwargs: object) -> None:
+def _run(command: list[str | Path], **kwargs: Any) -> None:
     """Run a command and fail the test with its output if it fails.
 
     Args:

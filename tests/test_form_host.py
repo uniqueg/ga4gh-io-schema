@@ -153,7 +153,9 @@ class FakeWesHandler(BaseHTTPRequestHandler):
             head + body
         )
         self.server.fields = {
-            part.get_param("name", header="content-disposition"): part.get_content()
+            str(part.get_param("name", header="content-disposition")): (
+                part.get_content()
+            )
             for part in message.iter_parts()
         }
         self._answer(*self.server.run_answer)
@@ -870,7 +872,12 @@ def test_list_workflows(trs: str) -> None:
 
 def test_list_workflows_needs_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that an answer that isn't a list of tools is an error."""
-    for answer in ({"id": "x"}, [{"versions": []}], [{"id": "x", "versions": [1]}]):
+    answers: list[Any] = [
+        {"id": "x"},
+        [{"versions": []}],
+        [{"id": "x", "versions": [1]}],
+    ]
+    for answer in answers:
         monkeypatch.setattr(form_host, "_fetch_json", lambda *a, answer=answer: answer)
         with pytest.raises(ValueError, match="list of tools"):
             form_host.list_workflows("http://trs")
@@ -957,8 +964,13 @@ def test_load_trs_schema_takes_entries_with_more_fields(
         {"path": "ga4gh-io.schema.json", "file_type": "OTHER", "checksum": checksum},
     ]
     monkeypatch.setattr(form_host, "_fetch_json", lambda *args: files)
-    sources = []
-    monkeypatch.setattr(form_host, "load_schema", lambda s: sources.append(s) or {})
+    sources: list[Any] = []
+
+    def load_schema(source: Any) -> dict[str, Any]:
+        sources.append(source)
+        return {}
+
+    monkeypatch.setattr(form_host, "load_schema", load_schema)
     _, url = form_host.load_trs_schema("http://trs", "t", "v", "WDL")
     assert sources == [
         "http://trs/tools/t/versions/v/WDL/descriptor/ga4gh-io.schema.json"
@@ -1033,8 +1045,13 @@ def test_load_trs_schema_prefers_the_io_schema_file_type(
         {"path": "./io/inputs.json", "file_type": "IO_SCHEMA"},
     ]
     monkeypatch.setattr(form_host, "_fetch_json", lambda *args: files)
-    sources = []
-    monkeypatch.setattr(form_host, "load_schema", lambda s: sources.append(s) or {})
+    sources: list[Any] = []
+
+    def load_schema(source: Any) -> dict[str, Any]:
+        sources.append(source)
+        return {}
+
+    monkeypatch.setattr(form_host, "load_schema", load_schema)
     _, url = form_host.load_trs_schema("http://trs", "t", "v", "WDL")
     assert sources == [
         "http://trs/tools/t/versions/v/WDL/descriptor/.%2Fio%2Finputs.json"

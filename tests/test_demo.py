@@ -115,6 +115,7 @@ def mock() -> Iterator[Mock]:
                 )
             )
             queue = state.routes.get((self.command, self.path))
+            body: Any
             if not queue:
                 status, body = 404, {"msg": "not found"}
             else:

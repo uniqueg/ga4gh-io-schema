@@ -15,7 +15,8 @@ description = "GA4GH standard profile for workflow and tool inputs and outputs"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "LICENSES/Apache-2.0.txt"]
-# Keep in sync with the CI test matrix and ruff's target-version.
+# Keep in sync with the CI test matrix, ruff's target-version and mypy's
+# python_version.
 requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -54,6 +55,12 @@ dev = [
     # The Draft 2020-12 meta-schemas, for tests/test_meta_schema.py (also a
     # dependency of jsonschema)
     "jsonschema-specifications>=2023.3.6",
+    # Type checking (`[tool.mypy]`), with the stubs of the dependencies that
+    # ship no type information; bounded, as new releases add checks (and
+    # src/ga4gh_io_schema/patterns.py uses a class of the jsonschema stubs)
+    "mypy>=2.4,<3",
+    "types-jsonschema>=4.26.0.20261006,<4.27",
+    "types-PyYAML>=6.0.12",
     # The tests of `convert snakemake` need the `snakemake` extra.
     "ga4gh-io-schema[snakemake]",
     "reuse>=3.0.2",
@@ -117,6 +124,38 @@ branch = true
 
 [tool.coverage.report]
 fail_under = 100
+
+[tool.mypy]
+files = [
+    "src",
+    "tests",
+    "examples/demo",
+    "prototype/host",
+    "prototype/trs-stub",
+    "docs_hooks",
+]
+# The demo scripts, the host of the form and the TRS stub are imported by
+# module name, as in the tests (see `pythonpath` of pytest).
+mypy_path = ["examples/demo", "prototype/host", "prototype/trs-stub"]
+# Lowest supported Python version (see requires-python).
+python_version = "3.11"
+# Complete type hints, and checked: all functions annotated, generic types
+# parametrized
+disallow_untyped_defs = true
+disallow_any_generics = true
+warn_unused_ignores = true
+
+# jsonschema-specifications ships no type information (used by the tests
+# only)
+[[tool.mypy.overrides]]
+module = ["jsonschema_specifications", "jsonschema_specifications.*"]
+ignore_missing_imports = true
+
+# Playwright is in the `e2e` extra only, not in `dev` (used by the
+# end-to-end tests only)
+[[tool.mypy.overrides]]
+module = ["playwright", "playwright.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 88

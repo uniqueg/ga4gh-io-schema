@@ -12,6 +12,7 @@ implementations run them with their own runner (see
 
 import contextlib
 import copy
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -41,7 +42,9 @@ VECTORS_DIR = Path(__file__).resolve().parent / "vectors" / "wes-params"
 VECTORS = sorted(path.parent for path in VECTORS_DIR.glob("*/*/schema.json"))
 REQUESTS_DIR = VECTORS_DIR.parent / "wes-requests"
 REQUESTS = sorted(path.parent for path in REQUESTS_DIR.glob("*/*/schema.json"))
-FILE_VALUES = load_json(VECTORS_DIR.parent / "file-values" / "cases.json")
+FILE_VALUES: list[dict[str, Any]] = json.loads(
+    (VECTORS_DIR.parent / "file-values" / "cases.json").read_text(encoding="utf-8")
+)
 PROFILE = (
     "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/"
     "ga4gh-io-profile.schema.json"

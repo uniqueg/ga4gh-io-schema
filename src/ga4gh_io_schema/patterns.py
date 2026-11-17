@@ -18,13 +18,21 @@ The keywords that match names follow jsonschema (4.26) and keep its error
 messages; ``tests/test_patterns.py`` compares them with jsonschema's.
 """
 
+from __future__ import annotations
+
 import functools
 from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import jsonschema
 import regress
-from jsonschema.protocols import Validator
+
+if TYPE_CHECKING:  # pragma: no cover - for type checkers only
+    # The type of the validators that jsonschema creates, with `descend`,
+    # which `Validator` of `jsonschema.protocols` lacks. The class exists in
+    # the stubs (types-jsonschema) only: a new version of the stubs may
+    # rename it.
+    from jsonschema.validators import _Validator as _DescendingValidator
 
 __all__ = ["PatternError", "ValuesValidator", "is_pattern", "search"]
 
@@ -90,7 +98,7 @@ def is_pattern(instance: object) -> bool:
     return True
 
 
-def _is_valid(validator: Validator, instance: Any, schema: Any) -> bool:
+def _is_valid(validator: _DescendingValidator, instance: Any, schema: Any) -> bool:
     """Check an instance against a subschema of the validator's schema.
 
     Args:
@@ -120,7 +128,7 @@ def _plural(names: list[str], verb: str) -> str:
 
 
 def _pattern(
-    validator: Validator, pattern: str, instance: Any, schema: dict[str, Any]
+    validator: _DescendingValidator, pattern: str, instance: Any, schema: dict[str, Any]
 ) -> Iterator[jsonschema.ValidationError]:
     """Validate ``pattern`` with ECMA-262 semantics.
 
@@ -138,7 +146,7 @@ def _pattern(
 
 
 def _pattern_properties(
-    validator: Validator,
+    validator: _DescendingValidator,
     pattern_properties: dict[str, Any],
     instance: Any,
     schema: dict[str, Any],
@@ -165,7 +173,7 @@ def _pattern_properties(
 
 
 def _additional_properties(
-    validator: Validator,
+    validator: _DescendingValidator,
     additional: Any,
     instance: Any,
     schema: dict[str, Any],
@@ -210,7 +218,7 @@ def _additional_properties(
 
 
 def _evaluated_names(
-    validator: Validator, instance: dict[str, Any], schema: Any
+    validator: _DescendingValidator, instance: dict[str, Any], schema: Any
 ) -> set[str]:
     """Collect the names of members that a schema evaluates in place.
 
@@ -268,7 +276,7 @@ def _evaluated_names(
 
 
 def _unevaluated_properties(
-    validator: Validator,
+    validator: _DescendingValidator,
     unevaluated: Any,
     instance: Any,
     schema: dict[str, Any],

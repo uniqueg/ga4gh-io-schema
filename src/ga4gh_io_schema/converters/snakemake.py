@@ -445,6 +445,8 @@ class _Converter(SchemaConverter):
             return converted
         if "x-ga4gh-file" in converted:
             return converted
+        kind: str | None
+        reason: str | None
         if option == "sheet":
             kind, reason = "file", "it holds a sample sheet"
         elif option in ("file", "directory"):

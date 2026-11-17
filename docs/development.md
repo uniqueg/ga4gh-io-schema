@@ -1,9 +1,9 @@
 # Development
 
 CI (`.github/workflows/ci.yml`) runs the checks below on every pull request:
-lint (REUSE, Markdown, Ruff, meta-schema syntax), the Python tests on every
-supported version, the JavaScript tests and the strict documentation build.
-Run them locally before you open a pull request.
+lint (REUSE, Markdown, Ruff, mypy, meta-schema syntax), the Python tests on
+every supported version, the JavaScript tests and the strict documentation
+build. Run them locally before you open a pull request.
 
 To install the package with all development dependencies, see
 [Installation](tools/validator.md#installation).
@@ -50,8 +50,8 @@ access to install the build backend and the dependencies; deselect it with
 `pytest -m "not wheel"` when offline. CI runs the tests on every supported
 Python version, from the lowest to the newest. The supported versions are set
 in `requires-python` and the classifiers of `pyproject.toml`, ruff's
-`target-version` and the test matrix of `.github/workflows/ci.yml`; change
-them together.
+`target-version`, mypy's `python_version` and the test matrix of
+`.github/workflows/ci.yml`; change them together.
 
 ## JavaScript tests (Node.js)
 
@@ -255,6 +255,30 @@ The codebase uses `Ruff` to enforce strict formatting, linting, and Google-style
 ruff format .
 ruff check .
 ```
+
+## Type checking (mypy)
+
+The code is checked with [mypy](https://mypy.readthedocs.io/), which the
+`dev` extra installs with the stubs of the dependencies that ship no type
+information (`types-jsonschema`, `types-PyYAML`). `[tool.mypy]` in
+`pyproject.toml` lists the files (the package, the tests, the demo scripts,
+the prototype and the hooks of the documentation) and the options: every
+function has complete type hints (`disallow_untyped_defs`), generic types
+have their parameters (`disallow_any_generics`), and the checks run for the
+lowest supported Python version. Run it without arguments, as CI does:
+
+```bash
+mypy
+```
+
+Fix the errors instead of ignoring them. Where a stub is wrong or misses a
+private attribute that the code needs, ignore the one error with its code
+and a comment that says why (`# type: ignore[attr-defined]`);
+`warn_unused_ignores` reports comments that are no longer needed. Packages
+without type information and without stubs (`jsonschema-specifications`),
+or that the `dev` extra doesn't install (Playwright, in the `e2e` extra),
+get an override with `ignore_missing_imports` in `pyproject.toml`, with the
+reason.
 
 ## Meta-schema validation
 

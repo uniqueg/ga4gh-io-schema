@@ -435,7 +435,7 @@ class _Converter(SchemaConverter):
             ConversionError: If ``--directory`` names a parameter that
                 hasn't ``format: path``.
         """
-        extras = {
+        extras: dict[str, Any] = {
             key: result.pop(key) for key in ("mimetype", "schema") if key in result
         }
         form = result.get("format")

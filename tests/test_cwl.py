@@ -630,7 +630,6 @@ def test_format_that_is_not_an_iri_is_reported(tmp_path: Path) -> None:
         "$namespaces?); it is left out."
     )
     notes: list[cwl.ConversionNote] = []
-    notes: list[cwl.ConversionNote] = []
     converter = empty_converter(notes)
 
     assert converter.ontology([3], "$") is None
