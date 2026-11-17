@@ -90,7 +90,7 @@ The full schema is [Example 3](examples.md#example-3-workflow-bound-to-an-engine
 | `trs_version_id` | string | The id of the tool version in the TRS (`ToolVersion.id`). |
 | `descriptor_type` | `CWL`, `WDL`, `NFL`, `SMK` or `GALAXY` (required) | The TRS descriptor type, which is also the WES `workflow_type`. |
 | `descriptor_type_version` | string | The version of the workflow language (e.g., `1.1` for WDL, `DSL2` for Nextflow, `v1.2` for CWL), one of the `descriptor_type_version` values of the TRS tool version; the WES `workflow_type_version`. |
-| `primary_descriptor_path` | string | The path of the primary descriptor (TRS file type `PRIMARY_DESCRIPTOR`), relative to the root of the tool version's files. |
+| `primary_descriptor_path` | string | The path of the primary descriptor (TRS file type `PRIMARY_DESCRIPTOR`), relative to the root of the tool version's files; for a schema published in a TRS, the path exactly as TRS lists it (`ToolFile.path`), which request builders put into the `workflow_url` (see [Workflow URLs in TRS](engine-bindings.md#workflow-urls-in-trs)). |
 | `checksum` | array of `{"type": …, "checksum": …}` | Checksums of the primary descriptor, in the format of TRS checksums: `type` is the algorithm, as in TRS by its Hash Name String in the [GA4GH Checksum Hash Algorithm Registry](https://github.com/ga4gh-discovery/ga4gh-checksum/blob/master/hash-alg.csv) (e.g., `sha-256`), `checksum` the hex-encoded digest. |
 | `entry_point` | string (required for `WDL`) | The entry point of the engine (see below). |
 

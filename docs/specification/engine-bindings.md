@@ -180,7 +180,7 @@ A WES `RunRequest` gets these fields from the schema and from TRS:
 | `workflow_params` | The translated input values (see above). |
 | `workflow_type` | `descriptor_type` of the workflow block, which is the TRS descriptor type. |
 | `workflow_type_version` | `descriptor_type_version` of the workflow block; if the schema has none, one of the `descriptor_type_version` values of the TRS tool version for the descriptor type. If the schema has one, a request builder MUST use it. |
-| `workflow_url` | A URL from which the WES server gets the workflow, as the deployment accepts it: typically the plain primary descriptor of the TRS tool version that `trs_tool_id` and `trs_version_id` name, `GET {trs}/tools/{id}/versions/{version_id}/PLAIN_{descriptor_type}/descriptor`, with the ids percent-encoded. For `CWL` with an `entry_point`, the entry point is the fragment of the URL (e.g., `…/descriptor#main`); a URL that already has a fragment can't take one. |
+| `workflow_url` | A URL from which the WES server gets the workflow, as the deployment accepts it: typically the plain primary descriptor of the TRS tool version that `trs_tool_id` and `trs_version_id` name, by its path (see [Workflow URLs in TRS](#workflow-urls-in-trs)). For `CWL` with an `entry_point`, the entry point is the fragment of the URL (e.g., `…/descriptor/align.cwl#main`); a URL that already has a fragment can't take one. |
 | `workflow_attachment` | The files that relative paths in the input values refer to (see [Values](files.md#values)), if any. |
 
 The binding doesn't set `tags`, `workflow_engine`,
@@ -188,6 +188,53 @@ The binding doesn't set `tags`, `workflow_engine`,
 of the user or the deployment. A WES 1.1 run request is sent as
 `multipart/form-data`, in which `workflow_params` (like `tags` and
 `workflow_engine_parameters`) is a JSON-encoded string.
+
+### Workflow URLs in TRS
+
+A request builder that takes the `workflow_url` from TRS SHOULD use the
+plain primary descriptor by its path:
+
+```text
+{trs}/tools/{id}/versions/{version_id}/PLAIN_{descriptor_type}/descriptor/{path}
+```
+
+`{path}` is the path of the primary descriptor exactly as TRS lists it
+(`ToolFile.path` of the `PRIMARY_DESCRIPTOR` in
+`GET .../{descriptor_type}/files`). TRS takes the paths that `/files` lists
+as `{relative_path}`, so only a listed path is sure to be served. The
+`primary_descriptor_path` of the workflow block SHOULD be that same path
+(see [Identity](identity.md)); a request builder that can read `/files`
+SHOULD prefer the listed path. The ids are percent-encoded as path
+segments; the path keeps its `/` separators and has each segment
+percent-encoded. A path with empty, `.` or `..` segments MUST NOT be used:
+it would change where relative references resolve. For a path with a
+leading `/` (some TRS servers list paths so), a request builder SHOULD use
+the bare form below: servers differ in how they serve such paths in a URL,
+and the path without its `/` is not one that TRS listed.
+
+The form with the path needs a TRS that accepts unencoded `/` in
+`{relative_path}`, which TRS 2 allows ("unencoded paths ... are also
+allowed") but older servers may not; a workflow whose primary descriptor
+is at the top level (a path without `/`) works with every server.
+
+Engines resolve the imports of a multi-file workflow (e.g., a WDL
+`import "tasks/align.wdl"` or a CWL `run: tools/bwa-mem.cwl`) against the
+URL of the importing document, as RFC 3986 says. Against the URL with the
+path `main.wdl`, `tasks/align.wdl` resolves to
+`.../PLAIN_WDL/descriptor/tasks/align.wdl`, a file of the tool version that
+TRS serves (`{relative_path}` takes the paths that `/files` lists). Against
+the bare `.../PLAIN_{descriptor_type}/descriptor`, which has no file name,
+it resolves to `.../PLAIN_WDL/tasks/align.wdl`, which TRS doesn't serve.
+The bare form MAY be used for single-file workflows, where nothing is
+resolved against it.
+
+Imports that resolve outside `.../descriptor/` (e.g., `../other.wdl` from a
+primary descriptor at the top level) can't be served by TRS; such a workflow
+needs `workflow_attachment` or a deployment that gets the workflow in
+another way. Whether a WES fetches the `workflow_url` and its imports at all
+depends on the deployment and the engine (see [WES](../adoption/wes.md)).
+The test vectors in `tests/vectors/workflow-urls/` cover the URL and the
+resolution of imports.
 
 The schema itself is not part of the request: the server gets it from a
 trusted source (see [Sources of schemas](../security.md#sources-of-schemas)).

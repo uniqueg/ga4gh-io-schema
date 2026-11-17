@@ -344,6 +344,60 @@ def test_request_with_trs_url(
     )
 
 
+def test_request_with_trs_url_names_the_primary_descriptor(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that the workflow URL ends in the primary descriptor's path.
+
+    Relative imports of multi-file workflows then resolve to files of the
+    tool version in TRS.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    schema = read(CWL / "schema.json")
+    schema["x-ga4gh-workflow"].update(
+        trs_tool_id="align",
+        trs_version_id="1.0",
+        entry_point="#main",
+        primary_descriptor_path="workflows/align.cwl",
+    )
+    path = write(tmp_path / "schema.json", schema)
+    trs = "https://trs.e.org/ga4gh/trs/v2"
+
+    argv = args(CWL, "--request", "--trs-url", trs)
+    argv[argv.index("--schema") + 1] = str(path)
+
+    assert main(argv) == 0
+    assert json.loads(capsys.readouterr().out)["workflow_url"] == (
+        f"{trs}/tools/align/versions/1.0/PLAIN_CWL/descriptor/workflows/align.cwl#main"
+    )
+
+
+def test_request_with_trs_url_rejects_a_bad_descriptor_path(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a primary descriptor path with ``..`` is a validation error.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    schema = read(CWL / "schema.json")
+    schema["x-ga4gh-workflow"].update(
+        trs_tool_id="align",
+        trs_version_id="1.0",
+        primary_descriptor_path="../align.cwl",
+    )
+    path = write(tmp_path / "schema.json", schema)
+    argv = args(CWL, "--request", "--trs-url", "https://trs.e.org")
+    argv[argv.index("--schema") + 1] = str(path)
+
+    assert main(argv) == 1
+    assert "primary descriptor path" in capsys.readouterr().err
+
+
 def test_request_with_trs_url_needs_trs_ids(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

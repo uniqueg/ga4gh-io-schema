@@ -178,14 +178,17 @@ def load_trs_schema(
 
     Returns:
         The schema, valid against the profile, and the ``workflow_url`` of
-        run requests: the TRS URL of the plain primary descriptor.
+        run requests: the TRS URL of the plain primary descriptor, by the
+        path that TRS lists for it, so that relative imports of multi-file
+        workflows resolve to files of the tool version.
 
     Raises:
         OSError: If the TRS can't be reached or fails (also
             ``urllib.error.HTTPError``).
         ValueError: If an id is empty, ``.`` or ``..``, the tool version
-            has no IO schema, or the schema isn't JSON or names another tool
-            version or descriptor type.
+            has no IO schema, the path of its primary descriptor has empty,
+            ``.`` or ``..`` segments, or the schema isn't JSON or names
+            another tool version or descriptor type.
         jsonschema.exceptions.ValidationError: If the schema doesn't comply
             with the profile.
     """
@@ -227,7 +230,7 @@ def load_trs_schema(
                 f"The schema is for another workflow: x-ga4gh-workflow.{key} is "
                 f"{block[key]!r}, not {value!r}."
             )
-    url = trs_descriptor_url(trs_url, tool_id, version_id, descriptor_type)
+    url = trs_descriptor_url(trs_url, tool_id, version_id, descriptor_type, primary)
     return schema, url
 
 
@@ -239,17 +242,23 @@ def workflow_url(schema: dict[str, Any], trs_url: str | None = None) -> str | No
         trs_url: Base URL of the TRS API that serves the workflow, if any.
 
     Returns:
-        The TRS URL of the plain primary descriptor, if a TRS URL is given
-        and the workflow block names the tool version; else the path of the
-        primary descriptor, which WES resolves against the files attached to
-        the request; else ``None``.
+        The TRS URL of the plain primary descriptor (by its path, if the
+        workflow block has ``primary_descriptor_path``), if a TRS URL is
+        given and the workflow block names the tool version; else the path
+        of the primary descriptor, which WES resolves against the files
+        attached to the request; else ``None``.
+
+    Raises:
+        ValueError: If the TRS URL would have a primary descriptor path with
+            empty, ``.`` or ``..`` segments.
     """
     block = schema.get("x-ga4gh-workflow") or {}
     ids = [block.get(key) for key in ("trs_tool_id", "trs_version_id")]
-    if trs_url and all(isinstance(value, str) for value in ids):
-        return trs_descriptor_url(trs_url, *ids, block["descriptor_type"])
     path = block.get("primary_descriptor_path")
-    return path if isinstance(path, str) else None
+    path = path if isinstance(path, str) else None
+    if trs_url and all(isinstance(value, str) for value in ids):
+        return trs_descriptor_url(trs_url, *ids, block["descriptor_type"], path)
+    return path
 
 
 def check_values(
@@ -848,10 +857,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         source = args.schema or str(DEMO_SCHEMA)
         try:
             schema = load_schema(source)
+            url = workflow_url(schema, args.trs_url)
         except (OSError, ValueError, jsonschema.exceptions.ValidationError) as exc:
             print(f"Can't use the schema {source}: {exc}", file=sys.stderr)
             return 1
-        url = workflow_url(schema, args.trs_url)
         if args.wes_url and not (url or "").startswith(("http://", "https://")):
             parser.error(
                 "--wes-url needs a workflow URL that a WES can fetch: give "
