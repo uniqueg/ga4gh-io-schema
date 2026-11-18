@@ -5,6 +5,8 @@
 """Tests for the packaging, schema identifiers and documentation of the project."""
 
 import re
+import shutil
+import subprocess
 import tomllib
 from collections.abc import Iterator
 from pathlib import Path
@@ -411,6 +413,32 @@ def test_readme_licence_matches_reuse_metadata() -> None:
         assert header.group(1) in line, line
 
 
+def _repo_files() -> list[Path]:
+    """Return the files of the repository, whatever their directory or suffix.
+
+    The files that git tracks (or has staged), so that installed
+    dependencies, caches and local files are left out; CI checks every
+    committed file.
+
+    Returns:
+        The files of the working tree.
+    """
+    git = shutil.which("git")
+    assert git is not None, "git is needed to list the files of the repository"
+    listed = subprocess.run(
+        [git, "ls-files", "--cached", "-z"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout
+    return [
+        path
+        for path in (REPO_ROOT / name for name in listed.split("\0") if name)
+        if path.is_file()
+    ]
+
+
 def foreign_copyright_notices(paths: list[Path]) -> list[tuple[Path, str]]:
     """Find the copyright notices that aren't the repository's ``NOTICE``.
 
@@ -427,21 +455,28 @@ def foreign_copyright_notices(paths: list[Path]) -> list[tuple[Path, str]]:
         (path, match.group("notice"))
         for path in paths
         if path.suffix != ".license"
-        for match in COPYRIGHT_TAG.finditer(path.read_text(encoding="utf-8"))
+        for match in COPYRIGHT_TAG.finditer(
+            path.read_bytes().decode("utf-8", errors="replace")
+        )
         if match.group("notice") != NOTICE
     ]
 
 
 def test_copyright_notices_are_the_notice() -> None:
-    """Test that the repository's own files name one copyright holder.
+    """Test that the repository's own files, of any kind, name one holder.
 
     The file headers and the annotations of ``REUSE.toml`` all give
     ``NOTICE``, the notice of the elixir-cloud-aai repositories (#99).
     ``reuse lint`` accepts any notice, so this test catches a new file
     with another one.
     """
-    paths = _repo_text_files()
-    assert {REPO_ROOT / "REUSE.toml", REPO_ROOT / "README.md"} <= set(paths)
+    paths = _repo_files()
+    assert {
+        REPO_ROOT / "REUSE.toml",
+        REPO_ROOT / "Makefile",
+        REPO_ROOT / "prototype" / "Dockerfile",
+        REPO_ROOT / ".github" / "CODEOWNERS",
+    } <= set(paths)
     assert foreign_copyright_notices(paths) == []
     reuse = tomllib.loads((REPO_ROOT / "REUSE.toml").read_text(encoding="utf-8"))
     annotations = {
@@ -453,6 +488,8 @@ def test_copyright_notices_are_the_notice() -> None:
 def test_foreign_copyright_notices(tmp_path: Path) -> None:
     """Test that other notices are found, except in ``*.license`` files.
 
+    Files that aren't UTF-8 (e.g., images) are read too.
+
     Args:
         tmp_path: Pytest fixture providing a temporary directory.
     """
@@ -463,9 +500,11 @@ def test_foreign_copyright_notices(tmp_path: Path) -> None:
     other.write_text(f"// {tag}: 2026 Someone Else\n", encoding="utf-8")
     toml = tmp_path / "REUSE.toml"
     toml.write_text(f'{tag} = "2026 Someone Else"\n', encoding="utf-8")
+    binary = tmp_path / "image.png"
+    binary.write_bytes(b"\x89PNG\xff\xfe")
     third_party = tmp_path / "data.cwl.license"
     third_party.write_text(f"{tag}: The CWL project\n", encoding="utf-8")
-    assert foreign_copyright_notices([own, other, toml, third_party]) == [
+    assert foreign_copyright_notices([own, other, toml, binary, third_party]) == [
         (other, "2026 Someone Else"),
         (toml, "2026 Someone Else"),
     ]
