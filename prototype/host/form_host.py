@@ -855,7 +855,8 @@ def _http_url(value: str) -> str:
         )
     if "?" in value or "#" in value:
         # Not repeated either: the query may hold a token. A base URL has no
-        # use for it, as the host appends paths to it
+        # use for it, as the host appends paths to it. The raw value is
+        # checked, so that an empty query or fragment is refused too
         raise argparse.ArgumentTypeError(
             "base URLs with a query or a fragment (?… or #…) aren't accepted"
         )

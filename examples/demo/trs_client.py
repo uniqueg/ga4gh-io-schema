@@ -126,8 +126,13 @@ def discover(
     _report(f"3. Valid against the profile: {schema.get('$schema')}")
     block = schema.get("x-ga4gh-workflow")
     named = isinstance(block, dict) and bool(block.get("checksum"))
-    # The primary descriptor, only to compare a checksum that the schema names
-    descriptor = request_json("GET", f"{base}/descriptor") if named else None
+    descriptor = None
+    if named:
+        # Without the descriptor, the schema is unverified, as in the host
+        try:
+            descriptor = request_json("GET", f"{base}/descriptor")
+        except (HTTPError, OSError, ValueError) as exc:
+            _report(f"   The primary descriptor can't be fetched: {exc}")
     result = check_workflow(
         schema,
         trs_tool_id=tool_id,
@@ -137,7 +142,7 @@ def discover(
     )
     if result.mismatches:
         drift = any(m.field == "checksum" for m in result.mismatches)
-        raise ClientError(result.mismatch_message + (" (drift)" if drift else ""))
+        raise ClientError(("Drift: " if drift else "") + result.mismatch_message)
     if result.verified:
         _report("4. Bound to the tool version; checksum matches")
     elif named:

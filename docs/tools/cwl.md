@@ -59,10 +59,10 @@ Warning: Secondary file '.csi' is optional; the profile has only required second
 
 With `--json`, the result is `{"schema": {...}, "notes": [...]}`, as for
 the other converters: the IO schema as an object, and one object per
-warning, with its `message` and `location`. A CWL
-document that isn't valid, or that has a type that can't be converted,
-fails with exit status 1; a file that isn't UTF-8 text or valid YAML fails
-with exit status 3 (see [Exit status](cli.md#exit-status)).
+warning, with its `message` and `location`. A CWL document that isn't
+valid, or that has a type that can't be converted, fails with exit status
+1; a file that isn't UTF-8 text or valid YAML fails with exit status 3 (see
+[Exit status](cli.md#exit-status)).
 
 ## Mapping
 

@@ -52,10 +52,11 @@ All subcommands share these conventions; the shared options (`--output`,
   `"notes"`, a list of objects with `message` and `location`.
 - **JSON:** with `--json`, the result and the errors are JSON objects on one
   line. A command whose result is text writes `{"output": "<text>"}`. All
-  `convert` subcommands write `{"schema": {…}, "notes": […]}`: the converted
-  IO schema as an object, not as text. An error has a `kind` (`validation`, `io`, `meta-schema` or
-  `internal`), a `message`, the JSON path of the offending value as
-  `location` (or `null`), and the `exitCode`:
+  `convert` subcommands write `{"schema": {…}, "notes": […]}`: the
+  converted IO schema as an object, not as text. An error has a `kind`
+  (`validation`, `io`, `meta-schema` or `internal`), a `message`, the JSON
+  path of the offending value as `location` (or `null`), and the
+  `exitCode`:
 
     ```json
     {"error": {"kind": "validation", "message": "'inputs' is a required property", "location": "$.properties"}, "exitCode": 1}

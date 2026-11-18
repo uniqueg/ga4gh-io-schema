@@ -526,8 +526,10 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   workflow block with `check_workflow()` of the package, as the form host
   does, instead of its own comparison: it compares the checksums of every
   algorithm that the package computes, also over the content of the primary
-  descriptor when TRS lists no checksum, and no longer takes `sha256` as
-  `sha-256` (not a Hash Name String of the GA4GH registry). (#129)
+  descriptor when TRS lists no checksum, treats a schema whose primary
+  descriptor can't be fetched as unverified instead of failing, and no
+  longer takes `sha256` as `sha-256` (not a Hash Name String of the GA4GH
+  registry). (#129)
 - The form host refuses `--trs-url` and `--wes-url` with a query or a
   fragment, which a base URL has no use for and which could hold a token
   that the host's error messages would show in the browser. (#129)

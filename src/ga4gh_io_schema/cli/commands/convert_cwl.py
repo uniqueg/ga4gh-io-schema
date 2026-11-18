@@ -1,8 +1,6 @@
 """The ``convert cwl`` subcommand: convert a CWL document to an IO schema."""
 
 import argparse
-import json
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -18,9 +16,9 @@ from ga4gh_io_schema.cli.base import (
     read_error,
     read_text,
 )
-from ga4gh_io_schema.cli.convert import CONVERT
+from ga4gh_io_schema.cli.convert import CONVERT, conversion_result
 from ga4gh_io_schema.cli.convert import CONVERT_HELP as CONVERT_HELP
-from ga4gh_io_schema.converters.common import notes_as_dicts
+from ga4gh_io_schema.converters.common import Conversion
 from ga4gh_io_schema.validator import validate_schema
 
 #: Top-level modules of the optional dependencies of the converter.
@@ -119,15 +117,13 @@ class ConvertCwlCommand(Command):
             raise CliError(ErrorKind.VALIDATION, exc.message, exc.location) from exc
         _check(schema)
 
-        if not args.json:
-            for note in parser.notes:
-                print(note.to_text("Warning"), file=sys.stderr)
         # Defaults are finite (NaN and infinities are left out), so this is
         # strict JSON
-        output = json.dumps(schema, indent=2, allow_nan=False)
-        return CommandResult(
-            text=output,
-            data={"schema": schema, "notes": notes_as_dicts(parser.notes)},
+        return conversion_result(
+            Conversion(schema, list(parser.notes)),
+            args,
+            label="Warning",
+            allow_nan=False,
         )
 
 
