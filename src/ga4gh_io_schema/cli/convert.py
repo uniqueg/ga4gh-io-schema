@@ -96,6 +96,10 @@ def conversion_result(
 
     Returns:
         The result of the command.
+
+    Raises:
+        ValueError: If ``allow_nan`` is false and the schema holds ``NaN``
+            or an infinity; nothing is printed then.
     """
     text = json.dumps(conversion.schema, indent=2, allow_nan=allow_nan)
     if not args.json:

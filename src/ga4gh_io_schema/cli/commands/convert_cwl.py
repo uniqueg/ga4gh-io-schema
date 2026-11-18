@@ -118,7 +118,8 @@ class ConvertCwlCommand(Command):
         _check(schema)
 
         # Defaults are finite (NaN and infinities are left out), so this is
-        # strict JSON
+        # strict JSON. The notes are copied into a list[Note]: lists are
+        # invariant, so the list[ConversionNote] of the parser doesn't fit
         return conversion_result(
             Conversion(schema, list(parser.notes)),
             args,

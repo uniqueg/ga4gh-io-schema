@@ -114,6 +114,37 @@ def test_conversion_result(as_json: bool, capsys: pytest.CaptureFixture[str]) ->
     assert capsys.readouterr().err == expected
 
 
+def test_conversion_result_label(capsys: pytest.CaptureFixture[str]) -> None:
+    """Test that the notes get the given label in text mode.
+
+    Args:
+        capsys: Captured output.
+    """
+    conversion = common.Conversion(schema={}, notes=[common.Note("Left out.", "$")])
+
+    conversion_result(conversion, argparse.Namespace(json=False), label="Warning")
+
+    assert capsys.readouterr().err == "Warning: Left out. (at $)\n"
+
+
+def test_conversion_result_strict(capsys: pytest.CaptureFixture[str]) -> None:
+    """Test that ``allow_nan=False`` rejects NaN before any note is printed.
+
+    Args:
+        capsys: Captured output.
+    """
+    conversion = common.Conversion(
+        schema={"default": float("nan")}, notes=[common.Note("Guessed.", "$")]
+    )
+    args = argparse.Namespace(json=False)
+
+    assert "NaN" in conversion_result(conversion, args).text
+    capsys.readouterr()
+    with pytest.raises(ValueError, match="Out of range float"):
+        conversion_result(conversion, args, allow_nan=False)
+    assert capsys.readouterr().err == ""
+
+
 @pytest.mark.parametrize(
     ("exc", "message"),
     [
