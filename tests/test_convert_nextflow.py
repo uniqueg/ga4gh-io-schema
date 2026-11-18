@@ -876,6 +876,69 @@ def test_unmarkable_path_formats_fail_without_opt_out(
     assert info.value.location == "$.properties.inputs.properties.p"
 
 
+@pytest.mark.parametrize(
+    "schema",
+    [
+        {"type": "string", "not": {"format": "file-path"}},
+        {"type": "string", "if": {"format": "file-path"}, "then": {"minLength": 1}},
+        {"type": "string", "not": {"format": "file-path-pattern"}},
+    ],
+)
+def test_path_formats_in_conditions_convert_without_opt_out(
+    schema: dict[str, Any],
+) -> None:
+    """Test that ``not`` and ``if`` don't declare files, so they don't fail.
+
+    Args:
+        schema: The schema of the parameter.
+    """
+    conversion = to_ga4gh(nf_schema({"p": schema}))
+
+    assert "x-ga4gh-file" not in parameter(conversion, "p")
+    assert messages(conversion)
+
+
+def test_parameter_named_not_is_checked() -> None:
+    """Test that a parameter called ``not`` is a parameter, not a condition."""
+    source = nf_schema({"not": {"type": ["string", "null"], "format": "file-path"}})
+
+    with pytest.raises(ConversionError, match="Can't mark 'format: file-path'"):
+        to_ga4gh(source)
+
+
+def test_path_format_without_own_type_names_the_fix() -> None:
+    """Test the error for a path format in a subschema without a type."""
+    source = nf_schema({"p": {"type": "string", "allOf": [{"format": "file-path"}]}})
+
+    with pytest.raises(ConversionError) as info:
+        to_ga4gh(source)
+
+    assert "it has no 'type' of its own" in info.value.message
+    assert info.value.location == "$.properties.inputs.properties.p.allOf[0]"
+
+
+def test_sample_sheet_columns_that_cant_be_marked_are_notes() -> None:
+    """Test that columns of a sample sheet stay notes: no server validates them."""
+    sheet = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "f": {"type": ["string", "null"], "format": "file-path"},
+                "g": {"type": "string", "format": "file-path-pattern"},
+            },
+        },
+    }
+    source = nf_schema(
+        {"input": {"type": "string", "format": "file-path", "schema": SHEET}}
+    )
+
+    conversion = to_ga4gh(source, {SHEET: sheet})
+
+    assert notes_with(conversion, "Not marked as a file reference")
+    assert notes_with(conversion, "a glob isn't a reference")
+
+
 def test_path_format_marked_by_the_source_converts_without_opt_out() -> None:
     """Test that a schema that the source marks itself isn't an error."""
     schema = {"type": "string", "x-ga4gh-file": {"kind": "file"}}

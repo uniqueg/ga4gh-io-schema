@@ -27,7 +27,8 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   accepted any string there. These now fail: the keys of a WDL `Map[File,
   V]` or `Map[Directory, V]`, CWL inputs and outputs of type `Any`, and
   Nextflow parameters with a path `format` that can't be a file reference
-  (e.g., `"type": ["string", "null"]`) or with `format: file-path-pattern`.
+  (e.g., `"type": ["string", "null"]`) or with `format: file-path-pattern`
+  (outside the columns of sample sheets and the conditions `not` and `if`).
   To migrate, change the type in the source, or pass
   `--allow-unmarked-files` to `convert cwl`, `convert wdl` or `convert
   nextflow` (`allow_unmarked_files=True` in the Python API) to keep the

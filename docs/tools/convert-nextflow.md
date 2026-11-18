@@ -140,7 +140,14 @@ as it would leave a file unmarked (see
 `--allow-unmarked-files`, it keeps its `format`, with a note, and loses
 `mimetype` and `schema`, with a note each. So does a schema that has an
 `x-ga4gh-file` already (it keeps it, and isn't an error); `--directory`
-can't name such parameters.
+can't name such parameters. A path `format` in a subschema without a type
+of its own (e.g., in `allOf`) fails too: move it next to `"type":
+"string"`. Path formats and globs stay notes, without the option, where
+they declare no input: in the columns of sample sheets (the experimental
+tabular hint, which no server validates; the execution side checks the
+rows, see [File references in tabular
+files](../specification/files.md#file-references-in-tabular-files)), and
+in the conditions `not` and `if`.
 
 `format: path` means a file or a directory. nf-core uses it for indexes that
 are a directory or an archive (e.g., `star_index`). The converter marks it as

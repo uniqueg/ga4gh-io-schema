@@ -178,6 +178,13 @@ def to_ga4gh(
     return converter.convert(schema, outputs)
 
 
+#: Keywords whose values map names to schemas: a pointer segment after them
+#: is a name (e.g., a parameter called ``not``), not a keyword.
+_NAMED_SCHEMAS = frozenset(
+    {"properties", "patternProperties", "dependentSchemas", "$defs", "definitions"}
+)
+
+
 class _Converter(SchemaConverter):
     """State of one conversion: the options, the notes, the current source."""
 
@@ -581,6 +588,28 @@ class _Converter(SchemaConverter):
         else:
             result[target] = value
 
+    def _must_mark(self, pointer: Pointer) -> bool:
+        """Tell whether a path ``format`` that can't be marked is an error.
+
+        It is, unless ``allow_unmarked_files`` is set, the schema is a column
+        of a sample sheet (the tabular hint, which no server validates; the
+        execution side checks the rows), or it is the condition of ``not`` or
+        ``if``, which declares no input.
+
+        Args:
+            pointer: Location of the schema in the IO schema.
+
+        Returns:
+            Whether to fail instead of keeping the schema with a note.
+        """
+        if self.allow_unmarked_files or self.in_sheet:
+            return False
+        return not any(
+            segment in ("not", "if")
+            and (index == 0 or pointer[index - 1] not in _NAMED_SCHEMAS)
+            for index, segment in enumerate(pointer)
+        )
+
     def _file(
         self, result: dict[str, Any], pointer: Pointer, parameter: str | None
     ) -> dict[str, Any]:
@@ -599,14 +628,15 @@ class _Converter(SchemaConverter):
 
         Raises:
             ConversionError: If ``--directory`` names a parameter that
-                hasn't ``format: path``.
+                hasn't ``format: path``, or if a file can't be marked (see
+                :meth:`_must_mark`).
         """
         extras: dict[str, Any] = {
             key: result.pop(key) for key in ("mimetype", "schema") if key in result
         }
         form = result.get("format")
         if form == "file-path-pattern":
-            if not self.allow_unmarked_files:
+            if self._must_mark(pointer):
                 raise ConversionError(
                     "'format: file-path-pattern' is a glob, which Nextflow "
                     "resolves to files of the execution side; a file "
@@ -622,8 +652,8 @@ class _Converter(SchemaConverter):
         kind = FILE_FORMATS.get(form) if isinstance(form, str) else None
         problem = None if kind is None else file_reference_problem(result)
         # The source marks it itself: kept, with a note, but not unmarked
-        marked = kind is not None and "x-ga4gh-file" in result
-        if marked:
+        self_marked = kind is not None and "x-ga4gh-file" in result
+        if self_marked:
             problem = "it has 'x-ga4gh-file' already"
         if kind is None or problem is not None:
             if parameter in self.directories:
@@ -632,7 +662,13 @@ class _Converter(SchemaConverter):
                     f"isn't marked as a file reference with 'format: path'.",
                     json_path(pointer),
                 )
-            if problem is not None and not marked and not self.allow_unmarked_files:
+            if problem is not None and not self_marked and self._must_mark(pointer):
+                if "type" not in result:
+                    problem = (
+                        "it has no 'type' of its own (e.g., in 'allOf' or "
+                        "'then'), and a file reference is a flat schema with "
+                        '"type": "string"; move \'format\' next to the type'
+                    )
                 raise ConversionError(
                     f"Can't mark 'format: {form}' as a file reference: "
                     f"{problem}. {UNMARKED_FILES_HINT}",

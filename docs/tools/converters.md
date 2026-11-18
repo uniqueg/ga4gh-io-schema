@@ -40,7 +40,10 @@ file-path-pattern` (a glob). `--allow-unmarked-files`
 (`allow_unmarked_files=True` in the Python API) converts them to plain
 schemas, with a note; the execution side must then
 check their values itself. Guesses aren't declarations: the Snakemake
-converter's notes on properties that look like files stay notes.
+converter's notes on properties that look like files stay notes, and so do
+the columns of sample sheets and the conditions `not` and `if` of the
+Nextflow converter (see [File
+references](convert-nextflow.md#file-references)).
 
 ## From IO schemas to WES
 
