@@ -146,5 +146,5 @@ Each file's SPDX header, or its entry in `REUSE.toml`, is authoritative; `reuse 
 
 ## Contacts
 
-- **Maintainer:** ELIXIR On-Cloud / GA4GH Contributors
+- **Maintainer:** ELIXIR On-Cloud
 - **Repository:** [https://github.com/elixir-cloud-aai/ga4gh-io-schema](https://github.com/elixir-cloud-aai/ga4gh-io-schema)

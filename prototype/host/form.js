@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud / GA4GH Contributors
+// SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
 // SPDX-License-Identifier: Apache-2.0
 
 // The logic of the form proof of concept, without the DOM: which control

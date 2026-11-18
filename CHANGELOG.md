@@ -421,6 +421,13 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 
 ### Fixed
 
+- One copyright notice, as in the other elixir-cloud-aai repositories:
+  the file headers and `REUSE.toml` that named "ELIXIR On-Cloud / GA4GH
+  Contributors" name `2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>`
+  like all other files, the README names ELIXIR On-Cloud as the maintainer,
+  and the docs' footer says "Copyright © ELIXIR On-Cloud". A test fails for
+  a file of the repository with another notice; third-party files keep
+  theirs. (#99)
 - Installs outside CI use pinned versions of the dependencies and tools
   (as CI, they build the package with the newest hatchling that
   `build-system` allows): the image of the prototype installs the

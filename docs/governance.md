@@ -105,8 +105,10 @@ repository template requires REUSE, so that the licence of each file is
 clear; older GA4GH repositories, which declare one licence for the whole
 repository, haven't caught up yet. Third-party files keep their licences.
 
-The copyright notices name ELIXIR On-Cloud, as in the other repositories of
-elixir-cloud-aai; files that still use another form are aligned separately
+The copyright notices of the repository's own files name ELIXIR On-Cloud
+(`2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>`), as in the other
+repositories of elixir-cloud-aai; a test fails for a file with another
+notice
 ([#99](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/99)).
 
 ## Proposing changes
