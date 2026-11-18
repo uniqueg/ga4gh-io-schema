@@ -170,7 +170,7 @@ def to_ga4gh(
     Raises:
         ConversionError: If the schema can't be converted, ``directories``
             names a parameter that doesn't exist or hasn't ``format: path``,
-            or two outputs have the same name, or (unless
+            two outputs have the same name, or (unless
             ``allow_unmarked_files``) a parameter with a path ``format`` can't
             be marked as a file reference.
     """
@@ -621,9 +621,9 @@ class _Converter(SchemaConverter):
             )
         kind = FILE_FORMATS.get(form) if isinstance(form, str) else None
         problem = None if kind is None else file_reference_problem(result)
-        # A file that can't be marked, unless the source marks it itself
-        unmarked = problem is not None and "x-ga4gh-file" not in result
-        if kind is not None and "x-ga4gh-file" in result:
+        # The source marks it itself: kept, with a note, but not unmarked
+        marked = kind is not None and "x-ga4gh-file" in result
+        if marked:
             problem = "it has 'x-ga4gh-file' already"
         if kind is None or problem is not None:
             if parameter in self.directories:
@@ -632,7 +632,7 @@ class _Converter(SchemaConverter):
                     f"isn't marked as a file reference with 'format: path'.",
                     json_path(pointer),
                 )
-            if unmarked and not self.allow_unmarked_files:
+            if problem is not None and not marked and not self.allow_unmarked_files:
                 raise ConversionError(
                     f"Can't mark 'format: {form}' as a file reference: "
                     f"{problem}. {UNMARKED_FILES_HINT}",

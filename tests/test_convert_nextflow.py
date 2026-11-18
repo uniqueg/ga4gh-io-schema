@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 
 from ga4gh_io_schema.cli import main
+from ga4gh_io_schema.cli.app import render_reference
 from ga4gh_io_schema.converters.nextflow import (
     Conversion,
     ConversionError,
@@ -821,8 +822,8 @@ def test_schemas_that_cant_be_file_references_are_kept(
 ) -> None:
     """Test that a path format is kept where a file reference can't be.
 
-    Without ``allow_unmarked_files``, that is an error, unless the source
-    marks the schema itself.
+    With ``allow_unmarked_files``; without, an unmarked schema is an error
+    (see ``test_unmarkable_path_formats_fail_without_opt_out``).
 
     Args:
         schema: The schema, without its format.
@@ -838,14 +839,6 @@ def test_schemas_that_cant_be_file_references_are_kept(
             }
         }
     )
-    if "x-ga4gh-file" not in schema:
-        with pytest.raises(ConversionError) as info:
-            to_ga4gh(source)
-        assert info.value.message.startswith(
-            f"Can't mark 'format: file-path' as a file reference: {problem}. "
-        )
-        assert info.value.location == "$.properties.inputs.properties.p"
-
     conversion = to_ga4gh(source, allow_unmarked_files=True)
 
     assert parameter(conversion, "p") == {**schema, "format": "file-path"}
@@ -855,6 +848,42 @@ def test_schemas_that_cant_be_file_references_are_kept(
     )
     assert notes_with(conversion, "Dropped 'mimetype': only file references")
     assert notes_with(conversion, "Dropped 'schema': only file references")
+
+
+@pytest.mark.parametrize(
+    ("schema", "problem"),
+    [
+        ({"type": ["string", "null"]}, 'its type is ["string", "null"], not "string"'),
+        ({"type": "string", "anyOf": [{}]}, "it has 'anyOf'"),
+    ],
+)
+def test_unmarkable_path_formats_fail_without_opt_out(
+    schema: dict[str, Any], problem: str
+) -> None:
+    """Test that a path format that can't be a file reference is an error.
+
+    Args:
+        schema: The schema, without its format.
+        problem: Why it can't be a file reference.
+    """
+    with pytest.raises(ConversionError) as info:
+        to_ga4gh(nf_schema({"p": {**schema, "format": "file-path"}}))
+
+    assert info.value.message.startswith(
+        f"Can't mark 'format: file-path' as a file reference: {problem}. "
+    )
+    assert "--allow-unmarked-files (allow_unmarked_files=True)" in info.value.message
+    assert info.value.location == "$.properties.inputs.properties.p"
+
+
+def test_path_format_marked_by_the_source_converts_without_opt_out() -> None:
+    """Test that a schema that the source marks itself isn't an error."""
+    schema = {"type": "string", "x-ga4gh-file": {"kind": "file"}}
+
+    conversion = to_ga4gh(nf_schema({"p": {**schema, "format": "file-path"}}))
+
+    assert parameter(conversion, "p") == {**schema, "format": "file-path"}
+    assert notes_with(conversion, "it has 'x-ga4gh-file' already")
 
 
 def test_keywords_of_files_are_dropped_from_other_schemas() -> None:
@@ -1194,6 +1223,10 @@ def test_cli_allows_unmarked_files(
     assert status == 1
     assert out == ""
     assert "'format: file-path-pattern' is a glob" in err
+
+    reference = " ".join(render_reference().split())
+    assert "(format: file-path-pattern), which can hold files" in reference
+    assert ",," not in reference
 
     command = ["convert", "nextflow", "--allow-unmarked-files", str(path)]
     status, _, err = run(command, capsys)

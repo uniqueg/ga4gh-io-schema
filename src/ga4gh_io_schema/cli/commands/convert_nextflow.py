@@ -116,7 +116,7 @@ class NextflowCommand(Command):
         add_unmarked_files_option(
             parser,
             "parameters with a path format that can't be file references, "
-            "and globs (format: file-path-pattern),",
+            "and globs (format: file-path-pattern)",
         )
 
     def run(self, args: argparse.Namespace) -> CommandResult:
