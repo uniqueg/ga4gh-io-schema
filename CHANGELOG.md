@@ -365,6 +365,13 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   to end. (#104)
 - Prototype evaluation: each gap links to its issue (#82 to #85) and, for
   the fixed ones, to the pull request that closed it. (#74)
+- Prototype evaluation, "Demo run": the reference run of 0.3.0, the live
+  demo from a fresh checkout as the testbed describes (2026-11-18): each
+  step, what it confirms, what it doesn't show, that nothing follows for
+  the specification, and the questions for the work stream that the demo
+  can't answer. The testbed says what to do when a port is in use; the
+  limits of the evaluation, the end-to-end demo and the index page match
+  the run. (#105)
 - A page "Transfer to GA4GH" with proposals for the transfer of the
   repository: naming (`ga4gh/io-schema`), the licence checked against the
   GA4GH Copyright Policy and GA4GH repositories, consistent copyright

@@ -50,6 +50,24 @@ about the profile.
     Compose prints the logs of the two services, `trs-stub` and `host`; the
     host starts once the stub is healthy.
 
+    If a port is in use (e.g., port 8080 by a local TRS-Filer or a port
+    forward), Compose stops with `address already in use`. Free the port,
+    or publish the service on another port with an override file in a
+    temporary location, outside the checkout (Compose 2.24 or later, for
+    `!override`), e.g., for the stub:
+
+    ```bash
+    override=$(mktemp)
+    printf 'services:\n  trs-stub:\n    ports: !override\n      - "127.0.0.1:18080:8080"\n' > "$override"
+    env -u TRS_URL -u WES_URL docker compose -f prototype/compose.yaml -f "$override" up --build
+    ```
+
+    The host reaches the stub inside the stack, so the demo doesn't change;
+    only `curl` calls to the stub from your machine use the new port. For
+    the host, override `ports` of the service `host` the same way and open
+    the page on that port. Step 4 works as it is; remove the file
+    afterwards with `rm "$override"`.
+
 3. Open <http://127.0.0.1:8000/>, pick "I/O Schema demo 1.0.0 (WDL)" and
    follow the [walkthrough](prototype.md#walkthrough): a mapping quality of
    61 gives the schema's error message, 20 with `proper_pairs` gives the

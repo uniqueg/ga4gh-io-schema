@@ -295,3 +295,5 @@ its identifier.
 - **Not verified end to end:** the scripts are tested against a mock server
   only, and `expected/run-log.json` is written from Conquest's source code,
   not recorded from a run; the workflow itself has run with miniwdl locally.
+  The [demo run](prototype-evaluation.md#demo-run), the reference run of
+  0.3.0, was the [testbed](testbed.md), not this flow.
