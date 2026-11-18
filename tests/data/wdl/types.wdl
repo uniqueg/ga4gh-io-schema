@@ -46,7 +46,6 @@ workflow types {
     Array[File] extra = []
     Array[File] more = ["a.txt"]
     Map[String, Int] counts = {"a": 1}
-    Map[File, String] by_file = {}
     Pair[Int, File] pair
     Sample sample
     String derived = name + ".out"

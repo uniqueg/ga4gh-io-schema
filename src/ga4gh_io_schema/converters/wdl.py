@@ -26,6 +26,7 @@ from typing import Any
 import jsonschema
 
 from ga4gh_io_schema.converters.common import (
+    UNMARKED_FILES_HINT,
     Conversion,
     ConversionError,
     Note,
@@ -235,6 +236,7 @@ def to_ga4gh(
     task: str | None = None,
     nested_inputs: bool = False,
     checksum: str | None = None,
+    allow_unmarked_files: bool = False,
 ) -> Conversion:
     """Convert the inputs and outputs of a WDL workflow or task to an IO schema.
 
@@ -248,6 +250,10 @@ def to_ga4gh(
             set are always included.
         checksum: SHA-256 checksum of the document (see
             :func:`descriptor_checksum`), for ``x-ga4gh-workflow``.
+        allow_unmarked_files: Whether to convert files that an IO schema
+            can't mark as file references (the keys of ``Map[File, V]`` and
+            ``Map[Directory, V]``) to plain strings, with a note, instead of
+            failing.
 
     Returns:
         The IO schema, and the notes of the conversion.
@@ -255,9 +261,11 @@ def to_ga4gh(
     Raises:
         MissingDependencyError: If miniwdl isn't installed.
         ConversionError: If the document has no workflow or task to convert,
-            or a type that has no equivalent.
+            a type that has no equivalent, or (unless
+            ``allow_unmarked_files``) files that can't be marked.
     """
-    return _Converter(miniwdl(), document).convert(task, nested_inputs, checksum)
+    converter = _Converter(miniwdl(), document, allow_unmarked_files)
+    return converter.convert(task, nested_inputs, checksum)
 
 
 def convert(
@@ -267,6 +275,7 @@ def convert(
     nested_inputs: bool = False,
     import_paths: Sequence[str | Path] = (),
     checksum: str | None = None,
+    allow_unmarked_files: bool = False,
 ) -> Conversion:
     """Load a WDL document and convert it to an IO schema.
 
@@ -282,6 +291,7 @@ def convert(
         checksum: SHA-256 checksum of the bytes of the document; by default,
             that of ``text`` in UTF-8, which differs from the bytes if
             reading the file changed its line endings.
+        allow_unmarked_files: See :func:`to_ga4gh`.
 
     Returns:
         The IO schema, and the notes of the conversion.
@@ -294,7 +304,7 @@ def convert(
     document = load_document(source, text, import_paths)
     if checksum is None:
         checksum = descriptor_checksum(text)
-    return to_ga4gh(document, task, nested_inputs, checksum)
+    return to_ga4gh(document, task, nested_inputs, checksum, allow_unmarked_files)
 
 
 class _Converter:
@@ -307,17 +317,22 @@ class _Converter:
         null_values: Whether optional items of lists of the parameter being
             converted may be ``null`` (inputs), or not (outputs, whose
             normalisers drop them).
+        allow_unmarked_files: See :func:`to_ga4gh`.
     """
 
-    def __init__(self, wdl: ModuleType, document: Any) -> None:
+    def __init__(
+        self, wdl: ModuleType, document: Any, allow_unmarked_files: bool = False
+    ) -> None:
         """Initialise the conversion.
 
         Args:
             wdl: The ``WDL`` package of miniwdl.
             document: The document.
+            allow_unmarked_files: See :func:`to_ga4gh`.
         """
         self.wdl = wdl
         self.document = document
+        self.allow_unmarked_files = allow_unmarked_files
         self.notes: list[Note] = []
         self.null_values = True
 
@@ -647,12 +662,20 @@ class _Converter:
             The schema.
 
         Raises:
-            ConversionError: If the keys aren't of one of these types.
+            ConversionError: If the keys aren't of one of these types, or if
+                they are files or directories, which object keys can't mark
+                (unless ``allow_unmarked_files``).
         """
         types = self.wdl.Type
         key_type, value_type = wdl_type.item_type
         schema: dict[str, Any] = {"type": "object"}
         if isinstance(key_type, (types.File, types.Directory)):
+            if not self.allow_unmarked_files:
+                raise ConversionError(
+                    f"The keys of {wdl_type} refer to files, but object keys "
+                    f"can't be file references. {UNMARKED_FILES_HINT}",
+                    json_path(pointer),
+                )
             self.note(
                 f"The keys of {wdl_type} refer to files, but object keys can't "
                 "be file references; they are plain strings",

@@ -72,6 +72,30 @@ def add_output_options(parser: argparse.ArgumentParser, base: str) -> None:
         )
 
 
+def add_unmarked_files_option(parser: argparse.ArgumentParser, what: str) -> None:
+    """Add ``--allow-unmarked-files``, the opt-out of marking every file.
+
+    Without it, a converter fails on inputs and outputs that the source
+    declares as files (or that may hold files) where an IO schema can't mark
+    them as file references.
+
+    Args:
+        parser: Parser of the command.
+        what: Which inputs and outputs it applies to (e.g., "the keys of
+            Map[File, V]").
+    """
+    parser.add_argument(
+        "--allow-unmarked-files",
+        action="store_true",
+        help=(
+            f"Convert {what}, which can hold files that an IO schema can't "
+            "mark as file references, to plain schemas, with a note, instead "
+            "of failing. The execution side must then check their values "
+            "itself."
+        ),
+    )
+
+
 def conversion_result(
     conversion: Conversion,
     args: argparse.Namespace,

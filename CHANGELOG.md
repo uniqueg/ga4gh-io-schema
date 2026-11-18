@@ -20,6 +20,19 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 
 ### Breaking changes
 
+- The converters mark every input and output that the source declares as a
+  file or a directory (or that may hold one) as a file reference, or fail
+  with exit status 1 (a `ConversionError` in the Python API); before, they
+  left such files as plain schemas with a note, so servers and clients
+  accepted any string there. These now fail: the keys of a WDL `Map[File,
+  V]` or `Map[Directory, V]`, CWL inputs and outputs of type `Any`, and
+  Nextflow parameters with a path `format` that can't be a file reference
+  (e.g., `"type": ["string", "null"]`) or with `format: file-path-pattern`
+  (outside the columns of sample sheets and the conditions `not` and `if`).
+  To migrate, change the type in the source, or pass
+  `--allow-unmarked-files` to `convert cwl`, `convert wdl` or `convert
+  nextflow` (`allow_unmarked_files=True` in the Python API) to keep the
+  previous output, and check these values on the execution side. (#128)
 - The `$id`s of the meta-schema and its vocabularies, and with them the
   `$schema` of IO schemas, start with
   `https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/`
@@ -408,6 +421,20 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 
 ### Fixed
 
+- Installs outside CI use pinned versions of the dependencies and tools
+  (as CI, they build the package with the newest hatchling that
+  `build-system` allows): the image of the prototype installs the
+  versions of `uv.lock` (`uv sync --locked`, with uv from an
+  image pinned to a digest) on a base image pinned to a digest, instead of
+  `pip install .`; Read the Docs installs the `docs` extra from `uv.lock`
+  instead of resolving it with pip; markdownlint-cli runs as a pre-commit
+  hook pinned to a release (updated by Dependabot) instead of the newest
+  release through `npx`. The sdist holds only what builds the wheel, all
+  Apache-2.0, the licence that both distributions declare; before, it also
+  held the docs (CC-BY-4.0) and third-party test data (e.g., MIT). Both
+  distributions ship the Apache-2.0 text only, no longer `LICENSE`, which
+  describes the whole, multi-licensed repository. The licence files of the
+  BioWDL test data name their source. (#127)
 - The package needs jsonschema 4.25 or later (was 4.21.1): with earlier
   versions, errors had other messages and JSON Paths, and before 4.24,
   deeply nested values raised a `PanicException` of rpds instead of the

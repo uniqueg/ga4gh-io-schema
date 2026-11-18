@@ -22,6 +22,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 from ga4gh_io_schema.converters.common import (
+    UNMARKED_FILES_HINT,
     Conversion,
     ConversionError,
     Note,  # noqa: F401 - part of the API of this module (see common)
@@ -141,6 +142,7 @@ def to_ga4gh(
     *,
     directories: Iterable[str] = (),
     outputs: Sequence[Output] = (),
+    allow_unmarked_files: bool = False,
 ) -> Conversion:
     """Convert an nf-schema file to an IO schema.
 
@@ -155,6 +157,10 @@ def to_ga4gh(
             directory) that are directories; the others are files.
         outputs: File outputs of the pipeline, found by glob relative to its
             output directory (nf-schema doesn't describe outputs).
+        allow_unmarked_files: Whether to keep parameters with a path
+            ``format`` that can't be marked as file references (e.g., with
+            ``anyOf``), and globs (``format: file-path-pattern``), as plain
+            schemas, with a note, instead of failing.
 
     Returns:
         The IO schema, valid against the GA4GH IO Profile unless the source
@@ -164,25 +170,47 @@ def to_ga4gh(
     Raises:
         ConversionError: If the schema can't be converted, ``directories``
             names a parameter that doesn't exist or hasn't ``format: path``,
-            or two outputs have the same name.
+            two outputs have the same name, or (unless
+            ``allow_unmarked_files``) a parameter with a path ``format`` can't
+            be marked as a file reference.
     """
-    return _Converter(sample_sheets or {}, directories).convert(schema, outputs)
+    converter = _Converter(sample_sheets or {}, directories, allow_unmarked_files)
+    return converter.convert(schema, outputs)
+
+
+#: Keywords whose values map names to schemas: a pointer segment after them
+#: is a name (e.g., a parameter called ``not``), not a keyword.
+_NAMED_SCHEMAS = frozenset(
+    {"properties", "patternProperties", "dependentSchemas", "$defs"}
+)
+#: Keywords whose values are lists of schemas: a segment after them is an index.
+_LISTED_SCHEMAS = frozenset({"allOf", "anyOf", "oneOf", "prefixItems"})
+#: Keywords under which a path ``format`` declares no input: conditions, and
+#: the tabular hint, which no server validates.
+_NO_INPUT = frozenset({"not", "if", "x-ga4gh-tabular-schema"})
 
 
 class _Converter(SchemaConverter):
     """State of one conversion: the options, the notes, the current source."""
 
-    def __init__(self, sheets: Mapping[str, Any], directories: Iterable[str]) -> None:
+    def __init__(
+        self,
+        sheets: Mapping[str, Any],
+        directories: Iterable[str],
+        allow_unmarked_files: bool = False,
+    ) -> None:
         """Store the options.
 
         Args:
             sheets: The sample-sheet schemas, by path.
             directories: Parameters with ``format: path`` that are
                 directories.
+            allow_unmarked_files: See :func:`to_ga4gh`.
         """
         super().__init__()
         self.sheets = sheets
         self.directories = set(directories)
+        self.allow_unmarked_files = allow_unmarked_files
         # Parameters, and whether they have "format: path"
         self.parameters: dict[str, bool] = {}
         # Places of the sample-sheet schemas to convert, and their paths
@@ -565,6 +593,34 @@ class _Converter(SchemaConverter):
         else:
             result[target] = value
 
+    def _must_mark(self, pointer: Pointer) -> bool:
+        """Tell whether a path ``format`` that can't be marked is an error.
+
+        It is, unless ``allow_unmarked_files`` is set, the schema is a column
+        of a sample sheet (the tabular hint, from ``schema`` or inline, which
+        no server validates; the execution side checks the rows), or it is
+        in the condition of ``not`` or ``if``, which declares no input.
+
+        Args:
+            pointer: Location of the schema in the IO schema.
+
+        Returns:
+            Whether to fail instead of keeping the schema with a note.
+        """
+        if self.allow_unmarked_files or self.in_sheet:
+            return False
+        # Segments alternate: a keyword, then a name or an index for keywords
+        # that map or list schemas, then a keyword again
+        position = "keyword"
+        for segment in pointer:
+            if position != "keyword":
+                position = "keyword"
+            elif segment in _NO_INPUT:
+                return False
+            elif segment in _NAMED_SCHEMAS or segment in _LISTED_SCHEMAS:
+                position = "member"
+        return True
+
     def _file(
         self, result: dict[str, Any], pointer: Pointer, parameter: str | None
     ) -> dict[str, Any]:
@@ -583,13 +639,21 @@ class _Converter(SchemaConverter):
 
         Raises:
             ConversionError: If ``--directory`` names a parameter that
-                hasn't ``format: path``.
+                hasn't ``format: path``, or if a file can't be marked (see
+                :meth:`_must_mark`).
         """
         extras: dict[str, Any] = {
             key: result.pop(key) for key in ("mimetype", "schema") if key in result
         }
         form = result.get("format")
         if form == "file-path-pattern":
+            if self._must_mark(pointer):
+                raise ConversionError(
+                    "'format: file-path-pattern' is a glob, which Nextflow "
+                    "resolves to files of the execution side; a file "
+                    f"reference refers to one file. {UNMARKED_FILES_HINT}",
+                    json_path(pointer),
+                )
             del result["format"]
             self.note(
                 "Dropped 'format: file-path-pattern': a glob isn't a reference "
@@ -598,13 +662,27 @@ class _Converter(SchemaConverter):
             )
         kind = FILE_FORMATS.get(form) if isinstance(form, str) else None
         problem = None if kind is None else file_reference_problem(result)
-        if kind is not None and "x-ga4gh-file" in result:
+        # The source marks it itself: kept, with a note, but not unmarked
+        self_marked = kind is not None and "x-ga4gh-file" in result
+        if self_marked:
             problem = "it has 'x-ga4gh-file' already"
         if kind is None or problem is not None:
             if parameter in self.directories:
                 raise ConversionError(
                     f"'{parameter}' (--directory) can't be a directory: it "
                     f"isn't marked as a file reference with 'format: path'.",
+                    json_path(pointer),
+                )
+            if problem is not None and not self_marked and self._must_mark(pointer):
+                if "type" not in result:
+                    problem = (
+                        "it has no 'type' of its own (e.g., in 'allOf' or "
+                        "'then'), and a file reference is a flat schema with "
+                        '"type": "string"; move \'format\' next to the type'
+                    )
+                raise ConversionError(
+                    f"Can't mark 'format: {form}' as a file reference: "
+                    f"{problem}. {UNMARKED_FILES_HINT}",
                     json_path(pointer),
                 )
             if problem is not None:

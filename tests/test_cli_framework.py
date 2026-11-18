@@ -376,11 +376,14 @@ def test_reference_of_nested_group() -> None:
 def test_help_wraps_at_given_width() -> None:
     """Test that the reference wraps the help text at the given width."""
     reference = app.render_reference(width=60)
-    lines = [
-        line
-        for line in reference.splitlines()
-        if not line.startswith(("#", "```", "usage:"))
-    ]
+    lines = []
+    in_usage = False
+    for line in reference.splitlines():
+        # Usage lines (and their continuation lines, until a blank line)
+        # can't break inside an option, e.g. `[--allow-unmarked-files]`
+        in_usage = line.startswith("usage:") or (in_usage and line != "")
+        if not in_usage and not line.startswith(("#", "```")):
+            lines.append(line)
 
     assert max(len(line) for line in lines) <= 60
 

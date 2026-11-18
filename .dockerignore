@@ -6,8 +6,8 @@
 # files that it copies; everything else, secrets included, stays out.
 *
 !pyproject.toml
+!uv.lock
 !README.md
-!LICENSE
 !LICENSES/
 !schemas/
 !src/
