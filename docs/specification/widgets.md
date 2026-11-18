@@ -40,7 +40,7 @@ the items of `tags`; the widget then also lets users clear the value, which
 gives `null`, but only where `null` passes the schema (e.g., with `enum`,
 only if `null` is one of its values). Labels of
 the values of `enum` (e.g., with `oneOf` and `const`) are not part of
-version 0.3: clients show the values themselves.
+version 0.3.0: clients show the values themselves.
 
 ## Output viewers
 
@@ -54,7 +54,7 @@ files, on `items`; for files keyed by sample, on `additionalProperties`
 (see [Values](outputs.md#values)). The rules for showing outputs are in
 [Rendering schemas and outputs](../security.md#rendering-schemas-and-outputs);
 outputs without a viewer, or with one that the client doesn't know, are
-offered for download. Version 0.3 defers other viewers (see
+offered for download. Version 0.3.0 defers other viewers (see
 [Roadmap](../roadmap.md#deferred)).
 
 ## Rules

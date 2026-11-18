@@ -6,6 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 
 # GA4GH IO Schema Profile (Incubator)
 
+[![CI](https://github.com/elixir-cloud-aai/ga4gh-io-schema/actions/workflows/ci.yml/badge.svg)](https://github.com/elixir-cloud-aai/ga4gh-io-schema/actions/workflows/ci.yml)
+[![Documentation](https://readthedocs.org/projects/ga4gh-io-schema/badge/?version=latest)](https://ga4gh-io-schema.readthedocs.io/en/latest/)
+
 <!-- --8<-- [start:synopsis] -->
 > Incubating a proposed GA4GH JSON Schema Profile to standardize workflow and modular component I/O across WES and Registries, featuring a Python validation package.
 
@@ -13,6 +16,26 @@ The GA4GH APIs for federated analysis (TRS, WES, DRS) let clients find and run w
 
 This repository incubates a proposed **GA4GH JSON Schema Profile** (and accompanying meta-schema). By establishing an I/O contract that sits above workflow languages (e.g., CWL, WDL, Nextflow), this profile lets WES clients render input forms (through an adapter for the `x-ga4gh-*` keywords), check input values before they submit a run, and derive tool definitions for AI agents that build run requests.
 <!-- --8<-- [end:synopsis] -->
+
+## Status
+
+This is version **0.3.0** of a proposal, not a GA4GH standard. It has no
+releases (no tags, nothing on PyPI) and waits for review by the GA4GH
+Federated Analysis Work Stream as a product candidate (see the
+[Roadmap](https://ga4gh-io-schema.readthedocs.io/en/latest/roadmap/#next-steps)).
+
+Try it: the [prototype](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/prototype/)
+runs on a laptop, from a workflow in a TRS stub to a generated form and a
+WES run request, with one command in a clone of this repository:
+
+```bash
+docker compose -f prototype/compose.yaml up --build
+```
+
+The [prototype page](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/prototype/)
+describes the testbed, and the
+[evaluation](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/prototype-evaluation/)
+what it showed about the profile.
 
 ## Documentation
 
@@ -107,7 +130,7 @@ This repository is multi-licensed in compliance with the [REUSE specification](h
 - **Code, schemas, tests and this README (`/src`, `/schemas`, `/tests`, `README.md`):** Licensed under **Apache-2.0**.
 - **Documentation (`/docs`):** Licensed under **CC-BY-4.0**.
 
-Each file's SPDX header, or its entry in `REUSE.toml`, is authoritative; `reuse lint` checks them in CI. Please see the [`LICENSE`](LICENSE) file and `REUSE.toml` for complete details and mapping. Full license texts are located in the `/LICENSES` directory.
+Each file's SPDX header, or its entry in `REUSE.toml`, is authoritative; `reuse lint` checks them in CI. Please see the [`LICENSE`](LICENSE) file and `REUSE.toml` for complete details and mapping. Full license texts are located in the `/LICENSES` directory. [Licences](https://ga4gh-io-schema.readthedocs.io/en/latest/governance/#licences) in the documentation says why these licences are kept.
 
 ---
 

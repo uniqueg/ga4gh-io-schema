@@ -18,7 +18,7 @@ tool:
 `ga4gh-io-schema --help` lists the subcommands, and
 `ga4gh-io-schema <subcommand> --help` their options.
 
-!!! note "Renamed in v0.3"
+!!! note "Renamed in 0.3.0"
     `ga4gh-io-schema validate` replaces the `ga4gh-io-schema-validator`
     command of earlier versions, which is gone without an alias.
 
@@ -43,15 +43,19 @@ All subcommands share these conventions; the shared options (`--output`,
     Validation Error: 'inputs' is a required property (at $.properties)
     ```
 
-- **Warnings:** a converter that reports what it can't convert (e.g.,
-  `convert cwl`) still succeeds. Each warning goes to standard error as one line,
-  `Warning: <message> (at <location>)`, where the location is the JSON path
-  of the affected schema in the result; with `--json`, the result has
+- **Warnings and notes:** a converter that reports what it can't convert
+  still succeeds. `convert cwl` writes each warning to standard error as one
+  line, `Warning: <message> (at <location>)`, where the location is the JSON
+  path of the affected schema in the result; with `--json`, the result has
   `"warnings"` instead, a list of objects with `message` and `location`.
+  `convert nextflow`, `convert wdl` and `convert snakemake` report notes the
+  same way, as `Note: <message> (at <location>)` lines, or with `--json` as
+  `"notes"`.
 - **JSON:** with `--json`, the result and the errors are JSON objects on one
-  line. A command whose result is text (e.g., a converted file) writes
-  `{"output": "<text>"}`, plus `"warnings"` for a converter that reports
-  them (see above). An error has a `kind` (`validation`, `io`, `meta-schema` or
+  line. A command whose result is text writes `{"output": "<text>"}`, plus
+  `"warnings"` for `convert cwl`. `convert nextflow`, `convert wdl` and
+  `convert snakemake` write `{"schema": {…}, "notes": […]}`: the converted
+  IO schema as an object, not as text. An error has a `kind` (`validation`, `io`, `meta-schema` or
   `internal`), a `message`, the JSON path of the offending value as
   `location` (or `null`), and the `exitCode`:
 

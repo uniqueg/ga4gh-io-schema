@@ -288,7 +288,7 @@ descriptor type and builds the WES run request, as
 - `workflow_type`, `workflow_type_version` and `workflow_url` from
   `x-ga4gh-workflow` and TRS, and the files of relative paths in
   `workflow_attachment` (see [Run requests](../specification/engine-bindings.md#run-requests));
-- schemas whose descriptor type has no binding (`GALAXY` in version 0.3)
+- schemas whose descriptor type has no binding (`GALAXY` in version 0.3.0)
   are rejected.
 
 The [`wes-params`](../tools/wes-params.md) tool and its Python API do the

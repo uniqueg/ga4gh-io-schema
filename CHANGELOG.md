@@ -12,7 +12,9 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Version 0.3 of the profile; not released (no tag). Releases come with the
+## 0.3.0 (not released, no tag)
+
+Version 0.3.0 of the profile; not released (no tag). Releases come with the
 move of the repository to GA4GH; until then, pin a commit SHA (see
 [Development](https://ga4gh-io-schema.readthedocs.io/en/latest/development/#schema-identifiers)).
 
@@ -25,6 +27,24 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   because the repository moves to elixir-cloud-aai. A stable identifier
   follows later (#26). To migrate, change `$schema` in your IO schemas.
   (#77)
+- `ga4gh-io-schema validate` and `validate_schema()` always validate
+  against the profile that the package ships, and reject a schema whose
+  `$schema` is missing or names another meta-schema (e.g., plain JSON
+  Schema); before, they validated against whatever `$schema` named. With
+  `--meta-schema` (`meta_schema=`), the schema's `$schema` must name the
+  `$id` of that meta-schema, if it has one; before, `$schema` was ignored.
+  To migrate, set `$schema` to the `$id` of the profile, or pass the
+  meta-schema that your schemas name. (#109)
+- The meta-schema no longer requires `$schema` (it still checks its
+  value): clients and meta-schemas that apply only the profile's
+  meta-schema, without the Python validator, must now check that `$schema`
+  is there themselves (see "Fixed", #61). (#109)
+  (#77) Schemas written for an earlier draft of 0.3, whose `$id`s started
+  with `https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/`
+  (e.g., for the copy of the profile that TRS-Filer `dev` vendors), need the
+  same change; tools that vendor that draft (TRS-Filer's check of IO
+  schemas) reject schemas with the new `$id` until they vendor this
+  version. (#111)
 
 - Widgets of `x-ga4gh-ui-widget` must fit their schema: the meta-schema
   rejects, for example, a `slider` without a numeric type and both bounds, a
@@ -57,7 +77,7 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   URL of a branch at GitHub or GitLab. (#12)
 - The profile is cut back to its core use (forms, run requests, outputs),
   and the meta-schema rejects what was removed. The
-  [roadmap](https://ga4gh-io-schema.readthedocs.io/en/latest/roadmap/#scope-of-version-03) gives the reasons and lists
+  [roadmap](https://ga4gh-io-schema.readthedocs.io/en/latest/roadmap/#scope-of-version-030) gives the reasons and lists
   what is deferred. (#17)
   - `x-ga4gh-fa-icon` is removed (cut); schemas that use it no longer
     validate.
@@ -83,11 +103,20 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   outputs are its direct `properties`. Schemas that keep their outputs
   behind a `$ref` inline the referenced schema. `x-ga4gh-output-glob`
   needs a list's `items` written in place, not as a `$ref`. `outputs`
-  stays optional, as since version 0.1; without it, a schema now
+  stays optional, as since version 0.1.0; without it, a schema now
   explicitly describes no outputs. (#11)
 
 ### Added
 
+- The status of the proposal on the first screen: a "Status" section in the
+  README (version 0.3.0, not a GA4GH standard, no releases; the prototype
+  in one command, the testbed and the evaluation) with CI and docs badges,
+  a status note on the index page with the conclusions of the evaluation,
+  and "Next steps" in the roadmap that list what 0.3.0 has (specification
+  and conformance suite, Python reference implementation, converters,
+  prototype and evaluation, live demo), the review by the Federated
+  Analysis Work Stream as the next step, and the open items (validation in
+  a WES, other form libraries, further implementations). (#103)
 - A check of the workflow block for clients:
   `ga4gh_io_schema.workflow.check_workflow()` and
   `ga4gh-io-schema verify` compare `trs_tool_id`, `trs_version_id` and
@@ -227,7 +256,7 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   Flavored Markdown extensions, only tables, strikethrough and autolinks are
   allowed. (#41)
 - Versioning policy and governance note, and this changelog in the
-  documentation, with the history of versions 0.1 and 0.2. (#14)
+  documentation, with the history of versions 0.1.0 and 0.2.0. (#14)
 - A JavaScript runner of the conformance suite and the examples
   (`tests/js/`, run in CI) with Ajv and @hyperjump/json-schema, and a page
   "JavaScript validators" on how to set them up. The meta-schema applies
@@ -342,11 +371,40 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   notices, a governance note (work stream, leads, approval path, status of
   the two-implementations requirement) and an identifier plan with
   `$id`s under `https://w3id.org/ga4gh/schema/io-schema/`. (#26)
+- The page is now "Path to GA4GH", on hold without a date until the
+  Federated Analysis Work Stream's feedback on 0.3.0, and follows the
+  maintainer's decisions: the licences (docs CC-BY-4.0, code and schemas
+  Apache-2.0) are kept and move to a section "Licences" of "Versioning and
+  governance", linked from the README and the index page; the proposals to
+  relicense the docs, for a neutral copyright holder, for a co-lead and for
+  `$id` aliases are dropped. (#101)
 
 ### Fixed
 
+- The package needs jsonschema 4.25 or later (was 4.21.1): with earlier
+  versions, errors had other messages and JSON Paths, and before 4.24,
+  deeply nested values raised a `PanicException` of rpds instead of the
+  "too deeply nested" validation error. A new CI job, "Test (lowest
+  dependencies)", runs the tests with the lowest versions that
+  `pyproject.toml` allows, on the lowest supported Python version. (#110)
+- `trs_descriptor_url()` percent-encodes the descriptor type, as its
+  docstring says, so that it can't add path segments or a query to the
+  `workflow_url`. The form host of the prototype reads at most 16 MiB of
+  each answer of the TRS and the WES, and refuses `--trs-url` and
+  `--wes-url` with user information (e.g., a password), which its error
+  messages would show in the browser. (#108)
+- Small gaps of the docs and the package: the package ships a `py.typed`
+  marker (PEP 561), so that type checkers use its annotations; the
+  docstring of `validate_schema()` says that `regex` is checked as
+  ECMA-262; the command-line page describes the `--json` result of each
+  `convert` subcommand (`output` and `warnings` for CWL, `schema` and
+  `notes` for the others); the prototype page says that `TRS_URL` and
+  `WES_URL` must be reachable from inside the containers; the security
+  page says that inputs the converters can't mark as file references
+  (WDL `Map[File, V]` keys, CWL `Any`) need checks on the execution side.
+  (#112)
 - The transfer page names the `main` URL of the schemas, as the `$id`s of
-  0.3 do, instead of a `v0.3.0` tag that doesn't exist; the check of
+  0.3.0 do, instead of a `v0.3.0` tag that doesn't exist; the check of
   schema URLs leaves out `$`-placeholders of rewrite rules. (#96)
 - Validation against the meta-schema takes time roughly linear in the size
   of the schema, no longer exponential in its depth of nesting: deeply
@@ -414,7 +472,7 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   the "Edit" links of the docs open the `dev` branch. A test keeps the old
   name out of the repository, except where the move is explained. (#102)
 
-## v0.2 (2026-10-13)
+## 0.2.0 (2026-10-13)
 
 Draft of the proposal; not released (no tag).
 
@@ -424,25 +482,25 @@ Draft of the proposal; not released (no tag).
   components, no longer of tool executables in general: bare tasks of the
   GA4GH Task Execution Service (TES) are out of scope, and standalone tools
   are covered only when wrapped as workflow units (e.g., a CWL
-  `CommandLineTool` or an nf-core module). Version 0.1 targeted both WES
+  `CommandLineTool` or an nf-core module). Version 0.1.0 targeted both WES
   and TES.
-- **Scope reversal, outputs:** the text of version 0.1 required every
+- **Scope reversal, outputs:** the text of version 0.1.0 required every
   schema to define both `inputs` and `outputs` (the "bi-directional
   mandate"); its meta-schema didn't enforce that (it required a top-level
   `inputs` property, not the `properties` wrapper of the examples).
-  Version 0.2 drops the mandate: `outputs` is optional.
-- **Scope reversal, WES:** version 0.1 listed changes to the WES API as out
+  Version 0.2.0 drops the mandate: `outputs` is optional.
+- **Scope reversal, WES:** version 0.1.0 listed changes to the WES API as out
   of scope, and said that WES servers *should* validate requests and
-  *should* answer failures with `HTTP 400`. Version 0.2 says that WES APIs
+  *should* answer failures with `HTTP 400`. Version 0.2.0 says that WES APIs
   *must* return `HTTP 400` when validation on the server fails, that the
   error *should* name the path of the error, and that the schema's
   `x-ga4gh-error-message` *should* be preferred to the message of the
-  validator. Version 0.3 keeps validation optional for WES
+  validator. Version 0.3.0 keeps validation optional for WES
   servers, needs no change of the WES API, and states the requirements for
   servers that validate in the conformance class
   [WES server](https://ga4gh-io-schema.readthedocs.io/en/latest/specification/conformance/#wes-server).
 - The meta-schema names the ontology term `x-ga4gh-ontology`, as the text
-  of version 0.1 did; the meta-schema of version 0.1 called it
+  of version 0.1.0 did; the meta-schema of version 0.1.0 called it
   `x-ga4gh-format`.
 
 ### Added
@@ -456,12 +514,12 @@ Draft of the proposal; not released (no tag).
 - The output contract: clients match the keys of `outputs` with the
   outputs of the WES run log.
 - Integration with the Workflow Run RO-Crate profiles.
-- The claim of version 0.1 that the profile suits machine learning
-  workloads is widened: the profile is called domain-agnostic. (Version 0.3
+- The claim of version 0.1.0 that the profile suits machine learning
+  workloads is widened: the profile is called domain-agnostic. (Version 0.3.0
   cuts both claims, see
   [Open questions](https://ga4gh-io-schema.readthedocs.io/en/latest/roadmap/#open-questions).)
 
-## v0.1 (2026-10-10)
+## 0.1.0 (2026-10-10)
 
 Initial draft of the proposal; not released (no tag).
 

@@ -148,7 +148,7 @@ sheet, described by `x-ga4gh-tabular-schema`) are not part of the run
 request: the server sees only the reference to the sheet, and the engine reads
 the rows after it has staged the sheet. In tabular files:
 
-- values MUST be absolute URIs; relative paths are not defined by version 0.3
+- values MUST be absolute URIs; relative paths are not defined by version 0.3.0
   of the profile, and absolute paths are accepted only where the deployment
   allows the directories of a shared file system;
 - the execution side MUST check them with the rules of [URIs and file
@@ -188,7 +188,7 @@ part of it (values don't carry signed URLs anyway, see [Access to
 data](../security.md#access-to-data)). DRS identifiers don't contain the
 file name; how the execution side finds the secondary files of a DRS object
 (e.g., in the same DRS bundle, or by the object's `name`) is not defined by
-version 0.3 of the profile.
+version 0.3.0 of the profile.
 
 ## Mapping to workflow languages
 

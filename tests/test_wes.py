@@ -666,6 +666,14 @@ def test_trs_descriptor_url() -> None:
     )
 
 
+def test_trs_descriptor_url_encodes_the_descriptor_type() -> None:
+    """Test that a descriptor type can't add segments or a query to the URL."""
+    assert trs_descriptor_url("https://trs.example.org", "t", "1", "WDL/../x?a#b") == (
+        "https://trs.example.org/tools/t/versions/1/PLAIN_WDL%2F..%2Fx%3Fa%23b/"
+        "descriptor"
+    )
+
+
 def run_request(path: Path) -> dict[str, Any]:
     """Translate the ``workflow_params`` of a request vector with its options.
 
