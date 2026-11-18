@@ -367,6 +367,16 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   each answer of the TRS and the WES, and refuses `--trs-url` and
   `--wes-url` with user information (e.g., a password), which its error
   messages would show in the browser. (#108)
+- Small gaps of the docs and the package: the package ships a `py.typed`
+  marker (PEP 561), so that type checkers use its annotations; the
+  docstring of `validate_schema()` says that `regex` is checked as
+  ECMA-262; the command-line page describes the `--json` result of each
+  `convert` subcommand (`output` and `warnings` for CWL, `schema` and
+  `notes` for the others); the prototype page says that `TRS_URL` and
+  `WES_URL` must be reachable from inside the containers; the security
+  page says that inputs the converters can't mark as file references
+  (WDL `Map[File, V]` keys, CWL `Any`) need checks on the execution side.
+  (#112)
 - The transfer page names the `main` URL of the schemas, as the `$id`s of
   0.3 do, instead of a `v0.3.0` tag that doesn't exist; the check of
   schema URLs leaves out `$`-placeholders of rewrite rules. (#96)
