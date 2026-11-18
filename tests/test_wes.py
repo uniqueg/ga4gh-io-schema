@@ -503,7 +503,8 @@ def test_two_members_for_one_input_are_rejected(workflow: dict[str, Any]) -> Non
         workflow,
     )
     schema["properties"]["inputs"]["additionalProperties"] = False
-    smuggled = {"a": {"$include": "file:///etc/passwd"}, "x": "fine"}
+    # The first member, not a string, would reach the engine unvalidated
+    smuggled = {"a": {"nested": ["unchecked"]}, "x": "fine"}
 
     with pytest.raises(WorkflowParamsError, match="Several members") as error:
         from_workflow_params(schema, smuggled)
@@ -524,7 +525,7 @@ def test_cwl_loader_directives_in_file_objects() -> None:
         }
     }
 
-    with pytest.raises(WorkflowParamsError) as error:
+    with pytest.raises(WorkflowParamsError, match=r"start with '\$'") as error:
         from_workflow_params(schema, params)
     assert error.value.pointer == "/reads/$import"
 

@@ -1634,6 +1634,10 @@ class _ReverseTranslator:
             ]
         if not isinstance(value, dict):
             return value
+        directive = _directive(value)
+        if directive is not None:
+            # Also in File objects, which become strings below
+            raise self._error(_CWL_DIRECTIVE, (*path, directive), file_field=False)
         kind = value.get("class")
         if kind not in _CWL_CLASSES:
             return {key: self._files(item, (*path, key)) for key, item in value.items()}
