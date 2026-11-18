@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import tarfile
 import venv
 import zipfile
 from pathlib import Path
@@ -120,6 +121,60 @@ def test_wheel_ships_its_licence(wheel: Path) -> None:
     assert "License-Expression: Apache-2.0" in metadata.splitlines()
     for licence in ("LICENSE", "LICENSES/Apache-2.0.txt"):
         assert any(n.endswith(f".dist-info/licenses/{licence}") for n in names)
+
+
+@pytest.fixture(scope="module")
+def sdist(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Build the source distribution of the package.
+
+    Args:
+        tmp_path_factory: Pytest fixture for module-scoped temporary directories.
+
+    Returns:
+        Path to the built sdist.
+    """
+    dist_dir = tmp_path_factory.mktemp("sdist")
+    _run([sys.executable, "-m", "build", "--sdist", "--outdir", dist_dir, REPO_ROOT])
+    sdists = list(dist_dir.glob("*.tar.gz"))
+    assert len(sdists) == 1
+    return sdists[0]
+
+
+def test_sdist_holds_only_what_its_licence_covers(sdist: Path) -> None:
+    """Test that the sdist holds only the files that build the wheel.
+
+    Both distributions declare ``License-Expression: Apache-2.0``, so the
+    sdist must not ship the documentation (CC-BY-4.0) or the third-party
+    test data (e.g., MIT) of the repository.
+
+    Args:
+        sdist: Path to the built sdist.
+    """
+    with tarfile.open(sdist) as archive:
+        members = [member for member in archive.getmembers() if member.isfile()]
+        root = members[0].name.split("/", 1)[0]
+        names = {member.name.split("/", 1)[1] for member in members}
+        metadata = archive.extractfile(f"{root}/PKG-INFO")
+        assert metadata is not None
+        pkg_info = metadata.read().decode("utf-8")
+
+    allowed_files = {
+        ".gitignore",
+        "LICENSE",
+        "LICENSES/Apache-2.0.txt",
+        "PKG-INFO",
+        "README.md",
+        "pyproject.toml",
+    }
+    unexpected = {
+        name
+        for name in names - allowed_files
+        if not name.startswith(("src/ga4gh_io_schema/", "schemas/"))
+    }
+    assert unexpected == set()
+    assert "src/ga4gh_io_schema/py.typed" in names
+    assert "schemas/ga4gh-io-profile.schema.json" in names
+    assert "License-Expression: Apache-2.0" in pkg_info.splitlines()
 
 
 @pytest.mark.parametrize("example", EXAMPLES, ids=lambda path: path.name)

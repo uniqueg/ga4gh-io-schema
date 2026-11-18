@@ -103,6 +103,15 @@ docs = [
     "pymdown-extensions>=12.3,<13",
 ]
 
+# Only what builds the wheel (and `pyproject.toml`, `README.md`,
+# `.gitignore` and the licence texts, which hatchling adds): all Apache-2.0,
+# the licence that `license` declares for both distributions. The docs
+# (CC-BY-4.0), the tests and their third-party data (e.g., MIT) stay in the
+# repository; the `Build` job of CI and `tests/test_wheel.py` check the
+# contents.
+[tool.hatch.build.targets.sdist]
+only-include = ["src/ga4gh_io_schema", "schemas"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/ga4gh_io_schema"]
 

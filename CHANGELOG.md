@@ -388,6 +388,16 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 
 ### Fixed
 
+- Installs outside CI use pinned versions only: the image of the prototype
+  installs the versions of `uv.lock` (`uv sync --locked`, with uv from an
+  image pinned to a digest) on a base image pinned to a digest, instead of
+  `pip install .`; Read the Docs installs the `docs` extra from `uv.lock`
+  instead of resolving it with pip; markdownlint-cli runs as a pre-commit
+  hook pinned to a release (updated by Dependabot) instead of the newest
+  release through `npx`. The sdist holds only what builds the wheel, all
+  Apache-2.0, the licence that both distributions declare; before, it also
+  held the docs (CC-BY-4.0) and third-party test data (e.g., MIT). The
+  licence files of the BioWDL test data name their source. (#127)
 - The package needs jsonschema 4.25 or later (was 4.21.1): with earlier
   versions, errors had other messages and JSON Paths, and before 4.24,
   deeply nested values raised a `PanicException` of rpds instead of the
