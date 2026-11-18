@@ -39,7 +39,7 @@ files of the run, relative to its output directory (see
 
 ## Guide for WES implementers
 
-Version 0.3 of the profile needs no change of WES: clients send ordinary
+Version 0.3.0 of the profile needs no change of WES: clients send ordinary
 WES 1.1 run requests, and servers that validate them use only what WES and
 TRS already provide.
 

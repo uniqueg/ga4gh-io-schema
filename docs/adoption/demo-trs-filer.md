@@ -119,3 +119,13 @@ request is the same.
 - **The check of TRS-Filer is off:** TRS-Filer can validate IO schemas when
   they are registered (`custom.io_schema.validation`), against the version
   of the profile that it vendors; the demo doesn't enable it.
+- **TRS-Filer needs this state of the profile for its check:** the
+  TRS-Filer `dev` branch vendors an earlier draft of version 0.3, whose
+  `$id` (in the repository's former home, with a `v0.3.0` path segment) is
+  not the `$id` of this profile, and which still requires `properties`.
+  With its check on, that TRS-Filer rejects every schema of this
+  repository, also `examples/demo/ga4gh-io.schema.json` (`$schema`
+  doesn't match), and schemas written for its copy fail
+  `ga4gh-io-schema validate`. Turn the check on only with a TRS-Filer that
+  vendors the schemas of this repository, with the `$id`
+  `https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json`.

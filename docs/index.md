@@ -52,7 +52,7 @@ API.
 - [Roadmap](roadmap.md): next steps, open questions and the history of this
   proposal.
 - [Changelog](changelog.md): the changes of each version, including the
-  changes of scope since version 0.1.
+  changes of scope since version 0.1.0.
 - [Versioning and governance](governance.md): what a version number says,
   how releases are made and how changes are proposed.
 - [Development](development.md): tests and checks for contributors.
@@ -63,4 +63,5 @@ The documentation is licensed under
 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/), the code and
 schemas under [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) (see
 `REUSE.toml` in the
-[repository](https://github.com/elixir-cloud-aai/ga4gh-io-schema)).
+[repository](https://github.com/elixir-cloud-aai/ga4gh-io-schema), and
+[Licences](governance.md#licences)).

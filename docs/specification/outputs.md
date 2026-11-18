@@ -283,6 +283,6 @@ the files that a server lists before they match globs against them (see
 
 ## Chaining workflows (deferred)
 
-Because one workflow's output can be another workflow's input, the `x-ga4gh-ontology` terms on both sides of the contract hint which outputs may fit which inputs. Chaining workflows by these terms is deferred in version 0.3 (see [Roadmap](../roadmap.md#deferred)): a single exact term is not enough to decide that a file fits, as it doesn't cover more specific terms (subclasses), and it says nothing about, e.g., the genome build, the compression or the VCF version. The profile defines no matching rules; clients that suggest candidates do so on their own terms.
+Because one workflow's output can be another workflow's input, the `x-ga4gh-ontology` terms on both sides of the contract hint which outputs may fit which inputs. Chaining workflows by these terms is deferred in version 0.3.0 (see [Roadmap](../roadmap.md#deferred)): a single exact term is not enough to decide that a file fits, as it doesn't cover more specific terms (subclasses), and it says nothing about, e.g., the genome build, the compression or the VCF version. The profile defines no matching rules; clients that suggest candidates do so on their own terms.
 
 See also [the `x-ga4gh-*` vocabulary](keywords.md#the-x-ga4gh-vocabulary).

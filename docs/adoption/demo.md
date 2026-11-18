@@ -8,7 +8,7 @@ form from the schema, and the values that a user enters become a WES run on
 normalised by the schema. The user never chooses a workflow type, a WES
 endpoint or engine parameters.
 
-**Experimental:** the demo follows version 0.3 of the profile, which may
+**Experimental:** the demo follows version 0.3.0 of the profile, which may
 still change, and depends on servers outside this repository (see [Known
 limits](#known-limits)). To try the same workflow on a laptop, without
 outside servers, from TRS to the WES run request, run the

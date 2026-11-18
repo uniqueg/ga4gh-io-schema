@@ -2,7 +2,7 @@
 
 What the [prototype](prototype.md) showed about the profile: the flow from a
 workflow in a tool registry to a WES run request, with a TRS stub and a
-generic form host on one laptop (`prototype/`, version 0.3). The prototype
+generic form host on one laptop (`prototype/`, version 0.3.0). The prototype
 is a proof of concept; its conclusions are evidence for the proposal, not
 results of a production deployment.
 
@@ -69,7 +69,7 @@ pull request that closed them.
    `.../PLAIN_{type}/descriptor/{primary path}` would resolve it to
    `.../descriptor/tasks/sub.wdl`. The demo is one file, so the prototype
    didn't hit this; it follows from URL resolution (RFC 3986). Decided in
-   0.3: the form with the path is recommended ([Workflow URLs in
+   0.3.0: the form with the path is recommended ([Workflow URLs in
    TRS](../specification/engine-bindings.md#workflow-urls-in-trs));
    [#83](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/83), fixed by [#89](https://github.com/elixir-cloud-aai/ga4gh-io-schema/pull/89).
 3. **Can the WES fetch the `workflow_url`? (docs).** The run request is
@@ -78,7 +78,7 @@ pull request that closed them.
    default; Conquest, in the [end-to-end demo](demo.md), takes no TRS URLs
    at all. A client can't find out from the WES API whether it resolves
    TRS URLs or which hosts it reaches. The [WES guide](wes.md) should say
-   so, and the question belongs to the WES work stream. Done in 0.3: [Can
+   so, and the question belongs to the WES work stream. Done in 0.3.0: [Can
    the WES fetch the workflow?](wes.md#can-the-wes-fetch-the-workflow) and
    an [open question](../roadmap.md#open-questions);
    [#84](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/84), fixed by [#87](https://github.com/elixir-cloud-aai/ga4gh-io-schema/pull/87).
@@ -88,7 +88,7 @@ pull request that closed them.
    schemas and builds requests, but has no function for this check; every
    client writes its own, and the checksum part is the one that gets left
    out. A helper that takes the schema, the TRS ids and the descriptor's
-   `FileWrapper` would close it. Done in 0.3: the [workflow block
+   `FileWrapper` would close it. Done in 0.3.0: the [workflow block
    check](../tools/verify.md), which the host uses;
    [#85](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/85), fixed by [#92](https://github.com/elixir-cloud-aai/ga4gh-io-schema/pull/92).
 

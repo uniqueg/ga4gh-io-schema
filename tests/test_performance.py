@@ -181,7 +181,7 @@ def test_groups_of_inputs_validate_in_time(size: int, budget: float) -> None:
     """Test that groups of inputs (records of scalars) validate in time.
 
     The shape of IO schemas that group the inputs of a large workflow,
-    e.g., 30 groups of 30 inputs each (about 0.3 s on a laptop, 35 s before
+    e.g., 30 groups of 30 inputs each (about 300 ms on a laptop, 35 s before
     the fix of issue #47).
 
     Args:

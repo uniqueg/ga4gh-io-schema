@@ -118,8 +118,8 @@ def validate_schema(
     and its ``$schema`` must name the ``$id`` of that meta-schema, if it has
     one. References to the shipped schemas and to schemas in ``schema_dir``
     are resolved locally. ``format`` keywords of the meta-schema (e.g.
-    ``uri``) are enforced, except ``regex``, because Python can't parse all
-    ECMA-262 patterns.
+    ``uri``) are enforced; ``regex`` is checked as an ECMA-262 regular
+    expression in Unicode mode (with regress), not as a Python one.
 
     The validator of a meta-schema is set up once and reused by later calls:
     validators are cached by the content of the meta-schema and by the state
