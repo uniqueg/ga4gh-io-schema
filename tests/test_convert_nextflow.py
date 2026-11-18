@@ -783,11 +783,23 @@ def test_directories_must_name_path_parameters(
     assert info.value.message.startswith(message)
 
 
-def test_file_path_pattern_stays_a_plain_string() -> None:
-    """Test that a glob (``format: file-path-pattern``) isn't a reference."""
+def test_file_path_pattern_fails_without_opt_out() -> None:
+    """Test that a glob (``format: file-path-pattern``) is an error by default."""
     source = nf_schema({"reads": {"type": "string", "format": "file-path-pattern"}})
 
-    conversion = to_ga4gh(source)
+    with pytest.raises(ConversionError) as info:
+        to_ga4gh(source)
+
+    assert info.value.message.startswith("'format: file-path-pattern' is a glob")
+    assert "--allow-unmarked-files (allow_unmarked_files=True)" in info.value.message
+    assert info.value.location == "$.properties.inputs.properties.reads"
+
+
+def test_file_path_pattern_stays_a_plain_string() -> None:
+    """Test that a glob isn't a reference, with ``allow_unmarked_files``."""
+    source = nf_schema({"reads": {"type": "string", "format": "file-path-pattern"}})
+
+    conversion = to_ga4gh(source, allow_unmarked_files=True)
 
     assert parameter(conversion, "reads") == {"type": "string"}
     assert "a glob isn't a reference" in messages(conversion)[0]
@@ -809,6 +821,9 @@ def test_schemas_that_cant_be_file_references_are_kept(
 ) -> None:
     """Test that a path format is kept where a file reference can't be.
 
+    Without ``allow_unmarked_files``, that is an error, unless the source
+    marks the schema itself.
+
     Args:
         schema: The schema, without its format.
         problem: Why it can't be a file reference.
@@ -823,8 +838,15 @@ def test_schemas_that_cant_be_file_references_are_kept(
             }
         }
     )
+    if "x-ga4gh-file" not in schema:
+        with pytest.raises(ConversionError) as info:
+            to_ga4gh(source)
+        assert info.value.message.startswith(
+            f"Can't mark 'format: file-path' as a file reference: {problem}. "
+        )
+        assert info.value.location == "$.properties.inputs.properties.p"
 
-    conversion = to_ga4gh(source)
+    conversion = to_ga4gh(source, allow_unmarked_files=True)
 
     assert parameter(conversion, "p") == {**schema, "format": "file-path"}
     assert (
@@ -1152,6 +1174,31 @@ def test_cli_reads_standard_input_relative_to_the_working_directory(
     hint = json.loads(out)["properties"]["inputs"]["properties"]["input"]
     assert hint["x-ga4gh-tabular-schema"] == {"type": "array"}
     assert "is the experimental tabular hint" in err
+
+
+def test_cli_allows_unmarked_files(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test ``--allow-unmarked-files`` of ``convert nextflow``.
+
+    Args:
+        tmp_path: Temporary directory.
+        capsys: Pytest fixture capturing the output.
+    """
+    path = write_pipeline(
+        tmp_path,
+        nf_schema({"reads": {"type": "string", "format": "file-path-pattern"}}),
+    )
+
+    status, out, err = run(["convert", "nextflow", str(path)], capsys)
+    assert status == 1
+    assert out == ""
+    assert "'format: file-path-pattern' is a glob" in err
+
+    command = ["convert", "nextflow", "--allow-unmarked-files", str(path)]
+    status, _, err = run(command, capsys)
+    assert status == 0
+    assert "a glob isn't a reference to one file" in err
 
 
 def test_cli_notes_a_missing_sample_sheet(

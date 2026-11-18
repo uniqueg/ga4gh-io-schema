@@ -18,7 +18,7 @@ from ga4gh_io_schema.cli.base import (
     read_error,
     read_text,
 )
-from ga4gh_io_schema.cli.convert import CONVERT
+from ga4gh_io_schema.cli.convert import CONVERT, add_unmarked_files_option
 from ga4gh_io_schema.cli.convert import CONVERT_HELP as CONVERT_HELP
 from ga4gh_io_schema.converters.common import notes_as_dicts
 from ga4gh_io_schema.validator import validate_schema
@@ -66,6 +66,7 @@ class ConvertCwlCommand(Command):
                 "are not read."
             ),
         )
+        add_unmarked_files_option(parser, "inputs and outputs of type Any")
 
     def run(self, args: argparse.Namespace) -> CommandResult:
         """Convert the document.
@@ -98,7 +99,11 @@ class ConvertCwlCommand(Command):
         root = args.root
         if root is None and args.document == STDIN:
             root = Path.cwd()
-        parser = cwl.CwlParser(process=args.process, root=root)
+        parser = cwl.CwlParser(
+            process=args.process,
+            root=root,
+            allow_unmarked_files=args.allow_unmarked_files,
+        )
         try:
             if args.document == STDIN:
                 # Relative references resolve against the working directory
