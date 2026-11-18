@@ -1,8 +1,8 @@
 # Converters
 
-> Converters are added one by one (see
-> [Roadmap](../roadmap.md#next-steps), "Schema Translation Tooling"). This
-> page lists each of them; the available ones link to their pages.
+> Version 0.3.0 has converters from CWL, Nextflow, Snakemake and WDL (see
+> [Roadmap](../roadmap.md#next-steps)). This page lists each of them; the
+> available ones link to their pages.
 
 ## From workflow languages to IO schemas
 

@@ -135,9 +135,10 @@ nav:
       - Demo with TRS-Filer: adoption/demo-trs-filer.md
       - Form proof of concept: adoption/form.md
       - Prototype: adoption/prototype.md
+      - Testbed: adoption/testbed.md
       - Prototype evaluation: adoption/prototype-evaluation.md
   - Roadmap: roadmap.md
   - Changelog: changelog.md
   - Versioning and governance: governance.md
-  - Transfer to GA4GH: transfer.md
+  - Path to GA4GH: transfer.md
   - Development: development.md

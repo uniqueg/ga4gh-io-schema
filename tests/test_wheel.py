@@ -96,6 +96,16 @@ def test_wheel_ships_schemas(wheel: Path) -> None:
         assert name in names
 
 
+def test_wheel_is_typed(wheel: Path) -> None:
+    """Test that the wheel marks the package as typed (PEP 561).
+
+    Args:
+        wheel: Path to the built wheel.
+    """
+    with zipfile.ZipFile(wheel) as archive:
+        assert "ga4gh_io_schema/py.typed" in archive.namelist()
+
+
 def test_wheel_ships_its_licence(wheel: Path) -> None:
     """Test that the wheel declares its licence and ships the licence texts.
 

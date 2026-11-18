@@ -2,17 +2,48 @@
 
 ## Next steps
 
-To drive adoption and prove out the utility of the IO Schema Profile, we propose the following immediate next steps:
+**Where 0.3.0 stands.** Version 0.3.0 of the proposal has:
 
-1. **Schema Translation Tooling:** Develop lightweight, open-source translation scripts to convert existing `nextflow_schema.json` and CWL `CommandLineTool` inputs into compliant GA4GH IO Profile schemas.
+- a **specification** with conformance classes, RFC 2119 requirements and a
+  [conformance suite](specification/conformance.md#conformance-suite);
+- a **Python reference implementation**, `ga4gh-io-schema`: the validator,
+  the request builder, the checks for WES servers and the output
+  normaliser (see [Implementations](specification/conformance.md#implementations));
+- **converters** from CWL, Nextflow (nf-schema), Snakemake and WDL into IO
+  schemas (see [Converters](tools/converters.md));
+- a **prototype** and its **evaluation**: a TRS stub, a generic form host
+  and the WES run request it builds, on one laptop (see
+  [Prototype](adoption/prototype.md) and
+  [Prototype evaluation](adoption/prototype-evaluation.md));
+- a **live demo**, which is the prototype: anybody can run it from a fresh
+  checkout of this repository.
 
-2. **End-to-End Proof of Concept (PoC):** Construct a sandbox environment featuring a mock TRS registry hosting IO schemas (as `ga4gh-io.schema.json` files, see [TRS](adoption/trs.md)), a generic frontend (e.g., via `react-jsonschema-form`) rendering input forms and compiling WES requests, and a proxy WES gateway enforcing server-side validation against the schema prior to execution.
+**Next step: review by the work stream.** 0.3.0 goes to the GA4GH
+[Federated Analysis Work Stream](https://www.ga4gh.org/work_stream/federated-analysis-work-stream-formerly-cloud-work-stream/)
+(formerly the Cloud Work Stream, which develops TRS, WES, DRS and TES), to
+be reviewed as a product candidate, together with the proposed changes of
+other APIs (among them the TRS file type `IO_SCHEMA`, see
+[TRS](adoption/trs.md#proposed-the-io_schema-file-type)). After 0.3.0, the
+proposal waits for that feedback (see [Path to GA4GH](transfer.md)).
 
-3. **Formal Specification Submission:** Following the PoC, submit the IDL schema structure, the `x-ga4gh-*` vocabulary, and the proposed API modifications (among them the TRS file type `IO_SCHEMA`, see [TRS](adoption/trs.md#proposed-the-io_schema-file-type)) to the GA4GH [Federated Analysis Work Stream](https://www.ga4gh.org/work_stream/federated-analysis-work-stream-formerly-cloud-work-stream/) (formerly the Cloud Work Stream, which develops TRS, WES, DRS and TES) for formal standardization review.
+**Open items,** not done in 0.3.0:
 
-## Scope of version 0.3
+- **Validation in a WES:** the checks for WES servers exist as a library
+  (`ga4gh-io-schema wes-validate`), but no WES server or gateway validates
+  run requests against IO schemas yet.
+- **Other form libraries:** the prototype renders forms with a form of its
+  own. Generic JSON Schema form libraries (e.g., `react-jsonschema-form`)
+  need an adapter for the `x-ga4gh-*` keywords (see
+  [Portals and clients](adoption/portals.md)); none is written yet.
+- **Further implementations:** GA4GH approval needs independent,
+  interoperating implementations (see
+  [Implementations](specification/conformance.md#implementations)).
+  Adoption in other platforms is welcome, and not a requirement of the
+  proposal.
 
-Version 0.3 narrows the profile to its core use: input forms, run requests
+## Scope of version 0.3.0
+
+Version 0.3.0 narrows the profile to its core use: input forms, run requests
 and outputs. Earlier versions of the proposal contained features that add
 risk without serving that use. They are either cut (removed, with no plan to
 bring them back) or deferred (removed or kept experimental until a later
@@ -45,7 +76,7 @@ of the repository lists each removal as a breaking change.
 - **Does the profile suit machine learning models and pipelines (MLOps)?**
   Earlier versions of this proposal claimed that the profile is
   domain-agnostic and suits machine learning pipelines as well as genomic
-  workflows. Version 0.3 drops that claim: the profile is designed and tested
+  workflows. Version 0.3.0 drops that claim: the profile is designed and tested
   for workflows in the life sciences only. Whether it also fits, e.g.,
   hyperparameters of training pipelines and model artefacts as outputs, and
   how it would relate to dataset descriptions such as
@@ -71,6 +102,6 @@ of the repository lists each removal as a breaking change.
 
 | Version | Date | Author | Notes |
 | ----- | ----- | ----- | ----- |
-| **v0.1** | 2026-10-10 | Alexander Kanitz | Initial Draft: Ecosystem survey, evaluation, and GA4GH JSON Schema Profile proposal. |
-| **v0.2** | 2026-10-13 | Alexander Kanitz | Major rewrite addressing architectural reviews. Reframed standard as a universal Interface Definition Language (IDL). Explicitly scoped out bare TES execution. Clarified tabular data sovereignty. Mapped custom properties to `nf-schema`. Expanded GA4GH API lifecycle and RO-Crate Profiles integration. |
-| **v0.3** | unreleased | Alexander Kanitz | Response to an external review: structured documentation, conformance classes with RFC 2119 terms and a conformance suite, security considerations, and the changes of scope listed in the [Changelog](changelog.md). |
+| **0.1.0** | 2026-10-10 | Alexander Kanitz | Initial Draft: Ecosystem survey, evaluation, and GA4GH JSON Schema Profile proposal. |
+| **0.2.0** | 2026-10-13 | Alexander Kanitz | Major rewrite addressing architectural reviews. Reframed standard as a universal Interface Definition Language (IDL). Explicitly scoped out bare TES execution. Clarified tabular data sovereignty. Mapped custom properties to `nf-schema`. Expanded GA4GH API lifecycle and RO-Crate Profiles integration. |
+| **0.3.0** | not released (no tag) | Alexander Kanitz | Response to an external review: structured documentation, conformance classes with RFC 2119 terms and a conformance suite, security considerations, and the changes of scope listed in the [Changelog](changelog.md). |

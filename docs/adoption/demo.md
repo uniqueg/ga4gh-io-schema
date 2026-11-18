@@ -1,5 +1,12 @@
 # End-to-end demo
 
+!!! warning "A guide for adopters, not the live demo"
+    This flow with deployed services (a TRS-Filer and a Conquest instance;
+    the URLs below are placeholders) is a guide for adopting the profile.
+    It is not the live demo of the proposal, and it is not verified end to
+    end (see [Known limits](#known-limits)). The live demo is the
+    [testbed](testbed.md), which runs on a laptop without outside services.
+
 The demo shows the whole lifecycle of an IO schema with GA4GH APIs: a WDL
 workflow and its IO schema are registered in
 [TRS-Filer](https://github.com/elixir-cloud-aai/trs-filer), a client builds a
@@ -8,7 +15,7 @@ form from the schema, and the values that a user enters become a WES run on
 normalised by the schema. The user never chooses a workflow type, a WES
 endpoint or engine parameters.
 
-**Experimental:** the demo follows version 0.3 of the profile, which may
+**Experimental:** the demo follows version 0.3.0 of the profile, which may
 still change, and depends on servers outside this repository (see [Known
 limits](#known-limits)). To try the same workflow on a laptop, without
 outside servers, from TRS to the WES run request, run the

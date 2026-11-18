@@ -2,6 +2,13 @@
 
 --8<-- "README.md:synopsis"
 
+!!! info "Status"
+    This is version 0.3.0 of a proposal, not a GA4GH standard: it has no
+    releases, and it waits for review by the GA4GH Federated Analysis Work
+    Stream (see [Roadmap](roadmap.md#next-steps)). Try it with the
+    [prototype](adoption/prototype.md), one Docker Compose command on a
+    laptop.
+
 ## Executive summary
 
 This document proposes a **JSON Schema profile** that describes the inputs and outputs of computational workflows and workflow components, in the role that an OpenAPI description plays for a web API.
@@ -17,10 +24,13 @@ with one Docker Compose command: a portal picks a workflow in a TRS stub,
 renders the form of its IO schema and builds the WES run request, with no
 code for the workflow or its language. Its
 [evaluation](adoption/prototype-evaluation.md) concludes that the schema
-was enough for that flow and that TRS needed no change; the gaps it found
+was enough for that flow and that TRS needed no change. The gaps it found
 are at the edges of the profile: matching TRS file entries, the imports of
 multi-file workflows in the `workflow_url`, whether a WES can fetch that
-URL, and a helper for checking the workflow block.
+URL, and a helper for checking the workflow block. 0.3.0 addresses each of
+them in the docs, the specification or the tools; whether a WES can fetch
+the URL stays an [open question](roadmap.md#open-questions) for the WES
+API.
 
 ## Contents
 
@@ -39,10 +49,12 @@ URL, and a helper for checking the workflow block.
   and portals and clients.
 - [Prototype](adoption/prototype.md): try it on a laptop, from a workflow
   in TRS to a form and a WES run request, with one Docker Compose command.
+- [Testbed](adoption/testbed.md): the live demo: how to run it, its parts,
+  what is real and what is mocked, and its limits.
 - [Roadmap](roadmap.md): next steps, open questions and the history of this
   proposal.
 - [Changelog](changelog.md): the changes of each version, including the
-  changes of scope since version 0.1.
+  changes of scope since version 0.1.0.
 - [Versioning and governance](governance.md): what a version number says,
   how releases are made and how changes are proposed.
 - [Development](development.md): tests and checks for contributors.
@@ -53,4 +65,5 @@ The documentation is licensed under
 [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/), the code and
 schemas under [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) (see
 `REUSE.toml` in the
-[repository](https://github.com/elixir-cloud-aai/ga4gh-io-schema)).
+[repository](https://github.com/elixir-cloud-aai/ga4gh-io-schema), and
+[Licences](governance.md#licences)).
