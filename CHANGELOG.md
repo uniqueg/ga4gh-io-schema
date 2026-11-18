@@ -20,6 +20,18 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 
 ### Breaking changes
 
+- The converters mark every input and output that the source declares as a
+  file or a directory (or that may hold one) as a file reference, or fail
+  with exit status 1 (a `ConversionError` in the Python API); before, they
+  left such files as plain schemas with a note, so servers and clients
+  accepted any string there. These now fail: the keys of a WDL `Map[File,
+  V]` or `Map[Directory, V]`, CWL inputs and outputs of type `Any`, and
+  Nextflow parameters with a path `format` that can't be a file reference
+  (e.g., `"type": ["string", "null"]`) or with `format: file-path-pattern`.
+  To migrate, change the type in the source, or pass
+  `--allow-unmarked-files` to `convert cwl`, `convert wdl` or `convert
+  nextflow` (`allow_unmarked_files=True` in the Python API) to keep the
+  previous output, and check these values on the execution side. (#128)
 - The `$id`s of the meta-schema and its vocabularies, and with them the
   `$schema` of IO schemas, start with
   `https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/`

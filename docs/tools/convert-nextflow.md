@@ -34,12 +34,17 @@ ga4gh-io-schema convert nextflow nextflow_schema.json \
   directory of the pipeline (`outdir`; see [Outputs](#outputs)). Each
   option is repeatable; the outputs keep the order of the options. Quote
   globs in the shell.
+- `--allow-unmarked-files`: keep parameters with a path `format` that can't
+  be file references, and globs (`format: file-path-pattern`), as plain
+  schemas, with a note, instead of failing (see [File
+  references](#file-references)).
 
 The command checks the result against the profile before it writes it, and
 fails (exit status 1) if the result doesn't comply (e.g., because the source
 uses an `x-ga4gh-*` keyword wrongly), or if the source can't be converted
-(e.g., it isn't an object, or `--directory` names a parameter without
-`format: path`). A source or sample-sheet schema that can't be read
+(e.g., it isn't an object, `--directory` names a parameter without
+`format: path`, or a parameter with a path `format` can't be marked as a file
+reference). A source or sample-sheet schema that can't be read
 (invalid JSON, values that JSON can't represent such as `NaN`, too deeply
 nested, outside the directory of the pipeline) exits with status 3. The
 shared options and the exit status are those of all subcommands (see
@@ -72,7 +77,7 @@ With `--json`, the output is one object with the IO schema and the notes:
 | `"format": "file-path"` | `"x-ga4gh-file": {"kind": "file"}`, without `format` |
 | `"format": "directory-path"` | `"x-ga4gh-file": {"kind": "directory"}`, without `format` |
 | `"format": "path"` (a file or a directory) | `"x-ga4gh-file": {"kind": "file"}`, with a note; `{"kind": "directory"}` if `--directory` names the parameter |
-| `"format": "file-path-pattern"` (a glob) | a plain string, without `format`, with a note: a glob isn't a reference to one file |
+| `"format": "file-path-pattern"` (a glob) | an error: a glob isn't a reference to one file, and Nextflow resolves it to files of the execution side; with `--allow-unmarked-files`, a plain string, without `format`, with a note |
 | `mimetype` | `mediaType` of the file reference, if it's a media type (e.g., `text/csv`); dropped with a note otherwise, and on directories |
 | `schema` (the path of a sample-sheet schema) | `x-ga4gh-tabular-schema` of the file reference: the converted schema of the whole sheet (an array of rows), an experimental hint for clients (see [Keywords](../specification/keywords.md#tabular-data-and-cloud-sovereignty)); its columns get file references by the same rules. Dropped with a note on directories, in sample sheets, next to an `x-ga4gh-tabular-schema` of the source (which wins), and if the schema isn't found |
 | `pattern` | `pattern`, unchanged (it constrains the value); on file references, one note (see [Limits](#limits)) |
@@ -129,9 +134,12 @@ nf-schema marks paths with `format`, so the converter doesn't guess: only
 schemas with `"format": "file-path"`, `"directory-path"` or `"path"` become
 file references. A file reference must be a flat string schema (`"type":
 "string"`, no in-place applicators such as `anyOf`); a schema with a path
-format that can't be one (e.g., `"type": ["string", "null"]`) keeps its
-`format`, with a note, and loses `mimetype` and `schema`, with a note each. So
-does a schema that has an `x-ga4gh-file` already (it keeps it); `--directory`
+format that can't be one (e.g., `"type": ["string", "null"]`) is an error,
+as it would leave a file unmarked (see
+[Converters](converters.md#from-workflow-languages-to-io-schemas)). With
+`--allow-unmarked-files`, it keeps its `format`, with a note, and loses
+`mimetype` and `schema`, with a note each. So does a schema that has an
+`x-ga4gh-file` already (it keeps it, and isn't an error); `--directory`
 can't name such parameters.
 
 `format: path` means a file or a directory. nf-core uses it for indexes that
