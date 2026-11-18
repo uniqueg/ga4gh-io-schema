@@ -98,6 +98,17 @@ _NEXTFLOW_DASH = (
     "camelCase (e.g., out-dir to outDir), so the parameter that it sets isn't "
     "the key that was checked; use the camelCase name."
 )
+# Nextflow replaces `${baseDir}`, `${projectDir}`, `${launchDir}`,
+# `${outputDir}` and `${secrets}` in the raw text of a params file before it
+# parses it (`CmdRun.replaceVars0`), in keys and values; a backslash doesn't
+# escape them. Any `${` is rejected, so that the rule doesn't depend on
+# Nextflow's list of variables
+_NEXTFLOW_PLACEHOLDER = "${"
+_NEXTFLOW_VARIABLE = (
+    "Strings with '${' aren't accepted for Nextflow: Nextflow replaces "
+    "variables such as ${launchDir} or ${secrets} in the params file before "
+    "it reads it, so the engine would get another value than the one checked."
+)
 _NON_STRING_KEYS = "Object keys must be strings."
 _NON_JSON = (
     "Values must be JSON: objects, arrays, strings, finite numbers, booleans "
@@ -899,6 +910,10 @@ class _Translator:
             # Keyword checks and the checks of objects (e.g., of CWL
             # directives) know only JSON
             raise TranslationError(*found)
+        if self.binding.descriptor_type == "NFL":
+            placeholder = _placeholder(values)
+            if placeholder is not None:
+                raise TranslationError(_NEXTFLOW_VARIABLE, placeholder)
         self._in_place_cache.clear()
         # The values outlive the memo, so the identities of their parts
         # aren't reused while it is kept
@@ -977,6 +992,10 @@ class _Translator:
             names.add(name)
             if self.binding.descriptor_type == "NFL" and "-" in name:
                 raise TranslationError(_NEXTFLOW_DASH, (key,))
+            if self.binding.descriptor_type == "NFL" and _NEXTFLOW_PLACEHOLDER in name:
+                # A name from `x-ga4gh-parameter`; the keys of the values were
+                # checked in `bind`
+                raise TranslationError(_NEXTFLOW_VARIABLE, (key,))
             # Both the key of the values (which a server passes on as it
             # came) and the name for the engine
             if self.binding.descriptor_type == "CWL" and _directive((key, name)):
@@ -1527,6 +1546,11 @@ class _ReverseTranslator:
         found = _non_json(params)
         if found is not None:
             raise WorkflowParamsError(*found)
+        if self.translator.binding.descriptor_type == "NFL":
+            placeholder = _placeholder(params)
+            if placeholder is not None:
+                # Located in workflow_params, before members are matched
+                raise WorkflowParamsError(_NEXTFLOW_VARIABLE, placeholder)
         try:
             input_keys = self.translator.input_keys()
         except TranslationError as exc:
@@ -1770,6 +1794,41 @@ def _non_json(value: Any) -> tuple[str, Path] | None:
         ancestors.add(id(item))
         stack.append((item, path, True))
         stack.extend((child, location, False) for location, child in reversed(children))
+    return None
+
+
+def _placeholder(value: Any) -> Path | None:
+    """Find a string that Nextflow would change in a params file.
+
+    Args:
+        value: Input values or ``workflow_params``, JSON (see
+            :func:`_non_json`).
+
+    Returns:
+        The location of the first string (depth first) with ``${``: of the
+        value, or of the member whose key it is; or ``None`` if there is
+        none.
+    """
+    stack: list[tuple[Any, Path]] = [(value, ())]
+    # Containers checked already (they may be shared)
+    seen: set[int] = set()
+    while stack:
+        item, path = stack.pop()
+        if isinstance(item, str):
+            if _NEXTFLOW_PLACEHOLDER in item:
+                return path
+            continue
+        if not isinstance(item, (dict, list)) or id(item) in seen:
+            continue
+        seen.add(id(item))
+        if isinstance(item, dict):
+            for key in item:
+                if _NEXTFLOW_PLACEHOLDER in key:
+                    return (*path, key)
+            children = [((*path, key), child) for key, child in item.items()]
+        else:
+            children = [((*path, index), child) for index, child in enumerate(item)]
+        stack.extend((child, location) for location, child in reversed(children))
     return None
 
 

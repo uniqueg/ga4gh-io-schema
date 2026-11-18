@@ -607,6 +607,135 @@ def test_other_engines_keep_dash_keys() -> None:
     }
 
 
+#: Values with strings that Nextflow would change before it parses the params
+#: file, and the location of the string (a key, or the value that holds it).
+NEXTFLOW_PLACEHOLDERS = [
+    ({"name": "${launchDir}"}, "/name"),
+    ({"name": "https://data.example.org/${baseDir}/a.csv"}, "/name"),
+    ({"name": "${secrets}"}, "/name"),
+    ({"name": "${projectDir}${outputDir}"}, "/name"),
+    # Variables that Nextflow doesn't bind (left alone or an error), and any
+    # other text after `${`: the rule doesn't depend on Nextflow's list
+    ({"name": "${unknown}"}, "/name"),
+    ({"name": "${ launchDir }"}, "/name"),
+    ({"name": "${"}, "/name"),
+    # A backslash doesn't escape it: Nextflow replaces in the raw text
+    ({"name": "\\${launchDir}"}, "/name"),
+    ({"name": "$${launchDir}"}, "/name"),
+    # Nested, in values and keys
+    ({"list": ["ok", "${launchDir}"]}, "/list/1"),
+    ({"rec": {"a": {"b": "${launchDir}"}}}, "/rec/a/b"),
+    ({"rec": {"${launchDir}": "x"}}, "/rec/${launchDir}"),
+    ({"rec": {"a": [{"x${y}": 1}]}}, "/rec/a/0/x${y}"),
+    # A member that no input declares
+    ({"${launchDir}": "x"}, "/${launchDir}"),
+]
+
+
+def placeholder_schema(workflow: dict[str, Any]) -> dict[str, Any]:
+    """Build a schema that accepts the values of ``NEXTFLOW_PLACEHOLDERS``.
+
+    Args:
+        workflow: The workflow block of the schema.
+
+    Returns:
+        The schema.
+    """
+    return make_schema(
+        {
+            "name": {"type": "string"},
+            "list": {"type": "array", "items": {"type": "string"}},
+            "rec": {"type": "object"},
+        },
+        workflow,
+    )
+
+
+@pytest.mark.parametrize(("values", "pointer"), NEXTFLOW_PLACEHOLDERS)
+def test_nextflow_placeholders_are_rejected(
+    values: dict[str, Any], pointer: str
+) -> None:
+    """Test that strings with ``${`` are rejected for Nextflow, in both directions.
+
+    Nextflow replaces ``${baseDir}``, ``${projectDir}``, ``${launchDir}``,
+    ``${outputDir}`` and ``${secrets}`` in the raw text of the params file
+    before it parses it (``CmdRun.replaceVars0``), so the engine would get
+    another value than the one checked.
+
+    Args:
+        values: Input values, also the ``workflow_params``.
+        pointer: Location of the rejected string.
+    """
+    schema = placeholder_schema(NFL)
+
+    with pytest.raises(TranslationError, match=r"Strings with '\$\{'") as info:
+        to_workflow_params(schema, values)
+    assert info.value.pointer == pointer
+    with pytest.raises(WorkflowParamsError, match=r"Strings with '\$\{'") as error:
+        from_workflow_params(schema, values)
+    assert error.value.pointer == pointer
+
+
+def test_nextflow_placeholder_in_a_parameter_name_is_rejected() -> None:
+    """Test that a translator rejects a key with ``${`` from ``x-ga4gh-parameter``."""
+    schema = make_schema(
+        {"out": {"type": "string", "x-ga4gh-parameter": {"name": "o${launchDir}"}}},
+        NFL,
+    )
+
+    with pytest.raises(TranslationError, match=r"Strings with '\$\{'") as info:
+        to_workflow_params(schema, {"out": "x"})
+    assert info.value.pointer == "/out"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Nextflow's pattern is `${` followed by an identifier and `}`
+        "$launchDir",
+        "$ {launchDir}",
+        "{$launchDir}",
+        "$\\{launchDir}",
+        "$",
+        # Look-alikes that Java's pattern doesn't match: fullwidth dollar
+        # sign and left curly bracket, small dollar sign
+        "＄{launchDir}",
+        "$｛launchDir}",
+        "﹩{launchDir}",
+    ],
+)
+def test_nextflow_strings_without_placeholders_pass(text: str) -> None:
+    """Test that only ``${`` is rejected, in keys and values.
+
+    Args:
+        text: A string without ``${``.
+    """
+    schema = placeholder_schema(NFL)
+    values = {"name": text, "rec": {text: text}, "list": [text]}
+
+    assert to_workflow_params(schema, values) == values
+    assert from_workflow_params(schema, values) == values
+
+
+def test_nextflow_shared_values_without_placeholders_pass() -> None:
+    """Test that values shared by several members, and other scalars, pass."""
+    schema = placeholder_schema(NFL)
+    shared = {"a": [1, 2.5, True, None]}
+    values = {"rec": {"x": shared, "y": shared}}
+
+    assert to_workflow_params(schema, values) == values
+    assert from_workflow_params(schema, values) == values
+
+
+def test_other_engines_keep_placeholders() -> None:
+    """Test that strings with ``${`` are accepted for other engines."""
+    schema = placeholder_schema({"descriptor_type": "SMK"})
+    values = {"name": "${launchDir}", "rec": {"${x}": "${y}"}}
+
+    assert to_workflow_params(schema, values) == values
+    assert from_workflow_params(schema, values) == values
+
+
 def _cycle() -> list[Any]:
     """Build a list that contains itself.
 

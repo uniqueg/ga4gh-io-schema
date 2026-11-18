@@ -424,6 +424,21 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   and `maximum`), and cycles. The engine bindings and the
   security page state the rules; new test vectors in `wes-params/CWL/`,
   `wes-requests/CWL/`, `wes-params/NFL/` and `wes-requests/NFL/`. (#107)
+- For Nextflow, `wes-params`, `wes-validate`, `to_workflow_params()` and
+  `from_workflow_params()` reject strings that contain `${`, in keys and
+  values, at any depth (also keys bound with `x-ga4gh-parameter`):
+  Nextflow replaces `${baseDir}`, `${projectDir}`, `${launchDir}`,
+  `${outputDir}` and `${secrets}` in the raw text of the params file
+  before it parses it, so a checked value (e.g.,
+  `https://data.example.org/${launchDir}/a.csv`) reached the engine
+  changed. `convert nextflow` binds parameters with `-` to the camelCase
+  name that Nextflow sets (`out-dir` to `outDir`, with
+  `x-ga4gh-parameter`), so that their values translate; it notes those
+  whose name isn't certain or is taken. It drops defaults with `${`
+  (e.g., `${projectDir}/assets/...` of nf-core/rnaseq), with a note. The
+  engine bindings, the security page, the tool pages and the vectors
+  README state the rules; new test vectors `NFL/variable-in-value` and
+  `NFL/variable-in-key` in `wes-params/` and `wes-requests/`. (#123)
 - The transfer page names the `main` URL of the schemas, as the `$id`s of
   0.3.0 do, instead of a `v0.3.0` tag that doesn't exist; the check of
   schema URLs leaves out `$`-placeholders of rewrite rules. (#96)

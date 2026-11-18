@@ -123,6 +123,22 @@ reject members of `workflow_params` whose keys have `-`. This applies to
 the members of `workflow_params` only: Nextflow doesn't rename the keys
 of nested objects.
 
+Nextflow also replaces variables in the raw text of a params file before
+it parses it (`${baseDir}`, `${projectDir}`, `${launchDir}`, `${outputDir}`
+and `${secrets}`, in keys and values; a backslash doesn't escape them).
+A value that was checked, such as
+`"https://data.example.org/${launchDir}/a.csv"`, would reach the engine
+changed, with the paths or secrets of the execution side. So translators
+and servers MUST reject strings that contain `${` (U+0024 U+007B),
+anywhere in the input values and in `workflow_params`: in values and in
+keys, at any depth, and in the keys that `x-ga4gh-parameter` binds to.
+The rule covers any `${`, not only the variables that Nextflow binds
+today: other variables are left alone or fail the run, depending on
+Nextflow's version and mode. Look-alikes such as `＄{` (U+FF04) aren't
+`${` and are allowed: Nextflow doesn't replace them. A server that writes
+`workflow_params` to a params file MUST write the members that it checked
+(e.g., as JSON) without adding `${`.
+
 The `entry_point` of a Nextflow schema (the named workflow run with
 `-entry`) is not a parameter. WES 1.1 has no field for it, and version 0.3.0
 of the profile doesn't define one; a deployment that runs named workflows
@@ -290,7 +306,9 @@ the values against `inputs`:
    the request: only one of them would be validated, and the engine would
    get both. For `NFL`, the server MUST reject members whose keys have
    `-` (e.g., `input-`, which Nextflow takes for `input`, see
-   [Nextflow](#nextflow-nfl)). For `WDL`,
+   [Nextflow](#nextflow-nfl)), and requests with strings that contain
+   `${` anywhere in `workflow_params`, in keys and values (Nextflow
+   replaces variables in them). For `WDL`,
    a key without the prefix `<entry_point>.` matches no input. After the
    values are validated, the input MUST bind to the member's key for its
    value (rule 2 above); otherwise, the server MUST reject the request.

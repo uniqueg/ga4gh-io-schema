@@ -28,7 +28,8 @@ The command:
    `cwltool:overrides`) in the values, see rule 4 of [From input
    values to `workflow_params`](../specification/engine-bindings.md#from-input-values-to-workflow_params);
    for Nextflow, it rejects values that bind to keys with `-`, which
-   Nextflow renames to camelCase (see
+   Nextflow renames to camelCase, and strings with `${` in keys and
+   values, which Nextflow replaces with its variables (see
    [Nextflow](../specification/engine-bindings.md#nextflow-nfl));
 4. writes the `workflow_params`, as indented JSON (with `--json`, on one
    line).
