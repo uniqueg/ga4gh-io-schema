@@ -843,14 +843,21 @@ def _http_url(value: str) -> str:
 
     Raises:
         argparse.ArgumentTypeError: If it isn't an ``http(s)`` URL, or has
-            user information (e.g., a password), which the host's error
-            messages would show in the browser.
+            user information (e.g., a password), a query or a fragment
+            (which may hold a token), which the host's error messages would
+            show in the browser.
     """
     parts = urllib.parse.urlsplit(value)
     if "@" in parts.netloc:
         # Not repeated: it may hold a password
         raise argparse.ArgumentTypeError(
             "URLs with user information (user@ or user:password@) aren't accepted"
+        )
+    if "?" in value or "#" in value:
+        # Not repeated either: the query may hold a token. A base URL has no
+        # use for it, as the host appends paths to it
+        raise argparse.ArgumentTypeError(
+            "base URLs with a query or a fragment (?… or #…) aren't accepted"
         )
     if parts.scheme not in ("http", "https") or not parts.netloc:
         raise argparse.ArgumentTypeError(f"not an http(s) URL: {value}")

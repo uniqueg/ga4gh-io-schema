@@ -93,8 +93,9 @@ Options:
 
 `--trs-url` and `--wes-url` must be `http(s)` URLs without credentials:
 the host's error messages, which name these URLs, reach the browser. It
-refuses URLs with user information (`user:password@`); don't put tokens in
-their query either.
+refuses URLs with user information (`user:password@`), and URLs with a
+query or a fragment (`?…`, `#…`), which a base URL has no use for and which
+could hold a token; the error doesn't repeat the URL.
 
 The host validates the schema against the profile when it starts, and
 exits with status 1 if the schema can't be read or doesn't comply. It

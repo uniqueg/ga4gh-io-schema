@@ -788,6 +788,33 @@ def test_main_rejects_urls_with_user_information(
     assert "secret" not in error
 
 
+@pytest.mark.parametrize("option", ["--trs-url", "--wes-url"])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://trs.example.org/ga4gh/trs/v2?token=secret",
+        "https://trs.example.org/ga4gh/trs/v2#secret",
+        "ftp://trs.example.org/?access_token=secret",
+    ],
+)
+def test_main_rejects_urls_with_query_or_fragment(
+    option: str, url: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a token in the query or fragment can't reach error messages.
+
+    Args:
+        option: The option of the URL.
+        url: A URL with a query or a fragment.
+        capsys: Captures the error message.
+    """
+    with pytest.raises(SystemExit) as exc:
+        form_host.main([option, url])
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert "query or a fragment" in error
+    assert "secret" not in error
+
+
 def test_host_rejects_answers_that_are_too_large(
     wes: FakeWes, monkeypatch: pytest.MonkeyPatch
 ) -> None:
