@@ -33,7 +33,8 @@ make demo
 ```
 
 `make demo` runs `docker compose -f prototype/compose.yaml up --detach
---build --wait`, with `TRS_URL` and `WES_URL` of the shell unset.
+--build --wait`, with `TRS_URL` and `WES_URL` set empty (so that the
+stack uses the stub, whatever the shell or a `.env` file says).
 Compose builds one small image, starts two services and waits until both
 are healthy:
 

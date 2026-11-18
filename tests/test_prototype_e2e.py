@@ -37,6 +37,8 @@ from typing import Any
 
 import pytest
 
+from ga4gh_io_schema.wes import build_run_request
+
 pytestmark = [
     pytest.mark.e2e,
     pytest.mark.skipif(
@@ -207,6 +209,9 @@ def test_seeded_workflows_give_run_requests() -> None:
         assert request["workflow_url"].startswith(
             "http://trs-stub:8080/ga4gh/trs/v2/tools/"
         )
+        # As the package builds them from the checkout's files
+        expected = build_run_request(schema, values, workflow_url="x")
+        assert request["workflow_params"] == expected["workflow_params"]
 
 
 def test_edited_schema_shows_without_a_restart() -> None:

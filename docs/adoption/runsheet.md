@@ -34,8 +34,10 @@ checkout of this repository, without a network once the image is built.
 
 ## On the day (5 minutes before)
 
-1. `make demo-start` in the checkout (or `make demo`, with a network).
-   Expected: "The demo is running".
+1. `make demo-start` in the checkout (or `make demo`, with a network),
+   with the ports of the preparation if you changed them (e.g., `make
+   demo-start DEMO_PORT=18000 DEMO_TRS_PORT=18080`). Expected: "The demo
+   is running", with the URL to open.
 2. Reload the page: the list "Workflow in TRS" has four workflows.
 3. Zoom the browser to 125–150% for the room; close other tabs and
    notifications.

@@ -370,6 +370,24 @@ def test_find_workflows_lists_the_seeded_workflows() -> None:
     ]
 
 
+def test_unreadable_workflows_are_reported(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a workflow the stub can't read is reported, not skipped.
+
+    E.g., a directory of the checkout that the stub's user can't enter.
+    """
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0)
+    try:
+        assert trs_stub.find_workflows(tmp_path) == [locked]
+        assert trs_stub.load_workflows([], [tmp_path], strict=False) == []
+    finally:
+        locked.chmod(0o755)
+    assert f"Can't serve the workflow {locked}" in capsys.readouterr().err
+
+
 def test_unlisted_workflow_roots_are_reported(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

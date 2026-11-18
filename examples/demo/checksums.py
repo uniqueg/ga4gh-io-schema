@@ -44,8 +44,27 @@ def workflow_dirs(root: Path = WORKFLOWS_DIR) -> list[Path]:
 
     Returns:
         The subdirectories with an IO schema, sorted by name.
+
+    Raises:
+        OSError: If the directory can't be listed, e.g., it is missing.
     """
-    return sorted(path.parent for path in root.glob(f"*/{SCHEMA_NAME}"))
+    return sorted(path for path in root.iterdir() if _has_schema(path))
+
+
+def _has_schema(directory: Path) -> bool:
+    """Tell whether a directory holds an IO schema, or may.
+
+    Args:
+        directory: The directory.
+
+    Returns:
+        Whether it has a schema, or whether that can't be checked, so that
+        reading it reports why.
+    """
+    try:
+        return (directory / SCHEMA_NAME).is_file()
+    except OSError:
+        return True
 
 
 def with_checksum(schema: dict[str, Any], descriptor: bytes) -> dict[str, Any]:
@@ -127,8 +146,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="directory of the workflows (default: examples/workflows)",
     )
     args = parser.parse_args(argv)
+    try:
+        directories = workflow_dirs(args.dir)
+    except OSError as exc:
+        print(f"Can't list the workflows: {exc}", file=sys.stderr)
+        return 1
     status = 0
-    for directory in workflow_dirs(args.dir):
+    for directory in directories:
         try:
             current = update(directory, args.check)
         except (OSError, ValueError, KeyError, TypeError) as exc:

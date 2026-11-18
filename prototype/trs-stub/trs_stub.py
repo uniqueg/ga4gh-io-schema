@@ -146,7 +146,23 @@ def find_workflows(root: Path) -> list[Path]:
         OSError: If the directory can't be listed, e.g., it is missing or
             not readable (a glob would find nothing instead).
     """
-    return sorted(path for path in root.iterdir() if (path / SCHEMA_NAME).is_file())
+    return sorted(path for path in root.iterdir() if _has_schema(path))
+
+
+def _has_schema(directory: Path) -> bool:
+    """Tell whether a directory holds an IO schema, or may.
+
+    Args:
+        directory: The directory.
+
+    Returns:
+        Whether it has a schema, or whether that can't be checked (e.g.,
+        the directory isn't readable), so that loading reports why.
+    """
+    try:
+        return (directory / SCHEMA_NAME).is_file()
+    except OSError:
+        return True
 
 
 def load_workflows(

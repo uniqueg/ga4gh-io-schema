@@ -33,14 +33,18 @@ define DEMO_URLS
 	@echo "Logs: make demo-logs. Stop: make demo-down."
 endef
 
-# TRS_URL and WES_URL of the shell would point the stack elsewhere: unset
+# TRS_URL and WES_URL of the shell or of a .env file would point the stack
+# elsewhere: empty values override both, and compose.yaml then uses its
+# defaults
+LOCAL_ONLY = env TRS_URL= WES_URL=
+
 demo:
-	env -u TRS_URL -u WES_URL $(COMPOSE) up --detach --build --wait
+	$(LOCAL_ONLY) $(COMPOSE) up --detach --build --wait
 	$(DEMO_URLS)
 
 # The image of an earlier `make demo`, without a network
 demo-start:
-	env -u TRS_URL -u WES_URL $(COMPOSE) up --detach --no-build --pull never --wait
+	$(LOCAL_ONLY) $(COMPOSE) up --detach --no-build --pull never --wait
 	$(DEMO_URLS)
 
 demo-logs:

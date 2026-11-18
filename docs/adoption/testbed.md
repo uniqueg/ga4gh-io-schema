@@ -53,11 +53,12 @@ profile.
     It prints the URL of the page when the stack is up. Without `make`:
 
     ```bash
-    env -u TRS_URL -u WES_URL docker compose -f prototype/compose.yaml up --detach --build --wait
+    TRS_URL= WES_URL= docker compose -f prototype/compose.yaml up --detach --build --wait
     ```
 
-    `env -u` makes sure that `TRS_URL` and `WES_URL` of your shell, if set,
-    don't point the stack at another TRS or WES (see [Point it at a real
+    The empty `TRS_URL` and `WES_URL` make sure that values of your shell
+    or of a `prototype/.env` file don't point the stack at another TRS or
+    WES (see [Point it at a real
     TRS or WES](prototype.md#point-it-at-a-real-trs-or-wes)); `make demo`
     does the same.
 

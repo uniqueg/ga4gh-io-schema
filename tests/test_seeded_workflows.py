@@ -31,6 +31,29 @@ from ga4gh_io_schema.workflow import check_workflow
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = ROOT / "examples" / "workflows"
 SEEDED = sorted(path.parent for path in WORKFLOWS.glob("*/ga4gh-io.schema.json"))
+#: The parameters of the run request of each seeded workflow's values.
+PARAMS = {
+    "greetings-nextflow": {
+        "names": ["Ada", "Grace", "Barbara"],
+        "language": "fr",
+        "times": 2,
+        "shout": True,
+    },
+    "report-snakemake": {
+        "title": "Hello from the I/O Schema demo",
+        "date": "2026-11-18",
+        "notes": "Rendered from an IO schema.",
+        "colour": "#2ca02c",
+    },
+    "word-count-cwl": {
+        "text": {
+            "class": "File",
+            "location": "https://raw.githubusercontent.com/elixir-cloud-aai/"
+            "ga4gh-io-schema/main/README.md",
+        },
+        "unit": "lines",
+    },
+}
 #: The descriptor type of each seeded workflow: one per language besides WDL.
 TYPES = {
     "greetings-nextflow": "NFL",
@@ -81,7 +104,7 @@ def test_seeded_values_give_a_run_request(directory: Path) -> None:
         schema, read_json(directory / "values.json"), workflow_url="x"
     )
     assert request["workflow_type"] == TYPES[directory.name]
-    assert request["workflow_params"]
+    assert request["workflow_params"] == PARAMS[directory.name]
 
 
 def test_checksums_and_stub_find_the_same_workflows(tmp_path: Path) -> None:
@@ -101,6 +124,29 @@ def test_checksums_and_stub_find_the_same_workflows(tmp_path: Path) -> None:
 def test_checksums_are_current() -> None:
     """Test that the checked-in checksums match the descriptors."""
     assert checksums.main(["--check"]) == 0
+
+
+def test_checksums_of_a_missing_directory(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a missing directory of workflows is an error, not none."""
+    assert checksums.main(["--dir", str(tmp_path / "missing")]) == 1
+    assert "Can't list the workflows" in capsys.readouterr().err
+
+
+def test_checksums_report_unreadable_workflows(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a workflow that can't be read is reported, not skipped."""
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0)
+    try:
+        assert checksums.workflow_dirs(tmp_path) == [locked]
+        assert checksums.main(["--dir", str(tmp_path), "--check"]) == 1
+    finally:
+        locked.chmod(0o755)
+    assert "Can't read the workflow locked" in capsys.readouterr().err
 
 
 def test_checksums_after_an_edit(
@@ -172,3 +218,4 @@ def test_host_builds_run_requests_from_the_stub() -> None:
             values = read_json(directory / "values.json")
             request = build_run_request(loaded, values, workflow_url=workflow_url)
             assert request["workflow_url"].startswith(workflow_url)
+            assert request["workflow_params"] == PARAMS[directory.name]
