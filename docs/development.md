@@ -58,9 +58,10 @@ text; `[tool.hatch.build.targets.sdist]` in `pyproject.toml`), so that
 both distributions are what their licence, `Apache-2.0`, says: the docs
 (CC-BY-4.0), the tests and their third-party data (e.g., MIT) are in the
 repository only. `tests/test_wheel.py` and the CI job `Build` check its
-contents; change their lists of allowed files together. CI runs the tests on every supported
-Python version, from the lowest to the newest. The supported versions are set
-in `requires-python` and the classifiers of `pyproject.toml`, ruff's
+contents; change their lists of allowed files together.
+
+CI runs the tests on every supported Python version, from the lowest to the
+newest. The supported versions are set in `requires-python` and the classifiers of `pyproject.toml`, ruff's
 `target-version`, mypy's `python_version` and the test matrix of
 `.github/workflows/ci.yml`; change them together. The lowest supported
 version is also that of the job "Test (lowest dependencies)" (see
@@ -425,15 +426,16 @@ is generated from the docstrings with
 [mkdocstrings](https://mkdocstrings.github.io/). Install the `docs` extra
 at the versions of `uv.lock`, as CI and Read the Docs do, and build the
 site as CI does, which fails on any warning (e.g., broken links or
-anchors):
+anchors); `uv sync` removes the packages of extras that it isn't given,
+so name `dev` too to keep the development tools:
 
 ```bash
-uv sync --locked --extra docs
+uv sync --locked --extra dev --extra docs
 uv run --locked mkdocs build --strict
 ```
 
-`uv run --locked mkdocs serve` serves the site at <http://127.0.0.1:8000/> and rebuilds it on
-changes. The home page includes the synopsis of `README.md` (between the
+`uv run --locked mkdocs serve` serves the site at <http://127.0.0.1:8000/>
+and rebuilds it on changes. The home page includes the synopsis of `README.md` (between the
 `--8<-- [start:synopsis]` and `--8<-- [end:synopsis]` markers), and
 [Examples](specification/examples.md) include the example schemas of
 `tests/data/`; the build fails if they are missing. Link to files of the
