@@ -283,12 +283,14 @@ The lower bounds in `pyproject.toml` are tested too: the CI job "Test
 dependencies that they allow, on the lowest supported Python version, and
 runs the tests without the wheel tests. If it fails, raise the bound of the
 dependency that fails. To run it locally, in an environment of its own
-(the resolution also rewrites `uv.lock`; don't commit that):
+(the resolution also rewrites `uv.lock`, so the recipe keeps a copy of
+your lock, with any changes in it, and puts it back):
 
 ```bash
+cp uv.lock uv.lock.mine
 UV_PROJECT_ENVIRONMENT=.venv-lowest uv sync --resolution lowest-direct --extra dev --python 3.11
 .venv-lowest/bin/pytest --no-cov -m "not wheel"
-git checkout uv.lock
+mv uv.lock.mine uv.lock
 ```
 
 Dependabot updates the lock, the actions of the workflows, the
