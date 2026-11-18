@@ -30,7 +30,11 @@ multi-file workflows in the `workflow_url`, whether a WES can fetch that
 URL, and a helper for checking the workflow block. 0.3.0 addresses each of
 them in the docs, the specification or the tools; whether a WES can fetch
 the URL stays an [open question](roadmap.md#open-questions) for the WES
-API.
+API. The [demo run](adoption/prototype-evaluation.md#demo-run) of 0.3.0,
+from a fresh checkout as the [testbed](adoption/testbed.md) describes,
+confirmed the flow and found nothing new for the specification; it says
+nothing about deployed services, runs or outputs, and leaves questions
+for the work stream.
 
 ## Contents
 

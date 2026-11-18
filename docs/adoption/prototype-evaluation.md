@@ -20,6 +20,12 @@ results of a production deployment.
   fetch the `workflow_url`, how a WES resolves the imports of a workflow
   that is more than one file, and checking the descriptor's checksum, which
   the reference tools leave to each client.
+- **The reference run confirmed it.** The [demo run](#demo-run) of
+  0.3.0, from a fresh checkout exactly as the [testbed](testbed.md)
+  describes, went from the TRS to the run request as described, with the
+  checksum checked by the package's helper; it found nothing new for the
+  specification. It shows nothing about deployed services, runs or
+  outputs.
 
 ## What the flow relied on
 
@@ -92,6 +98,70 @@ pull request that closed them.
    check](../tools/verify.md), which the host uses;
    [#85](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/85), fixed by [#92](https://github.com/elixir-cloud-aai/ga4gh-io-schema/pull/92).
 
+## Demo run
+
+The reference run of 0.3.0: the live demo, run once from a fresh checkout
+exactly as the [testbed](testbed.md#run-it) page describes, on a laptop
+only, with no deployed services and nothing registered in any TRS.
+
+- **Date and commit:** 2026-11-18, branch `v0.3` at
+  `75bffa0697f07ce98b8cde6d8fdee663227c0849`.
+- **Machine:** Ubuntu 26.04.1, Docker 28.3.3 with Compose 2.39.1, Google
+  Chrome 156; `TRS_URL` and `WES_URL` unset.
+
+| Step | What happened | As described? |
+| --- | --- | --- |
+| Clone and build | A fresh clone; `docker compose ... up --build` built the image (`python:3.13-alpine`, the package and its dependencies from PyPI) in well under a minute. | Yes |
+| Start the stack | The first start failed: port 8080 of the laptop was in use by another program (`address already in use`). With the stub published on port 18080 by a Compose override file, and no file of the checkout changed, both services started, the host once the stub was healthy. | No: a busy port stops the stack; [Run it](testbed.md#run-it) now says what to do |
+| Discovery from the TRS URL | The page listed one workflow, "I/O Schema demo 1.0.0 (WDL)", from `GET /tools` of the stub, and no form before the pick. The files of the version were `demo.wdl` (`PRIMARY_DESCRIPTOR`) and `ga4gh-io.schema.json` (`OTHER`); the schema that the host served was identical to the one in the checkout. | Yes |
+| Workflow block check | The ids in `x-ga4gh-workflow` (`ga4gh-io-schema-demo`, `1.0.0`, `WDL`) matched the pick, and the SHA-256 checksum in the schema (`752bcc3f…2c1b`) matched both the descriptor that the stub served and `demo.wdl` of the checkout. | Yes |
+| The form | Titles, help texts, the required mark on the reads, a slider with a number field for the mapping quality (0 to 60), three radio buttons for the read filter, the defaults, and the banner "No WES is configured". | Yes |
+| Validation errors | A mapping quality of 61 gave "The minimum mapping quality is a whole number from 0 to 60" under the field, and no run request. | Yes |
+| The run request | With 20 and `proper_pairs`, exactly the run request of the [testbed](testbed.md#the-parts): qualified `workflow_params`, `WDL` 1.1, and the stub's `PLAIN_WDL` URL of `demo.wdl` as `workflow_url`. No "Send to WES" button; the host's `/api/runs` answered "No WES is configured" (404). | Yes |
+| Stop the stack | `docker compose -f prototype/compose.yaml down --rmi all`, run from a second terminal instead of `Ctrl+C`, stopped the stack and removed the containers, the network and the image. | Yes |
+
+The end-to-end tests of CI (`tests/test_prototype_e2e.py`, over the API
+and in Chrome) also passed against the running stack.
+
+**What it confirms for the profile:** the conclusions above, for a run
+that anybody can repeat from the repository alone. A client found the IO
+schema of a workflow in TRS by the [publishing
+convention](trs.md#publishing-convention), checked with the [workflow
+block check](../tools/verify.md) (ids and checksum) that it belongs to
+that workflow, rendered a form from the schema alone, reported a wrong
+value with the author's message, and built a WES run request with no code
+for the workflow or for WDL.
+
+**What it doesn't show:** a deployed TRS (the TRS is a stub, and nothing
+was registered in a TRS implementation), a WES run, outputs and their
+normalisation, authentication and TLS, browsers on another origin (CORS),
+and other languages than WDL. These are the [limits of the
+prototype](#limits-of-the-prototype); the run didn't narrow them.
+
+**What follows for the specification:** nothing new. The run confirmed
+the flow; its only deviation, the busy port, is a matter of the testbed,
+not of the profile.
+
+**Questions the demo can't answer,** for the work stream; none of them
+makes any one deployment a requirement of the profile:
+
+- How do deployed TRS implementations serve the IO schema: do they accept
+  and list a file of the [proposed type
+  `IO_SCHEMA`](trs.md#proposed-the-io_schema-file-type), or an `OTHER`
+  file next to the primary descriptor, with a checksum, and do they serve
+  the `PLAIN_` endpoints that a WES fetches?
+- Which WES servers run the request as a generic client builds it, with a
+  TRS URL as `workflow_url` and no engine parameters, and how does a
+  client learn that before it submits (see the [open
+  question](../roadmap.md#open-questions) on WES `service-info`)? Servers
+  that need extra engine parameters, as Conquest does in the [end-to-end
+  demo](demo.md), need code per server in the client.
+- How do the outputs of real runs fit the outputs model, beyond the run
+  log in `examples/demo/expected/`, which isn't recorded from a run?
+- What do access control and browsers on another origin change for
+  portals: tokens for TRS and WES, CORS, and outputs that are reachable
+  only through a gateway?
+
 ## Limits of the prototype
 
 - **No outputs:** it stops at the run request. The output side of the
@@ -101,7 +171,11 @@ pull request that closed them.
   Snakemake bindings are tested in the package, not in the stack.
 - **No real services:** a TRS stub instead of a registry, no WES by
   default, no authentication, no DRS. Pointing it at a real TRS or WES
-  (`TRS_URL`, `WES_URL`) was not part of the CI runs.
+  (`TRS_URL`, `WES_URL`) was part neither of the CI runs nor of the [demo
+  run](#demo-run).
+- **Self-contained by design:** the [demo run](#demo-run), the reference
+  run of 0.3.0, is the testbed on one laptop; the [end-to-end
+  demo](demo.md) with deployed services was not run.
 - **One form implementation:** the form of this repository; other form
   libraries (see [Form libraries](portals.md#form-libraries)) weren't
   tried.
