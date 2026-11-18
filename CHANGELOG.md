@@ -115,7 +115,8 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 ### Added
 
 - A one-command live demo: `make demo` builds and starts the prototype,
-  waits until it's healthy and prints its URL (`make demo-down`,
+  waits until it's healthy and prints its URL (`make demo-start` without
+  building, e.g., offline, `make demo-down`,
   `make demo-clean`, `make demo-logs`; other ports with `DEMO_PORT` and
   `DEMO_TRS_PORT`). Besides the WDL demo, the TRS stub serves seeded
   workflows in CWL, Nextflow and Snakemake (`examples/workflows/`), and it

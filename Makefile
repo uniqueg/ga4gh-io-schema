@@ -14,10 +14,11 @@ DEMO_TRS_PORT ?= 8080
 PYTHON ?= python3
 export DEMO_PORT DEMO_TRS_PORT
 
-.PHONY: help demo demo-logs demo-down demo-clean demo-checksums
+.PHONY: help demo demo-start demo-logs demo-down demo-clean demo-checksums demo-urls
 
 help:
 	@echo "make demo            build and start the demo, then open http://127.0.0.1:$(DEMO_PORT)/"
+	@echo "make demo-start      start the demo without building, e.g., offline"
 	@echo "make demo-logs       follow the logs of the stub and the host"
 	@echo "make demo-down       stop the demo and remove its containers"
 	@echo "make demo-clean      as demo-down, and remove the image too"
@@ -26,6 +27,14 @@ help:
 # TRS_URL and WES_URL of the shell would point the stack elsewhere: unset
 demo:
 	env -u TRS_URL -u WES_URL $(COMPOSE) up --detach --build --wait
+	@$(MAKE) --no-print-directory demo-urls
+
+# The image of an earlier `make demo`, without a network
+demo-start:
+	env -u TRS_URL -u WES_URL $(COMPOSE) up --detach --no-build --pull never --wait
+	@$(MAKE) --no-print-directory demo-urls
+
+demo-urls:
 	@echo
 	@echo "The demo is running: open http://127.0.0.1:$(DEMO_PORT)/"
 	@echo "TRS stub: http://127.0.0.1:$(DEMO_TRS_PORT)/ga4gh/trs/v2/tools"

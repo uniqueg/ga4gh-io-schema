@@ -35,6 +35,10 @@ SCHEMA_NAME = "ga4gh-io.schema.json"
 def workflow_dirs(root: Path = WORKFLOWS_DIR) -> list[Path]:
     """List the directories of the seeded workflows.
 
+    The same rule as ``find_workflows()`` of the TRS stub, which this
+    script doesn't import, to run without the prototype (a test checks that
+    both agree).
+
     Args:
         root: The directory that holds them.
 

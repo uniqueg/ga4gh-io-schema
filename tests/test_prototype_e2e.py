@@ -118,6 +118,12 @@ def test_user_gets_the_run_request_of_a_workflow_from_trs() -> None:
         "descriptor_type": "WDL",
         "name": "I/O Schema demo",
     }
+    # The demo and the seeded workflows, no more and no less
+    served = {(w["tool_id"], w["descriptor_type"]) for w in config["workflows"]}
+    assert served == {("ga4gh-io-schema-demo", "WDL")} | {
+        (s["x-ga4gh-workflow"]["trs_tool_id"], s["x-ga4gh-workflow"]["descriptor_type"])
+        for s in SEEDED.values()
+    }
     # Without a pick, there is no form
     status, _ = call("/api/schema")
     assert status == 404
@@ -204,7 +210,12 @@ def test_seeded_workflows_give_run_requests() -> None:
 
 
 def test_edited_schema_shows_without_a_restart() -> None:
-    """Test the "play around" path: an edit of the checkout is served at once."""
+    """Test the "play around" path: an edit of the checkout is served at once.
+
+    The test edits a file of the checkout and restores it, so it must not
+    run in parallel with itself; if it is killed halfway, ``git checkout --
+    examples/workflows`` restores the file.
+    """
     path = WORKFLOWS / "word-count-cwl" / "ga4gh-io.schema.json"
     original = path.read_bytes()
     schema = json.loads(original)

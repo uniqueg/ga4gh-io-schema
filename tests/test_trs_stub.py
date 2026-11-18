@@ -459,6 +459,50 @@ def test_load_workflows_is_strict_by_default(tmp_path: Path) -> None:
     """Test that a broken workflow fails without ``strict=False``."""
     with pytest.raises(OSError):
         trs_stub.load_workflows([tmp_path])
+    (tmp_path / "ga4gh-io.schema.json").write_text("{", "utf-8")
+    with pytest.raises(ValueError, match=f"^{tmp_path}: Expecting"):
+        trs_stub.load_workflows([tmp_path])
+
+
+def test_reload_skips_json_nested_too_deeply(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that JSON too deep for the parser is skipped, not fatal."""
+    (tmp_path / "ga4gh-io.schema.json").write_text("[" * 200_000, "utf-8")
+    assert trs_stub.load_workflows([tmp_path], strict=False) == []
+    assert f"Can't serve the workflow {tmp_path}" in capsys.readouterr().err
+    with pytest.raises(ValueError, match=f"^{tmp_path}: "):
+        trs_stub.load_workflows([tmp_path])
+
+
+def test_main_with_reload_skips_broken_workflows_at_the_start(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Test that ``--reload`` starts despite workflows broken while down.
+
+    E.g., a copied workflow with the same tool id, or a schema left
+    invalid, after the stack was stopped.
+    """
+    for name in ("a", "b", "c"):
+        (tmp_path / name).mkdir()
+        make_workflow(tmp_path / name)
+    (tmp_path / "c" / "ga4gh-io.schema.json").write_text("{", "utf-8")
+    servers: list[trs_stub.TrsStub] = []
+
+    def interrupt(self: trs_stub.TrsStub) -> None:
+        servers.append(self)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(trs_stub.TrsStub, "serve_forever", interrupt)
+    argv = ["--port", "0", "--workflows-dir", str(tmp_path)]
+    assert trs_stub.main([*argv, "--reload"]) == 0
+    assert list(servers[0].current()) == [TOOL]
+    err = capsys.readouterr().err
+    assert f"Can't serve the workflow {tmp_path / 'b'}: Two workflows" in err
+    assert f"Can't serve the workflow {tmp_path / 'c'}" in err
+    assert trs_stub.main(argv) == 1
 
 
 def test_main_serves_seeded_workflows_with_reload(

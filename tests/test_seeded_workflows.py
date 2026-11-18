@@ -84,6 +84,20 @@ def test_seeded_values_give_a_run_request(directory: Path) -> None:
     assert request["workflow_params"]
 
 
+def test_checksums_and_stub_find_the_same_workflows(tmp_path: Path) -> None:
+    """Test that the checksum script and the TRS stub agree on workflows.
+
+    Args:
+        tmp_path: A directory with a workflow and one without a schema.
+    """
+    (tmp_path / "a").mkdir()
+    (tmp_path / "a" / "ga4gh-io.schema.json").write_text("{}", "utf-8")
+    (tmp_path / "b").mkdir()
+    for root in (WORKFLOWS, tmp_path):
+        assert checksums.workflow_dirs(root) == trs_stub.find_workflows(root)
+    assert checksums.workflow_dirs(tmp_path) == [tmp_path / "a"]
+
+
 def test_checksums_are_current() -> None:
     """Test that the checked-in checksums match the descriptors."""
     assert checksums.main(["--check"]) == 0

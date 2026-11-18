@@ -164,7 +164,7 @@ def load_workflows(
     Raises:
         OSError: If ``strict`` and a file can't be read.
         ValueError: If ``strict`` and a workflow is invalid (see
-            :func:`load_workflow`).
+            :func:`load_workflow`), with its directory in the message.
     """
     paths = [*directories, *(p for root in roots for p in find_workflows(root))]
     workflows: list[Workflow] = []
@@ -175,11 +175,14 @@ def load_workflows(
             key = (workflow.tool_id, workflow.version_id)
             if key in seen and not strict:
                 raise ValueError(_duplicate(workflow))
-        except (OSError, ValueError) as exc:
-            if strict:
+        # RecursionError: JSON nested too deeply for the parser
+        except (OSError, ValueError, RecursionError) as exc:
+            if not strict:
+                print(f"Can't serve the workflow {path}: {exc}", file=sys.stderr)
+                continue
+            if isinstance(exc, OSError):  # names the file already
                 raise
-            print(f"Can't serve the workflow {path}: {exc}", file=sys.stderr)
-            continue
+            raise ValueError(f"{path}: {exc}") from exc
         seen.add(key)
         workflows.append(workflow)
     return workflows
@@ -473,13 +476,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     default = [] if args.roots else [str(DEMO_DIR)]
     directories = [Path(directory) for directory in args.workflows or default]
     roots = [Path(root) for root in args.roots]
-    workflows = []
-    for directory in [*directories, *(p for r in roots for p in find_workflows(r))]:
-        try:
-            workflows.append(load_workflow(directory))
-        except (OSError, ValueError) as exc:
-            print(f"Can't serve the workflow {directory}: {exc}", file=sys.stderr)
-            return 1
+    try:
+        # With --reload, a workflow broken while the stack was down is left
+        # out at the start too, as on every request, instead of failing
+        workflows = load_workflows(directories, roots, strict=not args.reload)
+    except (OSError, ValueError) as exc:
+        print(f"Can't serve the workflows: {exc}", file=sys.stderr)
+        return 1
     reload: Callable[[], list[Workflow]] | None = None
     if args.reload:
         # Broken workflows are left out on reload, not fatal: users edit them

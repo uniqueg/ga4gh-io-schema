@@ -33,7 +33,7 @@ make demo
 ```
 
 `make demo` runs `docker compose -f prototype/compose.yaml up --detach
---build --wait`: Compose builds one small image, starts two services and
+--build --wait`, with `TRS_URL` and `WES_URL` of the shell unset: Compose builds one small image, starts two services and
 waits until both are healthy:
 
 | Service | Port | What it is |
@@ -254,8 +254,8 @@ Then open <http://127.0.0.1:8080/ga4gh/trs/v2/tools>. Options:
 - `--reload`: read the files again on every request, so that edits, and
   new directories under `--workflows-dir`, show without a restart. A
   workflow that can't be read then, or that is a tool version served
-  already, is left out and reported on standard error; at the start, it is
-  an error, as without `--reload`. The stack runs the stub with
+  already, is left out and reported on standard error, also at the start
+  (without `--reload`, it is an error). The stack runs the stub with
   `--workflow examples/demo --workflows-dir examples/workflows --reload`.
 - `--host` and `--port`: the address to bind; the default is
   `127.0.0.1:8080`.
