@@ -79,10 +79,14 @@ _PLAIN_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _CWL_CLASSES = ("File", "Directory")
 # The CWL loader (schema-salad) takes keys that start with `$` for
 # directives: `$include` and `$import` fetch other documents, also from
-# `file:` URIs, and `$mixin`, `$namespaces` and `$schemas` change the values
+# `file:` URIs, and `$mixin`, `$namespaces` and `$schemas` change the values.
+# Keys with `:` are namespaced fields or URIs, which cwltool expands, e.g.,
+# `cwltool:overrides` and `cwl:requirements`, applied as requirements (e.g.,
+# another container image); the ids of CWL inputs and fields have none
 _CWL_DIRECTIVE = (
-    "Keys that start with '$' aren't accepted in CWL input values: the CWL "
-    "loader takes them for directives, e.g., $include or $import."
+    "Keys that start with '$' or contain ':' aren't accepted in CWL input "
+    "values: the CWL loader takes them for directives or namespaced fields, "
+    "e.g., $include or cwltool:overrides."
 )
 # Applicators along the evaluation path of a failure, by whether their
 # subschemas apply to the same location as the schema itself, and by whether
@@ -1550,6 +1554,13 @@ class _ReverseTranslator:
                     f"to the key '{input_keys[name][0]}'.",
                     (key,),
                 )
+            if name in values:
+                # Only one of them would be validated, and the engine gets both
+                raise WorkflowParamsError(
+                    "Several members bind to the same input: give it once, "
+                    f"under the key '{input_keys[name][0]}'.",
+                    (key,),
+                )
             self.keys[name] = key
             values[name] = self._files(value, (name,)) if self.cwl else value
         return values
@@ -1683,15 +1694,16 @@ class _ReverseTranslator:
 
 
 def _directive(keys: Iterable[str]) -> str | None:
-    """Find a key that the CWL loader takes for a directive.
+    """Find a key that the CWL loader takes for a directive or a namespace.
 
     Args:
         keys: The keys, e.g., the members of an object.
 
     Returns:
-        The first key that starts with ``$``, or ``None`` if there is none.
+        The first key that starts with ``$`` or contains ``:``, or ``None``
+        if there is none.
     """
-    return next((key for key in keys if key.startswith("$")), None)
+    return next((key for key in keys if key.startswith("$") or ":" in key), None)
 
 
 @contextmanager

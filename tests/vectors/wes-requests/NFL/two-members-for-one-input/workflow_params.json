@@ -1,0 +1,4 @@
+{
+  "reads": "file:///etc/passwd",
+  "input": "https://data.example.org/sample.bam"
+}

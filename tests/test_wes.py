@@ -462,6 +462,57 @@ def test_cwl_loader_directives_at_the_top_level() -> None:
     assert info.value.pointer == "/$include"
 
 
+@pytest.mark.parametrize(
+    "key", ["cwltool:overrides", "cwl:requirements", "http://commonwl.org/cwltool#x"]
+)
+def test_cwl_namespaced_keys_are_not_values(key: str) -> None:
+    """Test that keys of the namespaces of the CWL loader are rejected.
+
+    cwltool expands keys like ``cwltool:overrides`` of the job order and
+    applies them as requirements (e.g., another container image).
+
+    Args:
+        key: A key with a namespace prefix or a URI.
+    """
+    schema = make_schema({"rec": {"type": "object"}}, {"descriptor_type": "CWL"})
+
+    with pytest.raises(TranslationError, match="contain ':'") as info:
+        to_workflow_params(schema, {"rec": {}, key: {}})
+    assert info.value.pointer == "/" + key.replace("/", "~1")
+    with pytest.raises(WorkflowParamsError, match="contain ':'") as error:
+        from_workflow_params(schema, {"rec": {key: []}})
+    assert error.value.pointer == "/rec/" + key.replace("/", "~1")
+    # Other engines take such keys as plain members
+    nfl = make_schema({"rec": {"type": "object"}}, NFL)
+    assert to_workflow_params(nfl, {"rec": {key: 1}}) == {"rec": {key: 1}}
+
+
+@pytest.mark.parametrize("workflow", [{"descriptor_type": "CWL"}, NFL])
+def test_two_members_for_one_input_are_rejected(workflow: dict[str, Any]) -> None:
+    """Test that a server doesn't validate only one of two members of an input.
+
+    An input renamed with ``x-ga4gh-parameter`` matches its key and its own
+    name; with both in a request, one of them would reach the engine
+    unchecked.
+
+    Args:
+        workflow: The workflow block of the schema.
+    """
+    schema = make_schema(
+        {"a": {"type": "string", "x-ga4gh-parameter": {"name": "x"}}},
+        workflow,
+    )
+    schema["properties"]["inputs"]["additionalProperties"] = False
+    smuggled = {"a": {"$include": "file:///etc/passwd"}, "x": "fine"}
+
+    with pytest.raises(WorkflowParamsError, match="Several members") as error:
+        from_workflow_params(schema, smuggled)
+    assert error.value.pointer == "/x"
+    with pytest.raises(WorkflowParamsError, match="Several members") as error:
+        from_workflow_params(schema, {"x": "fine", "a": "other"})
+    assert error.value.pointer == "/a"
+
+
 def test_cwl_loader_directives_in_file_objects() -> None:
     """Test that a directive in a CWL File object of a request is rejected."""
     schema = make_schema({"reads": file_ref()}, {"descriptor_type": "CWL"})

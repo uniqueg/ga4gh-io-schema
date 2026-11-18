@@ -54,12 +54,16 @@ differs between them.
    `Directory` in the input values, at any depth: the runner would stage
    them without the checks of file references. Files are given as file
    reference values, i.e., strings. For `CWL`, a translator MUST also
-   reject object keys that start with `$`, at any depth and among the
-   members of the input values: the CWL loader (schema-salad) takes them
-   for directives, and `$include` and `$import` make it read or fetch the
-   document they name (also `file:` URIs and internal hosts) past the
-   checks of file references; `$mixin`, `$namespaces` and `$schemas`
-   change the values. Errors name the location of the key, not its value.
+   reject object keys that start with `$` or contain `:`, at any depth and
+   among the members of the input values. The CWL loader (schema-salad)
+   takes keys with `$` for directives: `$include` and `$import` make it
+   read or fetch the document they name (also `file:` URIs and internal
+   hosts) past the checks of file references, and `$mixin`, `$namespaces`
+   and `$schemas` change the values. Keys with `:` are namespaced fields or
+   URIs, which cwltool expands and applies, e.g., `cwltool:overrides` and
+   `cwl:requirements` (requirements such as another container image). The
+   ids of CWL inputs and record fields have neither. Errors name the
+   location of the key, not its value.
 5. **File references.** A string value is a file value if a file reference
    schema applies at its location: directly; in the `items`,
    `prefixItems` or `contains` of an array; in the `properties`,
@@ -267,7 +271,11 @@ the values against `inputs`:
    property's schema (of equally near ones, the first in the document), or
    else the name of the property. If several inputs can bind to the key,
    the member matches the input whose first binding it is; if that doesn't
-   decide (none or several), the server MUST reject the request. For `WDL`,
+   decide (none or several), the server MUST reject the request. If
+   several members match the same input (e.g., under its
+   `x-ga4gh-parameter` key and under its own name), the server MUST reject
+   the request: only one of them would be validated, and the engine would
+   get both. For `WDL`,
    a key without the prefix `<entry_point>.` matches no input. After the
    values are validated, the input MUST bind to the member's key for its
    value (rule 2 above); otherwise, the server MUST reject the request.
@@ -288,8 +296,9 @@ the values against `inputs`:
    `class` doesn't match the `kind` of the file reference (`File` for
    `file`, `Directory` for `directory`), and objects at locations where no
    file reference applies. As for translators (rule 4 of "From input
-   values to `workflow_params`"), it MUST reject keys that start with `$`
-   anywhere in `workflow_params`, the directives of the CWL loader.
+   values to `workflow_params`"), it MUST reject keys that start with `$` or
+   contain `:` anywhere in `workflow_params`, the directives and namespaced
+   fields of the CWL loader.
 4. Errors name the location in `workflow_params`, not in the input values:
    the first segment of the JSON Pointer is the key of the member in
    `workflow_params` (e.g., `/variant_calling.input_bam`), and the pointer of

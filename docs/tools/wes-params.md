@@ -23,8 +23,9 @@ The command:
    `inputs`) against `inputs`, and every value of a file reference against
    the rules of [Values](../specification/files.md#values) and the
    deployment's allow-list of schemes; for CWL, it rejects `File` and
-   `Directory` objects and keys that start with `$` (directives of the CWL
-   loader, e.g., `$include`) in the values, see rule 4 of [From input
+   `Directory` objects and keys that start with `$` or contain `:`
+   (directives and namespaced fields of the CWL loader, e.g., `$include` or
+   `cwltool:overrides`) in the values, see rule 4 of [From input
    values to `workflow_params`](../specification/engine-bindings.md#from-input-values-to-workflow_params);
 4. writes the `workflow_params`, as indented JSON (with `--json`, on one
    line).
