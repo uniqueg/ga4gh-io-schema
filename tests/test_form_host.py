@@ -14,6 +14,7 @@ import copy
 import email.parser
 import email.policy
 import http.client
+import io
 import json
 import threading
 import urllib.error
@@ -823,6 +824,20 @@ def test_schemas_from_urls_are_read_up_to_the_limit(
     monkeypatch.setattr(form_host, "MAX_ANSWER", 64)
     with pytest.raises(ValueError, match="larger than 64 bytes"):
         form_host.load_schema(f"{host}/api/schema")
+
+
+def test_answers_are_not_read_past_the_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that the host reads at most one byte more than MAX_ANSWER.
+
+    Args:
+        monkeypatch: Lowers the limit.
+    """
+    monkeypatch.setattr(form_host, "MAX_ANSWER", 64)
+    answer = io.BytesIO(b"x" * 1000)
+
+    with pytest.raises(ValueError, match="larger than 64 bytes"):
+        form_host._read_answer(answer)
+    assert answer.tell() == 65
 
 
 def test_empty_wes_url_is_no_wes() -> None:
