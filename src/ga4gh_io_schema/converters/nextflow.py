@@ -195,6 +195,10 @@ class _Converter(SchemaConverter):
         self.in_sheet = False
         # Parameters with `-`: their names, places and converted schemas
         self.dashed: list[tuple[str, Pointer, dict[str, Any]]] = []
+        # Engine names that parameters of the source bind to
+        self.bound: set[str] = set()
+        # Places of the parameters whose default was dropped
+        self.defaultless: list[Pointer] = []
 
     def convert(self, source: Any, outputs: Sequence[Output]) -> Conversion:
         """Convert the nf-schema file and its sample-sheet schemas.
@@ -236,6 +240,8 @@ class _Converter(SchemaConverter):
         }
         if defs is not None:
             schema["$defs"] = defs
+        for pointer in self.defaultless:
+            self._unrequire(schema, pointer)
         for pointer, path in self.pending:
             self._attach(schema, pointer, path)
         self._check_references(schema, schema, (), {})
@@ -369,36 +375,89 @@ class _Converter(SchemaConverter):
         self._help_text(result, pointer)
         self._rename(result, "hidden", "x-ga4gh-hidden", bool, pointer)
         self._rename(result, "errorMessage", "x-ga4gh-error-message", str, pointer)
-        self._default(result, pointer)
+        self._default(result, pointer, parameter)
         converted = self._file(result, pointer, parameter)
         if parameter is not None and "-" in parameter:
             self.dashed.append((parameter, pointer, converted))
+        binding = converted.get("x-ga4gh-parameter")
+        if (
+            parameter is not None
+            and isinstance(binding, dict)
+            and isinstance(binding.get("name"), str)
+        ):
+            self.bound.add(binding["name"])
         return converted
 
-    def _default(self, result: dict[str, Any], pointer: Pointer) -> None:
+    def _default(
+        self, result: dict[str, Any], pointer: Pointer, parameter: str | None
+    ) -> None:
         """Drop a ``default`` with ``${``, which the translators reject.
 
         nf-core pipelines set defaults such as ``${projectDir}/assets/...``,
         which Nextflow replaces in its configuration; the translators reject
         strings with ``${`` for Nextflow, as Nextflow would replace them in
         the params file too. A client that sent the default would be
-        rejected; without a value, Nextflow sets its own default.
+        rejected; without a value, Nextflow sets its own default, so a
+        parameter loses ``required`` too (see :meth:`_unrequire`). ``enum``
+        and ``const`` with ``${`` are kept, with a note.
 
         Args:
             result: The converted schema.
             pointer: Location of the schema in the IO schema.
+            parameter: The parameter whose schema it is, if any.
         """
-        if self.in_sheet or "default" not in result:
+        if self.in_sheet:
             return
-        # JSON text has `${` exactly where a key or a string has it
-        text = json.dumps(result["default"], ensure_ascii=False)
-        if "${" not in text:
+        for keyword in ("default", "const", "enum"):
+            if keyword not in result:
+                continue
+            # JSON text has `${` exactly where a key or a string has it
+            text = json.dumps(result[keyword], ensure_ascii=False)
+            if "${" not in text:
+                continue
+            if keyword == "default":
+                del result[keyword]
+                if parameter is not None:
+                    self.defaultless.append(pointer)
+                self.note(
+                    f"Dropped 'default' {text}: it has '${{', which Nextflow "
+                    "replaces with its own variables, so the translators "
+                    "reject it; without a value, Nextflow sets its own default.",
+                    pointer,
+                )
+            else:
+                # Dropping it would allow other values
+                self.note(
+                    f"Kept '{keyword}' {text}: values with '${{' can't be "
+                    "translated, as Nextflow replaces its variables in them; "
+                    "change the pipeline's allowed values.",
+                    pointer,
+                )
+
+    def _unrequire(self, schema: dict[str, Any], pointer: Pointer) -> None:
+        """Remove a parameter whose default was dropped from ``required``.
+
+        Nextflow sets the default when the value is left out, so the
+        parameter isn't required of clients, which can't send the default.
+
+        Args:
+            schema: The IO schema.
+            pointer: Location of the parameter's schema: in ``properties``
+                of ``inputs`` or of a group.
+        """
+        parent: Any = schema
+        for part in pointer[:-2]:
+            parent = parent[part]
+        name = pointer[-1]
+        required = parent.get("required")
+        if not isinstance(required, list) or name not in required:
             return
-        del result["default"]
+        required.remove(name)
+        if not required:
+            del parent["required"]
         self.note(
-            f"Dropped 'default' {text}: it has '${{', which Nextflow replaces "
-            "with its own variables, so the translators reject it; without "
-            "a value, Nextflow sets its own default.",
+            f"Removed '{name}' from 'required': its default was dropped, and "
+            "Nextflow sets it when the value is left out.",
             pointer,
         )
 
@@ -412,7 +471,8 @@ class _Converter(SchemaConverter):
         the input keeps its name and its values translate; the others get a
         note. A name that the source binds already is kept.
         """
-        names = set(self.parameters)
+        # Names of parameters, and the names that the source binds them to
+        names = set(self.parameters) | self.bound
         # The parameters with `-` that get each camelCase name
         targets: dict[str, set[str]] = {}
         for name, _, _ in self.dashed:

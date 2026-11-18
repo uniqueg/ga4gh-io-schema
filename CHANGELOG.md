@@ -435,7 +435,9 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   name that Nextflow sets (`out-dir` to `outDir`, with
   `x-ga4gh-parameter`), so that their values translate; it notes those
   whose name isn't certain or is taken. It drops defaults with `${`
-  (e.g., `${projectDir}/assets/...` of nf-core/rnaseq), with a note. The
+  (e.g., `${projectDir}/assets/...` of nf-core/rnaseq), with a note, and
+  removes such parameters from `required` (Nextflow sets the default), and
+  notes `enum` and `const` with `${`, whose values can't be sent. The
   engine bindings, the security page, the tool pages and the vectors
   README state the rules; new test vectors `NFL/variable-in-value` and
   `NFL/variable-in-key` in `wes-params/` and `wes-requests/`. (#123)

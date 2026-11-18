@@ -407,6 +407,15 @@ def test_dashed_parameter_keeps_a_binding_of_the_source() -> None:
             ["out-dir", "out-Dir"],
             "another parameter has that name",
         ),
+        # The source binds another parameter to the name
+        (
+            {
+                "out-dir": {"type": "string"},
+                "o": {"type": "string", "x-ga4gh-parameter": {"name": "outDir"}},
+            },
+            ["out-dir"],
+            "another parameter has that name",
+        ),
         # Names whose camelCase name isn't certain
         ({"-a": {}}, ["-a"], "isn't kebab-case"),
         ({"a-": {}}, ["a-"], "isn't kebab-case"),
@@ -451,6 +460,34 @@ def test_dashes_in_nested_properties_stay() -> None:
     assert not notes_with(conversion, "Nextflow renames")
 
 
+def test_dashed_parameter_with_a_wrong_binding_is_left_to_the_check() -> None:
+    """Test that an ``x-ga4gh-parameter`` that isn't an object is kept as it is."""
+    conversion = to_ga4gh(nf_schema({"out-dir": {"x-ga4gh-parameter": "outDir"}}))
+
+    assert parameter(conversion, "out-dir") == {"x-ga4gh-parameter": "outDir"}
+    assert not notes_with(conversion, "'out-dir'")
+
+
+def test_sample_sheet_columns_keep_dashes_and_defaults() -> None:
+    """Test that columns of sample sheets aren't parameters of Nextflow."""
+    column = {"type": "string", "default": "${projectDir}/a.txt"}
+    sheet = {
+        "$schema": DRAFT_2020,
+        "type": "array",
+        "items": {"type": "object", "properties": {"read-group": column}},
+    }
+    source = nf_schema(
+        {"input": {"type": "string", "format": "file-path", "schema": SHEET}}
+    )
+
+    conversion = to_ga4gh(source, {SHEET: sheet})
+
+    hint = parameter(conversion, "input")["x-ga4gh-tabular-schema"]
+    assert hint["items"]["properties"]["read-group"] == column
+    assert not notes_with(conversion, "read-group")
+    assert not notes_with(conversion, "'${")
+
+
 def test_defaults_with_nextflow_variables_are_dropped() -> None:
     """Test that a default with ``${`` is dropped, with a note.
 
@@ -463,6 +500,12 @@ def test_defaults_with_nextflow_variables_are_dropped() -> None:
             "manifest": {"type": "string", "default": "${projectDir}/assets/a.txt"},
             "rec": {"type": "object", "default": {"a": "${launchDir}"}},
             "plain": {"type": "string", "default": "$HOME"},
+            # Nested: dropped, but not a parameter of its own
+            "obj": {
+                "type": "object",
+                "properties": {"p": {"default": "${launchDir}"}},
+                "required": ["p"],
+            },
         }
     )
 
@@ -471,9 +514,61 @@ def test_defaults_with_nextflow_variables_are_dropped() -> None:
     assert parameter(conversion, "manifest") == {"type": "string"}
     assert parameter(conversion, "rec") == {"type": "object"}
     assert parameter(conversion, "plain")["default"] == "$HOME"
+    assert parameter(conversion, "obj")["properties"]["p"] == {}
+    assert parameter(conversion, "obj")["required"] == ["p"]
     notes = notes_with(conversion, "Dropped 'default'")
-    assert len(notes) == 2
+    assert len(notes) == 3
     assert "${projectDir}" in notes[0].message
+
+
+def test_parameters_whose_default_is_dropped_are_not_required() -> None:
+    """Test that a required parameter loses ``required`` with its default.
+
+    Clients can't send the default, and Nextflow sets it when the value is
+    left out; required, the input could take only other values.
+    """
+    variable = {"type": "string", "default": "${projectDir}/a.fa"}
+    source = nf_schema(
+        {"fasta": variable, "reads": {"type": "string"}},
+        {
+            "g": group({"gtf": variable}, required=["gtf"]),
+            "h": group({"bed": variable, "n": {"type": "integer"}}, required=["n"]),
+        },
+        required=["fasta", "reads"],
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert conversion.schema["properties"]["inputs"]["required"] == ["reads"]
+    assert "required" not in conversion.schema["$defs"]["g"]
+    assert conversion.schema["$defs"]["h"]["required"] == ["n"]
+    assert len(notes_with(conversion, "from 'required'")) == 2
+    assert to_workflow_params(conversion.schema, {"reads": "r", "n": 1}) == {
+        "reads": "r",
+        "n": 1,
+    }
+
+
+def test_allowed_values_with_nextflow_variables_are_noted() -> None:
+    """Test that ``enum`` and ``const`` with ``${`` are kept, with a note.
+
+    Dropping them would allow other values; the values with ``${`` can't be
+    translated.
+    """
+    source = nf_schema(
+        {
+            "mode": {"type": "string", "enum": ["fast", "${launchDir}"]},
+            "fixed": {"const": "${secrets}"},
+            "plain": {"enum": ["$a", "{b}"]},
+        }
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert parameter(conversion, "mode")["enum"] == ["fast", "${launchDir}"]
+    assert parameter(conversion, "fixed") == {"const": "${secrets}"}
+    notes = notes_with(conversion, "can't be translated, as Nextflow replaces")
+    assert [note.message.split()[1] for note in notes] == ["'enum'", "'const'"]
 
 
 # --- Keywords of nf-schema --------------------------------------------------
