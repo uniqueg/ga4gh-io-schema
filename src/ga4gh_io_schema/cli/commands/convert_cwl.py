@@ -71,7 +71,8 @@ class ConvertCwlCommand(Command):
         """Convert the document.
 
         What can't be converted is reported as warnings: on standard error,
-        or, with ``--json``, in the ``warnings`` of the result.
+        or, with ``--json``, in the ``notes`` of the result, next to the
+        ``schema``, as the other converters report their notes.
 
         Args:
             args: Parsed arguments.
@@ -126,7 +127,7 @@ class ConvertCwlCommand(Command):
         output = json.dumps(schema, indent=2, allow_nan=False)
         return CommandResult(
             text=output,
-            data={"output": output, "warnings": notes_as_dicts(parser.notes)},
+            data={"schema": schema, "notes": notes_as_dicts(parser.notes)},
         )
 
 
