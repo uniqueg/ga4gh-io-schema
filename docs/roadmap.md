@@ -2,13 +2,44 @@
 
 ## Next steps
 
-To drive adoption and prove out the utility of the IO Schema Profile, we propose the following immediate next steps:
+**Where 0.3.0 stands.** Version 0.3.0 of the proposal has:
 
-1. **Schema Translation Tooling:** Develop lightweight, open-source translation scripts to convert existing `nextflow_schema.json` and CWL `CommandLineTool` inputs into compliant GA4GH IO Profile schemas.
+- a **specification** with conformance classes, RFC 2119 requirements and a
+  [conformance suite](specification/conformance.md#conformance-suite);
+- a **Python reference implementation**, `ga4gh-io-schema`: the validator,
+  the request builder, the checks for WES servers and the output
+  normaliser (see [Implementations](specification/conformance.md#implementations));
+- **converters** from CWL, Nextflow (nf-schema), Snakemake and WDL into IO
+  schemas (see [Converters](tools/converters.md));
+- a **prototype** and its **evaluation**: a TRS stub, a generic form host
+  and the WES run request it builds, on one laptop (see
+  [Prototype](adoption/prototype.md) and
+  [Prototype evaluation](adoption/prototype-evaluation.md));
+- a **live demo**, which is the prototype: anybody can run it from a fresh
+  checkout of this repository.
 
-2. **End-to-End Proof of Concept (PoC):** Construct a sandbox environment featuring a mock TRS registry hosting IO schemas (as `ga4gh-io.schema.json` files, see [TRS](adoption/trs.md)), a generic frontend (e.g., via `react-jsonschema-form`) rendering input forms and compiling WES requests, and a proxy WES gateway enforcing server-side validation against the schema prior to execution.
+**Next step: review by the work stream.** 0.3.0 goes to the GA4GH
+[Federated Analysis Work Stream](https://www.ga4gh.org/work_stream/federated-analysis-work-stream-formerly-cloud-work-stream/)
+(formerly the Cloud Work Stream, which develops TRS, WES, DRS and TES), to
+be reviewed as a product candidate, together with the proposed changes of
+other APIs (among them the TRS file type `IO_SCHEMA`, see
+[TRS](adoption/trs.md#proposed-the-io_schema-file-type)). After 0.3.0, the
+proposal waits for that feedback (see [Path to GA4GH](transfer.md)).
 
-3. **Formal Specification Submission:** Following the PoC, submit the IDL schema structure, the `x-ga4gh-*` vocabulary, and the proposed API modifications (among them the TRS file type `IO_SCHEMA`, see [TRS](adoption/trs.md#proposed-the-io_schema-file-type)) to the GA4GH [Federated Analysis Work Stream](https://www.ga4gh.org/work_stream/federated-analysis-work-stream-formerly-cloud-work-stream/) (formerly the Cloud Work Stream, which develops TRS, WES, DRS and TES) for formal standardization review.
+**Open items,** not done in 0.3.0:
+
+- **Validation in a WES:** the checks for WES servers exist as a library
+  (`ga4gh-io-schema wes-validate`), but no WES server or gateway validates
+  run requests against IO schemas yet.
+- **Other form libraries:** the prototype renders forms with a form of its
+  own. Generic JSON Schema form libraries (e.g., `react-jsonschema-form`)
+  need an adapter for the `x-ga4gh-*` keywords (see
+  [Portals and clients](adoption/portals.md)); none is written yet.
+- **Further implementations:** GA4GH approval needs independent,
+  interoperating implementations (see
+  [Implementations](specification/conformance.md#implementations)).
+  Adoption in other platforms is welcome, and not a requirement of the
+  proposal.
 
 ## Scope of version 0.3.0
 

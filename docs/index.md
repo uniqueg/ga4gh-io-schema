@@ -2,6 +2,13 @@
 
 --8<-- "README.md:synopsis"
 
+!!! info "Status"
+    This is version 0.3.0 of a proposal, not a GA4GH standard: it has no
+    releases, and it waits for review by the GA4GH Federated Analysis Work
+    Stream (see [Roadmap](roadmap.md#next-steps)). Try it with the
+    [prototype](adoption/prototype.md), one Docker Compose command on a
+    laptop.
+
 ## Executive summary
 
 This document proposes a **JSON Schema profile** that describes the inputs and outputs of computational workflows and workflow components, in the role that an OpenAPI description plays for a web API.
@@ -17,10 +24,13 @@ with one Docker Compose command: a portal picks a workflow in a TRS stub,
 renders the form of its IO schema and builds the WES run request, with no
 code for the workflow or its language. Its
 [evaluation](adoption/prototype-evaluation.md) concludes that the schema
-was enough for that flow and that TRS needed no change; the gaps it found
+was enough for that flow and that TRS needed no change. The gaps it found
 are at the edges of the profile: matching TRS file entries, the imports of
 multi-file workflows in the `workflow_url`, whether a WES can fetch that
-URL, and a helper for checking the workflow block.
+URL, and a helper for checking the workflow block. 0.3.0 addresses each of
+them in the docs, the specification or the tools; whether a WES can fetch
+the URL stays an [open question](roadmap.md#open-questions) for the WES
+API.
 
 ## Contents
 
