@@ -49,7 +49,9 @@ updates:
     groups:
       npm:
         patterns: ["*"]
-  # The base image of the prototype (`prototype/Dockerfile`)
+  # The images of the prototype (`prototype/Dockerfile`: the Python base
+  # image and uv), pinned to digests; uv must have the version of
+  # `uv.lock`, as in `.readthedocs.yaml` (a test checks it)
   - package-ecosystem: docker
     directory: /prototype
     labels: ["type: dependencies"]

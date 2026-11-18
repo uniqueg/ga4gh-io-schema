@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 from ga4gh_io_schema import validator
 from ga4gh_io_schema.cli.app import render_reference
@@ -526,3 +527,79 @@ def test_every_widget_has_one_fit_rule_and_one_group() -> None:
     assert sorted(ruled) == sorted(widgets)
     assert sorted(viewers + inputs) == sorted(widgets)
     assert not set(viewers) & set(inputs)
+
+
+#: An image reference pinned to a digest: ``name[:tag]@sha256:<64 hex digits>``.
+PINNED_IMAGE = re.compile(r"\S+@sha256:[0-9a-f]{64}")
+
+
+def test_prototype_image_installs_pinned_versions() -> None:
+    """Test that the image of the prototype installs only pinned versions.
+
+    Its images are pinned to digests (Dependabot updates them), and the
+    package and its dependencies come from ``uv.lock``, as in CI, which
+    ``.dockerignore`` lets into the build context.
+    """
+    dockerfile = (REPO_ROOT / "prototype" / "Dockerfile").read_text("utf-8")
+    images = re.findall(r"^FROM\s+(\S+)", dockerfile, re.M)
+    dockerignore = (REPO_ROOT / ".dockerignore").read_text("utf-8").splitlines()
+
+    assert len(images) == 2
+    for image in images:
+        assert PINNED_IMAGE.fullmatch(image), image
+    assert "uv sync --locked" in dockerfile
+    assert "pip install" not in dockerfile
+    assert "!uv.lock" in dockerignore
+
+
+def test_read_the_docs_installs_the_lock() -> None:
+    """Test that Read the Docs builds with the versions of ``uv.lock``.
+
+    The ``docs`` job of CI installs them too, so that the previews and the
+    published site are built as CI checks them.
+    """
+    config = yaml.safe_load((REPO_ROOT / ".readthedocs.yaml").read_text("utf-8"))
+    jobs = config["build"]["jobs"]
+
+    assert "python" not in config
+    pins = {
+        match
+        for step in jobs["pre_install"]
+        for match in re.findall(r"\buv==([0-9]+\.[0-9]+\.[0-9]+)", step)
+    }
+    assert any("uv sync --locked --extra docs" in step for step in jobs["install"])
+    # The uv of the image (whose tag Dependabot updates) and of the lock (a
+    # dev dependency, also updated by Dependabot): an older uv may not read
+    # a lock written by a newer one. Not where the lock was resolved again for
+    # the lowest versions (the CI job "Test (lowest dependencies)")
+    lock = tomllib.loads((REPO_ROOT / "uv.lock").read_text("utf-8"))
+    if "resolution-mode" not in lock.get("options", {}):
+        locked = {item["version"] for item in lock["package"] if item["name"] == "uv"}
+        assert pins == locked, "set uv in .readthedocs.yaml to the version of uv.lock"
+    dockerfile = (REPO_ROOT / "prototype" / "Dockerfile").read_text("utf-8")
+    assert pins == set(
+        re.findall(r"^FROM ghcr\.io/astral-sh/uv:(\S+)@", dockerfile, re.M)
+    )
+
+
+def test_markdown_lint_is_pinned() -> None:
+    """Test that the Markdown lint runs at a pinned version.
+
+    It runs as a pre-commit hook, pinned to the commit of a release that
+    Dependabot updates. The workflows run no npm package through ``npx``
+    without a version (``package@1.2.3``), which would take the newest
+    release on every run and could fail unrelated pull requests.
+    """
+    for path in (REPO_ROOT / ".github" / "workflows").glob("*.yml"):
+        text = path.read_text("utf-8")
+        for package in re.findall(r"\bnpx\s+(?:-\S+\s+)*(\S+)", text):
+            # A version after the name (a scope's "@" comes first)
+            assert re.search(r"[^@]@[0-9]", package), (path.name, package)
+    config = (REPO_ROOT / ".pre-commit-config.yaml").read_text("utf-8")
+    revisions = [
+        repo["rev"]
+        for repo in yaml.safe_load(config)["repos"]
+        if any(hook["id"] == "markdownlint" for hook in repo["hooks"])
+    ]
+    assert len(revisions) == 1
+    assert re.fullmatch(r"[0-9a-f]{40}", revisions[0]), revisions

@@ -15,6 +15,15 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+#: End of the errors for inputs and outputs that the source declares as files
+#: or may hold files, but that an IO schema can't mark as file references:
+#: how to go on.
+UNMARKED_FILES_HINT = (
+    "Change the type in the source, or convert with --allow-unmarked-files "
+    "(allow_unmarked_files=True) to keep it as a plain schema, whose values "
+    "the execution side must then check itself."
+)
+
 #: Location in a JSON document, as keys and indexes.
 Pointer = tuple[str | int, ...]
 

@@ -119,20 +119,26 @@ def _without_parameters(group: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def convert(text: str, tmp_path: Path, process: str | None = None) -> Converted:
+def convert(
+    text: str,
+    tmp_path: Path,
+    process: str | None = None,
+    allow_unmarked_files: bool = False,
+) -> Converted:
     """Convert a CWL document given as text, and validate the result.
 
     Args:
         text: The CWL document.
         tmp_path: Directory that the document is written to.
         process: ID of the process to convert in a ``$graph``.
+        allow_unmarked_files: Whether ``Any`` converts with a note.
 
     Returns:
         The converted schema and the notes of the conversion.
     """
     path = tmp_path / "tool.cwl"
     path.write_text(text, encoding="utf-8")
-    parser = cwl.CwlParser(process=process)
+    parser = cwl.CwlParser(process=process, allow_unmarked_files=allow_unmarked_files)
     schema = parser.to_ga4gh(parser.parse(path))
     validate_schema(schema)
     return Converted(schema=schema, notes=parser.notes)
@@ -190,7 +196,11 @@ def test_fixture_converts_to_expected_schema(
 ) -> None:
     """Test that each fixture converts to its expected, valid IO schema."""
     output = tmp_path / "out.json"
-    status = main(["convert", "cwl", str(CWL_DIR / f"{name}.cwl"), "-o", str(output)])
+    # call-variants has an input of type Any
+    options = ["--allow-unmarked-files"] if name == "call-variants" else []
+    status = main(
+        ["convert", "cwl", *options, str(CWL_DIR / f"{name}.cwl"), "-o", str(output)]
+    )
 
     captured = capsys.readouterr()
     assert status == 0, captured.err
@@ -808,7 +818,7 @@ def test_default_file_dict_with_uri() -> None:
 
 def test_parse_reads_files_relative_to_the_document() -> None:
     """Test that ``parse`` resolves imports next to the document."""
-    parser = cwl.CwlParser()
+    parser = cwl.CwlParser(allow_unmarked_files=True)
     process = parser.parse(CWL_DIR / "call-variants.cwl")
 
     assert process.class_ == "CommandLineTool"
@@ -976,7 +986,7 @@ def test_too_large_schemas_fail(
     )
 
     with pytest.raises(cwl.CwlConversionError, match="would be too large"):
-        convert(tool(inputs, header=header), tmp_path)
+        convert(tool(inputs, header=header), tmp_path, allow_unmarked_files=True)
 
 
 def test_deep_types_fail_as_conversion_errors(
@@ -1142,12 +1152,65 @@ def test_non_finite_default_is_left_out(tmp_path: Path) -> None:
 
 
 def test_null_and_any_types(tmp_path: Path) -> None:
-    """Test that a null type is optional and that Any excludes null."""
-    result = convert(tool("{a: Any}", "{n: 'null', m: Any}"), tmp_path)
+    """Test that a null type is optional and that Any excludes null.
+
+    ``Any`` converts only with ``allow_unmarked_files``, with a note.
+    """
+    result = convert(
+        tool("{a: Any}", "{n: 'null', m: Any}"), tmp_path, allow_unmarked_files=True
+    )
 
     assert result.inputs["properties"]["a"] == {"not": {"type": "null"}}
     assert result.outputs["properties"]["m"] == {"not": {"type": "null"}}
     assert result.outputs["required"] == ["m"]
+    assert len(result.messages) == 2
+    assert all("Type 'Any' allows any value" in m for m in result.messages)
+
+
+@pytest.mark.parametrize(
+    ("inputs", "outputs", "location"),
+    [
+        ("{a: Any}", "{}", "$.properties.inputs.properties.a"),
+        ("{a: 'Any[]'}", "{}", "$.properties.inputs.properties.a.items"),
+        ("{a: [int, Any]}", "{}", "$.properties.inputs.properties.a.anyOf[1]"),
+        ("{}", "{m: Any}", "$.properties.outputs.properties.m"),
+    ],
+)
+def test_any_type_fails_without_opt_out(
+    inputs: str, outputs: str, location: str, tmp_path: Path
+) -> None:
+    """Test that ``Any``, which may hold unmarked files, is an error by default.
+
+    Args:
+        inputs: The inputs of the tool.
+        outputs: The outputs of the tool.
+        location: JSON path of the error.
+        tmp_path: Pytest fixture providing a temporary directory.
+    """
+    with pytest.raises(cwl.CwlConversionError) as info:
+        convert(tool(inputs, outputs), tmp_path)
+
+    assert info.value.message.startswith("Type 'Any' may hold files")
+    assert "--allow-unmarked-files (allow_unmarked_files=True)" in info.value.message
+    assert info.value.location == location
+
+
+def test_cli_fails_on_any_without_opt_out(capsys: pytest.CaptureFixture[str]) -> None:
+    """Test that ``convert cwl`` exits with 1 on ``Any``, and converts with the option.
+
+    Args:
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    document = str(CWL_DIR / "call-variants.cwl")
+
+    assert main(["convert", "cwl", document]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Type 'Any' may hold files" in captured.err
+    assert "(at $.properties.inputs.properties.options)" in captured.err
+
+    assert main(["convert", "cwl", "--allow-unmarked-files", document]) == 0
+    assert "Type 'Any' allows any value" in capsys.readouterr().err
 
 
 def test_format_that_is_not_a_uri_is_reported(tmp_path: Path) -> None:

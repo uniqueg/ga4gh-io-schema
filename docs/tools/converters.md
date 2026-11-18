@@ -27,6 +27,24 @@ validator (e.g., `$.properties.inputs.properties['call.threads']`). The
 subcommands write the notes to standard error (`convert cwl` labels them
 `Warning:`, the others `Note:`); with `--json`, the result holds them.
 
+Converters mark every input and output that the source declares as a file
+or a directory (or that may hold one) as a [file
+reference](../specification/files.md), or fail with exit status 1: a
+schema that leaves a file unmarked lets servers and clients accept any
+string there, also `file:///etc/passwd` (see
+[Security](../security.md#uris-and-file-references)). These cases fail:
+the keys of a WDL `Map[File, V]` or `Map[Directory, V]`, CWL inputs and
+outputs of type `Any`, and Nextflow parameters with a path `format` that
+can't be a file reference (e.g., with `anyOf`) or with `format:
+file-path-pattern` (a glob). `--allow-unmarked-files`
+(`allow_unmarked_files=True` in the Python API) converts them to plain
+schemas, with a note; the execution side must then
+check their values itself. Guesses aren't declarations: the Snakemake
+converter's notes on properties that look like files stay notes, and so do
+the columns of sample sheets and the conditions `not` and `if` of the
+Nextflow converter (see [File
+references](convert-nextflow.md#file-references)).
+
 ## From IO schemas to WES
 
 - **WES `workflow_params`:** build the `workflow_params` of a WES run request

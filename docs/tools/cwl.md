@@ -47,6 +47,14 @@ a document that imports types from a sibling directory (see
 ga4gh-io-schema convert cwl --root . tools/my-tool.cwl
 ```
 
+Inputs and outputs of type `Any` may hold files, which an IO schema can't
+mark as file references, so they fail the conversion (see
+[Limits](#limits)); `--allow-unmarked-files` converts them with a warning:
+
+```bash
+ga4gh-io-schema convert cwl --allow-unmarked-files my-tool.cwl
+```
+
 ### Warnings
 
 What the profile can't express, or what would need JavaScript, is left out
@@ -121,7 +129,7 @@ The types map as follows:
 | named types (`SchemaDefRequirement`, also with `$import`) | inlined where they are used |
 | `default` | `default`; a file or directory becomes its location, if that is an absolute URI other than `file:` (e.g., `https:` or `s3:`) and its scheme isn't [forbidden](../specification/files.md#values) (e.g., `javascript:`) |
 | an input with a `default` | not in `required` |
-| `Any` | `{"not": {"type": "null"}}` (any value but `null`), with a warning |
+| `Any` | an error (it may hold files, which an IO schema can't mark); with `--allow-unmarked-files`, `{"not": {"type": "null"}}` (any value but `null`), with a warning |
 
 Inputs reject unknown properties (`"additionalProperties": false`), like the
 [examples](../specification/examples.md) of the profile: a client sends only the
@@ -164,12 +172,17 @@ The converter leaves out, and reports:
 - **Default files that the IO schema can't refer to:** files next to the CWL
   document (relative locations, which the parser resolves to `file:` URIs) and
   file literals (`contents`). The input stays optional, as in CWL.
-- **`Any`**, which becomes a schema that allows any value but `null`: values
-  that are files aren't checked as file references.
+- **`Any`**, with `--allow-unmarked-files`: it becomes a schema that allows
+  any value but `null`, and values that are files aren't checked as file
+  references.
 - **Defaults that JSON lacks:** `.nan` and `.inf`. The input stays optional.
 
 These are errors, with exit status 1:
 
+- **`Any`**, which may hold files that an IO schema can't mark as file
+  references (see [Converters](converters.md#from-workflow-languages-to-io-schemas)),
+  unless `--allow-unmarked-files` is given; a concrete type (e.g., `File`,
+  `string` or a union of both) converts.
 - **Recursive named types**, e.g., a record with a field of its own type: an
   IO schema has no references between its schemas.
 - **Types that the document doesn't define**, e.g., a named type in a file

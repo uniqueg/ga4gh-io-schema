@@ -106,8 +106,8 @@ jobs:
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
-      # Ruff, mypy, semgrep, ast-grep, gitleaks, actionlint and the file
-      # checks of `.pre-commit-config.yaml`
+      # Ruff, mypy, semgrep, ast-grep, gitleaks, actionlint, markdownlint and
+      # the file checks of `.pre-commit-config.yaml`
       - name: Run linters and security checks
         run: |
           pre-commit run --all-files --show-diff-on-failure
@@ -119,15 +119,14 @@ jobs:
         run: pipx run --spec cffconvert==2.0.0 cffconvert --validate -i CITATION.cff
       - name: Check license compliance (REUSE)
         run: reuse lint
-      - name: Lint Markdown documentation
-        run: npx markdownlint-cli "**/*.md" --ignore "node_modules"
       - name: Validate GA4GH Meta-Schema syntax
         run: |
           check-jsonschema --check-metaschema schemas/ga4gh-io-profile.schema.json
           check-jsonschema --check-metaschema schemas/vocabularies/*.schema.json
 
-  # The sdist and the wheel, and what the wheel contains: the package, the
-  # schemas (package data) and the licence texts; nothing else
+  # The sdist and the wheel, and what they contain: the package, the schemas
+  # (package data in the wheel) and the licence texts, plus what builds the
+  # wheel in the sdist; nothing else
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -160,9 +159,20 @@ jobs:
             exit 1
           fi
           grep -qx 'ga4gh_io_schema/schemas/ga4gh-io-profile.schema.json' wheel-contents.txt
-          grep -Eqx 'ga4gh_io_schema-[^/]+\.dist-info/licenses/LICENSE' wheel-contents.txt
+          grep -Eqx 'ga4gh_io_schema-[^/]+\.dist-info/licenses/LICENSES/Apache-2\.0\.txt' wheel-contents.txt
           # Typed package (PEP 561)
           grep -qx 'ga4gh_io_schema/py.typed' wheel-contents.txt
+      # Only what builds the wheel, all Apache-2.0 (the licence of both
+      # distributions): no docs (CC-BY-4.0), tests or third-party data;
+      # keep the list in sync with `tests/test_wheel.py`
+      - name: Check sdist contents
+        run: |
+          tar -tzf dist/*.tar.gz | sed 's|^[^/]*/||' | grep -v '/$' | tee sdist-contents.txt
+          if grep -Ev '^(src/ga4gh_io_schema/|schemas/|(\.gitignore|LICENSES/Apache-2\.0\.txt|PKG-INFO|README\.md|pyproject\.toml)$)' sdist-contents.txt; then
+            echo "::error::Unexpected files in sdist"
+            exit 1
+          fi
+          grep -qx 'schemas/ga4gh-io-profile.schema.json' sdist-contents.txt
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -222,7 +232,8 @@ jobs:
 
       - name: E2E CLI Conversion (CWL)
         run: |
-          ga4gh-io-schema convert cwl tests/data/cwl/call-variants.cwl -o "$RUNNER_TEMP/call-variants.json"
+          # The fixture has an input of type Any, which fails without the option
+          ga4gh-io-schema convert cwl --allow-unmarked-files tests/data/cwl/call-variants.cwl -o "$RUNNER_TEMP/call-variants.json"
           ga4gh-io-schema validate "$RUNNER_TEMP/call-variants.json"
 
       - name: E2E CLI Conversion (Nextflow)

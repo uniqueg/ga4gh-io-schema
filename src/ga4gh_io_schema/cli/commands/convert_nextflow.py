@@ -18,6 +18,7 @@ from ga4gh_io_schema.cli.base import (
 from ga4gh_io_schema.cli.convert import (
     CONVERT,
     add_output_options,
+    add_unmarked_files_option,
     conversion_result,
 )
 from ga4gh_io_schema.converters.nextflow import (
@@ -112,6 +113,11 @@ class NextflowCommand(Command):
             ),
         )
         add_output_options(parser, "the output directory (outdir) of the pipeline")
+        add_unmarked_files_option(
+            parser,
+            "parameters with a path format that can't be file references, "
+            "and globs (format: file-path-pattern)",
+        )
 
     def run(self, args: argparse.Namespace) -> CommandResult:
         """Convert the schema, and check the result against the profile.
@@ -138,6 +144,7 @@ class NextflowCommand(Command):
                 load_sample_sheets(source, pipeline_dir),
                 directories=args.directory,
                 outputs=args.outputs,
+                allow_unmarked_files=args.allow_unmarked_files,
             )
             validate_schema(conversion.schema)
         except SourceError as exc:
