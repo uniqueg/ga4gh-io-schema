@@ -25,6 +25,18 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   because the repository moves to elixir-cloud-aai. A stable identifier
   follows later (#26). To migrate, change `$schema` in your IO schemas.
   (#77)
+- `ga4gh-io-schema validate` and `validate_schema()` always validate
+  against the profile that the package ships, and reject a schema whose
+  `$schema` is missing or names another meta-schema (e.g., plain JSON
+  Schema); before, they validated against whatever `$schema` named. With
+  `--meta-schema` (`meta_schema=`), the schema's `$schema` must name the
+  `$id` of that meta-schema, if it has one; before, `$schema` was ignored.
+  To migrate, set `$schema` to the `$id` of the profile, or pass the
+  meta-schema that your schemas name. (#109)
+- The meta-schema no longer requires `$schema` (it still checks its
+  value): clients and meta-schemas that apply only the profile's
+  meta-schema, without the Python validator, must now check that `$schema`
+  is there themselves (see "Fixed", #61). (#109)
 
 - Widgets of `x-ga4gh-ui-widget` must fit their schema: the meta-schema
   rejects, for example, a `slider` without a numeric type and both bounds, a
