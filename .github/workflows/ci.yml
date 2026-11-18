@@ -232,7 +232,8 @@ jobs:
 
       - name: E2E CLI Conversion (CWL)
         run: |
-          ga4gh-io-schema convert cwl tests/data/cwl/call-variants.cwl -o "$RUNNER_TEMP/call-variants.json"
+          # The fixture has an input of type Any, which fails without the option
+          ga4gh-io-schema convert cwl --allow-unmarked-files tests/data/cwl/call-variants.cwl -o "$RUNNER_TEMP/call-variants.json"
           ga4gh-io-schema validate "$RUNNER_TEMP/call-variants.json"
 
       - name: E2E CLI Conversion (Nextflow)

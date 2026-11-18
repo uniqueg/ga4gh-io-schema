@@ -46,6 +46,9 @@ Options:
   inputs](#nested-inputs)).
 - `--import-path DIR` (`-p`, repeatable): a directory to search imports in
   and to read them from (see [Imports](#imports)).
+- `--allow-unmarked-files`: convert the keys of `Map[File, V]` and
+  `Map[Directory, V]` to plain strings, with a note, instead of failing
+  (see [Mapping](#mapping)).
 
 A document that doesn't parse or type-check, has an unsupported version
 or an import that isn't allowed, or can't be converted fails with exit
@@ -62,7 +65,7 @@ status](cli.md#exit-status)).
 | `Directory` (WDL 1.2) | `{"type": "string", "x-ga4gh-file": {"kind": "directory"}}` |
 | `Array[T]`, `Array[T]+` | `array` with `items`; `+` adds `minItems: 1` |
 | `Map[String, V]` | `object` with `additionalProperties` |
-| `Map[File, V]` | as `Map[String, V]`, with a note: object keys can't be file references |
+| `Map[File, V]`, `Map[Directory, V]` | an error: object keys can't be file references; with `--allow-unmarked-files`, as `Map[String, V]`, with a note |
 | `Pair[L, R]` | `object` with the required properties `left` and `right`, as engines read pairs from JSON |
 | struct | `object` with the members as properties, the members that aren't optional in `required`, `additionalProperties: false`; WDL 1.2 `meta` (`description`) and `parameter_meta` of the struct describe the object and its members |
 | `T?` (an optional input or output) | not in `required` |
@@ -177,7 +180,9 @@ directory of the document, not, e.g., in `/`.
 - Defaults that are expressions are left out (see [Mapping](#mapping)); the
   converter never evaluates expressions, so a document can't make it read
   files or call functions.
-- The keys of maps are plain strings, also for `Map[File, V]`.
+- The keys of maps are plain strings; `Map[File, V]` and `Map[Directory,
+  V]` fail unless `--allow-unmarked-files` is given (see
+  [Converters](converters.md#from-workflow-languages-to-io-schemas)).
 - The converter doesn't set `$id`, the TRS identifiers or
   `primary_descriptor_path` of `x-ga4gh-workflow`; add them when the
   workflow is published (see [Identity and engine

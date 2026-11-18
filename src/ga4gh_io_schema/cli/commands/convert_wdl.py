@@ -11,7 +11,11 @@ from ga4gh_io_schema.cli.base import (
     ErrorKind,
     read_text,
 )
-from ga4gh_io_schema.cli.convert import CONVERT, conversion_result
+from ga4gh_io_schema.cli.convert import (
+    CONVERT,
+    add_unmarked_files_option,
+    conversion_result,
+)
 from ga4gh_io_schema.converters import wdl
 
 
@@ -59,6 +63,9 @@ class WdlCommand(Command):
                 "the directory of the document; can be repeated."
             ),
         )
+        add_unmarked_files_option(
+            parser, "the keys of Map[File, V] and Map[Directory, V]"
+        )
 
     def run(self, args: argparse.Namespace) -> CommandResult:
         """Convert the document.
@@ -93,6 +100,7 @@ class WdlCommand(Command):
                 nested_inputs=args.nested_inputs,
                 import_paths=args.import_path,
                 checksum=checksum,
+                allow_unmarked_files=args.allow_unmarked_files,
             )
         except wdl.MissingDependencyError as exc:
             raise CliError(ErrorKind.IO, str(exc)) from exc

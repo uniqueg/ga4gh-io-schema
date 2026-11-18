@@ -224,11 +224,6 @@ def test_compound_types() -> None:
     assert inputs["tags"]["items"] == {"type": ["string", "null"]}
     assert inputs["counts"]["additionalProperties"] == {"type": "integer"}
     assert inputs["counts"]["default"] == {"a": 1}
-    assert inputs["by_file"]["additionalProperties"] == {"type": "string"}
-    assert (
-        "refer to files"
-        in _messages(conversion)["$.properties.inputs.properties.by_file"]
-    )
     assert inputs["pair"]["required"] == ["left", "right"]
     assert inputs["pair"]["properties"]["right"]["x-ga4gh-file"] == {"kind": "file"}
     sample = inputs["sample"]
@@ -785,6 +780,61 @@ def test_types_without_equivalent() -> None:
         )
 
 
+@pytest.mark.parametrize("key", ["File", "Directory"])
+def test_map_with_file_keys_fails_without_opt_out(key: str, tmp_path: Path) -> None:
+    """Test that keys of files, which can't be marked, are an error by default.
+
+    With ``allow_unmarked_files``, the keys are plain strings, with a note.
+
+    Args:
+        key: The type of the keys.
+        tmp_path: Pytest fixture providing a temporary directory.
+    """
+    path = _write(
+        tmp_path,
+        "version 1.2\nworkflow w {\n  input {\n"
+        f"    Map[{key}, Int] by_file\n  }}\n"
+        f"  output {{\n    Map[{key}, Int] out = by_file\n  }}\n}}\n",
+    )
+
+    with pytest.raises(wdl.ConversionError) as info:
+        _convert(path)
+    assert info.value.message.startswith(f"The keys of Map[{key},Int] refer to files")
+    assert "--allow-unmarked-files (allow_unmarked_files=True)" in info.value.message
+    assert info.value.location == "$.properties.inputs.properties.by_file"
+
+    conversion = _convert(path, allow_unmarked_files=True)
+    inputs = _inputs(conversion)
+    assert inputs["by_file"] == {
+        "type": "object",
+        "additionalProperties": {"type": "integer"},
+        "x-ga4gh-parameter": {"type": f"Map[{key},Int]"},
+    }
+    assert [note.location for note in conversion.notes] == [
+        "$.properties.inputs.properties.by_file",
+        "$.properties.outputs.properties.out",
+    ]
+
+
+def test_cli_allows_unmarked_files(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test ``--allow-unmarked-files`` of ``convert wdl``.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+        capsys: Pytest fixture capturing standard output and error.
+    """
+    path = _write(
+        tmp_path, "version 1.1\nworkflow w {\n  input {\n    Map[File, Int] m\n  }\n}\n"
+    )
+
+    assert main(["convert", "wdl", str(path)]) == 1
+    assert "can't be file references" in capsys.readouterr().err
+    assert main(["convert", "wdl", "--allow-unmarked-files", str(path)]) == 0
+    assert "they are plain strings" in capsys.readouterr().err
+
+
 def test_file_values_in_compound_defaults(tmp_path: Path) -> None:
     """Test that defaults with paths in places of files are left out."""
     path = _write(
@@ -800,7 +850,7 @@ def test_file_values_in_compound_defaults(tmp_path: Path) -> None:
         "  }\n}\n",
     )
 
-    inputs = _inputs(_convert(path))
+    inputs = _inputs(_convert(path, allow_unmarked_files=True))
 
     for name in ("keys", "values", "pair", "with_file"):
         assert "default" not in inputs[name], name
@@ -973,7 +1023,12 @@ def test_docs_use_existing_options() -> None:
         for option in re.findall(r"(?<!\S)(--?[a-z][a-z-]*)", line):
             assert option in defined, option
     listed = re.findall(r"^- `(--?[a-z][a-z-]*)", page.read_text("utf-8"), re.M)
-    assert set(listed) == {"--task", "--nested-inputs", "--import-path"}
+    assert set(listed) == {
+        "--task",
+        "--nested-inputs",
+        "--import-path",
+        "--allow-unmarked-files",
+    }
     assert set(listed) <= defined
 
 

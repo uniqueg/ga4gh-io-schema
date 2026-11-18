@@ -44,6 +44,7 @@ from schema_salad.utils import yaml_no_ts
 
 from ga4gh_io_schema.converters.common import (
     MAX_SOURCE_VALUES,
+    UNMARKED_FILES_HINT,
     ConversionError,
     Note,
     child_path,
@@ -261,7 +262,12 @@ class CwlParser:
             the primary descriptor aren't known to the converter.
     """
 
-    def __init__(self, process: str | None = None, root: Path | None = None) -> None:
+    def __init__(
+        self,
+        process: str | None = None,
+        root: Path | None = None,
+        allow_unmarked_files: bool = False,
+    ) -> None:
         """Initialise the parser.
 
         Args:
@@ -270,9 +276,14 @@ class CwlParser:
             root: Directory whose files the document may import or include
                 (``$import``, ``$include``); by default, the directory of the
                 document.
+            allow_unmarked_files: Whether to convert inputs and outputs of
+                type ``Any``, which may hold files that an IO schema can't
+                mark as file references, to a schema that allows any value
+                but ``null``, with a note, instead of failing.
         """
         self.process = process.lstrip("#") if process else None
         self.root = root
+        self.allow_unmarked_files = allow_unmarked_files
         self.notes: list[ConversionNote] = []
         self.workflow: dict[str, Any] | None = None
 
@@ -410,10 +421,13 @@ class CwlParser:
 
         Raises:
             CwlConversionError: If a type of the process can't be converted
-                (e.g., an unknown or recursive named type).
+                (e.g., an unknown or recursive named type, or, unless
+                :attr:`allow_unmarked_files`, ``Any``).
         """
         self.notes = []
-        converter = _Converter(source.loadingOptions, self.notes)
+        converter = _Converter(
+            source.loadingOptions, self.notes, self.allow_unmarked_files
+        )
         try:
             return self._schema(source, converter)
         except RecursionError as exc:
@@ -451,17 +465,26 @@ class _Converter:
         index: Objects of the document by ID, from the parser of
             ``cwl-utils``; named types are looked up in it.
         notes: List that the notes of the conversion are appended to.
+        allow_unmarked_files: Whether ``Any`` converts with a note (see
+            :class:`CwlParser`) instead of failing.
     """
 
-    def __init__(self, options: Any, notes: list[ConversionNote]) -> None:
+    def __init__(
+        self,
+        options: Any,
+        notes: list[ConversionNote],
+        allow_unmarked_files: bool = False,
+    ) -> None:
         """Initialise the converter.
 
         Args:
             options: Loading options of the process, with its index.
             notes: List to append the notes of the conversion to.
+            allow_unmarked_files: See :class:`CwlParser`.
         """
         self.index: dict[str, Any] = options.idx
         self.notes = notes
+        self.allow_unmarked_files = allow_unmarked_files
         self.budget = MAX_NODES
         self.text_budget = MAX_TEXT
 
@@ -849,6 +872,12 @@ class _Converter:
         if name == "Directory":
             return {"type": "string", "x-ga4gh-file": {"kind": "directory"}}
         if name == "Any":
+            if not self.allow_unmarked_files:
+                raise CwlConversionError(
+                    "Type 'Any' may hold files, which an IO schema can't mark "
+                    f"as file references. {UNMARKED_FILES_HINT}",
+                    location,
+                )
             self.note(
                 location,
                 "Type 'Any' allows any value but null; values that are files "
