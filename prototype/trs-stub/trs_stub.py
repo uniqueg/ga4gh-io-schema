@@ -141,8 +141,12 @@ def find_workflows(root: Path) -> list[Path]:
 
     Returns:
         Its subdirectories that hold an IO schema, sorted by name.
+
+    Raises:
+        OSError: If the directory can't be listed, e.g., it is missing or
+            not readable (a glob would find nothing instead).
     """
-    return sorted(path.parent for path in root.glob(f"*/{SCHEMA_NAME}"))
+    return sorted(path for path in root.iterdir() if (path / SCHEMA_NAME).is_file())
 
 
 def load_workflows(
@@ -162,11 +166,18 @@ def load_workflows(
         The workflows.
 
     Raises:
-        OSError: If ``strict`` and a file can't be read.
+        OSError: If ``strict`` and a file or one of ``roots`` can't be read.
         ValueError: If ``strict`` and a workflow is invalid (see
             :func:`load_workflow`), with its directory in the message.
     """
-    paths = [*directories, *(p for root in roots for p in find_workflows(root))]
+    paths = list(directories)
+    for root in roots:
+        try:
+            paths.extend(find_workflows(root))
+        except OSError as exc:
+            if strict:
+                raise
+            print(f"Can't list the workflows in {root}: {exc}", file=sys.stderr)
     workflows: list[Workflow] = []
     seen: set[tuple[str, str]] = set()
     for path in paths:

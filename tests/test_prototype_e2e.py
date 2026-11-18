@@ -212,9 +212,9 @@ def test_seeded_workflows_give_run_requests() -> None:
 def test_edited_schema_shows_without_a_restart() -> None:
     """Test the "play around" path: an edit of the checkout is served at once.
 
-    The test edits a file of the checkout and restores it, so it must not
-    run in parallel with itself; if it is killed halfway, ``git checkout --
-    examples/workflows`` restores the file.
+    The test edits a file of the checkout and restores it (the suite
+    doesn't run tests in parallel); if it is killed halfway, ``git
+    checkout -- examples/workflows`` restores the file.
     """
     path = WORKFLOWS / "word-count-cwl" / "ga4gh-io.schema.json"
     original = path.read_bytes()

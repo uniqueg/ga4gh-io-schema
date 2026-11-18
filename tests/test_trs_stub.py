@@ -370,6 +370,21 @@ def test_find_workflows_lists_the_seeded_workflows() -> None:
     ]
 
 
+def test_unlisted_workflow_roots_are_reported(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a missing directory of workflows isn't an empty one.
+
+    E.g., a checkout that the stub's user can't read: the list would be
+    empty without a word in the logs.
+    """
+    missing = tmp_path / "missing"
+    with pytest.raises(FileNotFoundError):
+        trs_stub.load_workflows([], [missing])
+    assert trs_stub.load_workflows([], [missing], strict=False) == []
+    assert f"Can't list the workflows in {missing}" in capsys.readouterr().err
+
+
 def test_stub_serves_the_seeded_workflows() -> None:
     """Test that the demo and the seeded workflows are served side by side."""
     directories = [DEMO, *trs_stub.find_workflows(WORKFLOWS)]

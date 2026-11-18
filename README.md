@@ -37,7 +37,8 @@ make demo
 Then open <http://127.0.0.1:8000/>, edit a schema in `examples/workflows/`
 and reload the page to see the form change (see [Play
 around](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/#play-around));
-`make demo-down` stops it. The
+`make demo-down` stops it, and `make demo-start` starts it again
+without a network. The
 [testbed](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/)
 page describes the demo, the
 [runsheet](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/runsheet/)

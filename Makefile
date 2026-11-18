@@ -14,7 +14,7 @@ DEMO_TRS_PORT ?= 8080
 PYTHON ?= python3
 export DEMO_PORT DEMO_TRS_PORT
 
-.PHONY: help demo demo-start demo-logs demo-down demo-clean demo-checksums demo-urls
+.PHONY: help demo demo-start demo-logs demo-down demo-clean demo-checksums
 
 help:
 	@echo "make demo            build and start the demo, then open http://127.0.0.1:$(DEMO_PORT)/"
@@ -24,22 +24,24 @@ help:
 	@echo "make demo-clean      as demo-down, and remove the image too"
 	@echo "make demo-checksums  set the checksums of examples/workflows/ after editing a descriptor"
 
-# TRS_URL and WES_URL of the shell would point the stack elsewhere: unset
-demo:
-	env -u TRS_URL -u WES_URL $(COMPOSE) up --detach --build --wait
-	@$(MAKE) --no-print-directory demo-urls
-
-# The image of an earlier `make demo`, without a network
-demo-start:
-	env -u TRS_URL -u WES_URL $(COMPOSE) up --detach --no-build --pull never --wait
-	@$(MAKE) --no-print-directory demo-urls
-
-demo-urls:
+# What to open, once the stack is up
+define DEMO_URLS
 	@echo
 	@echo "The demo is running: open http://127.0.0.1:$(DEMO_PORT)/"
 	@echo "TRS stub: http://127.0.0.1:$(DEMO_TRS_PORT)/ga4gh/trs/v2/tools"
 	@echo "Edit examples/workflows/*/ga4gh-io.schema.json and reload the page."
 	@echo "Logs: make demo-logs. Stop: make demo-down."
+endef
+
+# TRS_URL and WES_URL of the shell would point the stack elsewhere: unset
+demo:
+	env -u TRS_URL -u WES_URL $(COMPOSE) up --detach --build --wait
+	$(DEMO_URLS)
+
+# The image of an earlier `make demo`, without a network
+demo-start:
+	env -u TRS_URL -u WES_URL $(COMPOSE) up --detach --no-build --pull never --wait
+	$(DEMO_URLS)
 
 demo-logs:
 	$(COMPOSE) logs --follow
