@@ -86,7 +86,7 @@ https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/
 ```
 
 These URLs resolve once the repository has moved to elixir-cloud-aai and
-version 0.3 is merged into its `main` branch. `main` holds the latest
+version 0.3.0 is merged into its `main` branch. `main` holds the latest
 reviewed state, so the content behind them changes, also with breaking
 changes: until the first release, `$schema` doesn't tell versions of the
 profile apart, and the commit you pin does.
@@ -107,9 +107,12 @@ after it):
 
 The `$schema` of your IO schemas stays as above: it identifies the profile,
 it isn't the place you fetch the meta-schema from. `version` in
-`pyproject.toml` is a development version (e.g., `0.3.0.dev0`), which
-isn't bumped per commit (pin the commit, not the version); the tests check
-both.
+`pyproject.toml` is the version of the proposal: the latest version of the
+[document history](roadmap.md#document-history) (e.g., `0.3.0`), or a
+development version of the next one (e.g., `0.3.1.dev0`) for work after
+it. It isn't a release (versions 0.1.0 to 0.3.0 have no tags) and isn't
+bumped per commit (pin the commit, not the version); the tests check that
+it matches the document history.
 
 ## Releases
 

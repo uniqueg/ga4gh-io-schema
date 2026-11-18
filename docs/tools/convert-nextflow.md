@@ -79,7 +79,7 @@ With `--json`, the output is one object with the IO schema and the notes:
 | `help_text` | appended to `description` after a blank line, with `"x-ga4gh-description-format": "markdown"` (unless the source sets a format) |
 | `hidden` | `x-ga4gh-hidden` |
 | `errorMessage` (a string) | `x-ga4gh-error-message`; an object of messages per keyword is dropped, with a note |
-| `fa_icon` | dropped: the profile has no icon keyword since version 0.3 (see [Roadmap](../roadmap.md#cut)) |
+| `fa_icon` | dropped: the profile has no icon keyword since version 0.3.0 (see [Roadmap](../roadmap.md#cut)) |
 | `exists` | dropped: Nextflow checks it where the pipeline runs, on the paths that the pipeline sees, and skips it for object-store paths; the profile leaves such checks to the engine (see [Rationale](../rationale.md)) |
 | `meta` | dropped (nf-schema uses it on the columns of sample sheets): it maps a column to the meta map of the pipeline's channels, which is part of the pipeline, not of its inputs |
 | `uniqueEntries` (nf-schema), `unique` (nf-validation) | dropped, with a note: they require the combination of some columns to be unique across the rows, which `uniqueItems` doesn't express (see [Keywords](../specification/keywords.md#leveraging-native-json-schema-what-we-dont-reinvent)) |

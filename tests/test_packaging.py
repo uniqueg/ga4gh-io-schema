@@ -188,15 +188,88 @@ def test_schema_urls_use_the_schema_base() -> None:
         assert load_json(path)["$id"].startswith(SCHEMA_BASE), path
 
 
-def test_package_version_is_a_development_version() -> None:
-    """Test that the package version doesn't claim a release.
+#: A row of the document history in ``docs/roadmap.md``: its version.
+HISTORY_ROW = re.compile(r"^\| \*\*(\d+\.\d+\.\d+)\*\* \|", re.MULTILINE)
 
-    There are no releases (and no tags) before the repository moves to
-    GA4GH, so ``version`` in ``pyproject.toml`` is a development version.
+
+def latest_document_version(roadmap: str) -> str:
+    """Return the latest version of the document history of the roadmap.
+
+    Args:
+        roadmap: The text of ``docs/roadmap.md``.
+
+    Returns:
+        The version of the last row of the table "Document history".
+    """
+    versions = HISTORY_ROW.findall(roadmap.split("## Document history", 1)[1])
+    assert versions, "no versions in the document history"
+    return versions[-1]
+
+
+def version_matches_history(version: str, latest: str) -> bool:
+    """Tell whether a package version fits the document history.
+
+    The package version is the version of the proposal: the latest version
+    of the document history, or a development version (``.devN``) of a
+    higher version, for work after it.
+
+    Args:
+        version: The ``version`` of ``pyproject.toml``.
+        latest: The latest version of the document history.
+
+    Returns:
+        Whether the package version is ``latest``, or a ``.devN`` of a
+        version higher than ``latest``.
+    """
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(\.dev\d+)?", version)
+    if match is None:
+        return False
+    if match[4] is None:
+        return version == latest
+    release = tuple(int(part) for part in match.group(1, 2, 3))
+    return release > tuple(int(part) for part in latest.split("."))
+
+
+@pytest.mark.parametrize(
+    ("version", "latest", "expected"),
+    [
+        ("0.3.0", "0.3.0", True),
+        ("0.3.1.dev0", "0.3.0", True),
+        ("0.4.0.dev2", "0.3.0", True),
+        ("1.0.0.dev0", "0.3.0", True),
+        ("0.2.0", "0.3.0", False),
+        ("0.4.0", "0.3.0", False),
+        ("0.3.0.dev0", "0.3.0", False),
+        ("0.2.9.dev0", "0.3.0", False),
+        ("0.3", "0.3.0", False),
+        ("0.3.0rc1", "0.3.0", False),
+    ],
+)
+def test_version_matches_history(version: str, latest: str, expected: bool) -> None:
+    """Test which package versions fit the latest version of the history.
+
+    Args:
+        version: A package version.
+        latest: The latest version of the document history.
+        expected: Whether ``version`` fits ``latest``.
+    """
+    assert version_matches_history(version, latest) is expected
+
+
+def test_package_version_is_the_proposal_version() -> None:
+    """Test that the package version is the version of the proposal.
+
+    The package version follows the document history of the roadmap (see
+    ``version_matches_history``), so that the two can't drift apart. Neither
+    is a release: versions 0.1.0 to 0.3.0 have no tags.
     """
     pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text("utf-8"))
+    roadmap = (REPO_ROOT / "docs" / "roadmap.md").read_text("utf-8")
+    version = pyproject["project"]["version"]
 
-    assert re.fullmatch(r"\d+\.\d+\.\d+\.dev\d+", pyproject["project"]["version"])
+    latest = latest_document_version(roadmap)
+
+    assert version_matches_history(version, latest), (version, latest)
 
 
 def test_examples_reference_the_meta_schema() -> None:

@@ -176,7 +176,7 @@ INVALID = {
         "Validation Error: 'true' is not of type 'boolean' "
         "(at $.properties.inputs.properties.sample_id['x-ga4gh-hidden'])"
     ),
-    # Keywords and values that version 0.3 removed (cut or deferred)
+    # Keywords and values that version 0.3.0 removed (cut or deferred)
     "fa-icon-removed": (
         "Validation Error: Unevaluated properties are not allowed "
         "('x-ga4gh-fa-icon' was unexpected) "
@@ -645,7 +645,7 @@ def test_cli_checks_annotations_at_the_top_level(
     )
 
 
-#: Values of ``x-ga4gh-ui-widget`` that version 0.3 removed (cut or deferred).
+#: Values of ``x-ga4gh-ui-widget`` that version 0.3.0 removed (cut or deferred).
 REMOVED_WIDGETS = [
     "password",
     "genome-browser",
@@ -654,7 +654,7 @@ REMOVED_WIDGETS = [
     "markdown-viewer",
 ]
 
-#: Viewers that version 0.3 keeps, and a platform-specific widget.
+#: Viewers that version 0.3.0 keeps, and a platform-specific widget.
 KEPT_OUTPUT_WIDGETS = ["table-viewer", "html-viewer", "custom:igv-browser"]
 
 
@@ -680,7 +680,7 @@ def _write_with_output_widget(tmp_path: Path, widget: str) -> Path:
 def test_cli_rejects_removed_widget(
     widget: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Test that every widget removed in version 0.3 is rejected.
+    """Test that every widget removed in version 0.3.0 is rejected.
 
     Args:
         widget: Removed value of ``x-ga4gh-ui-widget``.
@@ -700,7 +700,7 @@ def test_cli_rejects_removed_widget(
 def test_cli_accepts_kept_output_widget(
     widget: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Test that the viewers kept in version 0.3 and custom widgets are accepted.
+    """Test that the viewers kept in version 0.3.0 and custom widgets are accepted.
 
     Args:
         widget: Value of ``x-ga4gh-ui-widget`` that stays valid.
@@ -718,7 +718,7 @@ def test_cli_accepts_kept_output_widget(
 def test_cli_accepts_kept_description_format(
     description_format: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Test that the description formats kept in version 0.3 are accepted.
+    """Test that the description formats kept in version 0.3.0 are accepted.
 
     Args:
         description_format: Value of ``x-ga4gh-description-format``.

@@ -10,9 +10,9 @@ To drive adoption and prove out the utility of the IO Schema Profile, we propose
 
 3. **Formal Specification Submission:** Following the PoC, submit the IDL schema structure, the `x-ga4gh-*` vocabulary, and the proposed API modifications (among them the TRS file type `IO_SCHEMA`, see [TRS](adoption/trs.md#proposed-the-io_schema-file-type)) to the GA4GH [Federated Analysis Work Stream](https://www.ga4gh.org/work_stream/federated-analysis-work-stream-formerly-cloud-work-stream/) (formerly the Cloud Work Stream, which develops TRS, WES, DRS and TES) for formal standardization review.
 
-## Scope of version 0.3
+## Scope of version 0.3.0
 
-Version 0.3 narrows the profile to its core use: input forms, run requests
+Version 0.3.0 narrows the profile to its core use: input forms, run requests
 and outputs. Earlier versions of the proposal contained features that add
 risk without serving that use. They are either cut (removed, with no plan to
 bring them back) or deferred (removed or kept experimental until a later
@@ -45,7 +45,7 @@ of the repository lists each removal as a breaking change.
 - **Does the profile suit machine learning models and pipelines (MLOps)?**
   Earlier versions of this proposal claimed that the profile is
   domain-agnostic and suits machine learning pipelines as well as genomic
-  workflows. Version 0.3 drops that claim: the profile is designed and tested
+  workflows. Version 0.3.0 drops that claim: the profile is designed and tested
   for workflows in the life sciences only. Whether it also fits, e.g.,
   hyperparameters of training pipelines and model artefacts as outputs, and
   how it would relate to dataset descriptions such as
@@ -71,6 +71,6 @@ of the repository lists each removal as a breaking change.
 
 | Version | Date | Author | Notes |
 | ----- | ----- | ----- | ----- |
-| **v0.1** | 2026-10-10 | Alexander Kanitz | Initial Draft: Ecosystem survey, evaluation, and GA4GH JSON Schema Profile proposal. |
-| **v0.2** | 2026-10-13 | Alexander Kanitz | Major rewrite addressing architectural reviews. Reframed standard as a universal Interface Definition Language (IDL). Explicitly scoped out bare TES execution. Clarified tabular data sovereignty. Mapped custom properties to `nf-schema`. Expanded GA4GH API lifecycle and RO-Crate Profiles integration. |
-| **v0.3** | unreleased | Alexander Kanitz | Response to an external review: structured documentation, conformance classes with RFC 2119 terms and a conformance suite, security considerations, and the changes of scope listed in the [Changelog](changelog.md). |
+| **0.1.0** | 2026-10-10 | Alexander Kanitz | Initial Draft: Ecosystem survey, evaluation, and GA4GH JSON Schema Profile proposal. |
+| **0.2.0** | 2026-10-13 | Alexander Kanitz | Major rewrite addressing architectural reviews. Reframed standard as a universal Interface Definition Language (IDL). Explicitly scoped out bare TES execution. Clarified tabular data sovereignty. Mapped custom properties to `nf-schema`. Expanded GA4GH API lifecycle and RO-Crate Profiles integration. |
+| **0.3.0** | not released (no tag) | Alexander Kanitz | Response to an external review: structured documentation, conformance classes with RFC 2119 terms and a conformance suite, security considerations, and the changes of scope listed in the [Changelog](changelog.md). |
