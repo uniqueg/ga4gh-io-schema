@@ -122,8 +122,10 @@ def test_wheel_ships_its_licence(wheel: Path) -> None:
     licences = [
         n.split(".dist-info/licenses/", 1)[1] for n in names if "/licenses/" in n
     ]
-    # Not LICENSE, which describes the whole, multi-licensed repository
+    # Not LICENSE, which describes the whole, multi-licensed repository, in
+    # the licences of the metadata or anywhere else
     assert licences == ["LICENSES/Apache-2.0.txt"]
+    assert [n for n in names if n.rsplit("/", 1)[-1] == "LICENSE"] == []
 
 
 @pytest.fixture(scope="module")
