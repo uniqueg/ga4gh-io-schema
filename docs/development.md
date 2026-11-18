@@ -47,7 +47,12 @@ set, and CI runs it in the job "End-to-end test" (see
 [Prototype](adoption/prototype.md#test-it)).
 
 `tests/test_wheel.py` builds the wheel, installs it into a fresh virtual
-environment and runs the command-line tool on the examples. It needs network
+environment and runs the command-line tool on the examples; it also builds
+the sdist and checks that it holds only what builds the wheel (the package,
+`schemas/`, `pyproject.toml`, `README.md`, `.gitignore` and the Apache-2.0
+licence texts), so that both distributions are what their licence,
+`Apache-2.0`, says: the docs (CC-BY-4.0), the tests and their third-party
+data (e.g., MIT) are in the repository only. It needs network
 access to install the build backend and the dependencies; deselect it with
 `pytest -m "not wheel"` when offline. CI runs the tests on every supported
 Python version, from the lowest to the newest. The supported versions are set
@@ -296,9 +301,18 @@ UV_PROJECT_ENVIRONMENT=.venv-lowest uv sync --resolution lowest-direct --extra d
 mv uv.lock.mine uv.lock
 ```
 
+The lock is installed outside CI too: the image of the
+[prototype](adoption/prototype.md) (`prototype/Dockerfile`) runs `uv sync
+--locked` without extras, with uv from an image pinned to a digest, and
+Read the Docs (`.readthedocs.yaml`) runs `uv sync --locked --extra docs`
+into its environment. Both fail if the lock doesn't match
+`pyproject.toml`. Read the Docs installs uv with pip, at a pinned version
+that Dependabot doesn't update: keep it at the version of `uv.lock`.
+
 Dependabot updates the lock, the actions of the workflows, the
-JavaScript validators of `tests/js/`, the base image of the prototype and
-the pre-commit hooks once a month (`.github/dependabot.yml`).
+JavaScript validators of `tests/js/`, the images of the prototype (pinned
+to digests) and the pre-commit hooks once a month
+(`.github/dependabot.yml`).
 
 ## Code quality and security (pre-commit)
 
@@ -315,6 +329,7 @@ install the hooks, and in CI's job `Lint`:
   tests in `.ast-grep/rule-tests/`
 - gitleaks (secrets), actionlint (workflows) and checks of files (YAML
   syntax, merge conflicts, large files, trailing whitespace)
+- markdownlint (see [Documentation linting](#documentation-linting))
 
 ```bash
 pre-commit install
@@ -381,10 +396,14 @@ reuse lint
 
 ## Documentation linting
 
-Markdown files are linted to ensure consistent structure and catch broken links.
+Markdown files are linted to ensure consistent structure and catch broken
+links, with the rules of `.markdownlint.yaml`. markdownlint-cli runs as a
+pre-commit hook, pinned to the commit of a release that Dependabot updates,
+so that a new release of it can't fail unrelated pull requests. It needs
+Node.js, which pre-commit installs if it isn't there:
 
 ```bash
-npx markdownlint-cli "**/*.md" --ignore "node_modules"
+pre-commit run markdownlint --all-files
 ```
 
 ## Documentation
@@ -396,12 +415,13 @@ also builds a preview for each pull request. Its sources are in `docs/`, the
 navigation in `mkdocs.yml`; the [Python API](tools/validator.md#python-api)
 is generated from the docstrings with
 [mkdocstrings](https://mkdocstrings.github.io/). Install the `docs` extra
-and build the site as CI does, which fails on any warning (e.g., broken
-links or anchors):
+at the versions of `uv.lock`, as CI and Read the Docs do, and build the
+site as CI does, which fails on any warning (e.g., broken links or
+anchors):
 
 ```bash
-pip install -e ".[docs]"
-mkdocs build --strict
+uv sync --locked --extra docs
+.venv/bin/mkdocs build --strict
 ```
 
 `mkdocs serve` serves the site at <http://127.0.0.1:8000/> and rebuilds it on

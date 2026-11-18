@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 from ga4gh_io_schema import validator
 from ga4gh_io_schema.cli.app import render_reference
@@ -526,3 +527,58 @@ def test_every_widget_has_one_fit_rule_and_one_group() -> None:
     assert sorted(ruled) == sorted(widgets)
     assert sorted(viewers + inputs) == sorted(widgets)
     assert not set(viewers) & set(inputs)
+
+
+#: An image reference pinned to a digest: ``name[:tag]@sha256:<64 hex digits>``.
+PINNED_IMAGE = re.compile(r"\S+@sha256:[0-9a-f]{64}")
+
+
+def test_prototype_image_installs_pinned_versions() -> None:
+    """Test that the image of the prototype installs only pinned versions.
+
+    Its images are pinned to digests (Dependabot updates them), and the
+    package and its dependencies come from ``uv.lock``, as in CI, which
+    ``.dockerignore`` lets into the build context.
+    """
+    dockerfile = (REPO_ROOT / "prototype" / "Dockerfile").read_text("utf-8")
+    images = re.findall(r"^FROM\s+(\S+)", dockerfile, re.M)
+    dockerignore = (REPO_ROOT / ".dockerignore").read_text("utf-8").splitlines()
+
+    assert len(images) == 2
+    for image in images:
+        assert PINNED_IMAGE.fullmatch(image), image
+    assert "uv sync --locked" in dockerfile
+    assert "pip install" not in dockerfile
+    assert "!uv.lock" in dockerignore
+
+
+def test_read_the_docs_installs_the_lock() -> None:
+    """Test that Read the Docs builds with the versions of ``uv.lock``.
+
+    The ``docs`` job of CI installs them too, so that the previews and the
+    published site are built as CI checks them.
+    """
+    config = yaml.safe_load((REPO_ROOT / ".readthedocs.yaml").read_text("utf-8"))
+    jobs = config["build"]["jobs"]
+
+    assert "python" not in config
+    assert any(
+        re.search(r"\buv==[0-9]+\.[0-9]+\.[0-9]+", s) for s in jobs["pre_install"]
+    )
+    assert any("uv sync --locked --extra docs" in step for step in jobs["install"])
+
+
+def test_markdown_lint_is_pinned() -> None:
+    """Test that the workflows run no npm package without a version.
+
+    ``npx <package>`` takes the newest release on every run, which can fail
+    unrelated pull requests; the Markdown lint runs as a pre-commit hook
+    instead, whose revision Dependabot updates.
+    """
+    for path in (REPO_ROOT / ".github" / "workflows").glob("*.yml"):
+        text = path.read_text("utf-8")
+        for package in re.findall(r"\bnpx\s+(?:-\S+\s+)*(\S+)", text):
+            assert re.search(r".@[0-9]", package), (path.name, package)
+    config = (REPO_ROOT / ".pre-commit-config.yaml").read_text("utf-8")
+    hooks = yaml.safe_load(config)["repos"]
+    assert "markdownlint" in {hook["id"] for repo in hooks for hook in repo["hooks"]}

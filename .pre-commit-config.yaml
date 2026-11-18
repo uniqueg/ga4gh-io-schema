@@ -71,6 +71,12 @@ repos:
       # Workflows (`.github/workflows/`); also checks their scripts with
       # shellcheck if it is installed (as on GitHub-hosted runners)
       - id: actionlint
+  # Markdown, with the rules of `.markdownlint.yaml` (Node.js: pre-commit
+  # uses the system's or installs its own)
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: cbcdc463be5464e25e3e955a511599a67b9b987f  # frozen: v0.50.0
+    hooks:
+      - id: markdownlint
   - repo: local
     hooks:
       # Local hooks use the installed dev dependencies (the `dev` extra of
