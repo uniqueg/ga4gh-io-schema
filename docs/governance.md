@@ -10,8 +10,8 @@ standard. The goal is to submit it to the GA4GH
 applies, and this page will be replaced by it. GA4GH approval also needs at
 least two independent, interoperating implementations (see
 [Implementations](specification/conformance.md#implementations)).
-[Transfer to GA4GH](transfer.md) proposes the naming, licence, governance
-and identifiers for the transfer of the repository to GA4GH.
+[Path to GA4GH](transfer.md) says where the profile stands on the way to
+a GA4GH product, with proposals for its naming, approval and identifiers.
 
 ## Versions of the profile
 
@@ -80,6 +80,29 @@ conformance suite for existing rules.
 - The Python package `ga4gh-io-schema` isn't published on PyPI; install it
   from the repository, at a commit (see
   [Installation](tools/validator.md#installation)).
+
+## Licences
+
+The repository follows the [REUSE specification](https://reuse.software/):
+each file names its licence and copyright, in an SPDX header or in
+`REUSE.toml`, and `reuse lint` checks them in CI. The full licence texts are
+in `LICENSES/`.
+
+| Part | Licence |
+| ----- | ----- |
+| Code, schemas, tests, examples, prototype, README | Apache-2.0 |
+| Documentation (`docs/`) | CC-BY-4.0 |
+| Third-party test data (e.g., from nf-core and the CWL project) | Their own licences (e.g., MIT), as stated in their files |
+
+These licences stay as they are, also on the way to GA4GH: Apache-2.0 for
+the code and schemas, CC-BY-4.0 for the documentation. GA4GH's new
+repository template requires REUSE, so that the licence of each file is
+clear; older GA4GH repositories, which declare one licence for the whole
+repository, haven't caught up yet. Third-party files keep their licences.
+
+The copyright notices name ELIXIR On-Cloud, as in the other repositories of
+elixir-cloud-aai; files that still use another form are aligned separately
+([#99](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/99)).
 
 ## Proposing changes
 
