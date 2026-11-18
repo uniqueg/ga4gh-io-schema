@@ -49,6 +49,8 @@ API.
   and portals and clients.
 - [Prototype](adoption/prototype.md): try it on a laptop, from a workflow
   in TRS to a form and a WES run request, with one Docker Compose command.
+- [Testbed](adoption/testbed.md): the live demo: how to run it, its parts,
+  what is real and what is mocked, and its limits.
 - [Roadmap](roadmap.md): next steps, open questions and the history of this
   proposal.
 - [Changelog](changelog.md): the changes of each version, including the

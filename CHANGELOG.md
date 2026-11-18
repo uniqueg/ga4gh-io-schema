@@ -355,6 +355,14 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   configuration, service registry, `service-info` tags), and the fallback
   with `workflow_attachment`; an open question in the roadmap for a WES
   `service-info` field. (#84)
+- A page "Testbed" that describes the live demo, the prototype, as a
+  whole: how to run it from a fresh checkout, its parts (profile, demo
+  workflow and IO schema, TRS stub, form host, run request) and whether
+  each is real or mocked, its limits and what they mean for the
+  conclusions, and how CI tests it; linked from the README, the index and
+  the adoption guides. The end-to-end demo with deployed services says
+  that it is a guide for adopters, not the live demo, and not verified end
+  to end. (#104)
 - Prototype evaluation: each gap links to its issue (#82 to #85) and, for
   the fixed ones, to the pull request that closed it. (#74)
 - A page "Transfer to GA4GH" with proposals for the transfer of the

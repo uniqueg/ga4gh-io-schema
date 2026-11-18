@@ -7,13 +7,17 @@ The profile is independent of workflow engines. Its integration with the GA4GH A
 * [Portals and clients](portals.md): rendering forms, resolving DRS
   identifiers and interpreting outputs.
 * [End-to-end demo](demo.md): a WDL workflow registered in TRS-Filer with
-  its IO schema and run on Conquest, from a portal or the command line.
+  its IO schema and run on Conquest, from a portal or the command line; a
+  guide for adopters with deployed services, not the live demo.
 * [Form proof of concept](form.md): a minimal form and host in this
   repository, from an IO schema to a WES run request.
 * [Prototype](prototype.md): try the profile on a laptop with one Docker
   Compose command, without outside services: pick a workflow in a TRS
   stub, fill in the form of its IO schema and see the WES run request, with
   a walkthrough of what each step shows.
+* [Testbed](testbed.md): the live demo, which is the prototype: how to run
+  it from a fresh checkout, its parts, what is real and what is mocked, and
+  its limits.
 
 ## The end-to-end GA4GH lifecycle (summary)
 
