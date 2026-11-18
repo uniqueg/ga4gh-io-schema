@@ -1,0 +1,6 @@
+{
+  "reads": "https://data.example.org/a.fq",
+  "options": {
+    "${secrets}": "x"
+  }
+}

@@ -71,6 +71,11 @@ UNIQUE_KEYWORDS = ("uniqueEntries", "unique")
 _MEDIA_TYPE = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}$"
 )
+# Names in kebab-case whose camelCase name is certain: Nextflow splits them
+# at `-` and capitalises each part after the first (`CmdRun.kebabToCamelCase`);
+# leading, trailing and double `-` and other characters than ASCII letters,
+# digits and `_` are left out
+_KEBAB_CASE = re.compile(r"^[A-Za-z0-9_]+(?:-[A-Za-z0-9_]+)+$")
 
 
 def load_schema(text: str, name: str) -> Any:
@@ -188,6 +193,12 @@ class _Converter(SchemaConverter):
         self.attached: dict[str, Pointer] = {}
         # Whether a sample-sheet schema is being converted
         self.in_sheet = False
+        # Parameters with `-`: their names, places and converted schemas
+        self.dashed: list[tuple[str, Pointer, dict[str, Any]]] = []
+        # Engine names that parameters of the source bind to
+        self.bound: set[str] = set()
+        # Places of the parameters whose default was dropped
+        self.defaultless: list[Pointer] = []
 
     def convert(self, source: Any, outputs: Sequence[Output]) -> Conversion:
         """Convert the nf-schema file and its sample-sheet schemas.
@@ -215,6 +226,7 @@ class _Converter(SchemaConverter):
                 raise ConversionError(
                     f"No parameter '{name}' with 'format: path' (--directory)."
                 )
+        self._bind_dashed()
         schema: dict[str, Any] = {
             "$schema": load_profile()["$id"],
             # The engine binding; the TRS fields are known only once the
@@ -228,6 +240,8 @@ class _Converter(SchemaConverter):
         }
         if defs is not None:
             schema["$defs"] = defs
+        for pointer in self.defaultless:
+            self._unrequire(schema, pointer)
         for pointer, path in self.pending:
             self._attach(schema, pointer, path)
         self._check_references(schema, schema, (), {})
@@ -361,7 +375,143 @@ class _Converter(SchemaConverter):
         self._help_text(result, pointer)
         self._rename(result, "hidden", "x-ga4gh-hidden", bool, pointer)
         self._rename(result, "errorMessage", "x-ga4gh-error-message", str, pointer)
-        return self._file(result, pointer, parameter)
+        self._default(result, pointer, parameter)
+        converted = self._file(result, pointer, parameter)
+        if parameter is not None and "-" in parameter:
+            self.dashed.append((parameter, pointer, converted))
+        binding = converted.get("x-ga4gh-parameter")
+        if (
+            parameter is not None
+            and isinstance(binding, dict)
+            and isinstance(binding.get("name"), str)
+        ):
+            self.bound.add(binding["name"])
+        return converted
+
+    def _default(
+        self, result: dict[str, Any], pointer: Pointer, parameter: str | None
+    ) -> None:
+        """Handle ``${`` in ``default``, ``enum`` and ``const``.
+
+        nf-core pipelines set defaults such as ``${projectDir}/assets/...``,
+        which Nextflow replaces in its configuration; the translators reject
+        strings with ``${`` for Nextflow, as Nextflow would replace them in
+        the params file too. A client that sent the default would be
+        rejected; without a value, Nextflow sets its own default, so a
+        parameter loses ``required`` too (see :meth:`_unrequire`). ``enum``
+        and ``const`` with ``${`` are kept, with a note.
+
+        Args:
+            result: The converted schema.
+            pointer: Location of the schema in the IO schema.
+            parameter: The parameter whose schema it is, if any.
+        """
+        if self.in_sheet:
+            return
+        for keyword in ("default", "const", "enum"):
+            if keyword not in result:
+                continue
+            # JSON text has `${` exactly where a key or a string has it
+            text = json.dumps(result[keyword], ensure_ascii=False)
+            if "${" not in text:
+                continue
+            if keyword == "default":
+                del result[keyword]
+                if parameter is not None:
+                    self.defaultless.append(pointer)
+                self.note(
+                    f"Dropped 'default' {text}: it has '${{', which Nextflow "
+                    "replaces with its own variables, so the translators "
+                    "reject it; without a value, Nextflow sets its own default.",
+                    pointer,
+                )
+            else:
+                # Dropping it would allow other values
+                self.note(
+                    f"Kept '{keyword}' {text}: values with '${{' can't be "
+                    "translated, as Nextflow replaces its variables in them; "
+                    "change the pipeline's allowed values.",
+                    pointer,
+                )
+
+    def _unrequire(self, schema: dict[str, Any], pointer: Pointer) -> None:
+        """Remove a parameter whose default was dropped from ``required``.
+
+        Nextflow sets the default when the value is left out, so the
+        parameter isn't required of clients, which can't send the default.
+
+        Args:
+            schema: The IO schema.
+            pointer: Location of the parameter's schema: in ``properties``
+                of ``inputs`` or of a group.
+        """
+        parent: Any = schema
+        for part in pointer[:-2]:
+            parent = parent[part]
+        name = pointer[-1]
+        required = parent.get("required")
+        if not isinstance(required, list) or name not in required:
+            return
+        # Every occurrence (the source may list it twice)
+        remaining = [item for item in required if item != name]
+        if remaining:
+            parent["required"] = remaining
+        else:
+            del parent["required"]
+        self.note(
+            f"Removed '{name}' from 'required': its default was dropped, and "
+            "Nextflow sets it when the value is left out.",
+            pointer,
+        )
+
+    def _bind_dashed(self) -> None:
+        """Bind the parameters with ``-`` to the names that Nextflow sets.
+
+        Nextflow renames the members of a params file with ``-`` to camelCase
+        (``out-dir`` sets ``outDir``), and the translators reject keys with
+        ``-`` for Nextflow. A parameter whose camelCase name is certain and
+        no other parameter's gets ``x-ga4gh-parameter`` with that name, so
+        the input keeps its name and its values translate; the others get a
+        note. A name that the source binds already is kept.
+        """
+        # Names of parameters, and the names that the source binds them to
+        names = set(self.parameters) | self.bound
+        # The parameters with `-` that get each camelCase name
+        targets: dict[str, set[str]] = {}
+        for name, _, _ in self.dashed:
+            targets.setdefault(_camel_case(name) or "", set()).add(name)
+        for name, pointer, schema in self.dashed:
+            binding = schema.get("x-ga4gh-parameter", {})
+            if not isinstance(binding, dict) or "name" in binding:
+                # The source's binding (the check of the result judges it)
+                continue
+            engine = _camel_case(name)
+            if engine is None:
+                self.note(
+                    f"Values of '{name}' can't be translated: it isn't "
+                    "kebab-case of ASCII letters, digits and '_', so the name "
+                    "that Nextflow gives it isn't certain, and the translators "
+                    "reject keys with '-' for Nextflow; rename the parameter "
+                    "in the pipeline.",
+                    pointer,
+                )
+            elif engine in names or len(targets[engine]) > 1:
+                self.note(
+                    f"Values of '{name}' can't be translated: Nextflow takes it "
+                    f"for '{engine}', and another parameter has that name, "
+                    "and the translators reject keys with '-' for Nextflow; "
+                    "rename one of them in the pipeline.",
+                    pointer,
+                )
+            else:
+                schema["x-ga4gh-parameter"] = {**binding, "name": engine}
+                self.note(
+                    f"Bound to '{engine}' with 'x-ga4gh-parameter': Nextflow "
+                    f"renames parameters with '-' to camelCase, so '{name}' "
+                    f"sets the parameter '{engine}' (the translators reject "
+                    "keys with '-' for Nextflow).",
+                    pointer,
+                )
 
     def _help_text(self, result: dict[str, Any], pointer: Pointer) -> None:
         """Append ``help_text`` to the description, as Markdown.
@@ -576,3 +726,19 @@ class _Converter(SchemaConverter):
                 "file-path') can have it.",
                 pointer,
             )
+
+
+def _camel_case(name: str) -> str | None:
+    """Get the name that Nextflow gives a parameter in kebab-case.
+
+    Args:
+        name: Name of the parameter, with ``-``.
+
+    Returns:
+        The camelCase name (e.g., ``outDir`` for ``out-dir``), or ``None`` if
+        the name isn't kebab-case of ASCII letters, digits and ``_``.
+    """
+    if not _KEBAB_CASE.match(name):
+        return None
+    first, *rest = name.split("-")
+    return first + "".join(part[0].upper() + part[1:] for part in rest)

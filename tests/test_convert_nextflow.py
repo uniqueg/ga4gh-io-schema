@@ -24,6 +24,7 @@ from ga4gh_io_schema.converters.nextflow import (
     to_ga4gh,
 )
 from ga4gh_io_schema.validator import load_profile, validate_schema
+from ga4gh_io_schema.wes import from_workflow_params, to_workflow_params
 
 DATA_DIR = Path(__file__).resolve().parent / "data" / "nextflow"
 #: Pipelines of nf-core: nf-schema (Draft 2020-12) and nf-validation (Draft 7).
@@ -319,6 +320,257 @@ def test_outputs_are_added_without_a_note() -> None:
     }
     assert not notes_with(conversion, "outputs")
     validate_schema(conversion.schema)
+
+
+# --- Names of parameters ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("name", "engine"),
+    [
+        ("out-dir", "outDir"),
+        ("max-cpus-per-task", "maxCpusPerTask"),
+        ("skip_qc-step2", "skip_qcStep2"),
+        ("a-1b", "a1b"),
+    ],
+)
+def test_dashed_parameters_bind_to_the_nextflow_name(name: str, engine: str) -> None:
+    """Test that parameters with ``-`` bind to the name that Nextflow sets.
+
+    Nextflow renames params-file keys from kebab-case to camelCase, and the
+    translators reject keys with ``-`` for Nextflow; with the binding, the
+    input keeps its name and translates to the parameter that Nextflow sets.
+
+    Args:
+        name: Name of the parameter in nf-schema.
+        engine: Nextflow's name of it.
+    """
+    source = nf_schema(
+        {name: {"type": "string"}},
+        {"g": group({f"{name}-x": {"type": "integer"}})},
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert parameter(conversion, name) == {
+        "type": "string",
+        "x-ga4gh-parameter": {"name": engine},
+    }
+    assert parameter(conversion, f"{name}-x", "g")["x-ga4gh-parameter"] == {
+        "name": f"{engine}X"
+    }
+    notes = notes_with(conversion, "Nextflow renames")
+    assert len(notes) == 2
+    assert any(
+        f"'{name}' sets the parameter '{engine}'" in note.message for note in notes
+    )
+    validate_schema(conversion.schema)
+    values = {name: "results", f"{name}-x": 2}
+    params = to_workflow_params(conversion.schema, values)
+    assert params == {engine: "results", f"{engine}X": 2}
+    assert from_workflow_params(conversion.schema, params) == values
+
+
+def test_dashed_parameter_keeps_a_binding_of_the_source() -> None:
+    """Test that an ``x-ga4gh-parameter`` of the source wins, or gets the name."""
+    source = nf_schema(
+        {
+            "out-dir": {"type": "string", "x-ga4gh-parameter": {"name": "outdir"}},
+            "in-put": {"type": "string", "x-ga4gh-parameter": {"type": "path"}},
+        }
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert parameter(conversion, "out-dir")["x-ga4gh-parameter"] == {"name": "outdir"}
+    assert parameter(conversion, "in-put")["x-ga4gh-parameter"] == {
+        "type": "path",
+        "name": "inPut",
+    }
+    assert len(notes_with(conversion, "Nextflow renames")) == 1
+    # The source isn't changed
+    assert source["properties"]["in-put"]["x-ga4gh-parameter"] == {"type": "path"}
+
+
+@pytest.mark.parametrize(
+    ("properties", "unbound", "reason"),
+    [
+        # Another parameter has the name
+        (
+            {"out-dir": {"type": "string"}, "outDir": {"type": "string"}},
+            ["out-dir"],
+            "another parameter has that name",
+        ),
+        # Two parameters get the same name
+        (
+            {"out-dir": {"type": "string"}, "out-Dir": {"type": "string"}},
+            ["out-dir", "out-Dir"],
+            "another parameter has that name",
+        ),
+        # The source binds another parameter to the name
+        (
+            {
+                "out-dir": {"type": "string"},
+                "o": {"type": "string", "x-ga4gh-parameter": {"name": "outDir"}},
+            },
+            ["out-dir"],
+            "another parameter has that name",
+        ),
+        # Names whose camelCase name isn't certain
+        ({"-a": {}}, ["-a"], "isn't kebab-case"),
+        ({"a-": {}}, ["a-"], "isn't kebab-case"),
+        ({"a--b": {}}, ["a--b"], "isn't kebab-case"),
+        ({"a-é": {}}, ["a-é"], "isn't kebab-case"),
+        ({"a-$b": {}}, ["a-$b"], "isn't kebab-case"),
+    ],
+)
+def test_dashed_parameters_that_cant_be_bound_are_noted(
+    properties: dict[str, Any], unbound: list[str], reason: str
+) -> None:
+    """Test that a parameter with ``-`` without a certain Nextflow name is noted.
+
+    The translators reject values for it; the note says why.
+
+    Args:
+        properties: Parameters of the source.
+        unbound: The parameters that get no binding.
+        reason: Part of the note.
+    """
+    conversion = to_ga4gh(nf_schema(properties))
+
+    for name in unbound:
+        assert "x-ga4gh-parameter" not in parameter(conversion, name)
+    notes = notes_with(conversion, "can't be translated")
+    assert len(notes) == len(unbound)
+    assert all(reason in note.message for note in notes)
+
+
+def test_dashes_in_nested_properties_stay() -> None:
+    """Test that only parameters get a binding: Nextflow renames only them."""
+    source = nf_schema(
+        {"rec": {"type": "object", "properties": {"a-b": {"type": "string"}}}}
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert parameter(conversion, "rec") == {
+        "type": "object",
+        "properties": {"a-b": {"type": "string"}},
+    }
+    assert not notes_with(conversion, "Nextflow renames")
+
+
+def test_dashed_parameter_with_a_wrong_binding_is_left_to_the_check() -> None:
+    """Test that an ``x-ga4gh-parameter`` that isn't an object is kept as it is."""
+    conversion = to_ga4gh(nf_schema({"out-dir": {"x-ga4gh-parameter": "outDir"}}))
+
+    assert parameter(conversion, "out-dir") == {"x-ga4gh-parameter": "outDir"}
+    assert not notes_with(conversion, "'out-dir'")
+
+
+def test_sample_sheet_columns_keep_dashes_and_defaults() -> None:
+    """Test that columns of sample sheets aren't parameters of Nextflow."""
+    column = {"type": "string", "default": "${projectDir}/a.txt"}
+    sheet = {
+        "$schema": DRAFT_2020,
+        "type": "array",
+        "items": {"type": "object", "properties": {"read-group": column}},
+    }
+    source = nf_schema(
+        {"input": {"type": "string", "format": "file-path", "schema": SHEET}}
+    )
+
+    conversion = to_ga4gh(source, {SHEET: sheet})
+
+    hint = parameter(conversion, "input")["x-ga4gh-tabular-schema"]
+    assert hint["items"]["properties"]["read-group"] == column
+    assert not notes_with(conversion, "read-group")
+    assert not notes_with(conversion, "'${")
+
+
+def test_defaults_with_nextflow_variables_are_dropped() -> None:
+    """Test that a default with ``${`` is dropped, with a note.
+
+    The translators reject strings with ``${`` for Nextflow; a client that
+    sent the default would be rejected, and Nextflow sets its own default if
+    the value is left out.
+    """
+    source = nf_schema(
+        {
+            "manifest": {"type": "string", "default": "${projectDir}/assets/a.txt"},
+            "rec": {"type": "object", "default": {"a": "${launchDir}"}},
+            "plain": {"type": "string", "default": "$HOME"},
+            # Nested: dropped, but not a parameter of its own
+            "obj": {
+                "type": "object",
+                "properties": {"p": {"default": "${launchDir}"}},
+                "required": ["p"],
+            },
+        }
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert parameter(conversion, "manifest") == {"type": "string"}
+    assert parameter(conversion, "rec") == {"type": "object"}
+    assert parameter(conversion, "plain")["default"] == "$HOME"
+    assert parameter(conversion, "obj")["properties"]["p"] == {}
+    assert parameter(conversion, "obj")["required"] == ["p"]
+    notes = notes_with(conversion, "Dropped 'default'")
+    assert len(notes) == 3
+    assert "${projectDir}" in notes[0].message
+
+
+def test_parameters_whose_default_is_dropped_are_not_required() -> None:
+    """Test that a required parameter loses ``required`` with its default.
+
+    Clients can't send the default, and Nextflow sets it when the value is
+    left out; required, the input could take only other values.
+    """
+    variable = {"type": "string", "default": "${projectDir}/a.fa"}
+    source = nf_schema(
+        {"fasta": variable, "reads": {"type": "string"}},
+        {
+            "g": group({"gtf": variable}, required=["gtf"]),
+            "h": group({"bed": variable, "n": {"type": "integer"}}, required=["n"]),
+        },
+        required=["fasta", "reads", "fasta"],
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert conversion.schema["properties"]["inputs"]["required"] == ["reads"]
+    assert "required" not in conversion.schema["$defs"]["g"]
+    assert conversion.schema["$defs"]["h"]["required"] == ["n"]
+    assert len(notes_with(conversion, "from 'required'")) == 2
+    assert to_workflow_params(conversion.schema, {"reads": "r", "n": 1}) == {
+        "reads": "r",
+        "n": 1,
+    }
+
+
+def test_allowed_values_with_nextflow_variables_are_noted() -> None:
+    """Test that ``enum`` and ``const`` with ``${`` are kept, with a note.
+
+    Dropping them would allow other values; the values with ``${`` can't be
+    translated.
+    """
+    source = nf_schema(
+        {
+            "mode": {"type": "string", "enum": ["fast", "${launchDir}"]},
+            "fixed": {"const": "${secrets}"},
+            "plain": {"enum": ["$a", "{b}"]},
+        }
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert parameter(conversion, "mode")["enum"] == ["fast", "${launchDir}"]
+    assert parameter(conversion, "fixed") == {"const": "${secrets}"}
+    notes = notes_with(conversion, "can't be translated, as Nextflow replaces")
+    assert len(notes) == 2
+    assert "'enum'" in notes[0].message and "${launchDir}" in notes[0].message
+    assert "'const'" in notes[1].message and "${secrets}" in notes[1].message
 
 
 # --- Keywords of nf-schema --------------------------------------------------

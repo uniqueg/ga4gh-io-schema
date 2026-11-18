@@ -92,7 +92,9 @@ are ordinary objects and members. For every descriptor type, a request in
 which several members match the same input (e.g., under its
 `x-ga4gh-parameter` key and under its own name) is rejected; for
 Nextflow, also a request with keys with `-` (e.g., `input-`, which
-Nextflow renames to `input`).
+Nextflow renames to `input`), and a request with strings with `${`
+anywhere, in keys and values (e.g., `${launchDir}`, which Nextflow
+replaces).
 
 Errors follow the [conventions](cli.md#conventions) of the command-line
 interface (a rejected request exits with status 1), except that the
