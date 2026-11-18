@@ -570,10 +570,12 @@ def test_read_the_docs_installs_the_lock() -> None:
     assert any("uv sync --locked --extra docs" in step for step in jobs["install"])
     # The uv of the image (whose tag Dependabot updates) and of the lock (a
     # dev dependency, also updated by Dependabot): an older uv may not read
-    # a lock written by a newer one
+    # a lock written by a newer one. Not where the lock was resolved again for
+    # the lowest versions (the CI job "Test (lowest dependencies)")
     lock = tomllib.loads((REPO_ROOT / "uv.lock").read_text("utf-8"))
-    locked = {item["version"] for item in lock["package"] if item["name"] == "uv"}
-    assert pins == locked, "set uv in .readthedocs.yaml to the version of uv.lock"
+    if "resolution-mode" not in lock.get("options", {}):
+        locked = {item["version"] for item in lock["package"] if item["name"] == "uv"}
+        assert pins == locked, "set uv in .readthedocs.yaml to the version of uv.lock"
     dockerfile = (REPO_ROOT / "prototype" / "Dockerfile").read_text("utf-8")
     assert pins == set(
         re.findall(r"^FROM ghcr\.io/astral-sh/uv:(\S+)@", dockerfile, re.M)
