@@ -19,12 +19,14 @@ about the profile.
 **Prerequisites:**
 
 - Git, and Docker with Docker Compose v2 (`docker compose`). CI runs the
-  stack on GitHub's `ubuntu-26.04` runner image, with the Docker Engine and
-  Compose that it ships; any recent Docker with Compose v2 should do.
+  stack on GitHub's `ubuntu-latest` runner (the `ubuntu-26.04` image in
+  November 2026), with the Docker Engine and Compose that it ships; any
+  recent Docker with Compose v2 should do.
 - Ports `8000` and `8080` free on `127.0.0.1`.
 - A web browser.
 - Network access for the first build: it pulls `python:3.13-alpine` and
-  installs this package with its dependencies from PyPI. Once the image is
+  installs this package from the checkout, with its dependencies from
+  PyPI. Once the image is
   built, the stack runs offline.
 
 **Steps,** from any directory:
@@ -37,10 +39,12 @@ about the profile.
     ```
 
 2. Build the image and start the stack (the first build takes a minute or
-   two):
+   two). `env -u` makes sure that `TRS_URL` and `WES_URL` of your shell, if
+   set, don't point the stack at another TRS or WES (see [Point it at a
+   real TRS or WES](prototype.md#point-it-at-a-real-trs-or-wes)):
 
     ```bash
-    docker compose -f prototype/compose.yaml up --build
+    env -u TRS_URL -u WES_URL docker compose -f prototype/compose.yaml up --build
     ```
 
     Compose prints the logs of the two services, `trs-stub` and `host`; the
