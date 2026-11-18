@@ -725,13 +725,15 @@ def test_trs_client(
 @pytest.mark.parametrize(
     ("checksum", "message"),
     [
-        (None, "checksum unverified"),
-        (5, "checksum unverified"),
+        # Computed over the content, as check_workflow() does
+        (None, "checksum matches"),
+        (5, "checksum matches"),
         ([{"type": "sha-256", "checksum": "1" * 64}], None),
         ([{"type": "SHA-256", "checksum": "1" * 64}], None),
-        ([{"type": "sha256", "checksum": "1" * 64}], None),
+        # Not a Hash Name String of the registry: not compared with sha-256
+        ([{"type": "sha256", "checksum": "1" * 64}], "checksum matches"),
         (
-            [{"type": "SHA256", "checksum": DESCRIPTOR["checksum"][0]["checksum"]}],
+            [{"type": "SHA-256", "checksum": DESCRIPTOR["checksum"][0]["checksum"]}],
             "checksum matches",
         ),
     ],
@@ -742,7 +744,7 @@ def test_trs_client_checksum(
     message: str | None,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """A primary descriptor without checksum is unverified; another is drift."""
+    """The client checks the checksum with the package; another one is drift."""
     _serve_demo(mock)
     mock.routes[("GET", f"{VERSION}/descriptor")] = [
         (200, {**DESCRIPTOR, "checksum": checksum})
@@ -754,7 +756,31 @@ def test_trs_client_checksum(
         assert message in err
     else:
         assert status == 1
-        assert "(drift)" in err
+        assert "Error: Drift: The schema may not match the workflow" in err
+        assert "x-ga4gh-workflow.checksum (sha-256)" in err
+
+
+@pytest.mark.parametrize("descriptor", [{"url": "x"}, ["x"]])
+def test_trs_client_checksum_unverified(
+    mock: Mock, descriptor: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A primary descriptor without checksum and content is unverified."""
+    _serve_demo(mock)
+    mock.routes[("GET", f"{VERSION}/descriptor")] = [(200, descriptor)]
+    assert trs_client.main(["--trs-url", f"{mock.url}{API}"]) == 0
+    assert "checksum unverified" in capsys.readouterr().err
+
+
+def test_trs_client_descriptor_unavailable(
+    mock: Mock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A primary descriptor that can't be fetched leaves the schema unverified."""
+    _serve_demo(mock)
+    mock.routes[("GET", f"{VERSION}/descriptor")] = [(500, {"message": "down"})]
+    assert trs_client.main(["--trs-url", f"{mock.url}{API}"]) == 0
+    err = capsys.readouterr().err
+    assert "can't be fetched" in err
+    assert "checksum unverified" in err
 
 
 def test_trs_client_without_checksum_in_schema(
@@ -811,7 +837,9 @@ def test_trs_client_schema_of_another_workflow(
     block = {**SCHEMA["x-ga4gh-workflow"], "trs_version_id": "0.9.0"}
     _serve_demo(mock, schema={**SCHEMA, "x-ga4gh-workflow": block})
     assert trs_client.main(["--trs-url", f"{mock.url}{API}"]) == 1
-    assert "x-ga4gh-workflow.trs_version_id" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "x-ga4gh-workflow.trs_version_id" in err
+    assert "Drift" not in err
 
 
 def test_trs_client_invalid_values(

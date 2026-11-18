@@ -97,26 +97,40 @@ def add_unmarked_files_option(parser: argparse.ArgumentParser, what: str) -> Non
 
 
 def conversion_result(
-    conversion: Conversion, args: argparse.Namespace
+    conversion: Conversion,
+    args: argparse.Namespace,
+    *,
+    label: str = "Note",
+    allow_nan: bool = True,
 ) -> CommandResult:
     """Report a conversion: the notes, and the IO schema as the result.
 
     In text mode, the notes go to standard error, one line each, and the
     result is the indented IO schema; with ``--json``, the result holds the
-    schema and the notes.
+    schema and the notes. Every converter reports this way, so that their
+    ``--json`` results have the same shape.
 
     Args:
         conversion: The IO schema and the notes of the conversion.
         args: Parsed arguments, with ``json``.
+        label: Label of the lines of the notes in text mode, e.g.,
+            ``Warning``.
+        allow_nan: Whether the text of the schema may contain ``NaN`` and
+            infinities; if not, such a value is an error (``ValueError``).
 
     Returns:
         The result of the command.
+
+    Raises:
+        ValueError: If ``allow_nan`` is false and the schema holds ``NaN``
+            or an infinity; nothing is printed then.
     """
+    text = json.dumps(conversion.schema, indent=2, allow_nan=allow_nan)
     if not args.json:
         for note in conversion.notes:
-            print(note.to_text(), file=sys.stderr)
+            print(note.to_text(label), file=sys.stderr)
     return CommandResult(
-        text=json.dumps(conversion.schema, indent=2),
+        text=text,
         data={
             "schema": conversion.schema,
             "notes": notes_as_dicts(conversion.notes),

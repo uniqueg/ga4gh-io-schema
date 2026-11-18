@@ -46,18 +46,17 @@ All subcommands share these conventions; the shared options (`--output`,
 - **Warnings and notes:** a converter that reports what it can't convert
   still succeeds. `convert cwl` writes each warning to standard error as one
   line, `Warning: <message> (at <location>)`, where the location is the JSON
-  path of the affected schema in the result; with `--json`, the result has
-  `"warnings"` instead, a list of objects with `message` and `location`.
-  `convert nextflow`, `convert wdl` and `convert snakemake` report notes the
-  same way, as `Note: <message> (at <location>)` lines, or with `--json` as
-  `"notes"`.
+  path of the affected schema in the result. `convert nextflow`, `convert
+  wdl` and `convert snakemake` report notes the same way, as `Note: <message>
+  (at <location>)` lines. With `--json`, all four put them in the result as
+  `"notes"`, a list of objects with `message` and `location`.
 - **JSON:** with `--json`, the result and the errors are JSON objects on one
-  line. A command whose result is text writes `{"output": "<text>"}`, plus
-  `"warnings"` for `convert cwl`. `convert nextflow`, `convert wdl` and
-  `convert snakemake` write `{"schema": {…}, "notes": […]}`: the converted
-  IO schema as an object, not as text. An error has a `kind` (`validation`, `io`, `meta-schema` or
-  `internal`), a `message`, the JSON path of the offending value as
-  `location` (or `null`), and the `exitCode`:
+  line. A command whose result is text writes `{"output": "<text>"}`. All
+  `convert` subcommands write `{"schema": {…}, "notes": […]}`: the
+  converted IO schema as an object, not as text. An error has a `kind`
+  (`validation`, `io`, `meta-schema` or `internal`), a `message`, the JSON
+  path of the offending value as `location` (or `null`), and the
+  `exitCode`:
 
     ```json
     {"error": {"kind": "validation", "message": "'inputs' is a required property", "location": "$.properties"}, "exitCode": 1}

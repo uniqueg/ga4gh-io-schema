@@ -118,6 +118,12 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   needs a list's `items` written in place, not as a `$ref`. `outputs`
   stays optional, as since version 0.1.0; without it, a schema now
   explicitly describes no outputs. (#11)
+- `convert cwl --json` writes `{"schema": {…}, "notes": […]}`, like the
+  other converters, instead of `{"output": "<schema as text>", "warnings":
+  […]}`: the IO schema as an object, and the warnings as `notes`. The text
+  output is unchanged (`Warning:` lines on standard error). To migrate,
+  read `schema` instead of parsing `output`, and `notes` instead of
+  `warnings`. (#129)
 
 ### Added
 
@@ -543,6 +549,17 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   `elixir-cloud-aai/ga4gh-io-schema` instead of `uniqueg/ga4gh-io-schema`;
   the "Edit" links of the docs open the `dev` branch. A test keeps the old
   name out of the repository, except where the move is explained. (#102)
+- The demo's TRS client (`examples/demo/trs_client.py`) checks the
+  workflow block with `check_workflow()` of the package, as the form host
+  does, instead of its own comparison: it compares the checksums of every
+  algorithm that the package computes, also over the content of the primary
+  descriptor when TRS lists no checksum, treats a schema whose primary
+  descriptor can't be fetched as unverified instead of failing, and no
+  longer takes `sha256` as `sha-256` (not a Hash Name String of the GA4GH
+  registry). (#129)
+- The form host refuses `--trs-url` and `--wes-url` with a query or a
+  fragment, which a base URL has no use for and which could hold a token
+  that the host's error messages would show in the browser. (#129)
 
 ## 0.2.0 (2026-10-13)
 

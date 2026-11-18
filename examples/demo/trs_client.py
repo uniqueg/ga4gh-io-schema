@@ -10,7 +10,9 @@ the IO schema among them (:func:`ga4gh_io_schema.trs.find_schema_file`:
 the file of type ``IO_SCHEMA``, or else ``ga4gh-io.schema.json`` of type
 ``OTHER`` next to the primary descriptor), fetch it, validate it against the
 profile, check its ``x-ga4gh-workflow`` against the tool version and the
-checksum of the primary descriptor, and turn input values into a WES run
+checksum of the primary descriptor
+(:func:`ga4gh_io_schema.workflow.check_workflow`, as the form host of the
+prototype does), and turn input values into a WES run
 request whose ``workflow_url`` is the TRS URL of the plain primary
 descriptor, by its path.
 
@@ -38,6 +40,7 @@ from jsonschema.exceptions import ValidationError
 from ga4gh_io_schema.trs import find_primary_descriptor_path, find_schema_file
 from ga4gh_io_schema.validator import validate_schema
 from ga4gh_io_schema.wes import build_run_request, trs_descriptor_url
+from ga4gh_io_schema.workflow import check_workflow
 
 #: Directory of the demo.
 DEMO_DIR = Path(__file__).resolve().parent
@@ -82,32 +85,6 @@ def version_url(
     )
 
 
-def _sha256(wrapper: Any) -> set[str]:
-    """Return the SHA-256 checksums of a ``FileWrapper`` or a checksum list.
-
-    Algorithm names are compared case-insensitively (see "Drift" in the
-    specification); ``sha256`` is taken as ``sha-256``.
-
-    Args:
-        wrapper: A ``FileWrapper`` (with ``checksum``), or a list of
-            checksums; anything else has none.
-
-    Returns:
-        The hex digests of type ``sha-256``, in lowercase.
-    """
-    checksums = wrapper.get("checksum") if isinstance(wrapper, dict) else wrapper
-    if not isinstance(checksums, list):
-        return set()
-    return {
-        c["checksum"].lower()
-        for c in checksums
-        if isinstance(c, dict)
-        and isinstance(c.get("type"), str)
-        and c["type"].lower() in ("sha-256", "sha256")
-        and isinstance(c.get("checksum"), str)
-    }
-
-
 def discover(
     trs_url: str, tool_id: str, version_id: str, descriptor_type: str
 ) -> tuple[dict[str, Any], str | None]:
@@ -125,7 +102,9 @@ def discover(
         (``None`` if it lists none), for the ``workflow_url``.
 
     Raises:
-        HTTPError: If a request to TRS fails.
+        HTTPError: If a request for the files or the IO schema fails; a
+            failed request for the primary descriptor only leaves the schema
+            unverified.
         ClientError: If the tool version has no IO schema, or its schema
             isn't JSON, names another tool version or descriptor type, or
             names a checksum that the primary descriptor doesn't have.
@@ -147,30 +126,29 @@ def discover(
         raise ClientError("The IO schema isn't JSON in a FileWrapper.") from exc
     validate_schema(schema)
     _report(f"3. Valid against the profile: {schema.get('$schema')}")
-    block = schema.get("x-ga4gh-workflow") or {}
-    expected = {
-        "trs_tool_id": tool_id,
-        "trs_version_id": version_id,
-        "descriptor_type": descriptor_type,
-    }
-    for key, value in expected.items():
-        if key in block and block[key] != value:
-            raise ClientError(
-                f"The IO schema is for another workflow: x-ga4gh-workflow.{key} "
-                f"is {block[key]!r}, not {value!r}."
-            )
-    named = _sha256(block.get("checksum"))
+    block = schema.get("x-ga4gh-workflow")
+    named = isinstance(block, dict) and bool(block.get("checksum"))
+    descriptor = None
     if named:
-        primary = _sha256(request_json("GET", f"{base}/descriptor"))
-        if not primary:
-            _report("4. Bound to the tool version; checksum unverified")
-        elif named & primary:
-            _report("4. Bound to the tool version; checksum matches")
-        else:
-            raise ClientError(
-                "The IO schema names another checksum of the primary descriptor "
-                "than TRS (drift)."
-            )
+        # Without the descriptor, the schema is unverified, as in the host
+        try:
+            descriptor = request_json("GET", f"{base}/descriptor")
+        except (HTTPError, OSError, ValueError) as exc:
+            _report(f"   The primary descriptor can't be fetched: {exc}")
+    result = check_workflow(
+        schema,
+        trs_tool_id=tool_id,
+        trs_version_id=version_id,
+        descriptor_type=descriptor_type,
+        descriptor=descriptor if isinstance(descriptor, dict) else None,
+    )
+    if result.mismatches:
+        drift = any(m.field == "checksum" for m in result.mismatches)
+        raise ClientError(("Drift: " if drift else "") + result.mismatch_message)
+    if result.verified:
+        _report("4. Bound to the tool version; checksum matches")
+    elif named:
+        _report("4. Bound to the tool version; checksum unverified")
     else:
         _report("4. Bound to the tool version; no checksum to compare")
     return schema, find_primary_descriptor_path(files)

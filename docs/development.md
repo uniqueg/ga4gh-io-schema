@@ -198,7 +198,9 @@ there, so a new subcommand needs no change elsewhere:
    `ga4gh_io_schema.cli.convert` declares once:
    `CONVERT.register(MyCommand())`; `conversion_result()` of that module
    turns a `Conversion` (see `ga4gh_io_schema.converters.common`) into the
-   result, with the notes on standard error.
+   result, with the notes on standard error (labelled `Note:`, or another
+   `label`; `allow_nan=False` makes the text strict JSON), so that every
+   converter's `--json` result has the same shape.
 3. Test it through `main()` of `ga4gh_io_schema.cli`, with 100% coverage.
    Tests of the framework build their own `CommandGroup` and pass it as
    `main(argv, root=group)`, so that they don't change `ROOT`.

@@ -348,8 +348,10 @@ def test_stdin_and_json_output(
     assert captured.err == ""
     result = json.loads(captured.out)
     expected = (CWL_DIR / "formattest2_v1_0.expected.json").read_text("utf-8")
-    assert json.loads(result["output"]) == json.loads(expected)
-    assert result["warnings"] == [
+    # The same shape as the other converters: the schema as an object
+    assert set(result) == {"schema", "notes"}
+    assert result["schema"] == json.loads(expected)
+    assert result["notes"] == [
         {
             "message": "'format' is an expression ('$(inputs.input.format)'), which "
             "isn't evaluated; it is left out.",
