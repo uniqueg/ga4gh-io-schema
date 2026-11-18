@@ -24,7 +24,12 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   instead of `https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/`,
   because the repository moves to elixir-cloud-aai. A stable identifier
   follows later (#26). To migrate, change `$schema` in your IO schemas.
-  (#77)
+  (#77) Schemas written for an earlier draft of 0.3, whose `$id`s started
+  with `https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/`
+  (e.g., for the copy of the profile that TRS-Filer `dev` vendors), need the
+  same change; tools that vendor that draft (TRS-Filer's check of IO
+  schemas) reject schemas with the new `$id` until they vendor this
+  version. (#111)
 
 - Widgets of `x-ga4gh-ui-widget` must fit their schema: the meta-schema
   rejects, for example, a `slider` without a numeric type and both bounds, a
