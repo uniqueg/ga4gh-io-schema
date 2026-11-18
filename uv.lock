@@ -652,7 +652,7 @@ requires-dist = [
     { name = "ga4gh-io-schema", extras = ["snakemake"], marker = "extra == 'dev'" },
     { name = "ga4gh-io-schema", extras = ["wdl"], marker = "extra == 'dev'" },
     { name = "griffelib", marker = "extra == 'docs'", specifier = ">=2.4,<3" },
-    { name = "jsonschema", extras = ["format-nongpl"], specifier = ">=4.21.1" },
+    { name = "jsonschema", extras = ["format-nongpl"], specifier = ">=4.25" },
     { name = "jsonschema-specifications", marker = "extra == 'dev'", specifier = ">=2023.3.6" },
     { name = "miniwdl", marker = "extra == 'wdl'", specifier = ">=1.16,<2" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6.1,<2" },

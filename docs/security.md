@@ -44,6 +44,7 @@ Schemas MUST mark every file input and output as a [file reference](specificatio
 - The annotation's `schemes` can narrow the allow-list below for a parameter, but never extend it.
 - Paths without a scheme are values of inputs only, and not allowed where the annotation has `schemes`.
 - File references in the rows of tabular files (e.g., sample sheets) never reach the server: the execution side MUST check them by the rules below after staging the file and before the engine runs, or enforce the rules for hosts with network controls (see [File references in tabular files](specification/files.md#file-references-in-tabular-files)).
+- Converted schemas can't mark every file: the converters leave inputs that may hold files in places a schema can't annotate as plain schemas, with a note or a warning, e.g., the keys of a WDL `Map[File, V]` and CWL inputs of type `Any`. Servers accept any string there (also `file:///etc/passwd`), so the execution side MUST check such inputs itself, or the schema's author narrows them before the schema is used (e.g., with `propertyNames` and a `pattern` for map keys, or a concrete type instead of `Any`).
 
 The rules below apply to all of them.
 
