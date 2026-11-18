@@ -68,18 +68,23 @@ conformance suite for existing rules.
 
 ## Releases
 
-- There are no releases yet: versions 0.1 to 0.3 have no tags (see
+- There are no releases yet: versions 0.1.0 to 0.3.0 have no tags (see
   [Changelog](changelog.md)). Releases, as Git tags `vMAJOR.MINOR.PATCH`,
   come with the move of the repository to GA4GH.
 - Until then, the `$id`s of the meta-schema and vocabularies name the
   `main` branch of the repository, which holds the latest reviewed state
-  (they resolve once version 0.3 is merged into `main` at
+  (they resolve once version 0.3.0 is merged into `main` at
   elixir-cloud-aai). To use fixed content, pin a commit SHA (see [Schema
   identifiers](development.md#schema-identifiers)). A stable identifier for
   released versions follows with the first release.
 - The Python package `ga4gh-io-schema` isn't published on PyPI; install it
   from the repository, at a commit (see
   [Installation](tools/validator.md#installation)).
+- The version of the package is the version of the proposal (`version` in
+  `pyproject.toml` is the latest version of the [document
+  history](roadmap.md#document-history), e.g., `0.3.0`, or a development
+  version of the next one, e.g., `0.3.1.dev0`, for work after it). It is
+  not a release either: versions 0.1.0 to 0.3.0 have no tags.
 
 ## Proposing changes
 

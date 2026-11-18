@@ -25,7 +25,7 @@ repeats a requirement, the normative page that it links to governs.
 
 A conformance claim names the conformance classes that a document or an
 implementation meets, and the version of the profile, e.g., "Validator and
-Form renderer of the GA4GH IO Schema Profile v0.3". An implementation
+Form renderer of the GA4GH IO Schema Profile 0.3.0". An implementation
 conforms to a class if it meets every MUST and MUST NOT requirement of that
 class; it SHOULD meet the SHOULD requirements, and documents the ones it
 doesn't meet and why.
@@ -199,7 +199,7 @@ applies the meta-schema accepts `missing-schema`.
    (qualified with the entry point for WDL), file values as the engine
    takes them (CWL `File` and `Directory` objects), no `default`s inserted,
    and colliding names rejected. It MUST reject schema documents whose
-   descriptor type has no binding (`GALAXY` in version 0.3).
+   descriptor type has no binding (`GALAXY` in version 0.3.0).
 6. A request builder MUST set `workflow_type` and `workflow_type_version`
    of the WES `RunRequest` from `x-ga4gh-workflow` (the version from TRS
    only where the schema document has none), and `workflow_url` to a URL of

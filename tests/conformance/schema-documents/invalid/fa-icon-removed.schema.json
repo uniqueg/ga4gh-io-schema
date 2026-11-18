@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
   "$id": "https://example.org/schemas/invalid/fa-icon-removed",
   "title": "Invalid: fa-icon-removed",
-  "description": "x-ga4gh-fa-icon was removed in version 0.3.",
+  "description": "x-ga4gh-fa-icon was removed in version 0.3.0.",
   "type": "object",
   "properties": {
     "inputs": {
