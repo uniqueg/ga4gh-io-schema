@@ -160,6 +160,8 @@ jobs:
           fi
           grep -qx 'ga4gh_io_schema/schemas/ga4gh-io-profile.schema.json' wheel-contents.txt
           grep -Eqx 'ga4gh_io_schema-[^/]+\.dist-info/licenses/LICENSE' wheel-contents.txt
+          # Typed package (PEP 561)
+          grep -qx 'ga4gh_io_schema/py.typed' wheel-contents.txt
 
   test:
     name: Test (Python ${{ matrix.python-version }})
