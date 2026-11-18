@@ -5,7 +5,8 @@
 # Everything that must pass on pull requests and pushes: the pull request
 # title, lint (pre-commit hooks, citation metadata, REUSE, Markdown, the
 # syntax of the meta-schema), the build of the package, the Python tests on
-# every supported version, the JavaScript tests, the strict docs build and
+# every supported version and at the lowest versions of the dependencies,
+# the JavaScript tests, the strict docs build and
 # the end-to-end test of the prototype. The gate `passed` ("CI passed") is
 # the only required check. No `paths:` filters, so that the gate always
 # reports; skip jobs with `if:` instead (and allow the skip in the gate).
@@ -250,6 +251,38 @@ jobs:
             fi
           done
 
+  # The lowest versions of the direct dependencies that `pyproject.toml`
+  # allows (its floors), on the lowest supported Python version: a floor that
+  # fails the tests must be raised. Resolved here, not from `uv.lock` (which
+  # the resolution changes only in the runner); the wheel tests are left
+  # out, and coverage is the job of `test`
+  test-lowest:
+    name: Test (lowest dependencies)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      # As in `lint`
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version-file: uv.lock
+      - name: Install lowest dependencies
+        run: |
+          uv sync --resolution lowest-direct --extra dev --python "$(which python)"
+          echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
+      - name: Show resolved versions
+        run: uv pip list
+      - name: Run tests
+        run: pytest --no-cov -m "not wheel"
+
   # The conformance suite and the examples through JavaScript validators
   # (tests/js/), offline, so that JavaScript clients see the results of the
   # Python validator.
@@ -364,7 +397,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [title, lint, build, test, test-js, docs, e2e]
+    needs: [title, lint, build, test, test-lowest, test-js, docs, e2e]
     permissions: {}
     steps:
       - name: Check results of all jobs

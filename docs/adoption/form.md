@@ -91,9 +91,19 @@ Options:
 - `--host` and `--port`: the address to bind; the default is
   `127.0.0.1:8000`.
 
+`--trs-url` and `--wes-url` must be `http(s)` URLs without credentials:
+the host's error messages, which name these URLs, reach the browser. It
+refuses URLs with user information (`user:password@`); don't put tokens in
+their query either.
+
 The host validates the schema against the profile when it starts, and
 exits with status 1 if the schema can't be read or doesn't comply. It
-prints the `workflow_url` that it uses and whether a WES is configured.
+prints the `workflow_url` that it uses and whether a WES is configured. It
+reads at most 16 MiB of each answer of the TRS and the WES, and of a schema
+from a URL. A larger answer is treated like one that can't be read: an
+error (502) for the list of workflows, the schema and the run request, and,
+as for any failure of these optional requests, an unknown state of the run
+or an unverified checksum for the state and the primary descriptor.
 
 ## How it works
 
