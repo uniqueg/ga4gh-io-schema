@@ -88,6 +88,15 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 
 ### Added
 
+- The status of the proposal on the first screen: a "Status" section in the
+  README (version 0.3.0, not a GA4GH standard, no releases; the prototype
+  in one command, the testbed and the evaluation) with CI and docs badges,
+  a status note on the index page with the conclusions of the evaluation,
+  and "Next steps" in the roadmap that list what 0.3.0 has (specification
+  and conformance suite, Python reference implementation, converters,
+  prototype and evaluation, live demo), the review by the Federated
+  Analysis Work Stream as the next step, and the open items (validation in
+  a WES, other form libraries, further implementations). (#103)
 - A check of the workflow block for clients:
   `ga4gh_io_schema.workflow.check_workflow()` and
   `ga4gh-io-schema verify` compare `trs_tool_id`, `trs_version_id` and
