@@ -391,7 +391,7 @@ class _Converter(SchemaConverter):
     def _default(
         self, result: dict[str, Any], pointer: Pointer, parameter: str | None
     ) -> None:
-        """Drop a ``default`` with ``${``, which the translators reject.
+        """Handle ``${`` in ``default``, ``enum`` and ``const``.
 
         nf-core pipelines set defaults such as ``${projectDir}/assets/...``,
         which Nextflow replaces in its configuration; the translators reject
@@ -452,8 +452,11 @@ class _Converter(SchemaConverter):
         required = parent.get("required")
         if not isinstance(required, list) or name not in required:
             return
-        required.remove(name)
-        if not required:
+        # Every occurrence (the source may list it twice)
+        remaining = [item for item in required if item != name]
+        if remaining:
+            parent["required"] = remaining
+        else:
             del parent["required"]
         self.note(
             f"Removed '{name}' from 'required': its default was dropped, and "

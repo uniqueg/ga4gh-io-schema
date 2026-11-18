@@ -534,7 +534,7 @@ def test_parameters_whose_default_is_dropped_are_not_required() -> None:
             "g": group({"gtf": variable}, required=["gtf"]),
             "h": group({"bed": variable, "n": {"type": "integer"}}, required=["n"]),
         },
-        required=["fasta", "reads"],
+        required=["fasta", "reads", "fasta"],
     )
 
     conversion = to_ga4gh(source)
@@ -568,7 +568,9 @@ def test_allowed_values_with_nextflow_variables_are_noted() -> None:
     assert parameter(conversion, "mode")["enum"] == ["fast", "${launchDir}"]
     assert parameter(conversion, "fixed") == {"const": "${secrets}"}
     notes = notes_with(conversion, "can't be translated, as Nextflow replaces")
-    assert [note.message.split()[1] for note in notes] == ["'enum'", "'const'"]
+    assert len(notes) == 2
+    assert "'enum'" in notes[0].message and "${launchDir}" in notes[0].message
+    assert "'const'" in notes[1].message and "${secrets}" in notes[1].message
 
 
 # --- Keywords of nf-schema --------------------------------------------------
