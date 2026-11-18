@@ -355,6 +355,12 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   "too deeply nested" validation error. A new CI job, "Test (lowest
   dependencies)", runs the tests with the lowest versions that
   `pyproject.toml` allows, on the lowest supported Python version. (#110)
+- `trs_descriptor_url()` percent-encodes the descriptor type, as its
+  docstring says, so that it can't add path segments or a query to the
+  `workflow_url`. The form host of the prototype reads at most 16 MiB of
+  each answer of the TRS and the WES, and refuses `--trs-url` and
+  `--wes-url` with user information (e.g., a password), which its error
+  messages would show in the browser. (#108)
 - The transfer page names the `main` URL of the schemas, as the `$id`s of
   0.3 do, instead of a `v0.3.0` tag that doesn't exist; the check of
   schema URLs leaves out `$`-placeholders of rewrite rules. (#96)
