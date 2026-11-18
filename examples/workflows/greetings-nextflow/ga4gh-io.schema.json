@@ -1,0 +1,101 @@
+{
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
+  "title": "Greetings",
+  "description": "Greets people by name, in one of a few languages.",
+  "x-ga4gh-workflow": {
+    "trs_tool_id": "io-schema-greetings",
+    "trs_version_id": "1.0.0",
+    "descriptor_type": "NFL",
+    "descriptor_type_version": "DSL2",
+    "primary_descriptor_path": "main.nf",
+    "checksum": [
+      {
+        "type": "sha-256",
+        "checksum": "1d19b64fc8fdadd9dd5b7d599e551d9e32f2447347200b07563403c05455d9de"
+      }
+    ]
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "title": "Names",
+          "description": "Who to greet, one name per line.",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z .-]*$",
+            "x-ga4gh-error-message": "A name starts with a letter and has only letters, spaces, dots and dashes"
+          },
+          "minItems": 1,
+          "maxItems": 10,
+          "default": [
+            "Ada",
+            "Grace"
+          ],
+          "x-ga4gh-error-message": "Give one to ten names"
+        },
+        "language": {
+          "type": "string",
+          "title": "Language",
+          "enum": [
+            "en",
+            "de",
+            "fr",
+            "it"
+          ],
+          "default": "en",
+          "x-ga4gh-ui-widget": "radio"
+        },
+        "times": {
+          "type": "integer",
+          "title": "How many times",
+          "description": "How often each greeting is repeated.",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 1,
+          "x-ga4gh-ui-widget": "slider"
+        },
+        "shout": {
+          "type": "boolean",
+          "title": "Shout",
+          "description": "Write the greetings in capitals.",
+          "default": false,
+          "x-ga4gh-ui-widget": "checkbox"
+        },
+        "outdir": {
+          "type": "string",
+          "title": "Output directory",
+          "description": "Where the run writes the greetings.",
+          "default": "results",
+          "x-ga4gh-hidden": true
+        }
+      },
+      "required": [
+        "names"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "greetings": {
+          "type": "array",
+          "title": "Greetings",
+          "description": "One text file per name.",
+          "items": {
+            "type": "string",
+            "x-ga4gh-file": {
+              "kind": "file",
+              "mediaType": "text/plain"
+            }
+          },
+          "x-ga4gh-output-glob": "results/*.txt"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
