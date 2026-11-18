@@ -84,8 +84,15 @@ CWL `File` and `Directory` objects are accepted only at file references
 values](../specification/engine-bindings.md#from-workflow_params-back-to-input-values)
 requires: an object without them is invalid, and objects with other fields
 (e.g., `contents`, `secondaryFiles` or `listing`) are rejected; the runner
-finds secondary files next to the file. For the other descriptor types,
-such objects are ordinary objects.
+finds secondary files next to the file. For CWL, keys that start with `$`
+or contain `:` (e.g., `$include` or `cwltool:overrides`, directives and
+namespaced fields of the CWL loader) are rejected anywhere in
+`workflow_params`. For the other descriptor types, such objects and keys
+are ordinary objects and members. For every descriptor type, a request in
+which several members match the same input (e.g., under its
+`x-ga4gh-parameter` key and under its own name) is rejected; for
+Nextflow, also a request with keys with `-` (e.g., `input-`, which
+Nextflow renames to `input`).
 
 Errors follow the [conventions](cli.md#conventions) of the command-line
 interface (a rejected request exits with status 1), except that the

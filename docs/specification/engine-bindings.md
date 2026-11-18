@@ -38,7 +38,9 @@ differs between them.
    a name has no meaning, except where the descriptor type gives it one.
    `x-ga4gh-parameter` renames only the properties of `inputs`; members of
    nested objects keep their names. Two inputs MUST NOT bind to the same
-   key; a translator MUST reject values for which they would.
+   key; a translator MUST reject values for which they would. The values
+   MUST be JSON (e.g., the keys of objects are strings, numbers are
+   finite, and there are no tuples, sets or cycles).
 3. **Absent and optional values.** An input without a value is left out of
    `workflow_params`, and the engine applies the workflow's own default. A
    translator MUST NOT insert the schema's `default`s: the default of the
@@ -53,7 +55,17 @@ differs between them.
    For `CWL`, a translator MUST reject objects with the `class` `File` or
    `Directory` in the input values, at any depth: the runner would stage
    them without the checks of file references. Files are given as file
-   reference values, i.e., strings.
+   reference values, i.e., strings. For `CWL`, a translator MUST also
+   reject object keys that start with `$` or contain `:`, at any depth and
+   among the members of the input values. The CWL loader (schema-salad)
+   takes keys with `$` for directives: `$include` and `$import` make it
+   read or fetch the document they name (also `file:` URIs and internal
+   hosts) past the checks of file references, and `$mixin`, `$namespaces`
+   and `$schemas` change the values. Keys with `:` are namespaced fields or
+   URIs, which cwltool expands and applies, e.g., `cwltool:overrides` and
+   `cwl:requirements` (requirements such as another container image). The
+   ids of CWL inputs and record fields have neither. Errors name the
+   location of the key, not its value.
 5. **File references.** A string value is a file value if a file reference
    schema applies at its location: directly; in the `items`,
    `prefixItems` or `contains` of an array; in the `properties`,
@@ -99,6 +111,17 @@ Nextflow stages. For example:
   "skip_qc": false
 }
 ```
+
+Nextflow renames the members of a params file whose keys contain `-`
+(U+002D) from kebab-case to camelCase (`out-dir` and `out-dir-` set
+`outDir`, `-input` sets `Input`), and of two members that set the same
+parameter, the last one wins. The engine would get another parameter than
+the one that was checked, so translators MUST reject values that they
+would bind to a key with `-` (an input that Nextflow takes as `outDir` is
+named so, or bound to it with `x-ga4gh-parameter`), and servers MUST
+reject members of `workflow_params` whose keys have `-`. This applies to
+the members of `workflow_params` only: Nextflow doesn't rename the keys
+of nested objects.
 
 The `entry_point` of a Nextflow schema (the named workflow run with
 `-entry`) is not a parameter. WES 1.1 has no field for it, and version 0.3.0
@@ -261,7 +284,13 @@ the values against `inputs`:
    property's schema (of equally near ones, the first in the document), or
    else the name of the property. If several inputs can bind to the key,
    the member matches the input whose first binding it is; if that doesn't
-   decide (none or several), the server MUST reject the request. For `WDL`,
+   decide (none or several), the server MUST reject the request. If
+   several members match the same input (e.g., under its
+   `x-ga4gh-parameter` key and under its own name), the server MUST reject
+   the request: only one of them would be validated, and the engine would
+   get both. For `NFL`, the server MUST reject members whose keys have
+   `-` (e.g., `input-`, which Nextflow takes for `input`, see
+   [Nextflow](#nextflow-nfl)). For `WDL`,
    a key without the prefix `<entry_point>.` matches no input. After the
    values are validated, the input MUST bind to the member's key for its
    value (rule 2 above); otherwise, the server MUST reject the request.
@@ -281,7 +310,10 @@ the values against `inputs`:
    `basename`, which names the staged file; it MUST reject objects whose
    `class` doesn't match the `kind` of the file reference (`File` for
    `file`, `Directory` for `directory`), and objects at locations where no
-   file reference applies.
+   file reference applies. As for translators (rule 4 of "From input
+   values to `workflow_params`"), it MUST reject keys that start with `$` or
+   contain `:` anywhere in `workflow_params`, the directives and namespaced
+   fields of the CWL loader.
 4. Errors name the location in `workflow_params`, not in the input values:
    the first segment of the JSON Pointer is the key of the member in
    `workflow_params` (e.g., `/variant_calling.input_bam`), and the pointer of

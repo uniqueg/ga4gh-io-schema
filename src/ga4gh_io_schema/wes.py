@@ -16,6 +16,7 @@ into input values and validates them, with errors located in
 
 from __future__ import annotations
 
+import math
 import re
 from collections import deque
 from collections.abc import Iterable, Iterator, Sequence
@@ -77,6 +78,31 @@ _DOCUMENT_URI = "urn:ga4gh-io-schema:document"
 _PLAIN_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # Classes of CWL objects for files and directories
 _CWL_CLASSES = ("File", "Directory")
+# The CWL loader (schema-salad) takes keys that start with `$` for
+# directives: `$include` and `$import` fetch other documents, also from
+# `file:` URIs, and `$mixin`, `$namespaces` and `$schemas` change the values.
+# Keys with `:` are namespaced fields or URIs, which cwltool expands, e.g.,
+# `cwltool:overrides` and `cwl:requirements`, applied as requirements (e.g.,
+# another container image); the ids of CWL inputs and fields have none
+_CWL_DIRECTIVE = (
+    "Keys that start with '$' or contain ':' aren't accepted in CWL input "
+    "values: the CWL loader takes them for directives or namespaced fields, "
+    "e.g., $include or cwltool:overrides."
+)
+# Nextflow renames the members of a params file whose keys have `-`, from
+# kebab-case to camelCase (`CmdRun.kebabToCamelCase`): `out-dir` and
+# `out-dir-` set `outDir`, and the last of them wins. The engine wouldn't get
+# the key that was checked, and two keys could set one parameter
+_NEXTFLOW_DASH = (
+    "Keys with '-' aren't accepted for Nextflow: Nextflow renames them to "
+    "camelCase (e.g., out-dir to outDir), so the parameter that it sets isn't "
+    "the key that was checked; use the camelCase name."
+)
+_NON_STRING_KEYS = "Object keys must be strings."
+_NON_JSON = (
+    "Values must be JSON: objects, arrays, strings, finite numbers, booleans "
+    "or null, without cycles."
+)
 # Applicators along the evaluation path of a failure, by whether their
 # subschemas apply to the same location as the schema itself, and by whether
 # the schema path names one of several subschemas (by key or index) or the
@@ -868,6 +894,11 @@ class _Translator:
             TranslationError: If the values can't be translated, or if the
                 schema has a reference that can't be resolved locally.
         """
+        found = _non_json(values)
+        if found is not None:
+            # Keyword checks and the checks of objects (e.g., of CWL
+            # directives) know only JSON
+            raise TranslationError(*found)
         self._in_place_cache.clear()
         # The values outlive the memo, so the identities of their parts
         # aren't reused while it is kept
@@ -944,6 +975,12 @@ class _Translator:
                     f"Two inputs bind to the engine parameter '{name}'.", (key,)
                 )
             names.add(name)
+            if self.binding.descriptor_type == "NFL" and "-" in name:
+                raise TranslationError(_NEXTFLOW_DASH, (key,))
+            # Both the key of the values (which a server passes on as it
+            # came) and the name for the engine
+            if self.binding.descriptor_type == "CWL" and _directive((key, name)):
+                raise TranslationError(_CWL_DIRECTIVE, (key,))
             bound.append((key, name, self._value(scopes, value, (key,))))
         return bound
 
@@ -1373,16 +1410,18 @@ class _Translator:
                 for index, item in enumerate(value)
             ]
         if isinstance(value, dict):
-            if (
-                self.binding.descriptor_type == "CWL"
-                and value.get("class") in _CWL_CLASSES
-            ):
-                # The runner would stage it, unchecked
-                raise TranslationError(
-                    "CWL File and Directory objects aren't input values: give a "
-                    "file reference as a string.",
-                    path,
-                )
+            if self.binding.descriptor_type == "CWL":
+                if value.get("class") in _CWL_CLASSES:
+                    # The runner would stage it, unchecked
+                    raise TranslationError(
+                        "CWL File and Directory objects aren't input values: give "
+                        "a file reference as a string.",
+                        path,
+                    )
+                directive = _directive(value)
+                if directive is not None:
+                    # The loader would fetch what it names, unchecked
+                    raise TranslationError(_CWL_DIRECTIVE, (*path, directive))
             return {
                 key: self._value(
                     self._children(applicable, key, item, value), item, (*path, key)
@@ -1485,6 +1524,9 @@ class _ReverseTranslator:
         self.files = {}
         if not isinstance(params, dict):
             raise WorkflowParamsError("workflow_params must be a JSON object.")
+        found = _non_json(params)
+        if found is not None:
+            raise WorkflowParamsError(*found)
         try:
             input_keys = self.translator.input_keys()
         except TranslationError as exc:
@@ -1521,6 +1563,9 @@ class _ReverseTranslator:
                 inputs.setdefault(key, []).append(name)
         values: dict[str, Any] = {}
         for key, value in params.items():
+            if self.translator.binding.descriptor_type == "NFL" and "-" in key:
+                # Nextflow would set another parameter than the one checked
+                raise WorkflowParamsError(_NEXTFLOW_DASH, (key,))
             matched = inputs.get(key, [])
             if len(matched) > 1:
                 # The input whose first binding is the key, if only one
@@ -1536,6 +1581,13 @@ class _ReverseTranslator:
                 raise WorkflowParamsError(
                     "This member matches no input: the input of this name binds "
                     f"to the key '{input_keys[name][0]}'.",
+                    (key,),
+                )
+            if name in values:
+                # Only one of them would be validated, and the engine gets both
+                raise WorkflowParamsError(
+                    "Several members bind to the same input: give it once, "
+                    f"under the key '{input_keys[name][0]}'.",
                     (key,),
                 )
             self.keys[name] = key
@@ -1611,6 +1663,10 @@ class _ReverseTranslator:
             ]
         if not isinstance(value, dict):
             return value
+        directive = _directive(value)
+        if directive is not None:
+            # Also in File objects, which become strings below
+            raise self._error(_CWL_DIRECTIVE, (*path, directive), file_field=False)
         kind = value.get("class")
         if kind not in _CWL_CLASSES:
             return {key: self._files(item, (*path, key)) for key, item in value.items()}
@@ -1668,6 +1724,66 @@ class _ReverseTranslator:
         if file_field and tuple(path) in self.files:
             located.append(self.files[tuple(path)][0])
         return WorkflowParamsError(message, located)
+
+
+def _non_json(value: Any) -> tuple[str, Path] | None:
+    """Find a part of a value that isn't JSON.
+
+    Args:
+        value: Input values or ``workflow_params``.
+
+    Returns:
+        The error message and the location of the first such part (depth
+        first): an object with a key that isn't a string, a number that
+        isn't finite, a container that contains itself, or a value of
+        another type than JSON has (e.g., a tuple); or ``None`` if there is
+        none.
+    """
+    # Each item, with whether its children were checked, and the ids of the
+    # containers on its path
+    stack: list[tuple[Any, Path, bool]] = [(value, (), False)]
+    ancestors: set[int] = set()
+    # Containers checked completely (they may be shared)
+    done: set[int] = set()
+    while stack:
+        item, path, leaving = stack.pop()
+        if leaving:
+            ancestors.discard(id(item))
+            done.add(id(item))
+            continue
+        if item is None or isinstance(item, (str, bool, int)):
+            continue
+        if isinstance(item, float):
+            if not math.isfinite(item):
+                return _NON_JSON, path
+            continue
+        if not isinstance(item, (dict, list)) or id(item) in ancestors:
+            return _NON_JSON, path
+        if id(item) in done:
+            continue
+        if isinstance(item, dict):
+            if not all(isinstance(key, str) for key in item):
+                return _NON_STRING_KEYS, path
+            children = [((*path, key), child) for key, child in item.items()]
+        else:
+            children = [((*path, index), child) for index, child in enumerate(item)]
+        ancestors.add(id(item))
+        stack.append((item, path, True))
+        stack.extend((child, location, False) for location, child in reversed(children))
+    return None
+
+
+def _directive(keys: Iterable[str]) -> str | None:
+    """Find a key that the CWL loader takes for a directive or a namespace.
+
+    Args:
+        keys: The keys, e.g., the members of an object.
+
+    Returns:
+        The first key that starts with ``$`` or contains ``:``, or ``None``
+        if there is none.
+    """
+    return next((key for key in keys if key.startswith("$") or ":" in key), None)
 
 
 @contextmanager

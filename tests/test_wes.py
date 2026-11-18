@@ -415,6 +415,302 @@ def test_cwl_file_objects_are_not_values() -> None:
     assert to_workflow_params(nfl, {"rec": smuggled}) == {"rec": smuggled}
 
 
+@pytest.mark.parametrize("key", ["$include", "$import", "$mixin", "$namespaces"])
+def test_cwl_loader_directives_are_not_values(key: str) -> None:
+    """Test that schema-salad directives can't make the runner load files.
+
+    Args:
+        key: Key of a directive of the CWL loader (schema-salad).
+    """
+    schema = make_schema({"rec": {"type": "object"}}, {"descriptor_type": "CWL"})
+    smuggled = {key: "file:///etc/passwd"}
+
+    with pytest.raises(TranslationError, match=r"start with '\$'") as info:
+        to_workflow_params(schema, {"rec": {"inner": [smuggled]}})
+    assert info.value.pointer == f"/rec/inner/0/{key}"
+    # The message names the location only, not the value
+    assert "passwd" not in info.value.message
+    with pytest.raises(WorkflowParamsError, match=r"start with '\$'") as error:
+        from_workflow_params(schema, {"rec": smuggled})
+    assert error.value.pointer == f"/rec/{key}"
+    # Other engines take such keys as plain members
+    nfl = make_schema({"rec": {"type": "object"}}, NFL)
+    assert to_workflow_params(nfl, {"rec": smuggled}) == {"rec": smuggled}
+
+
+def test_cwl_loader_directives_at_the_top_level() -> None:
+    """Test that a directive can't come as a member of the input values."""
+    schema = make_schema({"reads": {"type": "string"}}, {"descriptor_type": "CWL"})
+
+    with pytest.raises(TranslationError, match=r"start with '\$'") as info:
+        to_workflow_params(schema, {"reads": "a", "$namespaces": {}})
+    assert info.value.pointer == "/$namespaces"
+    with pytest.raises(WorkflowParamsError, match=r"start with '\$'") as error:
+        from_workflow_params(schema, {"reads": "a", "$schemas": []})
+    assert error.value.pointer == "/$schemas"
+    # Also where the schema binds other members to a name without `$`: a
+    # server passes the member on under its own key
+    renamed = make_schema({}, {"descriptor_type": "CWL"})
+    renamed["properties"]["inputs"]["additionalProperties"] = {
+        "x-ga4gh-parameter": {"name": "extra"}
+    }
+    with pytest.raises(WorkflowParamsError, match=r"start with '\$'") as error:
+        from_workflow_params(renamed, {"$include": "file:///etc/passwd"})
+    assert error.value.pointer == "/$include"
+    with pytest.raises(TranslationError, match=r"start with '\$'") as info:
+        to_workflow_params(renamed, {"$include": "file:///etc/passwd"})
+    assert info.value.pointer == "/$include"
+
+
+@pytest.mark.parametrize(
+    "key", ["cwltool:overrides", "cwl:requirements", "http://commonwl.org/cwltool#x"]
+)
+def test_cwl_namespaced_keys_are_not_values(key: str) -> None:
+    """Test that keys of the namespaces of the CWL loader are rejected.
+
+    cwltool expands keys like ``cwltool:overrides`` of the job order and
+    applies them as requirements (e.g., another container image).
+
+    Args:
+        key: A key with a namespace prefix or a URI.
+    """
+    schema = make_schema({"rec": {"type": "object"}}, {"descriptor_type": "CWL"})
+
+    with pytest.raises(TranslationError, match="contain ':'") as info:
+        to_workflow_params(schema, {"rec": {}, key: {}})
+    assert info.value.pointer == "/" + key.replace("/", "~1")
+    with pytest.raises(WorkflowParamsError, match="contain ':'") as error:
+        from_workflow_params(schema, {"rec": {key: []}})
+    assert error.value.pointer == "/rec/" + key.replace("/", "~1")
+    # Other engines take such keys as plain members
+    nfl = make_schema({"rec": {"type": "object"}}, NFL)
+    assert to_workflow_params(nfl, {"rec": {key: 1}}) == {"rec": {key: 1}}
+
+
+@pytest.mark.parametrize("workflow", [{"descriptor_type": "CWL"}, NFL])
+def test_two_members_for_one_input_are_rejected(workflow: dict[str, Any]) -> None:
+    """Test that a server doesn't validate only one of two members of an input.
+
+    An input renamed with ``x-ga4gh-parameter`` matches its key and its own
+    name; with both in a request, one of them would reach the engine
+    unchecked.
+
+    Args:
+        workflow: The workflow block of the schema.
+    """
+    schema = make_schema(
+        {"a": {"type": "string", "x-ga4gh-parameter": {"name": "x"}}},
+        workflow,
+    )
+    schema["properties"]["inputs"]["additionalProperties"] = False
+    # The first member, not a string, would reach the engine unvalidated
+    smuggled = {"a": {"nested": ["unchecked"]}, "x": "fine"}
+
+    with pytest.raises(WorkflowParamsError, match="Several members") as error:
+        from_workflow_params(schema, smuggled)
+    assert error.value.pointer == "/x"
+    with pytest.raises(WorkflowParamsError, match="Several members") as error:
+        from_workflow_params(schema, {"x": "fine", "a": "other"})
+    assert error.value.pointer == "/a"
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"input": "https://data.example.org/a.csv", "input-": "file:///etc/passwd"},
+        {"input-": "file:///etc/passwd"},
+        {"outDir": "https://data.example.org/o/", "out-dir": "file:///etc/"},
+        {"-input": "file:///etc/passwd"},
+        {"in--put": "x"},
+        {"-": "x"},
+        {"reads-file": "file:///etc/passwd"},
+    ],
+)
+def test_nextflow_keys_with_dashes_are_rejected(params: dict[str, Any]) -> None:
+    """Test that a server rejects keys that Nextflow renames.
+
+    Nextflow renames keys with ``-`` to camelCase (``input-`` sets
+    ``input``, ``out-dir`` sets ``outDir``; the last one wins), so the engine
+    would get a parameter other than the one checked (e.g., under
+    ``patternProperties``).
+
+    Args:
+        params: The ``workflow_params``, with a key with ``-``.
+    """
+    schema = make_schema(
+        {
+            "input": file_ref(),
+            "outDir": {"type": "string", "x-ga4gh-file": {"kind": "directory"}},
+        },
+        NFL,
+    )
+    schema["properties"]["inputs"]["patternProperties"] = {"File$": file_ref()}
+    dashed = next(key for key in params if "-" in key)
+
+    with pytest.raises(WorkflowParamsError, match="Keys with '-'") as error:
+        from_workflow_params(schema, params, allowed_schemes=["https"])
+    assert error.value.pointer == "/" + dashed
+
+
+@pytest.mark.parametrize(
+    ("inputs", "values", "pointer"),
+    [
+        # Bound to a key with `-`
+        (
+            {"out": {"type": "string", "x-ga4gh-parameter": {"name": "out-dir"}}},
+            {"out": "x"},
+            "/out",
+        ),
+        # Under its own name with `-`
+        ({"out-dir": {"type": "string"}}, {"out-dir": "x"}, "/out-dir"),
+        # A member that no input declares
+        ({}, {"input-": "file:///etc/passwd"}, "/input-"),
+    ],
+)
+def test_nextflow_values_bound_to_dashes_are_rejected(
+    inputs: dict[str, Any], values: dict[str, Any], pointer: str
+) -> None:
+    """Test that a translator rejects values that it would bind to keys with ``-``.
+
+    Args:
+        inputs: Properties of ``inputs``.
+        values: The input values.
+        pointer: Location of the rejected value.
+    """
+    schema = make_schema(inputs, NFL)
+
+    with pytest.raises(TranslationError, match="Keys with '-'") as info:
+        to_workflow_params(schema, values)
+    assert info.value.pointer == pointer
+
+
+def test_nextflow_dashes_in_nested_keys_and_values_pass() -> None:
+    """Test that Nextflow's renaming concerns only the keys of parameters."""
+    schema = make_schema({"rec": {"type": "object"}, "name": {"type": "string"}}, NFL)
+    values = {"rec": {"a-b": 1}, "name": "x-y"}
+
+    assert to_workflow_params(schema, values) == values
+    assert from_workflow_params(schema, values) == values
+
+
+def test_other_engines_keep_dash_keys() -> None:
+    """Test that keys with ``-`` are accepted for engines that don't rename."""
+    schema = make_schema({"outDir": {"type": "string"}}, {"descriptor_type": "SMK"})
+
+    assert from_workflow_params(schema, {"outDir": "a", "out-dir": "b"}) == {
+        "outDir": "a",
+        "out-dir": "b",
+    }
+    assert to_workflow_params(schema, {"outDir": "a", "out-dir": "b"}) == {
+        "outDir": "a",
+        "out-dir": "b",
+    }
+
+
+def _cycle() -> list[Any]:
+    """Build a list that contains itself.
+
+    Returns:
+        The list.
+    """
+    cyclic: list[Any] = []
+    cyclic.append(cyclic)
+    return cyclic
+
+
+def test_shared_values_are_json() -> None:
+    """Test that a container that appears twice, without a cycle, passes."""
+    schema = make_schema({"a": {}, "b": {}}, NFL)
+    shared = [{"x": 1.5}]
+
+    assert to_workflow_params(schema, {"a": shared, "b": [shared]}) == {
+        "a": shared,
+        "b": [shared],
+    }
+
+
+@pytest.mark.parametrize("workflow", [{"descriptor_type": "CWL"}, NFL])
+@pytest.mark.parametrize(
+    "value",
+    [
+        ({"$include": "file:///etc/passwd"},),
+        ({1: "x"},),
+        {"a", "b"},
+        b"bytes",
+        object(),
+        float("nan"),
+        float("inf"),
+        -float("inf"),
+        _cycle(),
+        {"a": _cycle()},
+    ],
+)
+def test_non_json_values_are_rejected(workflow: dict[str, Any], value: Any) -> None:
+    """Test that values of types that JSON doesn't have are rejected.
+
+    Values from the Python API may have tuples, sets or other types, which
+    the checks of objects and arrays would skip, numbers that aren't finite,
+    which pass ``minimum`` and ``maximum``, or cycles.
+
+    Args:
+        workflow: The workflow block of the schema.
+        value: A value that isn't JSON.
+    """
+    schema = make_schema({"anyv": {}}, workflow)
+
+    with pytest.raises(TranslationError, match="JSON") as info:
+        to_workflow_params(schema, {"anyv": [value]})
+    # At the value, or for a cycle, where it contains itself again
+    assert info.value.pointer.startswith("/anyv/0")
+    with pytest.raises(WorkflowParamsError, match="JSON") as error:
+        from_workflow_params(schema, {"anyv": {"a": value}})
+    assert error.value.pointer.startswith("/anyv/a")
+
+
+@pytest.mark.parametrize("workflow", [{"descriptor_type": "CWL"}, NFL])
+@pytest.mark.parametrize("key", [1, None, 1.5, True, ("a",)])
+def test_non_string_keys_are_rejected(workflow: dict[str, Any], key: Any) -> None:
+    """Test that objects with keys that aren't strings are rejected.
+
+    JSON objects have string keys; values from the Python API may have
+    others.
+
+    Args:
+        workflow: The workflow block of the schema.
+        key: A key that isn't a string.
+    """
+    schema = make_schema({"anyv": {}}, workflow)
+
+    with pytest.raises(TranslationError, match="keys must be strings") as info:
+        to_workflow_params(schema, {"anyv": [{key: "x"}]})
+    assert info.value.pointer == "/anyv/0"
+    with pytest.raises(TranslationError, match="keys must be strings") as info:
+        to_workflow_params(schema, {key: "x"})
+    assert info.value.pointer == ""
+    with pytest.raises(WorkflowParamsError, match="keys must be strings") as error:
+        from_workflow_params(schema, {"anyv": {"a": {key: "x"}}})
+    assert error.value.pointer == "/anyv/a"
+    with pytest.raises(WorkflowParamsError, match="keys must be strings") as error:
+        from_workflow_params(schema, {key: "x"})
+    assert error.value.pointer == ""
+
+
+def test_cwl_loader_directives_in_file_objects() -> None:
+    """Test that a directive in a CWL File object of a request is rejected."""
+    schema = make_schema({"reads": file_ref()}, {"descriptor_type": "CWL"})
+    params = {
+        "reads": {
+            "class": "File",
+            "location": "https://data.example.org/a.bam",
+            "$import": "file:///etc/passwd",
+        }
+    }
+
+    with pytest.raises(WorkflowParamsError, match=r"start with '\$'") as error:
+        from_workflow_params(schema, params)
+    assert error.value.pointer == "/reads/$import"
+
+
 def test_unevaluated_only_where_nothing_else_applies() -> None:
     """Test that members evaluated by an in-place applicator keep their schema."""
     schema = make_schema(

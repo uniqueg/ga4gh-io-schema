@@ -1,0 +1,10 @@
+{
+  "reads": "https://data.example.org/sample.bam",
+  "settings": {
+    "extra": [
+      {
+        "$import": "http://169.254.169.254/latest/meta-data"
+      }
+    ]
+  }
+}

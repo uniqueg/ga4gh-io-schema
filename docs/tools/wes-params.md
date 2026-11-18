@@ -22,7 +22,14 @@ The command:
 3. validates the values (a JSON object, an instance of the schema's
    `inputs`) against `inputs`, and every value of a file reference against
    the rules of [Values](../specification/files.md#values) and the
-   deployment's allow-list of schemes;
+   deployment's allow-list of schemes; for CWL, it rejects `File` and
+   `Directory` objects and keys that start with `$` or contain `:`
+   (directives and namespaced fields of the CWL loader, e.g., `$include` or
+   `cwltool:overrides`) in the values, see rule 4 of [From input
+   values to `workflow_params`](../specification/engine-bindings.md#from-input-values-to-workflow_params);
+   for Nextflow, it rejects values that bind to keys with `-`, which
+   Nextflow renames to camelCase (see
+   [Nextflow](../specification/engine-bindings.md#nextflow-nfl));
 4. writes the `workflow_params`, as indented JSON (with `--json`, on one
    line).
 
