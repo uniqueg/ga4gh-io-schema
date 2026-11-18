@@ -514,6 +514,194 @@ def test_two_members_for_one_input_are_rejected(workflow: dict[str, Any]) -> Non
     assert error.value.pointer == "/a"
 
 
+@pytest.mark.parametrize(
+    ("key", "engine"),
+    [
+        ("input-", "input"),
+        ("input--", "input"),
+        ("in-put", "inPut"),
+        ("-input", "Input"),
+        ("--input", "Input"),
+        ("in--put", "inPut"),
+        ("-", ""),
+        ("--", ""),
+        ("out-dir", "outDir"),
+        ("max-cpus-", "maxCpus"),
+        ("a-1", "a1"),
+        ("plain", "plain"),
+        ("en‐dash", "en‐dash"),
+    ],
+)
+def test_nextflow_key(key: str, engine: str) -> None:
+    """Test that keys are read as Nextflow reads the members of a params file.
+
+    Nextflow (``CmdRun.kebabToCamelCase``) splits keys with ``-`` with
+    Java's ``String.split``, which drops trailing empty parts, and
+    capitalises every part but the first.
+
+    Args:
+        key: Key of a member of ``workflow_params``.
+        engine: The parameter that Nextflow sets.
+    """
+    assert wes._nextflow_key(key) == engine
+
+
+@pytest.mark.parametrize("key", ["in-é", "x-ß", "x-\U00010428"])
+def test_nextflow_key_rejects_non_ascii_after_dash(key: str) -> None:
+    """Test that keys whose renaming by Nextflow isn't certain are rejected.
+
+    Args:
+        key: A key with a non-ASCII character after a ``-``.
+    """
+    assert wes._nextflow_key(key) is None
+    schema = make_schema({"reads": {"type": "string"}}, NFL)
+    with pytest.raises(WorkflowParamsError, match="after '-'") as error:
+        from_workflow_params(schema, {"reads": "a", key: "b"})
+    assert error.value.pointer == "/" + key
+    with pytest.raises(TranslationError, match="after '-'") as info:
+        to_workflow_params(schema, {"reads": "a", key: "b"})
+    assert info.value.pointer == "/" + key
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"input": "https://data.example.org/a.csv", "input-": "file:///etc/passwd"},
+        {"input-": "file:///etc/passwd", "input": "https://data.example.org/a.csv"},
+        {"out-dir": "file:///etc/", "outDir": "https://data.example.org/o/"},
+        {"outDir": "https://data.example.org/o/", "out-dir": "file:///etc/"},
+        {"-input": "file:///etc/passwd", "Input": "https://data.example.org/a"},
+    ],
+)
+def test_nextflow_aliases_of_one_input_are_rejected(params: dict[str, Any]) -> None:
+    """Test that members that Nextflow reads as the same parameter are rejected.
+
+    Nextflow renames keys with ``-`` (kebab-case to camelCase); the last of
+    the members wins, so one of them would reach the engine unchecked.
+
+    Args:
+        params: The ``workflow_params``, with two members of one input.
+    """
+    schema = make_schema(
+        {
+            "input": file_ref(),
+            "Input": file_ref(),
+            "outDir": {"type": "string", "x-ga4gh-file": {"kind": "directory"}},
+        },
+        NFL,
+    )
+
+    with pytest.raises(WorkflowParamsError, match="same parameter") as error:
+        from_workflow_params(schema, params, allowed_schemes=["https"])
+    assert error.value.pointer == "/" + list(params)[1]
+
+
+def test_nextflow_alias_alone_is_validated() -> None:
+    """Test that a member under an alias of an input is validated as the input."""
+    schema = make_schema({"input": file_ref()}, NFL)
+    schema["properties"]["inputs"]["additionalProperties"] = False
+
+    with pytest.raises(WorkflowParamsError, match="scheme") as error:
+        from_workflow_params(schema, {"input-": "file:///etc/passwd"})
+    assert error.value.pointer == "/input-"
+    assert from_workflow_params(schema, {"input-": "https://data.example.org/a"}) == {
+        "input": "https://data.example.org/a"
+    }
+    # An alias of another name matches no input
+    with pytest.raises(WorkflowParamsError, match="additionalProperties"):
+        from_workflow_params(schema, {"in-put": "https://data.example.org/a"})
+
+
+def test_nextflow_aliases_of_other_members_are_rejected() -> None:
+    """Test that two members outside the inputs can't alias each other."""
+    schema = make_schema({}, NFL)
+    schema["properties"]["inputs"]["additionalProperties"] = {"type": "string"}
+
+    with pytest.raises(WorkflowParamsError, match="same parameter") as error:
+        from_workflow_params(schema, {"fooBar": "a", "foo-bar": "b"})
+    assert error.value.pointer == "/foo-bar"
+    with pytest.raises(TranslationError, match="same parameter") as info:
+        to_workflow_params(schema, {"fooBar": "a", "foo-bar": "b"})
+    assert info.value.pointer == "/foo-bar"
+
+
+def test_nextflow_inputs_bound_to_aliases() -> None:
+    """Test inputs whose keys Nextflow reads as the same parameter."""
+    schema = make_schema(
+        {
+            "a": {"type": "string", "x-ga4gh-parameter": {"name": "out-dir"}},
+            "b": {"type": "string", "x-ga4gh-parameter": {"name": "outDir"}},
+        },
+        NFL,
+    )
+
+    with pytest.raises(TranslationError, match="same parameter") as info:
+        to_workflow_params(schema, {"a": "x", "b": "y"})
+    assert info.value.pointer == "/b"
+    # Each alone is translated under the key of the schema
+    assert to_workflow_params(schema, {"a": "x"}) == {"out-dir": "x"}
+    # but a server can't tell which input a member is for
+    with pytest.raises(WorkflowParamsError, match="Several inputs") as error:
+        from_workflow_params(schema, {"out-dir": "x"})
+    assert error.value.pointer == "/out-dir"
+
+
+def test_nextflow_input_with_dash_key_matches_its_alias() -> None:
+    """Test that a member under the camelCase form of an input's key matches."""
+    schema = make_schema(
+        {"out": {"type": "string", "x-ga4gh-parameter": {"name": "out-dir"}}}, NFL
+    )
+    schema["properties"]["inputs"]["additionalProperties"] = False
+
+    assert from_workflow_params(schema, {"outDir": "x"}) == {"out": "x"}
+    assert from_workflow_params(schema, {"out-dir": "x"}) == {"out": "x"}
+    with pytest.raises(WorkflowParamsError, match="type") as error:
+        from_workflow_params(schema, {"outDir": 1})
+    assert error.value.pointer == "/outDir"
+
+
+def test_other_engines_keep_dash_keys() -> None:
+    """Test that keys with ``-`` are distinct for engines that don't rename."""
+    schema = make_schema({"outDir": {"type": "string"}}, {"descriptor_type": "SMK"})
+
+    assert from_workflow_params(schema, {"outDir": "a", "out-dir": "b"}) == {
+        "outDir": "a",
+        "out-dir": "b",
+    }
+    assert to_workflow_params(schema, {"outDir": "a", "out-dir": "b"}) == {
+        "outDir": "a",
+        "out-dir": "b",
+    }
+
+
+@pytest.mark.parametrize("workflow", [{"descriptor_type": "CWL"}, NFL])
+@pytest.mark.parametrize("key", [1, None, 1.5, True, ("a",)])
+def test_non_string_keys_are_rejected(workflow: dict[str, Any], key: Any) -> None:
+    """Test that objects with keys that aren't strings are rejected.
+
+    JSON objects have string keys; values from the Python API may have
+    others.
+
+    Args:
+        workflow: The workflow block of the schema.
+        key: A key that isn't a string.
+    """
+    schema = make_schema({"anyv": {}}, workflow)
+
+    with pytest.raises(TranslationError, match="keys must be strings") as info:
+        to_workflow_params(schema, {"anyv": [{key: "x"}]})
+    assert info.value.pointer == "/anyv/0"
+    with pytest.raises(TranslationError, match="keys must be strings") as info:
+        to_workflow_params(schema, {key: "x"})
+    assert info.value.pointer == ""
+    with pytest.raises(WorkflowParamsError, match="keys must be strings") as error:
+        from_workflow_params(schema, {"anyv": {"a": {key: "x"}}})
+    assert error.value.pointer == "/anyv/a"
+    with pytest.raises(WorkflowParamsError, match="keys must be strings") as error:
+        from_workflow_params(schema, {key: "x"})
+    assert error.value.pointer == ""
+
+
 def test_cwl_loader_directives_in_file_objects() -> None:
     """Test that a directive in a CWL File object of a request is rejected."""
     schema = make_schema({"reads": file_ref()}, {"descriptor_type": "CWL"})

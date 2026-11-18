@@ -88,6 +88,15 @@ _CWL_DIRECTIVE = (
     "values: the CWL loader takes them for directives or namespaced fields, "
     "e.g., $include or cwltool:overrides."
 )
+# Nextflow renames the members of a params file whose keys have `-`
+# (`CmdRun.kebabToCamelCase`), so that two keys can set the same parameter;
+# how it capitalises other characters than ASCII ones depends on Java
+_NEXTFLOW_NON_ASCII = (
+    "Keys with a character other than ASCII after '-' aren't accepted for "
+    "Nextflow: Nextflow renames keys with '-' (kebab-case to camelCase), and "
+    "the parameter that it would set for this key isn't certain."
+)
+_NON_STRING_KEYS = "Object keys must be strings."
 # Applicators along the evaluation path of a failure, by whether their
 # subschemas apply to the same location as the schema itself, and by whether
 # the schema path names one of several subschemas (by key or index) or the
@@ -879,6 +888,10 @@ class _Translator:
             TranslationError: If the values can't be translated, or if the
                 schema has a reference that can't be resolved locally.
         """
+        location = _non_string_key(values)
+        if location is not None:
+            # Not JSON; keyword checks and the engine binding expect strings
+            raise TranslationError(_NON_STRING_KEYS, location)
         self._in_place_cache.clear()
         # The values outlive the memo, so the identities of their parts
         # aren't reused while it is kept
@@ -888,6 +901,21 @@ class _Translator:
                 return self._bind(values)
         finally:
             _VALIDITY.reset(token)
+
+    def engine_key(self, key: str) -> str | None:
+        """Get the parameter that the engine sets for a key.
+
+        Args:
+            key: Key of a member of ``workflow_params``.
+
+        Returns:
+            For ``NFL``, the key as Nextflow renames it (see
+            :func:`_nextflow_key`), or ``None`` if that isn't certain; for
+            other descriptor types, the key itself.
+        """
+        if self.binding.descriptor_type == "NFL":
+            return _nextflow_key(key)
+        return key
 
     def input_keys(self) -> dict[str, list[str]]:
         """Get the keys in ``workflow_params`` that the inputs can bind to.
@@ -946,15 +974,25 @@ class _Translator:
             raise TranslationError("The input values must be a JSON object.")
         inputs = self._expand([self.inputs], values)
         bound: list[tuple[str, str, Any]] = []
-        names: set[str] = set()
+        # Key of each parameter that the engine sets
+        names: dict[str, str] = {}
         for key, value in values.items():
             scopes = self._expand(self._children(inputs, key, value, values), value)
             name = self._qualify(self._name(scopes, key))
-            if name in names:
+            engine = self.engine_key(name)
+            if engine is None:
+                raise TranslationError(_NEXTFLOW_NON_ASCII, (key,))
+            if names.get(engine) == name:
                 raise TranslationError(
                     f"Two inputs bind to the engine parameter '{name}'.", (key,)
                 )
-            names.add(name)
+            if engine in names:
+                raise TranslationError(
+                    f"Nextflow reads the keys '{names[engine]}' and '{name}' as "
+                    f"the same parameter '{engine}'.",
+                    (key,),
+                )
+            names[engine] = name
             # Both the key of the values (which a server passes on as it
             # came) and the name for the engine
             if self.binding.descriptor_type == "CWL" and _directive((key, name)):
@@ -1502,6 +1540,9 @@ class _ReverseTranslator:
         self.files = {}
         if not isinstance(params, dict):
             raise WorkflowParamsError("workflow_params must be a JSON object.")
+        location = _non_string_key(params)
+        if location is not None:
+            raise WorkflowParamsError(_NON_STRING_KEYS, location)
         try:
             input_keys = self.translator.input_keys()
         except TranslationError as exc:
@@ -1529,19 +1570,40 @@ class _ReverseTranslator:
 
         Raises:
             WorkflowParamsError: If a member matches several inputs, or
-                matches none but has the name of one, or if a CWL object
+                matches none but has the name of one, if the engine would set
+                the same parameter for several members, or if a CWL object
                 can't be replaced.
         """
-        inputs: dict[str, list[str]] = {}
+        engine_key = self.translator.engine_key
+        # Members match by the parameter that the engine sets for their key
+        inputs: dict[str | None, list[str]] = {}
         for name, keys in input_keys.items():
             for key in keys:
-                inputs.setdefault(key, []).append(name)
+                inputs.setdefault(engine_key(key), []).append(name)
+        inputs.pop(None, None)
+        # Key of each parameter that the engine sets
+        members: dict[str, str] = {}
         values: dict[str, Any] = {}
         for key, value in params.items():
-            matched = inputs.get(key, [])
+            engine = engine_key(key)
+            if engine is None:
+                raise WorkflowParamsError(_NEXTFLOW_NON_ASCII, (key,))
+            if engine in members:
+                # The engine would get only one of them, maybe unvalidated
+                raise WorkflowParamsError(
+                    f"Nextflow reads the keys '{members[engine]}' and '{key}' as "
+                    f"the same parameter '{engine}': give it once.",
+                    (key,),
+                )
+            members[engine] = key
+            matched = inputs.get(engine, [])
             if len(matched) > 1:
                 # The input whose first binding is the key, if only one
-                first = [name for name in matched if input_keys[name][0] == key]
+                first = [
+                    name
+                    for name in matched
+                    if engine_key(input_keys[name][0]) == engine
+                ]
                 matched = first if len(first) == 1 else matched
             if len(matched) > 1:
                 raise WorkflowParamsError(
@@ -1580,8 +1642,9 @@ class _ReverseTranslator:
             WorkflowParamsError: If an input binds to another key for its
                 value (e.g., through ``anyOf``).
         """
+        engine_key = self.translator.engine_key
         for name, key, _ in bound:
-            if name in input_keys and key != self.keys[name]:
+            if name in input_keys and engine_key(key) != engine_key(self.keys[name]):
                 raise WorkflowParamsError(
                     f"For this value, the input binds to the key '{key}'.",
                     (self.keys[name],),
@@ -1696,6 +1759,64 @@ class _ReverseTranslator:
         if file_field and tuple(path) in self.files:
             located.append(self.files[tuple(path)][0])
         return WorkflowParamsError(message, located)
+
+
+def _nextflow_key(key: str) -> str | None:
+    """Get the parameter that Nextflow sets for a member of a params file.
+
+    Nextflow renames keys with ``-`` from kebab-case to camelCase
+    (``CmdRun.kebabToCamelCase``): it splits them at each ``-`` (with Java's
+    ``String.split``, which drops trailing empty parts) and capitalises the
+    first character of every part but the first. Other dashes (e.g.,
+    U+2010) are kept.
+
+    Args:
+        key: Key of a member of ``workflow_params``.
+
+    Returns:
+        The name of the parameter, or ``None`` if a part after the first
+        starts with a character other than ASCII, whose capitalisation by
+        Java may differ.
+    """
+    if "-" not in key:
+        return key
+    parts = key.split("-")
+    while parts and not parts[-1]:
+        parts.pop()
+    if not parts:
+        return ""
+    rest = parts[1:]
+    if any(not part[:1].isascii() for part in rest):
+        return None
+    return parts[0] + "".join(part[:1].upper() + part[1:] for part in rest)
+
+
+def _non_string_key(value: Any) -> Path | None:
+    """Find an object with a key that isn't a string.
+
+    Args:
+        value: Input values or ``workflow_params``.
+
+    Returns:
+        The location of the first such object (depth first), or ``None``
+        if there is none.
+    """
+    stack: list[tuple[Any, Path]] = [(value, ())]
+    # Each container once, also if it is shared or contains itself
+    seen: set[int] = set()
+    while stack:
+        item, path = stack.pop()
+        if not isinstance(item, (dict, list)) or id(item) in seen:
+            continue
+        seen.add(id(item))
+        if isinstance(item, dict):
+            if not all(isinstance(key, str) for key in item):
+                return path
+            children = [((*path, key), child) for key, child in item.items()]
+        else:
+            children = [((*path, index), child) for index, child in enumerate(item)]
+        stack.extend((child, location) for location, child in reversed(children))
+    return None
 
 
 def _directive(keys: Iterable[str]) -> str | None:

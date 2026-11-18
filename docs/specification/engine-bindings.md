@@ -38,7 +38,10 @@ differs between them.
    a name has no meaning, except where the descriptor type gives it one.
    `x-ga4gh-parameter` renames only the properties of `inputs`; members of
    nested objects keep their names. Two inputs MUST NOT bind to the same
-   key; a translator MUST reject values for which they would.
+   key (for `NFL`, to keys with the same Nextflow name, see
+   [Nextflow](#nextflow-nfl)); a translator MUST reject values for which
+   they would. The keys of objects in the values MUST be strings, as in
+   JSON.
 3. **Absent and optional values.** An input without a value is left out of
    `workflow_params`, and the engine applies the workflow's own default. A
    translator MUST NOT insert the schema's `default`s: the default of the
@@ -109,6 +112,19 @@ Nextflow stages. For example:
   "skip_qc": false
 }
 ```
+
+Nextflow renames the members of a params file whose keys contain `-`
+(U+002D) from kebab-case to camelCase: it splits the key at each `-`,
+drops the empty parts at the end and capitalises the first character of
+each part but the first (`out-dir` and `out-dir-` set `outDir`, `-input`
+sets `Input`). The *Nextflow name* of a key is the name that Nextflow
+gives it so; other dashes (e.g., U+2010) aren't renamed. Two keys with the
+same Nextflow name set the same parameter, and the last one wins. So, for
+`NFL`, translators and servers compare keys by their Nextflow names (rule
+2 above and rule 1 of "From `workflow_params` back to input values"), and
+MUST reject keys in which a character other than ASCII follows a `-`,
+whose Nextflow name depends on how Java capitalises it. Keys keep their
+form in `workflow_params`.
 
 The `entry_point` of a Nextflow schema (the named workflow run with
 `-entry`) is not a parameter. WES 1.1 has no field for it, and version 0.3.0
@@ -275,7 +291,13 @@ the values against `inputs`:
    several members match the same input (e.g., under its
    `x-ga4gh-parameter` key and under its own name), the server MUST reject
    the request: only one of them would be validated, and the engine would
-   get both. For `WDL`,
+   get both. For `NFL`, keys are compared by their Nextflow names (see
+   [Nextflow](#nextflow-nfl)): a member matches an input if its Nextflow
+   name is that of one of the input's keys (e.g., `input-` matches the
+   input `input`), and if two members have the same Nextflow name (e.g.,
+   `input` and `input-`, or `outDir` and `out-dir`), whether they match
+   inputs or not, the server MUST reject the request, as Nextflow would
+   set the parameter only from the last of them. For `WDL`,
    a key without the prefix `<entry_point>.` matches no input. After the
    values are validated, the input MUST bind to the member's key for its
    value (rule 2 above); otherwise, the server MUST reject the request.

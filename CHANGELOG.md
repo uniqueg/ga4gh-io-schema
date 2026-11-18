@@ -412,9 +412,17 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   requirements of the run. For every descriptor type, `wes-validate` and
   `from_workflow_params()` reject requests in which several members match
   the same input (e.g., under its `x-ga4gh-parameter` key and under its own
-  name): only one of them was validated. The engine bindings and the
+  name): only one of them was validated. For Nextflow, which renames keys
+  with `-` to camelCase (`input-` sets `input`, `out-dir` sets `outDir`;
+  the last one wins), keys are compared as Nextflow renames them: the
+  translators and the server reject two keys that set the same parameter
+  (e.g., `input` and `input-`; before, the value of `input-` reached
+  the engine as `input`, unchecked),
+  and keys with a character other than ASCII after a `-`. All of them
+  reject objects with keys that aren't strings (from the Python API)
+  instead of raising `AttributeError`. The engine bindings and the
   security page state the rules; new test vectors in `wes-params/CWL/`,
-  `wes-requests/CWL/` and `wes-requests/NFL/`. (#107)
+  `wes-requests/CWL/`, `wes-params/NFL/` and `wes-requests/NFL/`. (#107)
 - The transfer page names the `main` URL of the schemas, as the `$id`s of
   0.3.0 do, instead of a `v0.3.0` tag that doesn't exist; the check of
   schema URLs leaves out `$`-placeholders of rewrite rules. (#96)
