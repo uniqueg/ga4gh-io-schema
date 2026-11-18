@@ -8,7 +8,6 @@
 !pyproject.toml
 !uv.lock
 !README.md
-!LICENSE
 !LICENSES/
 !schemas/
 !src/

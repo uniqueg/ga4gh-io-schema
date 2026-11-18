@@ -26,7 +26,7 @@ WORKDIR /app
 # The package, for the host (validator and request builder), with the
 # runtime dependencies at the versions of `uv.lock` (no extras); the build
 # fails if the lock doesn't match `pyproject.toml`
-COPY pyproject.toml uv.lock README.md LICENSE ./
+COPY pyproject.toml uv.lock README.md ./
 COPY LICENSES LICENSES
 COPY schemas schemas
 COPY src src

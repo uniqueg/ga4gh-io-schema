@@ -562,23 +562,42 @@ def test_read_the_docs_installs_the_lock() -> None:
     jobs = config["build"]["jobs"]
 
     assert "python" not in config
-    assert any(
-        re.search(r"\buv==[0-9]+\.[0-9]+\.[0-9]+", s) for s in jobs["pre_install"]
-    )
+    pins = {
+        match
+        for step in jobs["pre_install"]
+        for match in re.findall(r"\buv==([0-9]+\.[0-9]+\.[0-9]+)", step)
+    }
     assert any("uv sync --locked --extra docs" in step for step in jobs["install"])
+    # The uv of the image (whose tag Dependabot updates) and of the lock (a
+    # dev dependency, also updated by Dependabot): an older uv may not read
+    # a lock written by a newer one
+    lock = tomllib.loads((REPO_ROOT / "uv.lock").read_text("utf-8"))
+    locked = {item["version"] for item in lock["package"] if item["name"] == "uv"}
+    assert pins == locked, "set uv in .readthedocs.yaml to the version of uv.lock"
+    dockerfile = (REPO_ROOT / "prototype" / "Dockerfile").read_text("utf-8")
+    assert pins == set(
+        re.findall(r"^FROM ghcr\.io/astral-sh/uv:(\S+)@", dockerfile, re.M)
+    )
 
 
 def test_markdown_lint_is_pinned() -> None:
-    """Test that the workflows run no npm package without a version.
+    """Test that the Markdown lint runs at a pinned version.
 
-    ``npx <package>`` takes the newest release on every run, which can fail
-    unrelated pull requests; the Markdown lint runs as a pre-commit hook
-    instead, whose revision Dependabot updates.
+    It runs as a pre-commit hook, pinned to the commit of a release that
+    Dependabot updates. The workflows run no npm package through ``npx``
+    without a version (``package@1.2.3``), which would take the newest
+    release on every run and could fail unrelated pull requests.
     """
     for path in (REPO_ROOT / ".github" / "workflows").glob("*.yml"):
         text = path.read_text("utf-8")
         for package in re.findall(r"\bnpx\s+(?:-\S+\s+)*(\S+)", text):
-            assert re.search(r".@[0-9]", package), (path.name, package)
+            # A version after the name (a scope's "@" comes first)
+            assert re.search(r"[^@]@[0-9]", package), (path.name, package)
     config = (REPO_ROOT / ".pre-commit-config.yaml").read_text("utf-8")
-    hooks = yaml.safe_load(config)["repos"]
-    assert "markdownlint" in {hook["id"] for repo in hooks for hook in repo["hooks"]}
+    revisions = [
+        repo["rev"]
+        for repo in yaml.safe_load(config)["repos"]
+        if any(hook["id"] == "markdownlint" for hook in repo["hooks"])
+    ]
+    assert len(revisions) == 1
+    assert re.fullmatch(r"[0-9a-f]{40}", revisions[0]), revisions

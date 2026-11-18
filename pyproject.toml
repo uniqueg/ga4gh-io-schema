@@ -14,7 +14,9 @@ version = "0.3.0"
 description = "GA4GH standard profile for workflow and tool inputs and outputs"
 readme = "README.md"
 license = "Apache-2.0"
-license-files = ["LICENSE", "LICENSES/Apache-2.0.txt"]
+# Only the Apache-2.0 text: `LICENSE` describes the whole repository (also
+# its CC-BY-4.0 docs), which the distributions don't contain
+license-files = ["LICENSES/Apache-2.0.txt"]
 # Keep in sync with the CI test matrix, ruff's target-version and mypy's
 # python_version.
 requires-python = ">=3.11"
@@ -104,7 +106,7 @@ docs = [
 ]
 
 # Only what builds the wheel (and `pyproject.toml`, `README.md`,
-# `.gitignore` and the licence texts, which hatchling adds): all Apache-2.0,
+# `.gitignore` and the licence text, which hatchling adds): all Apache-2.0,
 # the licence that `license` declares for both distributions. The docs
 # (CC-BY-4.0), the tests and their third-party data (e.g., MIT) stay in the
 # repository; the `Build` job of CI and `tests/test_wheel.py` check the

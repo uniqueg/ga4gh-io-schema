@@ -15,9 +15,9 @@ build:
   # The package (for the generated reference of its Python API) with the
   # `docs` extra of `pyproject.toml`, at the versions of `uv.lock`, as CI's
   # `docs` job installs them; the build fails if the lock doesn't match
-  # `pyproject.toml`. uv is pinned (not updated by Dependabot; keep it at
-  # the version of `uv.lock`). `--inexact` keeps pip and uv in Read the
-  # Docs' environment
+  # `pyproject.toml`. uv is pinned (not updated by Dependabot): keep it at
+  # the version of `uv.lock`, as in `prototype/Dockerfile` (a test checks
+  # it). `--inexact` keeps pip and uv in Read the Docs' environment
   jobs:
     pre_install:
       - python -m pip install "uv==0.13.8"

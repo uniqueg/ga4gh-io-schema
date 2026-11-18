@@ -119,8 +119,11 @@ def test_wheel_ships_its_licence(wheel: Path) -> None:
         metadata = archive.read(metadata_name).decode("utf-8")
 
     assert "License-Expression: Apache-2.0" in metadata.splitlines()
-    for licence in ("LICENSE", "LICENSES/Apache-2.0.txt"):
-        assert any(n.endswith(f".dist-info/licenses/{licence}") for n in names)
+    licences = [
+        n.split(".dist-info/licenses/", 1)[1] for n in names if "/licenses/" in n
+    ]
+    # Not LICENSE, which describes the whole, multi-licensed repository
+    assert licences == ["LICENSES/Apache-2.0.txt"]
 
 
 @pytest.fixture(scope="module")
@@ -158,9 +161,9 @@ def test_sdist_holds_only_what_its_licence_covers(sdist: Path) -> None:
         assert metadata is not None
         pkg_info = metadata.read().decode("utf-8")
 
+    # Keep in sync with the step "Check sdist contents" of the CI job Build
     allowed_files = {
         ".gitignore",
-        "LICENSE",
         "LICENSES/Apache-2.0.txt",
         "PKG-INFO",
         "README.md",
