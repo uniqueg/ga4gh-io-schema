@@ -97,6 +97,7 @@ _NEXTFLOW_NON_ASCII = (
     "the parameter that it would set for this key isn't certain."
 )
 _NON_STRING_KEYS = "Object keys must be strings."
+_NON_JSON = "Values must be JSON: objects, arrays, strings, numbers, booleans or null."
 # Applicators along the evaluation path of a failure, by whether their
 # subschemas apply to the same location as the schema itself, and by whether
 # the schema path names one of several subschemas (by key or index) or the
@@ -858,6 +859,8 @@ class _Translator:
             registry=registry,
             format_checker=_format_checker(Draft202012Validator),
         )
+        # The result of `input_keys()`, once needed
+        self._declared_keys: dict[str, list[str]] | None = None
 
     def translate(self, values: Any) -> dict[str, Any]:
         """Validate and translate the input values.
@@ -888,10 +891,11 @@ class _Translator:
             TranslationError: If the values can't be translated, or if the
                 schema has a reference that can't be resolved locally.
         """
-        location = _non_string_key(values)
-        if location is not None:
-            # Not JSON; keyword checks and the engine binding expect strings
-            raise TranslationError(_NON_STRING_KEYS, location)
+        found = _non_json(values)
+        if found is not None:
+            # Keyword checks and the checks of objects (e.g., of CWL
+            # directives) know only JSON
+            raise TranslationError(*found)
         self._in_place_cache.clear()
         # The values outlive the memo, so the identities of their parts
         # aren't reused while it is kept
@@ -916,6 +920,16 @@ class _Translator:
         if self.binding.descriptor_type == "NFL":
             return _nextflow_key(key)
         return key
+
+    def _declared(self) -> dict[str, list[str]]:
+        """Get the inputs that the schema declares, computed once.
+
+        Returns:
+            The keys of each property of ``inputs`` (see :meth:`input_keys`).
+        """
+        if self._declared_keys is None:
+            self._declared_keys = self.input_keys()
+        return self._declared_keys
 
     def input_keys(self) -> dict[str, list[str]]:
         """Get the keys in ``workflow_params`` that the inputs can bind to.
@@ -988,10 +1002,10 @@ class _Translator:
                 )
             if engine in names:
                 raise TranslationError(
-                    f"Nextflow reads the keys '{names[engine]}' and '{name}' as "
-                    f"the same parameter '{engine}'.",
-                    (key,),
+                    _same_parameter(names[engine], name, engine), (key,)
                 )
+            if engine != name and key not in self._declared():
+                raise TranslationError(_undeclared_renamed(engine), (key,))
             names[engine] = name
             # Both the key of the values (which a server passes on as it
             # came) and the name for the engine
@@ -1540,9 +1554,9 @@ class _ReverseTranslator:
         self.files = {}
         if not isinstance(params, dict):
             raise WorkflowParamsError("workflow_params must be a JSON object.")
-        location = _non_string_key(params)
-        if location is not None:
-            raise WorkflowParamsError(_NON_STRING_KEYS, location)
+        found = _non_json(params)
+        if found is not None:
+            raise WorkflowParamsError(*found)
         try:
             input_keys = self.translator.input_keys()
         except TranslationError as exc:
@@ -1579,7 +1593,10 @@ class _ReverseTranslator:
         inputs: dict[str | None, list[str]] = {}
         for name, keys in input_keys.items():
             for key in keys:
-                inputs.setdefault(engine_key(key), []).append(name)
+                # Once, also if several of its keys set the same parameter
+                names = inputs.setdefault(engine_key(key), [])
+                if name not in names:
+                    names.append(name)
         inputs.pop(None, None)
         # Key of each parameter that the engine sets
         members: dict[str, str] = {}
@@ -1591,9 +1608,7 @@ class _ReverseTranslator:
             if engine in members:
                 # The engine would get only one of them, maybe unvalidated
                 raise WorkflowParamsError(
-                    f"Nextflow reads the keys '{members[engine]}' and '{key}' as "
-                    f"the same parameter '{engine}': give it once.",
-                    (key,),
+                    _same_parameter(members[engine], key, engine), (key,)
                 )
             members[engine] = key
             matched = inputs.get(engine, [])
@@ -1610,6 +1625,10 @@ class _ReverseTranslator:
                     f"Several inputs bind to the key '{key}'.", (key,)
                 )
             name = matched[0] if matched else key
+            if not matched and engine != key:
+                # Keywords such as `patternProperties` would see the key, the
+                # engine its Nextflow name
+                raise WorkflowParamsError(_undeclared_renamed(engine), (key,))
             if not matched and name in input_keys:
                 # Under its own name, it would be taken for that input
                 raise WorkflowParamsError(
@@ -1791,27 +1810,65 @@ def _nextflow_key(key: str) -> str | None:
     return parts[0] + "".join(part[:1].upper() + part[1:] for part in rest)
 
 
-def _non_string_key(value: Any) -> Path | None:
-    """Find an object with a key that isn't a string.
+def _same_parameter(first: str, second: str, engine: str) -> str:
+    """Describe two keys for which Nextflow sets the same parameter.
+
+    Args:
+        first: The first key.
+        second: The other key.
+        engine: The parameter that Nextflow sets for both.
+
+    Returns:
+        The error message.
+    """
+    return (
+        f"Nextflow reads the keys '{first}' and '{second}' as the same "
+        f"parameter '{engine}': give it once."
+    )
+
+
+def _undeclared_renamed(engine: str) -> str:
+    """Describe a key that no input declares and that Nextflow renames.
+
+    Args:
+        engine: The parameter that Nextflow sets for the key.
+
+    Returns:
+        The error message.
+    """
+    return (
+        "No input of the schema declares this key, and Nextflow sets the "
+        f"parameter '{engine}' for it: give it under that name."
+    )
+
+
+def _non_json(value: Any) -> tuple[str, Path] | None:
+    """Find a part of a value that isn't JSON.
 
     Args:
         value: Input values or ``workflow_params``.
 
     Returns:
-        The location of the first such object (depth first), or ``None``
-        if there is none.
+        The error message and the location of the first such part (depth
+        first): an object with a key that isn't a string, or a value of
+        another type than JSON has (e.g., a tuple); or ``None`` if there is
+        none.
     """
     stack: list[tuple[Any, Path]] = [(value, ())]
     # Each container once, also if it is shared or contains itself
     seen: set[int] = set()
     while stack:
         item, path = stack.pop()
-        if not isinstance(item, (dict, list)) or id(item) in seen:
+        if item is None or isinstance(item, (str, int, float)):
+            continue
+        if not isinstance(item, (dict, list)):
+            return _NON_JSON, path
+        if id(item) in seen:
             continue
         seen.add(id(item))
         if isinstance(item, dict):
             if not all(isinstance(key, str) for key in item):
-                return path
+                return _NON_STRING_KEYS, path
             children = [((*path, key), child) for key, child in item.items()]
         else:
             children = [((*path, index), child) for index, child in enumerate(item)]
