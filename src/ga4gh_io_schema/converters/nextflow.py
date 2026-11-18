@@ -181,8 +181,13 @@ def to_ga4gh(
 #: Keywords whose values map names to schemas: a pointer segment after them
 #: is a name (e.g., a parameter called ``not``), not a keyword.
 _NAMED_SCHEMAS = frozenset(
-    {"properties", "patternProperties", "dependentSchemas", "$defs", "definitions"}
+    {"properties", "patternProperties", "dependentSchemas", "$defs"}
 )
+#: Keywords whose values are lists of schemas: a segment after them is an index.
+_LISTED_SCHEMAS = frozenset({"allOf", "anyOf", "oneOf", "prefixItems"})
+#: Keywords under which a path ``format`` declares no input: conditions, and
+#: the tabular hint, which no server validates.
+_NO_INPUT = frozenset({"not", "if", "x-ga4gh-tabular-schema"})
 
 
 class _Converter(SchemaConverter):
@@ -592,9 +597,9 @@ class _Converter(SchemaConverter):
         """Tell whether a path ``format`` that can't be marked is an error.
 
         It is, unless ``allow_unmarked_files`` is set, the schema is a column
-        of a sample sheet (the tabular hint, which no server validates; the
-        execution side checks the rows), or it is the condition of ``not`` or
-        ``if``, which declares no input.
+        of a sample sheet (the tabular hint, from ``schema`` or inline, which
+        no server validates; the execution side checks the rows), or it is
+        in the condition of ``not`` or ``if``, which declares no input.
 
         Args:
             pointer: Location of the schema in the IO schema.
@@ -604,11 +609,17 @@ class _Converter(SchemaConverter):
         """
         if self.allow_unmarked_files or self.in_sheet:
             return False
-        return not any(
-            segment in ("not", "if")
-            and (index == 0 or pointer[index - 1] not in _NAMED_SCHEMAS)
-            for index, segment in enumerate(pointer)
-        )
+        # Segments alternate: a keyword, then a name or an index for keywords
+        # that map or list schemas, then a keyword again
+        position = "keyword"
+        for segment in pointer:
+            if position != "keyword":
+                position = "keyword"
+            elif segment in _NO_INPUT:
+                return False
+            elif segment in _NAMED_SCHEMAS or segment in _LISTED_SCHEMAS:
+                position = "member"
+        return True
 
     def _file(
         self, result: dict[str, Any], pointer: Pointer, parameter: str | None

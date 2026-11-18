@@ -895,7 +895,9 @@ def test_path_formats_in_conditions_convert_without_opt_out(
     conversion = to_ga4gh(nf_schema({"p": schema}))
 
     assert "x-ga4gh-file" not in parameter(conversion, "p")
-    assert messages(conversion)
+    assert notes_with(conversion, "Not marked as a file reference") or notes_with(
+        conversion, "a glob isn't a reference"
+    )
 
 
 def test_parameter_named_not_is_checked() -> None:
@@ -904,6 +906,53 @@ def test_parameter_named_not_is_checked() -> None:
 
     with pytest.raises(ConversionError, match="Can't mark 'format: file-path'"):
         to_ga4gh(source)
+
+
+@pytest.mark.parametrize("name", ["properties", "patternProperties", "$defs"])
+def test_conditions_under_parameters_named_like_keywords_are_notes(
+    name: str,
+) -> None:
+    """Test that a condition stays a note under a name that reads like a keyword.
+
+    Args:
+        name: The name of the parameter.
+    """
+    bad = {"type": ["string", "null"], "format": "file-path"}
+    source = nf_schema({name: {"type": "string", "not": bad}})
+
+    conversion = to_ga4gh(source)
+
+    assert notes_with(conversion, "Not marked as a file reference")
+
+
+def test_unmarkable_path_format_in_items_fails() -> None:
+    """Test that a path format under a keyword like ``items`` is checked."""
+    items = {"type": ["string", "null"], "format": "file-path"}
+    source = nf_schema({"p": {"type": "array", "items": items}})
+
+    with pytest.raises(ConversionError) as info:
+        to_ga4gh(source)
+
+    assert info.value.location == "$.properties.inputs.properties.p.items"
+
+
+def test_inline_tabular_hint_columns_are_notes() -> None:
+    """Test that columns of an inline tabular hint stay notes, as from a sheet."""
+    column = {"type": ["string", "null"], "format": "file-path"}
+    hint = {"type": "array", "items": {"type": "object", "properties": {"f": column}}}
+    source = nf_schema(
+        {
+            "input": {
+                "type": "string",
+                "format": "file-path",
+                "x-ga4gh-tabular-schema": hint,
+            }
+        }
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert notes_with(conversion, "Not marked as a file reference")
 
 
 def test_path_format_without_own_type_names_the_fix() -> None:
@@ -937,6 +986,11 @@ def test_sample_sheet_columns_that_cant_be_marked_are_notes() -> None:
 
     assert notes_with(conversion, "Not marked as a file reference")
     assert notes_with(conversion, "a glob isn't a reference")
+    columns = parameter(conversion, "input")["x-ga4gh-tabular-schema"]["items"][
+        "properties"
+    ]
+    assert columns["f"] == {"type": ["string", "null"], "format": "file-path"}
+    assert columns["g"] == {"type": "string"}
 
 
 def test_path_format_marked_by_the_source_converts_without_opt_out() -> None:

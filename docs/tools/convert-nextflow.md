@@ -144,7 +144,7 @@ can't name such parameters. A path `format` in a subschema without a type
 of its own (e.g., in `allOf`) fails too: move it next to `"type":
 "string"`. Path formats and globs stay notes, without the option, where
 they declare no input: in the columns of sample sheets (the experimental
-tabular hint, which no server validates; the execution side checks the
+tabular hint, also an inline `x-ga4gh-tabular-schema`, which no server validates; the execution side checks the
 rows, see [File references in tabular
 files](../specification/files.md#file-references-in-tabular-files)), and
 in the conditions `not` and `if`.
