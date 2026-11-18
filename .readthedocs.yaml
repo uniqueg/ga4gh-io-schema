@@ -12,17 +12,19 @@ build:
   tools:
     # The Python version of CI (`.github/workflows/ci.yml`)
     python: "3.14"
+  # The package (for the generated reference of its Python API) with the
+  # `docs` extra of `pyproject.toml`, at the versions of `uv.lock`, as CI's
+  # `docs` job installs them; the build fails if the lock doesn't match
+  # `pyproject.toml`. uv is pinned (not updated by Dependabot): keep it at
+  # the version of `uv.lock`, as in `prototype/Dockerfile` (a test checks
+  # it). `--inexact` keeps pip and uv in Read the Docs' environment
+  jobs:
+    pre_install:
+      - python -m pip install "uv==0.13.8"
+    install:
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --locked --extra docs --inexact
 
 mkdocs:
   configuration: mkdocs.yml
   # Fail on all warnings to avoid broken links and references
   fail_on_warning: true
-
-# The package (for the generated reference of its Python API) with the
-# `docs` extra of `pyproject.toml`
-python:
-  install:
-    - method: pip
-      path: .
-      extra_requirements:
-        - docs

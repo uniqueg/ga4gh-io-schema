@@ -211,9 +211,10 @@ installed Chrome instead of Playwright's Chromium.
 All parts are in `prototype/` (see its `README.md`): the TRS stub in
 `trs-stub/`, the host of the form and the page in `host/` ([Form proof of
 concept](form.md)), and `Dockerfile` and `compose.yaml`. The image, from
-`python:3.13-alpine` with this package installed, runs as an unprivileged
-user; the containers are read-only, without capabilities, and their ports
-are bound to `127.0.0.1`. The root `.dockerignore` keeps the build context
+`python:3.13-alpine` (pinned to a digest) with this package and the
+versions of `uv.lock` installed, runs as an unprivileged user; the
+containers are read-only, without capabilities, and their ports are bound
+to `127.0.0.1`. The root `.dockerignore` keeps the build context
 to the files that the image needs.
 
 ## TRS stub
