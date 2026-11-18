@@ -354,6 +354,13 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   notices, a governance note (work stream, leads, approval path, status of
   the two-implementations requirement) and an identifier plan with
   `$id`s under `https://w3id.org/ga4gh/schema/io-schema/`. (#26)
+- The page is now "Path to GA4GH", on hold without a date until the
+  Federated Analysis Work Stream's feedback on 0.3.0, and follows the
+  maintainer's decisions: the licences (docs CC-BY-4.0, code and schemas
+  Apache-2.0) are kept and move to a section "Licences" of "Versioning and
+  governance", linked from the README and the index page; the proposals to
+  relicense the docs, for a neutral copyright holder, for a co-lead and for
+  `$id` aliases are dropped. (#101)
 
 ### Fixed
 

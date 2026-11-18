@@ -106,7 +106,7 @@ This repository is multi-licensed in compliance with the [REUSE specification](h
 - **Code, schemas, tests and this README (`/src`, `/schemas`, `/tests`, `README.md`):** Licensed under **Apache-2.0**.
 - **Documentation (`/docs`):** Licensed under **CC-BY-4.0**.
 
-Each file's SPDX header, or its entry in `REUSE.toml`, is authoritative; `reuse lint` checks them in CI. Please see the [`LICENSE`](LICENSE) file and `REUSE.toml` for complete details and mapping. Full license texts are located in the `/LICENSES` directory.
+Each file's SPDX header, or its entry in `REUSE.toml`, is authoritative; `reuse lint` checks them in CI. Please see the [`LICENSE`](LICENSE) file and `REUSE.toml` for complete details and mapping. Full license texts are located in the `/LICENSES` directory. [Licences](https://ga4gh-io-schema.readthedocs.io/en/latest/governance/#licences) in the documentation says why these licences are kept.
 
 ---
 
