@@ -24,6 +24,7 @@ import argparse
 import functools
 import hashlib
 import json
+import stat
 import sys
 import urllib.parse
 from collections.abc import Callable, Iterable, Sequence
@@ -159,10 +160,14 @@ def _has_schema(directory: Path) -> bool:
         Whether it has a schema, or whether that can't be checked (e.g.,
         the directory isn't readable), so that loading reports why.
     """
+    # Not Path.is_file(), which hides permission errors (Python 3.14)
     try:
-        return (directory / SCHEMA_NAME).is_file()
+        mode = (directory / SCHEMA_NAME).stat().st_mode
+    except (FileNotFoundError, NotADirectoryError):
+        return False
     except OSError:
         return True
+    return stat.S_ISREG(mode)
 
 
 def load_workflows(

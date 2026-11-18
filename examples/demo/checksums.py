@@ -21,6 +21,7 @@ Usage::
 import argparse
 import hashlib
 import json
+import stat
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -61,10 +62,14 @@ def _has_schema(directory: Path) -> bool:
         Whether it has a schema, or whether that can't be checked, so that
         reading it reports why.
     """
+    # Not Path.is_file(), which hides permission errors (Python 3.14)
     try:
-        return (directory / SCHEMA_NAME).is_file()
+        mode = (directory / SCHEMA_NAME).stat().st_mode
+    except (FileNotFoundError, NotADirectoryError):
+        return False
     except OSError:
         return True
+    return stat.S_ISREG(mode)
 
 
 def with_checksum(schema: dict[str, Any], descriptor: bytes) -> dict[str, Any]:
