@@ -19,9 +19,8 @@ conformance suite.
   namespaced fields of the CWL loader, e.g., `$include` or
   `cwltool:overrides`), at any depth or as members, must be rejected
   (`loader-directives`, `loader-directive-member`, `namespaced-member`).
-  For NFL, values of two inputs whose keys Nextflow renames to the same
-  parameter (e.g., `out-dir` and `outDir`) must be rejected
-  (`kebab-alias`).
+  For NFL, values that bind to keys with `-`, which Nextflow renames to
+  camelCase, must be rejected (`kebab-alias`).
 - `wes-requests/<descriptor type>/<case>/`: translation of the
   `workflow_params` of a WES run request back into input values, by a WES
   server. Each case has `schema.json` (an IO schema), `workflow_params.json`
@@ -36,8 +35,8 @@ conformance suite.
   schema would bind under another name. For every descriptor type, several
   members that match the same input must be rejected
   (`NFL/two-members-for-one-input`); for NFL, also members whose keys
-  Nextflow renames to the same parameter (`NFL/kebab-alias`, e.g., `input`
-  and `input-`). The valid cases of `wes-params/` also
+  have `-`, which Nextflow renames (`NFL/kebab-alias`, e.g., `input-` sets
+  `input`). The valid cases of `wes-params/` also
   translate back: their `workflow_params.json` gives their `values.json`.
 - `trs-files/cases.json`: discovery of the IO schema among the files of a
   TRS tool version, by clients. Each case has a `name`, the `files` (the

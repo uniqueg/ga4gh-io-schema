@@ -27,8 +27,8 @@ The command:
    (directives and namespaced fields of the CWL loader, e.g., `$include` or
    `cwltool:overrides`) in the values, see rule 4 of [From input
    values to `workflow_params`](../specification/engine-bindings.md#from-input-values-to-workflow_params);
-   for Nextflow, it rejects values of two inputs whose keys Nextflow
-   renames to the same parameter (e.g., `out-dir` and `outDir`, see
+   for Nextflow, it rejects values that bind to keys with `-`, which
+   Nextflow renames to camelCase (see
    [Nextflow](../specification/engine-bindings.md#nextflow-nfl));
 4. writes the `workflow_params`, as indented JSON (with `--json`, on one
    line).

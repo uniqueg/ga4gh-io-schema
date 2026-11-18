@@ -412,18 +412,16 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   requirements of the run. For every descriptor type, `wes-validate` and
   `from_workflow_params()` reject requests in which several members match
   the same input (e.g., under its `x-ga4gh-parameter` key and under its own
-  name): only one of them was validated. For Nextflow, which renames keys
-  with `-` to camelCase (`input-` sets `input`, `out-dir` sets `outDir`;
-  the last one wins), keys are compared as Nextflow renames them: the
-  translators and the server reject two keys that set the same parameter
-  (e.g., `input` and `input-`; before, the value of `input-` reached
-  the engine as `input`, unchecked),
-  keys with a character other than ASCII after a `-`, and members that
-  no input declares whose key Nextflow renames (`patternProperties` saw
-  `input-`, Nextflow set `input`). All of them reject values that
-  aren't JSON (from the Python API): objects with keys that aren't
-  strings, which raised `AttributeError`, and tuples, sets and other
-  types, which the checks of objects skipped. The engine bindings and the
+  name): only one of them was validated. For Nextflow, which renames the
+  keys of a params file with `-` to camelCase (`input-` sets `input`,
+  `out-dir` sets `outDir`; the last one wins), the translators and the
+  server reject keys of `workflow_params` with `-`: with `input` and
+  `input-`, the value of `input-` reached the engine as `input`,
+  unchecked. All of them reject values that aren't JSON (from the Python
+  API): objects with keys that aren't strings, which raised
+  `AttributeError`, tuples, sets and other types, which the checks of
+  objects skipped, numbers that aren't finite (`NaN` passed `minimum`
+  and `maximum`), and cycles. The engine bindings and the
   security page state the rules; new test vectors in `wes-params/CWL/`,
   `wes-requests/CWL/`, `wes-params/NFL/` and `wes-requests/NFL/`. (#107)
 - The transfer page names the `main` URL of the schemas, as the `$id`s of
