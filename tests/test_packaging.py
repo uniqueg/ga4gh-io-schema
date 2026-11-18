@@ -61,6 +61,15 @@ REPO_TEXT_SUFFIXES = {
     ".yml",
 }
 MOVE_EXPLAINED = {REPO_ROOT / "CHANGELOG.md", REPO_ROOT / "docs" / "transfer.md"}
+# The copyright notice of the repository's own files, as in the other
+# elixir-cloud-aai repositories (#99)
+NOTICE = "2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>"
+# A copyright tag in a header (`tag: notice`) or in `REUSE.toml`
+# (`tag = "notice"`); the tag is split so that REUSE doesn't read this line
+# as a header.
+COPYRIGHT_TAG = re.compile(
+    r"SPDX-" r'FileCopyrightText\s*(?::|=\s*")\s*(?P<notice>.*?)"?\s*$', re.M
+)
 # Docs that show CLI usage; mkdocs build --strict checks the links of docs/.
 USAGE_DOCS = [
     REPO_ROOT / "README.md",
@@ -127,17 +136,15 @@ def test_schema_url_pattern(text: str, bases: list[str]) -> None:
     assert SCHEMA_URL.findall(text) == bases
 
 
-def test_no_links_to_the_former_repository() -> None:
-    """Test that the repository names its home, ``elixir-cloud-aai``.
+def _repo_text_files() -> list[Path]:
+    """Return the text files of the repository.
 
-    The repository moved from ``uniqueg`` to ``elixir-cloud-aai`` (#25).
-    GitHub redirects the old URLs, but links name the new home. Only the
-    pages that explain the move (``MOVE_EXPLAINED``) name the old one, and
-    not as a link to it on GitHub (they may name the old ``$id``s).
+    Returns:
+        The files at the root of the repository and below ``REPO_TEXT_DIRS``
+        with a suffix of ``REPO_TEXT_SUFFIXES``, without installed
+        dependencies and caches (``NOT_REPO_TEXT``).
     """
-    old_name = "uniqueg" + "/ga4gh-io-schema"
-    old_link = "github.com/" + old_name
-    paths = [
+    return [
         path
         for path in [
             *REPO_ROOT.glob("*"),
@@ -151,6 +158,19 @@ def test_no_links_to_the_former_repository() -> None:
         and path.suffix in REPO_TEXT_SUFFIXES
         and not NOT_REPO_TEXT & set(path.parts)
     ]
+
+
+def test_no_links_to_the_former_repository() -> None:
+    """Test that the repository names its home, ``elixir-cloud-aai``.
+
+    The repository moved from ``uniqueg`` to ``elixir-cloud-aai`` (#25).
+    GitHub redirects the old URLs, but links name the new home. Only the
+    pages that explain the move (``MOVE_EXPLAINED``) name the old one, and
+    not as a link to it on GitHub (they may name the old ``$id``s).
+    """
+    old_name = "uniqueg" + "/ga4gh-io-schema"
+    old_link = "github.com/" + old_name
+    paths = _repo_text_files()
     assert {REPO_ROOT / "CITATION.cff", REPO_ROOT / "docs" / "index.md"} <= set(paths)
     offending = [
         path.relative_to(REPO_ROOT).as_posix()
@@ -389,6 +409,66 @@ def test_readme_licence_matches_reuse_metadata() -> None:
     assert readme_lines
     for line in readme_lines:
         assert header.group(1) in line, line
+
+
+def foreign_copyright_notices(paths: list[Path]) -> list[tuple[Path, str]]:
+    """Find the copyright notices that aren't the repository's ``NOTICE``.
+
+    The ``*.license`` files next to third-party files keep the notices of
+    their authors and are left out.
+
+    Args:
+        paths: The files to check.
+
+    Returns:
+        Each file and notice that differs from ``NOTICE``, in order.
+    """
+    return [
+        (path, match.group("notice"))
+        for path in paths
+        if path.suffix != ".license"
+        for match in COPYRIGHT_TAG.finditer(path.read_text(encoding="utf-8"))
+        if match.group("notice") != NOTICE
+    ]
+
+
+def test_copyright_notices_are_the_notice() -> None:
+    """Test that the repository's own files name one copyright holder.
+
+    The file headers and the annotations of ``REUSE.toml`` all give
+    ``NOTICE``, the notice of the elixir-cloud-aai repositories (#99).
+    ``reuse lint`` accepts any notice, so this test catches a new file
+    with another one.
+    """
+    paths = _repo_text_files()
+    assert {REPO_ROOT / "REUSE.toml", REPO_ROOT / "README.md"} <= set(paths)
+    assert foreign_copyright_notices(paths) == []
+    reuse = tomllib.loads((REPO_ROOT / "REUSE.toml").read_text(encoding="utf-8"))
+    annotations = {
+        annotation["SPDX-FileCopyrightText"] for annotation in reuse["annotations"]
+    }
+    assert annotations == {NOTICE}
+
+
+def test_foreign_copyright_notices(tmp_path: Path) -> None:
+    """Test that other notices are found, except in ``*.license`` files.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+    """
+    tag = "SPDX-" + "FileCopyrightText"
+    own = tmp_path / "own.py"
+    own.write_text(f"# {tag}: {NOTICE}\n", encoding="utf-8")
+    other = tmp_path / "other.js"
+    other.write_text(f"// {tag}: 2026 Someone Else\n", encoding="utf-8")
+    toml = tmp_path / "REUSE.toml"
+    toml.write_text(f'{tag} = "2026 Someone Else"\n', encoding="utf-8")
+    third_party = tmp_path / "data.cwl.license"
+    third_party.write_text(f"{tag}: The CWL project\n", encoding="utf-8")
+    assert foreign_copyright_notices([own, other, toml, third_party]) == [
+        (other, "2026 Someone Else"),
+        (toml, "2026 Someone Else"),
+    ]
 
 
 def test_every_vocabulary_is_registered() -> None:

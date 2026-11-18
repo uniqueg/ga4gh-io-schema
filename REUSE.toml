@@ -12,37 +12,37 @@ SPDX-PackageDownloadLocation = "https://github.com/elixir-cloud-aai/ga4gh-io-sch
 # SPDX-License-Identifier header — that always takes precedence.
 [[annotations]]
 path = "src/**"
-SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>"
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
 path = "tests/**"
-SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>"
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
 path = "schemas/**"
-SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>"
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
 path = "examples/**"
-SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>"
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
 path = "prototype/**"
-SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>"
 SPDX-License-Identifier = "Apache-2.0"
 
 # Docs released under a data-appropriate license.
 [[annotations]]
 path = "docs/**"
-SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>"
 SPDX-License-Identifier = "CC-BY-4.0"
 
 # Files where headers are impractical (images, generated files, etc.)
 [[annotations]]
 path = ["**.png", "**.svg", "**/generated/**", "uv.lock"]
-SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud / GA4GH Contributors"
+SPDX-FileCopyrightText = "2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>"
 SPDX-License-Identifier = "Apache-2.0"

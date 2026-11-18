@@ -10,6 +10,7 @@ site_description: >-
 site_url: !ENV [READTHEDOCS_CANONICAL_URL, "https://ga4gh-io-schema.readthedocs.io/en/latest/"]
 repo_url: https://github.com/elixir-cloud-aai/ga4gh-io-schema
 repo_name: elixir-cloud-aai/ga4gh-io-schema
+copyright: Copyright &copy; ELIXIR On-Cloud
 edit_uri: edit/dev/docs/
 
 # Files included in pages (see `pymdownx.snippets`) and documented code

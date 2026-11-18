@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud / GA4GH Contributors
+// SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
 // SPDX-License-Identifier: Apache-2.0
 
 // `<io-schema-form>`: renders the inputs of an IO schema as a form. Set
