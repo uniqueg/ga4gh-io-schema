@@ -189,11 +189,14 @@ def test_schema_urls_use_the_schema_base() -> None:
 
 
 #: A row of the document history in ``docs/roadmap.md``: its version.
-HISTORY_ROW = re.compile(r"^\| \*\*(\d+\.\d+\.\d+)\*\* \|", re.MULTILINE)
+HISTORY_ROW = re.compile(r"\| \*\*([0-9]+\.[0-9]+\.[0-9]+)\*\* \|.*")
 
 
 def latest_document_version(roadmap: str) -> str:
     """Return the latest version of the document history of the roadmap.
+
+    Only the table of the section "Document history" counts, and each of its
+    rows must name a version, so that a malformed row can't hide.
 
     Args:
         roadmap: The text of ``docs/roadmap.md``.
@@ -201,9 +204,51 @@ def latest_document_version(roadmap: str) -> str:
     Returns:
         The version of the last row of the table "Document history".
     """
-    versions = HISTORY_ROW.findall(roadmap.split("## Document history", 1)[1])
-    assert versions, "no versions in the document history"
+    section = roadmap.split("\n## Document history\n", 1)[1].split("\n## ", 1)[0]
+    rows = [line for line in section.splitlines() if line.startswith("|")][2:]
+    assert rows, "no rows in the document history"
+    versions = []
+    for row in rows:
+        match = HISTORY_ROW.fullmatch(row)
+        assert match, f"row without a version: {row}"
+        versions.append(match[1])
     return versions[-1]
+
+
+HISTORY = """# Roadmap
+
+## Document history
+
+| Version | Date | Author | Notes |
+| ----- | ----- | ----- | ----- |
+| **0.1.0** | 2026-10-10 | A | First. |
+{last}
+
+## Later
+
+| **9.9.9** | never | A | Not in the history. |
+"""
+
+
+def test_latest_document_version() -> None:
+    """Test that the last row of the history table names the latest version."""
+    roadmap = HISTORY.format(last="| **0.2.0** | 2026-10-13 | A | Second. |")
+
+    assert latest_document_version(roadmap) == "0.2.0"
+
+
+@pytest.mark.parametrize(
+    "last",
+    ["| **v0.2** | 2026-10-13 | A | Second. |", "| **0.2** | x | A | Second. |"],
+)
+def test_latest_document_version_rejects_malformed_rows(last: str) -> None:
+    """Test that a row without a version fails instead of being skipped.
+
+    Args:
+        last: The last row of the history table.
+    """
+    with pytest.raises(AssertionError, match="row without a version"):
+        latest_document_version(HISTORY.format(last=last))
 
 
 def version_matches_history(version: str, latest: str) -> bool:
@@ -221,7 +266,7 @@ def version_matches_history(version: str, latest: str) -> bool:
         Whether the package version is ``latest``, or a ``.devN`` of a
         version higher than ``latest``.
     """
-    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(\.dev\d+)?", version)
+    match = re.fullmatch(r"([0-9]+)\.([0-9]+)\.([0-9]+)(\.dev[0-9]+)?", version)
     if match is None:
         return False
     if match[4] is None:
@@ -243,6 +288,7 @@ def version_matches_history(version: str, latest: str) -> bool:
         ("0.2.9.dev0", "0.3.0", False),
         ("0.3", "0.3.0", False),
         ("0.3.0rc1", "0.3.0", False),
+        ("\u0660.4.0.dev0", "0.3.0", False),
     ],
 )
 def test_version_matches_history(version: str, latest: str, expected: bool) -> None:
