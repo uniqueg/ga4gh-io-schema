@@ -894,10 +894,34 @@ def test_path_formats_in_conditions_convert_without_opt_out(
     """
     conversion = to_ga4gh(nf_schema({"p": schema}))
 
-    assert "x-ga4gh-file" not in parameter(conversion, "p")
+    result = parameter(conversion, "p")
+    assert "x-ga4gh-file" not in result
     assert notes_with(conversion, "Not marked as a file reference") or notes_with(
         conversion, "a glob isn't a reference"
     )
+    # The condition is kept; a glob loses its format, a path keeps it
+    condition = result.get("not", result.get("if"))
+    form = (schema.get("not") or schema["if"])["format"]
+    assert condition.get("format") == (None if form == "file-path-pattern" else form)
+
+
+@pytest.mark.parametrize("branch", ["then", "else"])
+def test_unmarkable_path_format_in_then_or_else_fails(branch: str) -> None:
+    """Test that ``then`` and ``else``, unlike ``if``, declare inputs.
+
+    Args:
+        branch: The branch of the condition that holds the path format.
+    """
+    schema = {
+        "type": "string",
+        "if": {"minLength": 1},
+        branch: {"type": ["string", "null"], "format": "file-path"},
+    }
+
+    with pytest.raises(ConversionError) as info:
+        to_ga4gh(nf_schema({"p": schema}))
+
+    assert info.value.location == f"$.properties.inputs.properties.p.{branch}"
 
 
 def test_parameter_named_not_is_checked() -> None:
@@ -923,6 +947,7 @@ def test_conditions_under_parameters_named_like_keywords_are_notes(
     conversion = to_ga4gh(source)
 
     assert notes_with(conversion, "Not marked as a file reference")
+    assert parameter(conversion, name)["not"] == bad
 
 
 def test_unmarkable_path_format_in_items_fails() -> None:
@@ -953,6 +978,8 @@ def test_inline_tabular_hint_columns_are_notes() -> None:
     conversion = to_ga4gh(source)
 
     assert notes_with(conversion, "Not marked as a file reference")
+    kept = parameter(conversion, "input")["x-ga4gh-tabular-schema"]
+    assert kept["items"]["properties"]["f"] == column
 
 
 def test_path_format_without_own_type_names_the_fix() -> None:
