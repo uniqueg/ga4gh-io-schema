@@ -29,7 +29,10 @@ classifiers = [
 dependencies = [
     # "format-nongpl" enables format checks (e.g. "uri") without GPL-licensed
     # extras; don't switch to "format", which pulls in rfc3987 (GPL-3.0).
-    "jsonschema[format-nongpl]>=4.21.1",
+    # 4.25: the floor that passes the tests (the CI job `test-lowest` checks
+    # the floors); earlier versions differ in messages and JSON Paths of
+    # errors, and before 4.24, deeply nested values panic in rpds
+    "jsonschema[format-nongpl]>=4.25",
     "referencing>=0.31.0",
     # ECMA-262 regular expressions for `pattern` of values (MIT), as
     # check-jsonschema uses
