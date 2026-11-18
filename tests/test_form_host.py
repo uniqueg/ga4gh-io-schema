@@ -1216,6 +1216,34 @@ def test_host_picks_a_workflow_from_trs(trs: str) -> None:
         assert status == 404
 
 
+def test_host_reports_a_schema_that_doesnt_comply(tmp_path: Path) -> None:
+    """Test that a schema from TRS that doesn't comply gets a short message.
+
+    The message names the error and where it is, without the dump of the
+    meta-schema that the validator's text has.
+
+    Args:
+        tmp_path: Directory of the workflow with the broken schema.
+    """
+    schema = copy.deepcopy(DEMO_SCHEMA)
+    schema["properties"]["inputs"]["properties"]["min_mapq"]["x-ga4gh-colour"] = 1
+    (tmp_path / "ga4gh-io.schema.json").write_text(json.dumps(schema), "utf-8")
+    demo_wdl = ROOT / "examples" / "demo" / "demo.wdl"
+    (tmp_path / "demo.wdl").write_bytes(demo_wdl.read_bytes())
+    with (
+        run_stub([trs_stub.load_workflow(tmp_path)]) as trs,
+        serve(None, trs_url=trs) as host,
+    ):
+        status, _, response = _request(f"{host}/api/schema?{DEMO_PICK}")
+    assert status == 502
+    message = json.loads(response)["errors"][0]["message"]
+    assert message == (
+        f"Can't load the workflow from {trs}: the schema doesn't comply with "
+        "the profile: Unevaluated properties are not allowed ('x-ga4gh-colour' "
+        "was unexpected) (at $.properties.inputs.properties.min_mapq)"
+    )
+
+
 def test_host_reports_failures_of_the_trs(trs: str) -> None:
     """Test that a workflow that can't be loaded from TRS is a 502."""
     with serve(None, trs_url=trs) as host:

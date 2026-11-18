@@ -712,7 +712,17 @@ class FormHandler(BaseHTTPRequestHandler):
             key = (query["tool"][0], query["version"][0], query["type"][0])
             try:
                 return load_trs_schema(trs_url, *key)
-            except (OSError, ValueError, jsonschema.exceptions.ValidationError) as exc:
+            except jsonschema.exceptions.ValidationError as exc:
+                # The message and where, not the validator's dump of the
+                # meta-schema
+                message = (
+                    f"Can't load the workflow from {trs_url}: the schema doesn't "
+                    f"comply with the profile: {exc.message} (at {exc.json_path})"
+                )
+                error = {"pointer": "", "message": message}
+                self._send_json(HTTPStatus.BAD_GATEWAY, {"errors": [error]})
+                return None
+            except (OSError, ValueError) as exc:
                 message = f"Can't load the workflow from {trs_url}: {exc}"
                 error = {"pointer": "", "message": message}
                 self._send_json(HTTPStatus.BAD_GATEWAY, {"errors": [error]})
