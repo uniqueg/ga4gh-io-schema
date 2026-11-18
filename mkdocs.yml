@@ -136,6 +136,7 @@ nav:
       - Form proof of concept: adoption/form.md
       - Prototype: adoption/prototype.md
       - Testbed: adoption/testbed.md
+      - Runsheet: adoption/runsheet.md
       - Prototype evaluation: adoption/prototype-evaluation.md
   - Roadmap: roadmap.md
   - Changelog: changelog.md

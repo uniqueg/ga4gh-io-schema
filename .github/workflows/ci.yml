@@ -365,8 +365,9 @@ jobs:
         with:
           persist-credentials: false
 
+      # The one command of the testbed page
       - name: Start the prototype
-        run: docker compose -f prototype/compose.yaml up --detach --build --wait
+        run: make demo
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -397,7 +398,7 @@ jobs:
 
       - name: Stop the prototype
         if: always()
-        run: docker compose -f prototype/compose.yaml down
+        run: make demo-down
 
   # The only required check: passes if every other job passed, or was skipped
   # where that is intended (`title` on pushes and for Dependabot). Any other

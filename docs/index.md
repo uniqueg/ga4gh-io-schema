@@ -6,7 +6,7 @@
     This is version 0.3.0 of a proposal, not a GA4GH standard: it has no
     releases, and it waits for review by the GA4GH Federated Analysis Work
     Stream (see [Roadmap](roadmap.md#next-steps)). Try it with the
-    [prototype](adoption/prototype.md), one Docker Compose command on a
+    [live demo](adoption/testbed.md), one command (`make demo`) on a
     laptop.
 
 ## Executive summary
@@ -20,7 +20,7 @@ The profile is designed for the GA4GH APIs for federated analysis (TRS, WES, DRS
 ## Prototype
 
 A [prototype](adoption/prototype.md) runs the profile on a single laptop
-with one Docker Compose command: a portal picks a workflow in a TRS stub,
+with one command (`make demo`): a portal picks a workflow in a TRS stub,
 renders the form of its IO schema and builds the WES run request, with no
 code for the workflow or its language. Its
 [evaluation](adoption/prototype-evaluation.md) concludes that the schema
@@ -52,9 +52,12 @@ for the work stream.
 - [Adoption](adoption/index.md): the adoption path and guides for TRS, WES,
   and portals and clients.
 - [Prototype](adoption/prototype.md): try it on a laptop, from a workflow
-  in TRS to a form and a WES run request, with one Docker Compose command.
-- [Testbed](adoption/testbed.md): the live demo: how to run it, its parts,
-  what is real and what is mocked, and its limits.
+  in TRS to a form and a WES run request, with one command.
+- [Testbed](adoption/testbed.md): the live demo: how to run it and play
+  around with it, its parts, what is real and what is mocked, and its
+  limits.
+- [Runsheet](adoption/runsheet.md): presenting the live demo in about ten
+  minutes.
 - [Roadmap](roadmap.md): next steps, open questions and the history of this
   proposal.
 - [Changelog](changelog.md): the changes of each version, including the

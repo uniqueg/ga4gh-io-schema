@@ -127,6 +127,20 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 
 ### Added
 
+- A one-command live demo: `make demo` builds and starts the prototype,
+  waits until it's healthy and prints its URL (`make demo-start` without
+  building, e.g., offline, `make demo-down`,
+  `make demo-clean`, `make demo-logs`; other ports with `DEMO_PORT` and
+  `DEMO_TRS_PORT`). Besides the WDL demo, the TRS stub serves seeded
+  workflows in CWL, Nextflow and Snakemake (`examples/workflows/`), and it
+  reads the checkout, mounted read-only, on every request: edits of a
+  schema show when the page is reloaded, and an edited descriptor shows
+  drift until `make demo-checksums` sets its checksum. The stub gets
+  `--workflows-dir` and `--reload`; the form host reports a schema that
+  doesn't comply with the profile in one line, with its location. The
+  testbed page gets "The seeded workflows" and "Play around", and a new
+  page, the runsheet, is the script for presenting the demo in about ten
+  minutes, with fallbacks. (#130)
 - The status of the proposal on the first screen: a "Status" section in the
   README (version 0.3.0, not a GA4GH standard, no releases; the prototype
   in one command, the testbed and the evaluation) with CI and docs badges,

@@ -13,8 +13,10 @@ and aren't for deployment: no authentication, no TLS, no persistence (see
 
 ## Prerequisites
 
-- Git, and Docker with Docker Compose v2 (`docker compose`).
-- Ports `8000` and `8080` free on `127.0.0.1`.
+- Git, and Docker with Docker Compose v2 (`docker compose`); `make`, for
+  the short commands.
+- Ports `8000` and `8080` free on `127.0.0.1` (or others, see
+  [Testbed](testbed.md#run-it)).
 - A web browser.
 - Network access for the first build only: it pulls `python:3.13-alpine`
   and installs this package with its dependencies from PyPI. Nothing else
@@ -27,19 +29,24 @@ One command, in a fresh clone of this repository:
 ```bash
 git clone https://github.com/elixir-cloud-aai/ga4gh-io-schema.git
 cd ga4gh-io-schema
-docker compose -f prototype/compose.yaml up --build
+make demo
 ```
 
-Compose builds one small image and starts two services:
+`make demo` runs `docker compose -f prototype/compose.yaml up --detach
+--build --wait`, with `TRS_URL` and `WES_URL` set empty (so that the
+stack uses the stub, whatever the shell or a `.env` file says).
+Compose builds one small image, starts two services and waits until both
+are healthy:
 
 | Service | Port | What it is |
 | --- | --- | --- |
-| `trs-stub` | `127.0.0.1:8080` | The [TRS stub](#trs-stub), with the demo workflow (`examples/demo/`) and its IO schema. |
+| `trs-stub` | `127.0.0.1:8080` | The [TRS stub](#trs-stub), with the demo workflow (`examples/demo/`), the [seeded workflows](testbed.md#the-seeded-workflows) (`examples/workflows/`) and their IO schemas, read from the checkout on every request. |
 | `host` | `127.0.0.1:8000` | The [host of the form](form.md), which picks workflows from the stub (`--trs-url http://trs-stub:8080/ga4gh/trs/v2`). |
 
-When both are healthy, open <http://127.0.0.1:8000/>. `Ctrl+C` stops the
-stack; `docker compose -f prototype/compose.yaml down` removes its
-containers.
+Then open <http://127.0.0.1:8000/>. `make demo-down` stops the stack and
+removes its containers. The [testbed](testbed.md) page has the details:
+other ports, the seeded workflows, and how to [play
+around](testbed.md#play-around) with the schemas while the stack runs.
 
 ## Walkthrough
 
@@ -156,7 +163,7 @@ them on another port.
 ```bash
 TRS_URL=https://trs.example.org/ga4gh/trs/v2 \
   WES_URL=https://wes.example.org/ga4gh/wes/v1 \
-  docker compose -f prototype/compose.yaml up --build
+  docker compose -f prototype/compose.yaml up --detach --build --wait
 ```
 
 With the stub, the `workflow_url` names the stub inside the stack
@@ -177,9 +184,9 @@ python prototype/host/form_host.py --trs-url http://127.0.0.1:8080/ga4gh/trs/v2
   it doesn't follow a run or show its outputs. The [end-to-end
   demo](demo.md) normalises the outputs of a run with the [output
   normaliser](../tools/outputs.md).
-- **One workflow, one language:** the stub serves the WDL demo only
-  (`--workflow` adds more); the host also builds run requests for CWL,
-  Nextflow and Snakemake workflows, but the stack doesn't show them.
+- **Small workflows:** the stub serves the WDL demo and one small seeded
+  workflow each in CWL, Nextflow and Snakemake, each a single file; none
+  of them is run.
 - **No security:** no authentication, no TLS, no credentials sent to a TRS
   or WES; the ports are bound to `127.0.0.1`. Keep it there.
 - **No persistence and no service registry:** the TRS and the WES are
@@ -190,15 +197,17 @@ python prototype/host/form_host.py --trs-url http://127.0.0.1:8080/ga4gh/trs/v2
 CI's job "End-to-end test" starts the stack and runs
 `tests/test_prototype_e2e.py`, which takes the path above twice: over the
 host's HTTP API, as the page does, and in a browser (Chromium, driven by
-Playwright), as a user does. Locally:
+Playwright), as a user does; it also gets the run requests of the seeded
+workflows, and edits a schema of the checkout while the stack runs (and
+restores it). Locally:
 
 ```bash
 pip install -e ".[e2e]"
 playwright install chromium
-docker compose -f prototype/compose.yaml up --detach --build --wait
+make demo
 PROTOTYPE_URL=http://127.0.0.1:8000 \
   pytest -m e2e --no-cov tests/test_prototype_e2e.py
-docker compose -f prototype/compose.yaml down
+make demo-down
 ```
 
 Without `PROTOTYPE_URL`, `pytest` skips these tests; without Playwright, it
@@ -210,11 +219,13 @@ installed Chrome instead of Playwright's Chromium.
 
 All parts are in `prototype/` (see its `README.md`): the TRS stub in
 `trs-stub/`, the host of the form and the page in `host/` ([Form proof of
-concept](form.md)), and `Dockerfile` and `compose.yaml`. The image, from
-`python:3.13-alpine` (pinned to a digest) with this package and the
-versions of `uv.lock` installed, runs as an unprivileged user; the
-containers are read-only, without capabilities, and their ports are bound
-to `127.0.0.1`. The root `.dockerignore` keeps the build context
+concept](form.md)), and `Dockerfile` and `compose.yaml`; the `Makefile` at
+the root has the short commands. The stub's container mounts `examples/`
+of the checkout read-only. The image, from `python:3.13-alpine` (pinned to
+a digest) with this package and the versions of `uv.lock` installed, runs
+as an unprivileged user; the containers are read-only, without
+capabilities, and their ports are bound to `127.0.0.1`. The root
+`.dockerignore` keeps the build context
 to the files that the image needs.
 
 ## TRS stub
@@ -238,7 +249,17 @@ Then open <http://127.0.0.1:8080/ga4gh/trs/v2/tools>. Options:
   gives the ids of the tool and the version (`trs_tool_id`,
   `trs_version_id`), the descriptor type and its version. Versions of the
   same tool id are served as one tool; two directories for the same tool
-  version are an error.
+  version are an error. Without `--workflow` and `--workflows-dir`, the
+  stub serves `examples/demo/`.
+- `--workflows-dir DIR` (repeatable): a directory whose subdirectories
+  with a `ga4gh-io.schema.json` are workflows, as for `--workflow`, in the
+  order of their names (e.g., `examples/workflows/`).
+- `--reload`: read the files again on every request, so that edits, and
+  new directories under `--workflows-dir`, show without a restart. A
+  workflow that can't be read then, or that is a tool version served
+  already, is left out and reported on standard error, also at the start
+  (without `--reload`, it is an error). The stack runs the stub with
+  `--workflow examples/demo --workflows-dir examples/workflows --reload`.
 - `--host` and `--port`: the address to bind; the default is
   `127.0.0.1:8080`.
 

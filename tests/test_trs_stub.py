@@ -27,6 +27,7 @@ import trs_stub
 
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / "examples" / "demo"
+WORKFLOWS = ROOT / "examples" / "workflows"
 DEMO_SCHEMA = json.loads((DEMO / "ga4gh-io.schema.json").read_text(encoding="utf-8"))
 DEMO_WDL = (DEMO / "demo.wdl").read_text(encoding="utf-8")
 TOOL = "ga4gh-io-schema-demo"
@@ -354,3 +355,222 @@ def test_stub_ignores_query_parameters(stub: str) -> None:
     """Test that query parameters, e.g., ``format=zip``, are ignored."""
     for path in ("/tools", f"/tools/{TOOL}/versions/{VERSION}/WDL/files"):
         assert get_json(f"{stub}{path}?format=zip") == get_json(f"{stub}{path}")
+
+
+# Seeded workflows and reloading (the one-command demo)
+
+
+def test_find_workflows_lists_the_seeded_workflows() -> None:
+    """Test that every directory with an IO schema is a workflow."""
+    found = trs_stub.find_workflows(WORKFLOWS)
+    assert [path.name for path in found] == [
+        "greetings-nextflow",
+        "report-snakemake",
+        "word-count-cwl",
+    ]
+
+
+def test_unreadable_workflows_are_reported(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a workflow the stub can't read is reported, not skipped.
+
+    E.g., a directory of the checkout that the stub's user can't enter.
+    """
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0)
+    try:
+        assert trs_stub.find_workflows(tmp_path) == [locked]
+        assert trs_stub.load_workflows([], [tmp_path], strict=False) == []
+    finally:
+        locked.chmod(0o755)
+    assert f"Can't serve the workflow {locked}" in capsys.readouterr().err
+
+
+def test_unlisted_workflow_roots_are_reported(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a missing directory of workflows isn't an empty one.
+
+    E.g., a checkout that the stub's user can't read: the list would be
+    empty without a word in the logs.
+    """
+    missing = tmp_path / "missing"
+    with pytest.raises(FileNotFoundError):
+        trs_stub.load_workflows([], [missing])
+    assert trs_stub.load_workflows([], [missing], strict=False) == []
+    assert f"Can't list the workflows in {missing}" in capsys.readouterr().err
+
+
+def test_stub_serves_the_seeded_workflows() -> None:
+    """Test that the demo and the seeded workflows are served side by side."""
+    directories = [DEMO, *trs_stub.find_workflows(WORKFLOWS)]
+    workflows = [trs_stub.load_workflow(path) for path in directories]
+    with serve(workflows) as url:
+        tools = get_json(f"{url}/tools")
+    types = {tool["id"]: tool["versions"][0]["descriptor_type"] for tool in tools}
+    assert types == {
+        TOOL: ["WDL"],
+        "io-schema-greetings": ["NFL"],
+        "io-schema-report": ["SMK"],
+        "io-schema-word-count": ["CWL"],
+    }
+
+
+@contextlib.contextmanager
+def serve_reloading(
+    directories: Sequence[Path], roots: Sequence[Path] = ()
+) -> Iterator[str]:
+    """Run the stub on a free port, reading the workflows on each request.
+
+    Args:
+        directories: Directories of workflows.
+        roots: Directories whose subdirectories are workflows.
+
+    Yields:
+        The base URL of the TRS API of the stub.
+    """
+    server = trs_stub.TrsStub(
+        ("127.0.0.1", 0),
+        trs_stub.load_workflows(directories, roots),
+        reload=lambda: trs_stub.load_workflows(directories, roots, strict=False),
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}{trs_stub.API}"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_reload_shows_edits_without_a_restart(tmp_path: Path) -> None:
+    """Test that an edited schema is served at the next request."""
+    directory = make_workflow(tmp_path)
+    with serve_reloading([directory]) as url:
+        assert get_json(f"{url}/tools/{TOOL}")["name"] == "I/O Schema demo"
+        schema = copy.deepcopy(DEMO_SCHEMA)
+        schema["title"] = "Edited"
+        (directory / "ga4gh-io.schema.json").write_text(json.dumps(schema), "utf-8")
+        assert get_json(f"{url}/tools/{TOOL}")["name"] == "Edited"
+        path = f"{version_url(url)}/WDL/descriptor/ga4gh-io.schema.json"
+        assert json.loads(get_json(path)["content"])["title"] == "Edited"
+
+
+def test_reload_finds_new_workflows(tmp_path: Path) -> None:
+    """Test that a workflow added under a root is served at the next request."""
+    with serve_reloading([], [tmp_path]) as url:
+        assert get_json(f"{url}/tools") == []
+        (tmp_path / "new").mkdir()
+        make_workflow(tmp_path / "new")
+        assert [tool["id"] for tool in get_json(f"{url}/tools")] == [TOOL]
+
+
+def test_reload_skips_broken_workflows(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that a broken or duplicate workflow is skipped and reported."""
+    good = tmp_path / "a"
+    broken = tmp_path / "b"
+    twin = tmp_path / "c"
+    good.mkdir()
+    make_workflow(good)
+    with serve_reloading([], [tmp_path]) as url:
+        # Broken and duplicated while the stub runs, e.g., by an edit
+        for directory in (broken, twin):
+            directory.mkdir()
+            make_workflow(directory)
+        (broken / "ga4gh-io.schema.json").write_text("{", "utf-8")
+        assert [tool["id"] for tool in get_json(f"{url}/tools")] == [TOOL]
+    err = capsys.readouterr().err
+    assert f"Can't serve the workflow {broken}" in err
+    assert f"Can't serve the workflow {twin}: Two workflows" in err
+
+
+def test_load_workflows_is_strict_by_default(tmp_path: Path) -> None:
+    """Test that a broken workflow fails without ``strict=False``."""
+    with pytest.raises(OSError):
+        trs_stub.load_workflows([tmp_path])
+    (tmp_path / "ga4gh-io.schema.json").write_text("{", "utf-8")
+    with pytest.raises(ValueError, match=f"^{tmp_path}: Expecting"):
+        trs_stub.load_workflows([tmp_path])
+
+
+def test_reload_skips_json_nested_too_deeply(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test that JSON too deep for the parser is skipped, not fatal."""
+    (tmp_path / "ga4gh-io.schema.json").write_text("[" * 200_000, "utf-8")
+    assert trs_stub.load_workflows([tmp_path], strict=False) == []
+    assert f"Can't serve the workflow {tmp_path}" in capsys.readouterr().err
+    with pytest.raises(ValueError, match=f"^{tmp_path}: "):
+        trs_stub.load_workflows([tmp_path])
+
+
+def test_main_with_reload_skips_broken_workflows_at_the_start(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Test that ``--reload`` starts despite workflows broken while down.
+
+    E.g., a copied workflow with the same tool id, or a schema left
+    invalid, after the stack was stopped.
+    """
+    for name in ("a", "b", "c"):
+        (tmp_path / name).mkdir()
+        make_workflow(tmp_path / name)
+    (tmp_path / "c" / "ga4gh-io.schema.json").write_text("{", "utf-8")
+    servers: list[trs_stub.TrsStub] = []
+
+    def interrupt(self: trs_stub.TrsStub) -> None:
+        servers.append(self)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(trs_stub.TrsStub, "serve_forever", interrupt)
+    argv = ["--port", "0", "--workflows-dir", str(tmp_path)]
+    assert trs_stub.main([*argv, "--reload"]) == 0
+    assert list(servers[0].current()) == [TOOL]
+    err = capsys.readouterr().err
+    assert f"Can't serve the workflow {tmp_path / 'b'}: Two workflows" in err
+    assert f"Can't serve the workflow {tmp_path / 'c'}" in err
+    assert trs_stub.main(argv) == 1
+
+
+def test_main_serves_seeded_workflows_with_reload(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Test ``--workflows-dir`` and ``--reload``."""
+    servers: list[trs_stub.TrsStub] = []
+
+    def interrupt(self: trs_stub.TrsStub) -> None:
+        servers.append(self)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(trs_stub.TrsStub, "serve_forever", interrupt)
+    argv = ["--port", "0", "--workflow", str(DEMO), "--workflows-dir", str(WORKFLOWS)]
+    assert trs_stub.main([*argv, "--reload"]) == 0
+    out = capsys.readouterr().out
+    assert "/tools/io-schema-word-count/versions/1.0.0" in out
+    assert "re-read on every request" in out
+    assert servers[0].reload is not None
+    assert len(servers[0].current()) == 4
+
+
+def test_main_without_reload_reads_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that without ``--reload``, the workflows are read at the start."""
+    servers: list[trs_stub.TrsStub] = []
+
+    def interrupt(self: trs_stub.TrsStub) -> None:
+        servers.append(self)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(trs_stub.TrsStub, "serve_forever", interrupt)
+    assert trs_stub.main(["--port", "0", "--workflows-dir", str(WORKFLOWS)]) == 0
+    assert servers[0].reload is None
+    assert sorted(servers[0].current()) == [
+        "io-schema-greetings",
+        "io-schema-report",
+        "io-schema-word-count",
+    ]

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
+  "title": "Count words",
+  "description": "Counts the lines, words or characters of a text file.",
+  "x-ga4gh-workflow": {
+    "trs_tool_id": "io-schema-word-count",
+    "trs_version_id": "1.0.0",
+    "descriptor_type": "CWL",
+    "descriptor_type_version": "v1.2",
+    "primary_descriptor_path": "wc.cwl",
+    "checksum": [
+      {
+        "type": "sha-256",
+        "checksum": "75431e88e519962aa8a2b1109dce230685eba243300c615f1cf6db393d79034f"
+      }
+    ]
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "title": "Text file",
+          "description": "A plain text file, by its URL.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_2330",
+            "schemes": [
+              "https"
+            ]
+          },
+          "x-ga4gh-parameter": {
+            "type": "File"
+          },
+          "examples": [
+            "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/README.md"
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "title": "What to count",
+          "enum": [
+            "lines",
+            "words",
+            "characters"
+          ],
+          "default": "words",
+          "x-ga4gh-ui-widget": "dropdown"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "string",
+          "title": "Count",
+          "description": "The count and the name of the file, as wc prints them.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "mediaType": "text/plain"
+          },
+          "x-ga4gh-parameter": {
+            "type": "File"
+          }
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

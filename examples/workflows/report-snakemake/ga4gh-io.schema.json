@@ -1,0 +1,77 @@
+{
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
+  "title": "Little report",
+  "description": "Writes a small HTML report with a title, a date, notes and a colour.",
+  "x-ga4gh-workflow": {
+    "trs_tool_id": "io-schema-report",
+    "trs_version_id": "1.0.0",
+    "descriptor_type": "SMK",
+    "descriptor_type_version": "8",
+    "primary_descriptor_path": "Snakefile",
+    "checksum": [
+      {
+        "type": "sha-256",
+        "checksum": "6a2db7f3a57ee349752f0c98da86936f3cd7b2f05436e1263ff38708ad85a5a6"
+      }
+    ]
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "title": "Title",
+          "minLength": 1,
+          "maxLength": 80,
+          "x-ga4gh-error-message": "The title has 1 to 80 characters"
+        },
+        "date": {
+          "type": "string",
+          "title": "Date",
+          "format": "date",
+          "x-ga4gh-ui-widget": "date-picker"
+        },
+        "notes": {
+          "type": "string",
+          "title": "Notes",
+          "description": "Free text, on several lines.",
+          "default": "",
+          "x-ga4gh-ui-widget": "textarea"
+        },
+        "colour": {
+          "type": "string",
+          "title": "Colour",
+          "pattern": "^#[0-9a-f]{6}$",
+          "default": "#1f77b4",
+          "x-ga4gh-ui-widget": "color-picker"
+        }
+      },
+      "required": [
+        "title",
+        "date"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "type": "string",
+          "title": "Report (HTML)",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "mediaType": "text/html"
+          },
+          "x-ga4gh-ui-widget": "html-viewer",
+          "x-ga4gh-output-glob": "results/report.html"
+        }
+      },
+      "required": [
+        "report"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

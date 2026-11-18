@@ -10,7 +10,7 @@ and then right values, and see the WES run request. It makes the requests
 that the page makes, over HTTP. Start the stack first, then set
 ``PROTOTYPE_URL``::
 
-    docker compose -f prototype/compose.yaml up --detach --build --wait
+    make demo
     PROTOTYPE_URL=http://127.0.0.1:8000 \
         pytest -m e2e --no-cov tests/test_prototype_e2e.py
 
@@ -21,8 +21,11 @@ unless ``PROTOTYPE_REQUIRE_BROWSER`` is set (as in CI): then it fails.
 ``PROTOTYPE_BROWSER_CHANNEL`` picks another browser, e.g., ``chrome``.
 
 The tests expect the stack of ``prototype/compose.yaml`` as it is: the TRS
-stub serves the demo workflow only, under the name ``trs-stub``, and no WES
-is configured.
+stub serves the demo workflow and the seeded workflows of
+``examples/workflows/`` from the checkout, under the name ``trs-stub``, and
+no WES is configured. One test edits a schema of the checkout while the
+stack runs, as the "play around" section of the testbed page does, and
+restores it.
 """
 
 import json
@@ -34,6 +37,8 @@ from typing import Any
 
 import pytest
 
+from ga4gh_io_schema.wes import build_run_request
+
 pytestmark = [
     pytest.mark.e2e,
     pytest.mark.skipif(
@@ -44,6 +49,12 @@ pytestmark = [
 
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / "examples" / "demo"
+WORKFLOWS = ROOT / "examples" / "workflows"
+#: The seeded workflows, by directory: their IO schemas.
+SEEDED = {
+    path.parent: json.loads(path.read_text("utf-8"))
+    for path in sorted(WORKFLOWS.glob("*/ga4gh-io.schema.json"))
+}
 HOST = os.environ.get("PROTOTYPE_URL", "").rstrip("/")
 #: The demo workflow, as the page picks it.
 PICK = "?tool=ga4gh-io-schema-demo&version=1.0.0&type=WDL"
@@ -102,16 +113,18 @@ def test_user_gets_the_run_request_of_a_workflow_from_trs() -> None:
     assert "<io-schema-form>" in page
     # The page lists the workflows of the TRS stub, and nothing is sent
     status, config = call("/api/config")
-    assert config == {
-        "wes": False,
-        "workflows": [
-            {
-                "tool_id": "ga4gh-io-schema-demo",
-                "version_id": "1.0.0",
-                "descriptor_type": "WDL",
-                "name": "I/O Schema demo",
-            }
-        ],
+    assert config["wes"] is False
+    assert config["workflows"][0] == {
+        "tool_id": "ga4gh-io-schema-demo",
+        "version_id": "1.0.0",
+        "descriptor_type": "WDL",
+        "name": "I/O Schema demo",
+    }
+    # The demo and the seeded workflows, no more and no less
+    served = {(w["tool_id"], w["descriptor_type"]) for w in config["workflows"]}
+    assert served == {("ga4gh-io-schema-demo", "WDL")} | {
+        (s["x-ga4gh-workflow"]["trs_tool_id"], s["x-ga4gh-workflow"]["descriptor_type"])
+        for s in SEEDED.values()
     }
     # Without a pick, there is no form
     status, _ = call("/api/schema")
@@ -162,3 +175,59 @@ def test_user_gets_the_run_request_in_the_browser() -> None:
         finally:
             browser.close()
     assert request == RUN_REQUEST
+
+
+def pick(schema: dict[str, Any]) -> str:
+    """Build the query that picks the workflow of a schema.
+
+    Args:
+        schema: The IO schema.
+
+    Returns:
+        The query, with ``tool``, ``version`` and ``type``.
+    """
+    block = schema["x-ga4gh-workflow"]
+    return (
+        f"?tool={block['trs_tool_id']}&version={block['trs_version_id']}"
+        f"&type={block['descriptor_type']}"
+    )
+
+
+def test_seeded_workflows_give_run_requests() -> None:
+    """Test that each seeded workflow is listed and gives its run request."""
+    _, config = call("/api/config")
+    listed = {(w["tool_id"], w["descriptor_type"]) for w in config["workflows"]}
+    for directory, schema in SEEDED.items():
+        block = schema["x-ga4gh-workflow"]
+        assert (block["trs_tool_id"], block["descriptor_type"]) in listed
+        assert call(f"/api/schema{pick(schema)}") == (200, schema)
+        values = json.loads((directory / "values.json").read_text("utf-8"))
+        status, body = call(f"/api/params{pick(schema)}", values)
+        assert status == 200
+        request = body["run_request"]
+        assert request["workflow_type"] == block["descriptor_type"]
+        assert request["workflow_url"].startswith(
+            "http://trs-stub:8080/ga4gh/trs/v2/tools/"
+        )
+        # As the package builds them from the checkout's files
+        expected = build_run_request(schema, values, workflow_url="x")
+        assert request["workflow_params"] == expected["workflow_params"]
+
+
+def test_edited_schema_shows_without_a_restart() -> None:
+    """Test the "play around" path: an edit of the checkout is served at once.
+
+    The test edits a file of the checkout and restores it (the suite
+    doesn't run tests in parallel); if it is killed halfway, ``git
+    checkout -- examples/workflows`` restores the file.
+    """
+    path = WORKFLOWS / "word-count-cwl" / "ga4gh-io.schema.json"
+    original = path.read_bytes()
+    schema = json.loads(original)
+    edited = {**schema, "title": "Count words (edited)"}
+    try:
+        path.write_text(json.dumps(edited), "utf-8")
+        assert call(f"/api/schema{pick(schema)}") == (200, edited)
+    finally:
+        path.write_bytes(original)
+    assert call(f"/api/schema{pick(schema)}") == (200, schema)

@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# A seeded workflow of the demo (see docs/adoption/testbed.md): writes a
+# small HTML report, in the colour, with the title and the date of the
+# config. Never run by the testbed.
+
+
+rule all:
+    input:
+        "results/report.html",
+
+
+rule report:
+    output:
+        "results/report.html",
+    params:
+        title=config["title"],
+        notes=config.get("notes", ""),
+        colour=config.get("colour", "#1f77b4"),
+        date=config["date"],
+    run:
+        from html import escape
+
+        with open(output[0], "w", encoding="utf-8") as report:
+            report.write(
+                f"<html><body style='border-top: 8px solid {escape(params.colour)}'>"
+                f"<h1>{escape(params.title)}</h1><p>{escape(params.date)}</p>"
+                f"<pre>{escape(params.notes)}</pre></body></html>"
+            )

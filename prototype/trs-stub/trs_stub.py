@@ -13,18 +13,21 @@ comes from files in the repository: each workflow is a directory with an
 IO schema, ``ga4gh-io.schema.json``, and the primary descriptor that its
 ``x-ga4gh-workflow`` block names. The block also gives the ids of the tool
 and the version, the descriptor type and its version. No database, no
-writes, no authentication.
+writes, no authentication. With ``--reload``, the files are read again on
+every request, so that edits show without a restart.
 
 Run it with ``python prototype/trs-stub/trs_stub.py`` and open
 http://127.0.0.1:8080/ga4gh/trs/v2/tools.
 """
 
 import argparse
+import functools
 import hashlib
 import json
+import stat
 import sys
 import urllib.parse
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -131,34 +134,167 @@ def load_workflow(directory: Path) -> Workflow:
     )
 
 
+def find_workflows(root: Path) -> list[Path]:
+    """List the workflows in a directory.
+
+    Args:
+        root: The directory.
+
+    Returns:
+        Its subdirectories that hold an IO schema, sorted by name.
+
+    Raises:
+        OSError: If the directory can't be listed, e.g., it is missing or
+            not readable (a glob would find nothing instead).
+    """
+    return sorted(path for path in root.iterdir() if _has_schema(path))
+
+
+def _has_schema(directory: Path) -> bool:
+    """Tell whether a directory holds an IO schema, or may.
+
+    Args:
+        directory: The directory.
+
+    Returns:
+        Whether it has a schema, or whether that can't be checked (e.g.,
+        the directory isn't readable), so that loading reports why.
+    """
+    # Not Path.is_file(), which hides permission errors (Python 3.14)
+    try:
+        mode = (directory / SCHEMA_NAME).stat().st_mode
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    except OSError:
+        return True
+    return stat.S_ISREG(mode)
+
+
+def load_workflows(
+    directories: Iterable[Path], roots: Iterable[Path] = (), *, strict: bool = True
+) -> list[Workflow]:
+    """Read workflows from their directories.
+
+    Args:
+        directories: Directories of workflows (see :func:`load_workflow`).
+        roots: Directories whose subdirectories with an IO schema are
+            workflows (see :func:`find_workflows`), after ``directories``.
+        strict: Whether a workflow that can't be read is an error; if not,
+            it is reported on standard error and left out, and so is a
+            workflow with the tool and version id of an earlier one.
+
+    Returns:
+        The workflows.
+
+    Raises:
+        OSError: If ``strict`` and a file or one of ``roots`` can't be read.
+        ValueError: If ``strict`` and a workflow is invalid (see
+            :func:`load_workflow`), with its directory in the message.
+    """
+    paths = list(directories)
+    for root in roots:
+        try:
+            paths.extend(find_workflows(root))
+        except OSError as exc:
+            if strict:
+                raise
+            print(f"Can't list the workflows in {root}: {exc}", file=sys.stderr)
+    workflows: list[Workflow] = []
+    seen: set[tuple[str, str]] = set()
+    for path in paths:
+        try:
+            workflow = load_workflow(path)
+            key = (workflow.tool_id, workflow.version_id)
+            if key in seen and not strict:
+                raise ValueError(_duplicate(workflow))
+        # RecursionError: JSON nested too deeply for the parser
+        except (OSError, ValueError, RecursionError) as exc:
+            if not strict:
+                print(f"Can't serve the workflow {path}: {exc}", file=sys.stderr)
+                continue
+            if isinstance(exc, OSError):  # names the file already
+                raise
+            raise ValueError(f"{path}: {exc}") from exc
+        seen.add(key)
+        workflows.append(workflow)
+    return workflows
+
+
+def _duplicate(workflow: Workflow) -> str:
+    """Describe a workflow whose tool version is served already.
+
+    Args:
+        workflow: The workflow.
+
+    Returns:
+        The message.
+    """
+    return f"Two workflows are version {workflow.version_id} of {workflow.tool_id}."
+
+
+def _index(workflows: Iterable[Workflow]) -> dict[str, dict[str, Workflow]]:
+    """Index workflows by tool id and version id.
+
+    Args:
+        workflows: The workflows.
+
+    Returns:
+        The workflows by tool id and version id.
+
+    Raises:
+        ValueError: If two workflows have the same tool and version id.
+    """
+    index: dict[str, dict[str, Workflow]] = {}
+    for workflow in workflows:
+        versions = index.setdefault(workflow.tool_id, {})
+        if workflow.version_id in versions:
+            raise ValueError(_duplicate(workflow))
+        versions[workflow.version_id] = workflow
+    return index
+
+
 class TrsStub(ThreadingHTTPServer):
     """HTTP server of the TRS stub.
 
     Attributes:
-        workflows: The tool versions by tool id and version id.
+        workflows: The tool versions by tool id and version id, as read at
+            the start.
+        reload: Reads the workflows again, for each request; ``None`` serves
+            ``workflows``.
     """
 
-    def __init__(self, address: tuple[str, int], workflows: Iterable[Workflow]) -> None:
+    def __init__(
+        self,
+        address: tuple[str, int],
+        workflows: Iterable[Workflow],
+        reload: Callable[[], Iterable[Workflow]] | None = None,
+    ) -> None:
         """Bind the server.
 
         Args:
             address: Host and port; port 0 picks a free one.
             workflows: The tool versions to serve.
+            reload: Reads the tool versions to serve, on each request; it
+                must leave out duplicates (see :func:`load_workflows`).
 
         Raises:
             ValueError: If two workflows have the same tool and version id.
             OSError: If the address can't be bound.
         """
-        self.workflows: dict[str, dict[str, Workflow]] = {}
-        for workflow in workflows:
-            versions = self.workflows.setdefault(workflow.tool_id, {})
-            if workflow.version_id in versions:
-                raise ValueError(
-                    f"Two workflows are version {workflow.version_id} of "
-                    f"{workflow.tool_id}."
-                )
-            versions[workflow.version_id] = workflow
+        self.workflows = _index(workflows)
+        self.reload = reload
         super().__init__(address, TrsHandler)
+
+    def current(self) -> dict[str, dict[str, Workflow]]:
+        """Get the workflows to serve now.
+
+        Returns:
+            The tool versions by tool id and version id: read again with
+            ``reload``, if given.
+        """
+        if self.reload is None:
+            return self.workflows
+        return _index(self.reload())
 
 
 class TrsHandler(BaseHTTPRequestHandler):
@@ -174,23 +310,20 @@ class TrsHandler(BaseHTTPRequestHandler):
             return
         parts = [urllib.parse.unquote(part) for part in path[len(API) + 1 :].split("/")]
         base = f"http://{self.headers.get('Host', 'localhost')}{API}"
+        workflows = self.server.current()
         match parts:
             case ["tools"]:
-                tools = [
-                    self._tool(base, versions)
-                    for versions in self.server.workflows.values()
-                ]
+                tools = [self._tool(base, versions) for versions in workflows.values()]
                 self._send_json(HTTPStatus.OK, tools)
-            case ["tools", tool_id] if tool_id in self.server.workflows:
-                tool = self._tool(base, self.server.workflows[tool_id])
-                self._send_json(HTTPStatus.OK, tool)
-            case ["tools", tool_id, "versions"] if tool_id in self.server.workflows:
-                versions = self.server.workflows[tool_id].values()
+            case ["tools", tool_id] if tool_id in workflows:
+                self._send_json(HTTPStatus.OK, self._tool(base, workflows[tool_id]))
+            case ["tools", tool_id, "versions"] if tool_id in workflows:
+                versions = workflows[tool_id].values()
                 self._send_json(
                     HTTPStatus.OK, [self._version(base, w) for w in versions]
                 )
             case ["tools", tool_id, "versions", version_id, *rest]:
-                workflow = self.server.workflows.get(tool_id, {}).get(version_id)
+                workflow = workflows.get(tool_id, {}).get(version_id)
                 if workflow is None:
                     self._not_found()
                 elif not rest:
@@ -334,7 +467,23 @@ def _parser() -> argparse.ArgumentParser:
         dest="workflows",
         metavar="DIR",
         help="directory with ga4gh-io.schema.json and the primary descriptor "
-        "(repeatable; default: the end-to-end demo)",
+        "(repeatable; default, without --workflows-dir: the end-to-end demo)",
+    )
+    parser.add_argument(
+        "--workflows-dir",
+        action="append",
+        dest="roots",
+        default=[],
+        metavar="DIR",
+        help="directory whose subdirectories with ga4gh-io.schema.json are "
+        "workflows (repeatable), e.g., examples/workflows",
+    )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="read the workflows again on every request, so that edits and "
+        "new workflows show without a restart (broken ones are left out and "
+        "reported)",
     )
     parser.add_argument(
         "--host", default="127.0.0.1", help="address to bind (default: 127.0.0.1)"
@@ -356,15 +505,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         the stub can't start.
     """
     args = _parser().parse_args(argv)
-    workflows = []
-    for directory in args.workflows or [str(DEMO_DIR)]:
-        try:
-            workflows.append(load_workflow(Path(directory)))
-        except (OSError, ValueError) as exc:
-            print(f"Can't serve the workflow {directory}: {exc}", file=sys.stderr)
-            return 1
+    default = [] if args.roots else [str(DEMO_DIR)]
+    directories = [Path(directory) for directory in args.workflows or default]
+    roots = [Path(root) for root in args.roots]
     try:
-        server = TrsStub((args.host, args.port), workflows)
+        # With --reload, a workflow broken while the stack was down is left
+        # out at the start too, as on every request, instead of failing
+        workflows = load_workflows(directories, roots, strict=not args.reload)
+    except (OSError, ValueError) as exc:
+        print(f"Can't serve the workflows: {exc}", file=sys.stderr)
+        return 1
+    reload: Callable[[], list[Workflow]] | None = None
+    if args.reload:
+        # Broken workflows are left out on reload, not fatal: users edit them
+        reload = functools.partial(load_workflows, directories, roots, strict=False)
+    try:
+        server = TrsStub((args.host, args.port), workflows, reload)
     except (OSError, ValueError) as exc:
         print(f"Can't start the stub: {exc}", file=sys.stderr)
         return 1
@@ -375,6 +531,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"Serving TRS on http://{host}:{port}{API}/tools (Ctrl+C stops)")
     for workflow in workflows:
         print(f"  {API}/tools/{workflow.tool_id}/versions/{workflow.version_id}")
+    if args.reload:
+        print("Files are re-read on every request (--reload)")
     sys.stdout.flush()
     try:
         server.serve_forever()
