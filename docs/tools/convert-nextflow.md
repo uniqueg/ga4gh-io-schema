@@ -85,7 +85,8 @@ With `--json`, the output is one object with the IO schema and the notes:
 | `uniqueEntries` (nf-schema), `unique` (nf-validation) | dropped, with a note: they require the combination of some columns to be unique across the rows, which `uniqueItems` doesn't express (see [Keywords](../specification/keywords.md#leveraging-native-json-schema-what-we-dont-reinvent)) |
 | `format`, `contentMediaType`, `contentEncoding` and `contentSchema` of a file reference | dropped (the last three with a note): file references can't have them (see [File references](../specification/files.md#the-annotation)) |
 | Outputs | the outputs named with `--out-file`, `--out-files` and `--out-dir` (see [Outputs](#outputs)); without them, `"outputs": {"type": "object", "properties": {}}`, with a note |
-| The pipeline | `"x-ga4gh-workflow": {"descriptor_type": "NFL"}` (see [Identity and engine binding](../specification/identity.md#the-workflow-block)); add an `$id`, and the TRS ids, the path and the checksum of `main.nf` when the pipeline is published. Parameters keep their names, so no `x-ga4gh-parameter` is needed |
+| The pipeline | `"x-ga4gh-workflow": {"descriptor_type": "NFL"}` (see [Identity and engine binding](../specification/identity.md#the-workflow-block)); add an `$id`, and the TRS ids, the path and the checksum of `main.nf` when the pipeline is published. Parameters keep their names, so no `x-ga4gh-parameter` is needed, except for names with `-` (see [Names with `-`](#names-with-)) |
+| `default` with `${` (e.g., `${projectDir}/assets/...`) | dropped, with a note: the translators reject strings with `${` for Nextflow (see [Nextflow](../specification/engine-bindings.md#nextflow-nfl)); without a value, Nextflow sets its own default |
 | `x-ga4gh-*` keywords of the source | kept; the check of the result rejects wrong ones. If a schema has both an nf-schema keyword and its keyword of the profile (e.g., `hidden` and `x-ga4gh-hidden`), the latter wins, with a note |
 
 The converter upgrades the schemas to Draft 2020-12 as the [Snakemake
@@ -96,6 +97,29 @@ to `$defs` and local references to the new places of their targets (e.g.,
 `#/definitions/input_output_options` to `#/$defs/input_output_options`, and
 references in a sample-sheet schema to its place in the hint), and reports
 references that point to nothing.
+
+## Names with `-`
+
+Nextflow renames the parameters of a params file whose names have `-` to
+camelCase (`out-dir` sets `outDir`), and the translators reject keys with
+`-` for Nextflow (see
+[Nextflow](../specification/engine-bindings.md#nextflow-nfl)). So the
+converter binds a parameter with `-` to the name that Nextflow sets, with
+`"x-ga4gh-parameter": {"name": "outDir"}`, and a note: the input keeps its
+name in forms and input values, and its value goes to `outDir` in
+`workflow_params`. It doesn't bind it, and notes that its values can't be
+translated, if:
+
+- the name isn't kebab-case of ASCII letters, digits and `_` (e.g.,
+  `-a`, `a-`, `a--b` or `a-é`), so the name that Nextflow gives it isn't
+  certain;
+- another parameter has the camelCase name (`out-dir` and `outDir`), or
+  two parameters get the same one (`out-dir` and `out-Dir`).
+
+Rename such parameters in the pipeline. A parameter whose
+`x-ga4gh-parameter` has a `name` in the source keeps it. Names of nested
+properties and of sample-sheet columns keep their `-`: Nextflow renames
+only parameters.
 
 ## File references
 

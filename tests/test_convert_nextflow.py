@@ -24,6 +24,7 @@ from ga4gh_io_schema.converters.nextflow import (
     to_ga4gh,
 )
 from ga4gh_io_schema.validator import load_profile, validate_schema
+from ga4gh_io_schema.wes import from_workflow_params, to_workflow_params
 
 DATA_DIR = Path(__file__).resolve().parent / "data" / "nextflow"
 #: Pipelines of nf-core: nf-schema (Draft 2020-12) and nf-validation (Draft 7).
@@ -319,6 +320,160 @@ def test_outputs_are_added_without_a_note() -> None:
     }
     assert not notes_with(conversion, "outputs")
     validate_schema(conversion.schema)
+
+
+# --- Names of parameters ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("name", "engine"),
+    [
+        ("out-dir", "outDir"),
+        ("max-cpus-per-task", "maxCpusPerTask"),
+        ("skip_qc-step2", "skip_qcStep2"),
+        ("a-1b", "a1b"),
+    ],
+)
+def test_dashed_parameters_bind_to_the_nextflow_name(name: str, engine: str) -> None:
+    """Test that parameters with ``-`` bind to the name that Nextflow sets.
+
+    Nextflow renames params-file keys from kebab-case to camelCase, and the
+    translators reject keys with ``-`` for Nextflow; with the binding, the
+    input keeps its name and translates to the parameter that Nextflow sets.
+
+    Args:
+        name: Name of the parameter in nf-schema.
+        engine: Nextflow's name of it.
+    """
+    source = nf_schema(
+        {name: {"type": "string"}},
+        {"g": group({f"{name}-x": {"type": "integer"}})},
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert parameter(conversion, name) == {
+        "type": "string",
+        "x-ga4gh-parameter": {"name": engine},
+    }
+    assert parameter(conversion, f"{name}-x", "g")["x-ga4gh-parameter"] == {
+        "name": f"{engine}X"
+    }
+    notes = notes_with(conversion, "Nextflow renames")
+    assert len(notes) == 2
+    assert any(
+        f"'{name}' sets the parameter '{engine}'" in note.message for note in notes
+    )
+    validate_schema(conversion.schema)
+    values = {name: "results", f"{name}-x": 2}
+    params = to_workflow_params(conversion.schema, values)
+    assert params == {engine: "results", f"{engine}X": 2}
+    assert from_workflow_params(conversion.schema, params) == values
+
+
+def test_dashed_parameter_keeps_a_binding_of_the_source() -> None:
+    """Test that an ``x-ga4gh-parameter`` of the source wins, or gets the name."""
+    source = nf_schema(
+        {
+            "out-dir": {"type": "string", "x-ga4gh-parameter": {"name": "outdir"}},
+            "in-put": {"type": "string", "x-ga4gh-parameter": {"type": "path"}},
+        }
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert parameter(conversion, "out-dir")["x-ga4gh-parameter"] == {"name": "outdir"}
+    assert parameter(conversion, "in-put")["x-ga4gh-parameter"] == {
+        "type": "path",
+        "name": "inPut",
+    }
+    assert len(notes_with(conversion, "Nextflow renames")) == 1
+    # The source isn't changed
+    assert source["properties"]["in-put"]["x-ga4gh-parameter"] == {"type": "path"}
+
+
+@pytest.mark.parametrize(
+    ("properties", "unbound", "reason"),
+    [
+        # Another parameter has the name
+        (
+            {"out-dir": {"type": "string"}, "outDir": {"type": "string"}},
+            ["out-dir"],
+            "another parameter has that name",
+        ),
+        # Two parameters get the same name
+        (
+            {"out-dir": {"type": "string"}, "out-Dir": {"type": "string"}},
+            ["out-dir", "out-Dir"],
+            "another parameter has that name",
+        ),
+        # Names whose camelCase name isn't certain
+        ({"-a": {}}, ["-a"], "isn't kebab-case"),
+        ({"a-": {}}, ["a-"], "isn't kebab-case"),
+        ({"a--b": {}}, ["a--b"], "isn't kebab-case"),
+        ({"a-é": {}}, ["a-é"], "isn't kebab-case"),
+        ({"a-$b": {}}, ["a-$b"], "isn't kebab-case"),
+    ],
+)
+def test_dashed_parameters_that_cant_be_bound_are_noted(
+    properties: dict[str, Any], unbound: list[str], reason: str
+) -> None:
+    """Test that a parameter with ``-`` without a certain Nextflow name is noted.
+
+    The translators reject values for it; the note says why.
+
+    Args:
+        properties: Parameters of the source.
+        unbound: The parameters that get no binding.
+        reason: Part of the note.
+    """
+    conversion = to_ga4gh(nf_schema(properties))
+
+    for name in unbound:
+        assert "x-ga4gh-parameter" not in parameter(conversion, name)
+    notes = notes_with(conversion, "can't be translated")
+    assert len(notes) == len(unbound)
+    assert all(reason in note.message for note in notes)
+
+
+def test_dashes_in_nested_properties_stay() -> None:
+    """Test that only parameters get a binding: Nextflow renames only them."""
+    source = nf_schema(
+        {"rec": {"type": "object", "properties": {"a-b": {"type": "string"}}}}
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert parameter(conversion, "rec") == {
+        "type": "object",
+        "properties": {"a-b": {"type": "string"}},
+    }
+    assert not notes_with(conversion, "Nextflow renames")
+
+
+def test_defaults_with_nextflow_variables_are_dropped() -> None:
+    """Test that a default with ``${`` is dropped, with a note.
+
+    The translators reject strings with ``${`` for Nextflow; a client that
+    sent the default would be rejected, and Nextflow sets its own default if
+    the value is left out.
+    """
+    source = nf_schema(
+        {
+            "manifest": {"type": "string", "default": "${projectDir}/assets/a.txt"},
+            "rec": {"type": "object", "default": {"a": "${launchDir}"}},
+            "plain": {"type": "string", "default": "$HOME"},
+        }
+    )
+
+    conversion = to_ga4gh(source)
+
+    assert parameter(conversion, "manifest") == {"type": "string"}
+    assert parameter(conversion, "rec") == {"type": "object"}
+    assert parameter(conversion, "plain")["default"] == "$HOME"
+    notes = notes_with(conversion, "Dropped 'default'")
+    assert len(notes) == 2
+    assert "${projectDir}" in notes[0].message
 
 
 # --- Keywords of nf-schema --------------------------------------------------

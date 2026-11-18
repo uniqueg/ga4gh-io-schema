@@ -71,6 +71,11 @@ UNIQUE_KEYWORDS = ("uniqueEntries", "unique")
 _MEDIA_TYPE = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}$"
 )
+# Names in kebab-case whose camelCase name is certain: Nextflow splits them
+# at `-` and capitalises each part after the first (`CmdRun.kebabToCamelCase`);
+# leading, trailing and double `-` and other characters than ASCII letters,
+# digits and `_` are left out
+_KEBAB_CASE = re.compile(r"^[A-Za-z0-9_]+(?:-[A-Za-z0-9_]+)+$")
 
 
 def load_schema(text: str, name: str) -> Any:
@@ -188,6 +193,8 @@ class _Converter(SchemaConverter):
         self.attached: dict[str, Pointer] = {}
         # Whether a sample-sheet schema is being converted
         self.in_sheet = False
+        # Parameters with `-`: their names, places and converted schemas
+        self.dashed: list[tuple[str, Pointer, dict[str, Any]]] = []
 
     def convert(self, source: Any, outputs: Sequence[Output]) -> Conversion:
         """Convert the nf-schema file and its sample-sheet schemas.
@@ -215,6 +222,7 @@ class _Converter(SchemaConverter):
                 raise ConversionError(
                     f"No parameter '{name}' with 'format: path' (--directory)."
                 )
+        self._bind_dashed()
         schema: dict[str, Any] = {
             "$schema": load_profile()["$id"],
             # The engine binding; the TRS fields are known only once the
@@ -361,7 +369,86 @@ class _Converter(SchemaConverter):
         self._help_text(result, pointer)
         self._rename(result, "hidden", "x-ga4gh-hidden", bool, pointer)
         self._rename(result, "errorMessage", "x-ga4gh-error-message", str, pointer)
-        return self._file(result, pointer, parameter)
+        self._default(result, pointer)
+        converted = self._file(result, pointer, parameter)
+        if parameter is not None and "-" in parameter:
+            self.dashed.append((parameter, pointer, converted))
+        return converted
+
+    def _default(self, result: dict[str, Any], pointer: Pointer) -> None:
+        """Drop a ``default`` with ``${``, which the translators reject.
+
+        nf-core pipelines set defaults such as ``${projectDir}/assets/...``,
+        which Nextflow replaces in its configuration; the translators reject
+        strings with ``${`` for Nextflow, as Nextflow would replace them in
+        the params file too. A client that sent the default would be
+        rejected; without a value, Nextflow sets its own default.
+
+        Args:
+            result: The converted schema.
+            pointer: Location of the schema in the IO schema.
+        """
+        if self.in_sheet or "default" not in result:
+            return
+        # JSON text has `${` exactly where a key or a string has it
+        text = json.dumps(result["default"], ensure_ascii=False)
+        if "${" not in text:
+            return
+        del result["default"]
+        self.note(
+            f"Dropped 'default' {text}: it has '${{', which Nextflow replaces "
+            "with its own variables, so the translators reject it; without "
+            "a value, Nextflow sets its own default.",
+            pointer,
+        )
+
+    def _bind_dashed(self) -> None:
+        """Bind the parameters with ``-`` to the names that Nextflow sets.
+
+        Nextflow renames the members of a params file with ``-`` to camelCase
+        (``out-dir`` sets ``outDir``), and the translators reject keys with
+        ``-`` for Nextflow. A parameter whose camelCase name is certain and
+        no other parameter's gets ``x-ga4gh-parameter`` with that name, so
+        the input keeps its name and its values translate; the others get a
+        note. A name that the source binds already is kept.
+        """
+        names = set(self.parameters)
+        # The parameters with `-` that get each camelCase name
+        targets: dict[str, set[str]] = {}
+        for name, _, _ in self.dashed:
+            targets.setdefault(_camel_case(name) or "", set()).add(name)
+        for name, pointer, schema in self.dashed:
+            binding = schema.get("x-ga4gh-parameter", {})
+            if not isinstance(binding, dict) or "name" in binding:
+                # The source's binding (the check of the result judges it)
+                continue
+            engine = _camel_case(name)
+            if engine is None:
+                self.note(
+                    f"Values of '{name}' can't be translated: it isn't "
+                    "kebab-case of ASCII letters, digits and '_', so the name "
+                    "that Nextflow gives it isn't certain, and the translators "
+                    "reject keys with '-' for Nextflow; rename the parameter "
+                    "in the pipeline.",
+                    pointer,
+                )
+            elif engine in names or len(targets[engine]) > 1:
+                self.note(
+                    f"Values of '{name}' can't be translated: Nextflow takes it "
+                    f"for '{engine}', and another parameter has that name, "
+                    "and the translators reject keys with '-' for Nextflow; "
+                    "rename one of them in the pipeline.",
+                    pointer,
+                )
+            else:
+                schema["x-ga4gh-parameter"] = {**binding, "name": engine}
+                self.note(
+                    f"Bound to '{engine}' with 'x-ga4gh-parameter': Nextflow "
+                    f"renames parameters with '-' to camelCase, so '{name}' "
+                    f"sets the parameter '{engine}' (the translators reject "
+                    "keys with '-' for Nextflow).",
+                    pointer,
+                )
 
     def _help_text(self, result: dict[str, Any], pointer: Pointer) -> None:
         """Append ``help_text`` to the description, as Markdown.
@@ -576,3 +663,19 @@ class _Converter(SchemaConverter):
                 "file-path') can have it.",
                 pointer,
             )
+
+
+def _camel_case(name: str) -> str | None:
+    """Get the name that Nextflow gives a parameter in kebab-case.
+
+    Args:
+        name: Name of the parameter, with ``-``.
+
+    Returns:
+        The camelCase name (e.g., ``outDir`` for ``out-dir``), or ``None`` if
+        the name isn't kebab-case of ASCII letters, digits and ``_``.
+    """
+    if not _KEBAB_CASE.match(name):
+        return None
+    first, *rest = name.split("-")
+    return first + "".join(part[0].upper() + part[1:] for part in rest)

@@ -399,7 +399,6 @@
         },
         "ribo_database_manifest": {
           "type": "string",
-          "default": "${projectDir}/workflows/rnaseq/assets/rrna-db-defaults.txt",
           "description": "Text file containing paths to fasta files (one per line) that will be used to create the database for SortMeRNA.\n\nBy default, [rRNA databases](https://github.com/biocore/sortmerna/tree/master/data/rRNA_databases) from the SortMeRNA GitHub repository are used. See the example in `assets/rrna-default-dbs.txt`. Note: commercial/non-academic entities require [SILVA licensing](https://www.arb-silva.de/silva-license-information) for these databases.",
           "x-ga4gh-description-format": "markdown",
           "x-ga4gh-file": {
