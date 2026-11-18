@@ -25,6 +25,7 @@ The documentation is on [Read the Docs](https://ga4gh-io-schema.readthedocs.io/)
 - [Security considerations](https://ga4gh-io-schema.readthedocs.io/en/latest/security/)
 - [Tools](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/): the validator (CLI and Python API) and converters
 - [Adoption](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/): TRS, WES, portals and clients
+- [Testbed](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/): the live demo, runnable on a laptop: its parts, what is real and what is mocked, and its limits
 - [Roadmap](https://ga4gh-io-schema.readthedocs.io/en/latest/roadmap/)
 - [Development](https://ga4gh-io-schema.readthedocs.io/en/latest/development/): tests and checks
 
