@@ -102,7 +102,9 @@ def discover(
         (``None`` if it lists none), for the ``workflow_url``.
 
     Raises:
-        HTTPError: If a request to TRS fails.
+        HTTPError: If a request for the files or the IO schema fails; a
+            failed request for the primary descriptor only leaves the schema
+            unverified.
         ClientError: If the tool version has no IO schema, or its schema
             isn't JSON, names another tool version or descriptor type, or
             names a checksum that the primary descriptor doesn't have.
