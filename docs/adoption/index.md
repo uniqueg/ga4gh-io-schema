@@ -11,13 +11,17 @@ The profile is independent of workflow engines. Its integration with the GA4GH A
   guide for adopters with deployed services, not the live demo.
 * [Form proof of concept](form.md): a minimal form and host in this
   repository, from an IO schema to a WES run request.
-* [Prototype](prototype.md): try the profile on a laptop with one Docker
-  Compose command, without outside services: pick a workflow in a TRS
+* [Prototype](prototype.md): try the profile on a laptop with one
+  command, without outside services: pick a workflow in a TRS
   stub, fill in the form of its IO schema and see the WES run request, with
   a walkthrough of what each step shows.
 * [Testbed](testbed.md): the live demo, which is the prototype: how to run
-  it from a fresh checkout, its parts, what is real and what is mocked, and
-  its limits.
+  it from a fresh checkout with `make demo`, its seeded workflows, how to
+  play around with their schemas, its parts, what is real and what is
+  mocked, and its limits.
+* [Runsheet](runsheet.md): presenting the live demo in about ten minutes,
+  step by step, with what each screen shows and what to do if a step
+  fails.
 
 ## The end-to-end GA4GH lifecycle (summary)
 

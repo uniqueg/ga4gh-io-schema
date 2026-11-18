@@ -24,16 +24,24 @@ releases (no tags, nothing on PyPI) and waits for review by the GA4GH
 Federated Analysis Work Stream as a product candidate (see the
 [Roadmap](https://ga4gh-io-schema.readthedocs.io/en/latest/roadmap/#next-steps)).
 
-Try it: the [prototype](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/prototype/)
-runs on a laptop, from a workflow in a TRS stub to a generated form and a
-WES run request, with one command in a clone of this repository:
+Try it: the [live demo](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/)
+runs on a laptop, from workflows in a TRS stub (WDL, CWL, Nextflow and
+Snakemake) to generated forms and WES run requests, with one command in a
+clone of this repository (Docker with Compose v2 needed, no accounts or
+tokens):
 
 ```bash
-docker compose -f prototype/compose.yaml up --build
+make demo
 ```
 
-The [prototype page](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/prototype/)
-describes the testbed, and the
+Then open <http://127.0.0.1:8000/>, edit a schema in `examples/workflows/`
+and reload the page to see the form change (see [Play
+around](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/#play-around));
+`make demo-down` stops it. The
+[testbed](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/)
+page describes the demo, the
+[runsheet](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/runsheet/)
+is the script for presenting it, and the
 [evaluation](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/prototype-evaluation/)
 what it showed about the profile.
 
@@ -48,7 +56,8 @@ The documentation is on [Read the Docs](https://ga4gh-io-schema.readthedocs.io/)
 - [Security considerations](https://ga4gh-io-schema.readthedocs.io/en/latest/security/)
 - [Tools](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/): the validator (CLI and Python API) and converters
 - [Adoption](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/): TRS, WES, portals and clients
-- [Testbed](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/): the live demo, runnable on a laptop: its parts, what is real and what is mocked, and its limits
+- [Testbed](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/): the live demo, runnable on a laptop: how to run it and play around with it, its parts, what is real and what is mocked, and its limits
+- [Runsheet](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/runsheet/): presenting the live demo in about ten minutes
 - [Roadmap](https://ga4gh-io-schema.readthedocs.io/en/latest/roadmap/)
 - [Development](https://ga4gh-io-schema.readthedocs.io/en/latest/development/): tests and checks
 
