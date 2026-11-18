@@ -141,7 +141,7 @@ The rules combine one vocabulary file per keyword group:
 | `x-ga4gh-output-glob` | a relative glob (see [`x-ga4gh-output-glob`](outputs.md#x-ga4gh-output-glob)), on a file reference or on an array whose `items` is a file reference written in place, without `prefixItems` | `outputs` |
 
 Other keywords that start with `x-ga4gh-` (e.g., misspelled ones, or
-`x-ga4gh-fa-icon`, which version 0.3 removed) are rejected: no vocabulary evaluates them, and `$defs/node` doesn't allow
+`x-ga4gh-fa-icon`, which version 0.3.0 removed) are rejected: no vocabulary evaluates them, and `$defs/node` doesn't allow
 unevaluated `x-ga4gh-*` keywords. Other extension keywords (e.g.,
 `x-my-platform-hint`) are allowed. A new keyword group goes into a new file
 in `schemas/vocabularies/`, referenced from `$defs/node/$defs/keywords`

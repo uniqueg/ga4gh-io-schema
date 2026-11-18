@@ -42,7 +42,7 @@ URL, and a helper for checking the workflow block.
 - [Roadmap](roadmap.md): next steps, open questions and the history of this
   proposal.
 - [Changelog](changelog.md): the changes of each version, including the
-  changes of scope since version 0.1.
+  changes of scope since version 0.1.0.
 - [Versioning and governance](governance.md): what a version number says,
   how releases are made and how changes are proposed.
 - [Development](development.md): tests and checks for contributors.

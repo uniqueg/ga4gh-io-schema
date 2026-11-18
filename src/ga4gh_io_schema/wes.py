@@ -633,7 +633,8 @@ def trs_descriptor_url(
             not one that TRS listed.
 
     Returns:
-        The URL, with the ids and each segment of the path percent-encoded.
+        The URL, with the ids, the descriptor type and each segment of the
+        path percent-encoded.
 
     Raises:
         ValueError: If the path is empty, or has empty, ``.`` or ``..``
@@ -642,7 +643,7 @@ def trs_descriptor_url(
     url = (
         f"{trs_url.rstrip('/')}/tools/{quote(tool_id, safe='')}"
         f"/versions/{quote(version_id, safe='')}"
-        f"/PLAIN_{descriptor_type}/descriptor"
+        f"/PLAIN_{quote(descriptor_type, safe='')}/descriptor"
     )
     if primary_descriptor_path is None or primary_descriptor_path.startswith("/"):
         return url

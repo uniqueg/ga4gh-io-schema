@@ -53,7 +53,7 @@ Several standards and tools overlap with this profile. This page says, for each 
 | `type`, `enum`, `minimum`, `pattern` and other constraints | No equivalent; stays in the IO schema |
 | `x-ga4gh-ui-widget`, `x-ga4gh-hidden` and other UI hints | No equivalent; stays in the IO schema |
 
-`FormalParameter` separates the type of data from the format, and so does the profile for files: `x-ga4gh-ontology` names the data, `ontology` of the file reference the format. Schemas written before version 0.3 may have an EDAM format term in `x-ga4gh-ontology`; a converter then decides by the EDAM branch (`data_…` or `format_…`) of the term.
+`FormalParameter` separates the type of data from the format, and so does the profile for files: `x-ga4gh-ontology` names the data, `ontology` of the file reference the format. Schemas written before version 0.3.0 may have an EDAM format term in `x-ga4gh-ontology`; a converter then decides by the EDAM branch (`data_…` or `format_…`) of the term.
 
 In a Workflow RO-Crate, the IO schema itself can be included as a file of the crate, next to the workflow.
 
@@ -91,7 +91,7 @@ To derive an MCP tool definition from an IO schema:
 Since [galaxyproject/galaxy#23105](https://github.com/galaxyproject/galaxy/pull/23105) (merged on 2026-07-17), Galaxy serves JSON Schemas of tool parameters through its API (e.g., `GET /api/tools/{tool_id}/parameter_request_schema`), as the Tool Shed does.
 
 - **Difference:** The schemas describe requests to Galaxy's own tool API, with Galaxy's data model (e.g., datasets and collections).
-- **Relation: map.** They are a good source for a Galaxy converter, which is not planned for version 0.3.
+- **Relation: map.** They are a good source for a Galaxy converter, which is not planned for version 0.3.0.
 
 ## bio.tools
 
@@ -106,7 +106,7 @@ Since [galaxyproject/galaxy#23105](https://github.com/galaxyproject/galaxy/pull/
 [APE](https://github.com/Workflomics/ape) synthesises candidate workflows from tool annotations in the bio.tools format and an ontology such as EDAM; [Workflomics](https://workflomics.readthedocs.io) uses it to generate and benchmark workflows.
 
 - **Overlap:** Chaining tools by the EDAM types and formats of their inputs and outputs.
-- **Relation: differ (deferred).** Chaining workflows by ontology terms is deferred in version 0.3 (see [Roadmap](roadmap.md#deferred)); it needs matching rules (e.g., for more specific terms) that the profile doesn't define. Tools like APE work on tool-level annotations and don't need the profile for that.
+- **Relation: differ (deferred).** Chaining workflows by ontology terms is deferred in version 0.3.0 (see [Roadmap](roadmap.md#deferred)); it needs matching rules (e.g., for more specific terms) that the profile doesn't define. Tools like APE work on tool-level annotations and don't need the profile for that.
 
 ## WorkflowHub
 
@@ -119,7 +119,7 @@ Since [galaxyproject/galaxy#23105](https://github.com/galaxyproject/galaxy/pull/
 [Table Schema](https://datapackage.org/standard/table-schema/) (Data Package v2) describes the columns of tabular data, with field types (e.g., `integer`, `date`, `boolean`) and constraints (e.g., `required`, `unique`, `minimum`, `pattern`, `enum`), and [Table Dialect](https://datapackage.org/standard/table-dialect/) describes delimiters, headers and quoting.
 
 - **Overlap:** The profile's `x-ga4gh-tabular-schema` describes the rows of sample sheets.
-- **Relation: adopt by reference (deferred).** Validating tabular files needs the rules that Table Schema and Table Dialect already define (how text cells become typed values, empty cells, dialects). Version 0.3 keeps `x-ga4gh-tabular-schema` as an experimental hint for forms and defers validation of tabular files (see [Roadmap](roadmap.md#deferred)); if it is added, it should reference Table Schema rather than reinvent it.
+- **Relation: adopt by reference (deferred).** Validating tabular files needs the rules that Table Schema and Table Dialect already define (how text cells become typed values, empty cells, dialects). Version 0.3.0 keeps `x-ga4gh-tabular-schema` as an experimental hint for forms and defers validation of tabular files (see [Roadmap](roadmap.md#deferred)); if it is added, it should reference Table Schema rather than reinvent it.
 
 ## Croissant
 

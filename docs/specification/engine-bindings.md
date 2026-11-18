@@ -68,7 +68,7 @@ differs between them.
    the values under them. If several file references apply to one value,
    the value MUST meet all of them (e.g., the `schemes` of each), and they
    MUST have the same `kind`; a union of a file and a directory (e.g., CWL
-   `[File, Directory]`) therefore can't be expressed in version 0.3, because
+   `[File, Directory]`) therefore can't be expressed in version 0.3.0, because
    every string is valid against both. File values are passed as their
    descriptor type requires.
    Secondary files are not sent: the execution side finds them next to the
@@ -82,7 +82,7 @@ differs between them.
 | `SMK` | The name, unqualified | The string, unchanged | Not used |
 | `WDL` | `<entry_point>.<name>` | The string, unchanged | Qualifies every key |
 | `CWL` | The name (the input id, without `#` or the process id) | `{"class": "File", "location": …}` or `{"class": "Directory", "location": …}` | Fragment of `workflow_url` |
-| `GALAXY` | Not defined in version 0.3 | | |
+| `GALAXY` | Not defined in version 0.3.0 | | |
 
 ### Nextflow (`NFL`)
 
@@ -101,7 +101,7 @@ Nextflow stages. For example:
 ```
 
 The `entry_point` of a Nextflow schema (the named workflow run with
-`-entry`) is not a parameter. WES 1.1 has no field for it, and version 0.3
+`-entry`) is not a parameter. WES 1.1 has no field for it, and version 0.3.0
 of the profile doesn't define one; a deployment that runs named workflows
 documents how it takes the entry point (e.g., in
 `workflow_engine_parameters`).
@@ -168,7 +168,7 @@ the fragment of `workflow_url` (see [Run requests](#run-requests)).
 
 ### Galaxy (`GALAXY`)
 
-Version 0.3 defines no binding for Galaxy workflows; translators MUST reject
+Version 0.3.0 defines no binding for Galaxy workflows; translators MUST reject
 schemas with the descriptor type `GALAXY`.
 
 ## Run requests

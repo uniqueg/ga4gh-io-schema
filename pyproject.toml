@@ -10,7 +10,7 @@ build-backend = "hatchling.build"
 [project]
 name = "ga4gh-io-schema"
 # No releases before the move to GA4GH (see docs/development.md).
-version = "0.3.0.dev0"
+version = "0.3.0"
 description = "GA4GH standard profile for workflow and tool inputs and outputs"
 readme = "README.md"
 license = "Apache-2.0"
@@ -29,7 +29,10 @@ classifiers = [
 dependencies = [
     # "format-nongpl" enables format checks (e.g. "uri") without GPL-licensed
     # extras; don't switch to "format", which pulls in rfc3987 (GPL-3.0).
-    "jsonschema[format-nongpl]>=4.21.1",
+    # 4.25: the floor that passes the tests (the CI job `test-lowest` checks
+    # the floors); earlier versions differ in messages and JSON Paths of
+    # errors, and before 4.24, deeply nested values panic in rpds
+    "jsonschema[format-nongpl]>=4.25",
     "referencing>=0.31.0",
     # ECMA-262 regular expressions for `pattern` of values (MIT), as
     # check-jsonschema uses

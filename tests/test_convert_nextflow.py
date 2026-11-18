@@ -434,6 +434,7 @@ def test_engine_keywords_are_dropped_with_one_note_each() -> None:
     icons = notes_with(conversion, "'fa_icon'")
     assert [note.location for note in icons] == ["$.properties.inputs.properties.a"]
     assert icons[0].message.startswith("Dropped 'fa_icon' (here and 1 more): ")
+    assert "no icon keyword since version 0.3.0:" in icons[0].message
     assert notes_with(conversion, "'meta' (here):")
     exists = notes_with(conversion, "'exists'")[0].message
     assert "skips it for object-store paths" in exists

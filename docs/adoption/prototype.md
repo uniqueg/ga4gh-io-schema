@@ -140,6 +140,19 @@ Two environment variables change the stack, without changing a file:
   stack. The host sends no credentials, so the WES must accept anonymous
   runs.
 
+Both URLs are fetched from inside the `host` container, where `127.0.0.1`
+and `localhost` are the container itself, not your machine. A TRS or WES
+that runs on your machine (e.g., a local TRS-Filer) needs an address that
+the container can reach, such as the machine's address on the network, or
+`host.docker.internal` where Docker provides it (Docker Desktop; on Linux,
+only with `extra_hosts: ["host.docker.internal:host-gateway"]` added to the
+`host` service). The service must also listen on that address: one bound
+to `127.0.0.1` only (e.g., a port published as `127.0.0.1:8080:8080`)
+can't be reached from the container; bind or publish it on the address
+that `TRS_URL` or `WES_URL` names. The stub binds port 8080 on your machine
+(`127.0.0.1:8080`), which is also the default port of TRS-Filer: run one of
+them on another port.
+
 ```bash
 TRS_URL=https://trs.example.org/ga4gh/trs/v2 \
   WES_URL=https://wes.example.org/ga4gh/wes/v1 \

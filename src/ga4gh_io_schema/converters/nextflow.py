@@ -49,7 +49,7 @@ FILE_FORMATS = {"file-path": "file", "directory-path": "directory", "path": "fil
 #: why.
 DROPPED = {
     "fa_icon": (
-        "the profile has no icon keyword since version 0.3: icons are a "
+        "the profile has no icon keyword since version 0.3.0: icons are a "
         "choice of the portal"
     ),
     "exists": (
