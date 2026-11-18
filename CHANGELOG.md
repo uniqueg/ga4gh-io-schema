@@ -24,6 +24,19 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
   instead of `https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/`,
   because the repository moves to elixir-cloud-aai. A stable identifier
   follows later (#26). To migrate, change `$schema` in your IO schemas.
+  (#77)
+- `ga4gh-io-schema validate` and `validate_schema()` always validate
+  against the profile that the package ships, and reject a schema whose
+  `$schema` is missing or names another meta-schema (e.g., plain JSON
+  Schema); before, they validated against whatever `$schema` named. With
+  `--meta-schema` (`meta_schema=`), the schema's `$schema` must name the
+  `$id` of that meta-schema, if it has one; before, `$schema` was ignored.
+  To migrate, set `$schema` to the `$id` of the profile, or pass the
+  meta-schema that your schemas name. (#109)
+- The meta-schema no longer requires `$schema` (it still checks its
+  value): clients and meta-schemas that apply only the profile's
+  meta-schema, without the Python validator, must now check that `$schema`
+  is there themselves (see "Fixed", #61). (#109)
   (#77) Schemas written for an earlier draft of 0.3, whose `$id`s started
   with `https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/v0.3.0/schemas/`
   (e.g., for the copy of the profile that TRS-Filer `dev` vendors), need the
@@ -342,6 +355,18 @@ move of the repository to GA4GH; until then, pin a commit SHA (see
 
 ### Fixed
 
+- The package needs jsonschema 4.25 or later (was 4.21.1): with earlier
+  versions, errors had other messages and JSON Paths, and before 4.24,
+  deeply nested values raised a `PanicException` of rpds instead of the
+  "too deeply nested" validation error. A new CI job, "Test (lowest
+  dependencies)", runs the tests with the lowest versions that
+  `pyproject.toml` allows, on the lowest supported Python version. (#110)
+- `trs_descriptor_url()` percent-encodes the descriptor type, as its
+  docstring says, so that it can't add path segments or a query to the
+  `workflow_url`. The form host of the prototype reads at most 16 MiB of
+  each answer of the TRS and the WES, and refuses `--trs-url` and
+  `--wes-url` with user information (e.g., a password), which its error
+  messages would show in the browser. (#108)
 - The transfer page names the `main` URL of the schemas, as the `$id`s of
   0.3 do, instead of a `v0.3.0` tag that doesn't exist; the check of
   schema URLs leaves out `$`-placeholders of rewrite rules. (#96)

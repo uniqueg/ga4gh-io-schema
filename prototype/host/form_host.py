@@ -64,6 +64,8 @@ STATIC = {
 }
 #: Largest request body that the host reads, in bytes.
 MAX_BODY = 1024 * 1024
+#: Largest answer of a TRS or WES that the host reads, in bytes.
+MAX_ANSWER = 16 * 1024 * 1024
 #: Seconds to wait for a schema from a URL.
 TIMEOUT = 30
 #: Base URI of an IO schema without an ``$id``, for its local references.
@@ -111,7 +113,7 @@ def load_schema(source: str) -> dict[str, Any]:
     if source.startswith(("http://", "https://")):
         request = urllib.request.Request(source, headers={"Accept": "application/json"})
         with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-            document = json.loads(response.read())
+            document = json.loads(_read_answer(response))
         if isinstance(document, dict) and "$schema" not in document:
             content = document.get("content")
             if not isinstance(content, str):
@@ -374,7 +376,25 @@ def _fetch_json(request: urllib.request.Request) -> Any:
     """
     request.add_header("Accept", "application/json")
     with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-        return json.loads(response.read())
+        return json.loads(_read_answer(response))
+
+
+def _read_answer(response: Any) -> bytes:
+    """Read the body of an answer, up to :data:`MAX_ANSWER` bytes.
+
+    Args:
+        response: The answer, as ``urllib.request.urlopen`` returns it.
+
+    Returns:
+        The body.
+
+    Raises:
+        ValueError: If the body is larger than :data:`MAX_ANSWER` bytes.
+    """
+    data: bytes = response.read(MAX_ANSWER + 1)
+    if len(data) > MAX_ANSWER:
+        raise ValueError(f"The answer is larger than {MAX_ANSWER} bytes.")
+    return data
 
 
 def validation_errors(schema: dict[str, Any], values: Any) -> list[dict[str, str]]:
@@ -822,9 +842,16 @@ def _http_url(value: str) -> str:
         The URL.
 
     Raises:
-        argparse.ArgumentTypeError: If it isn't an ``http(s)`` URL.
+        argparse.ArgumentTypeError: If it isn't an ``http(s)`` URL, or has
+            user information (e.g., a password), which the host's error
+            messages would show in the browser.
     """
     parts = urllib.parse.urlsplit(value)
+    if "@" in parts.netloc:
+        # Not repeated: it may hold a password
+        raise argparse.ArgumentTypeError(
+            "URLs with user information (user@ or user:password@) aren't accepted"
+        )
     if parts.scheme not in ("http", "https") or not parts.netloc:
         raise argparse.ArgumentTypeError(f"not an http(s) URL: {value}")
     return value
