@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@hyperjump/browser": "1.6.0",
-    "@hyperjump/json-schema": "1.18.0",
+    "@hyperjump/json-schema": "1.18.1",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1"
   }
