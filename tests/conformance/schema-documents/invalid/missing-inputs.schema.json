@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/missing-inputs",
+  "title": "Invalid: missing-inputs",
+  "description": "The inputs/outputs wrapper lacks the mandatory inputs.",
+  "type": "object",
+  "properties": {
+    "outputs": {
+      "type": "object"
+    }
+  }
+}

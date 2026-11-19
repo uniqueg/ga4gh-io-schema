@@ -1,0 +1,9 @@
+{
+  "sample": {
+    "id": "a",
+    "bam": "https://data.example.org/a.bam"
+  },
+  "target": "https://data.example.org/targets.bed",
+  "threshold": 5,
+  "renamed": "inputs/x.txt"
+}

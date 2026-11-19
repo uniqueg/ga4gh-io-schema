@@ -1,0 +1,7 @@
+SPDX-FileCopyrightText: 2017 Johannes Köster
+
+SPDX-License-Identifier: MIT
+
+Unchanged copy of workflow/schemas/samples.schema.yaml of
+https://github.com/snakemake-workflows/rna-seq-star-deseq2
+at commit b9617cfe8945b5747a0e93ef3b94833807c844c7.

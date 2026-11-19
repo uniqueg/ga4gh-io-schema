@@ -1,0 +1,5 @@
+{
+  "reads": "https://raw.githubusercontent.com/nf-core/test-datasets/3e548a3b34994380db1602506e0721fadbad6de1/data/genomics/sarscov2/illumina/bam/test.paired_end.bam",
+  "min_mapq": 20,
+  "read_filter": "proper_pairs"
+}

@@ -5,124 +5,131 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 # GA4GH IO Schema Profile (Incubator)
->
+
+[![CI](https://github.com/elixir-cloud-aai/ga4gh-io-schema/actions/workflows/ci.yml/badge.svg)](https://github.com/elixir-cloud-aai/ga4gh-io-schema/actions/workflows/ci.yml)
+[![Documentation](https://readthedocs.org/projects/ga4gh-io-schema/badge/?version=latest)](https://ga4gh-io-schema.readthedocs.io/en/latest/)
+
+<!-- --8<-- [start:synopsis] -->
 > Incubating a proposed GA4GH JSON Schema Profile to standardize workflow and modular component I/O across WES and Registries, featuring a Python validation package.
 
----
+The GA4GH APIs for federated analysis (TRS, WES, DRS) let clients find and run workflows, but they have no engine-neutral, machine-readable contract for the inputs and outputs of workflows and workflow components.
 
-## Table of Contents
+This repository incubates a proposed **GA4GH JSON Schema Profile** (and accompanying meta-schema). By establishing an I/O contract that sits above workflow languages (e.g., CWL, WDL, Nextflow), this profile lets WES clients render input forms (through an adapter for the `x-ga4gh-*` keywords), check input values before they submit a run, and derive tool definitions for AI agents that build run requests.
+<!-- --8<-- [end:synopsis] -->
 
-- [Overview](#overview)
-- [Getting Started](#getting-started)
-- [Usage](#usage)
-- [Development & Testing](#development--testing)
-- [Deployment](#deployment)
-- [Contribute](#contribute)
-- [License](#license)
-- [Contacts](#contacts)
+## Status
 
----
+This is version **0.3.0** of a proposal, not a GA4GH standard. It has no
+releases (no tags, nothing on PyPI) and waits for review by the GA4GH
+Federated Analysis Work Stream as a product candidate (see the
+[Roadmap](https://ga4gh-io-schema.readthedocs.io/en/latest/roadmap/#next-steps)).
 
-## Overview
-
-Currently, the GA4GH Federated Analysis API ecosystem (TRS, WES, DRS) provides a robust infrastructure for executing workloads, but lacks a standardized, machine-readable contract for describing workflow and modular component parameters.
-
-This repository incubates a proposed **GA4GH JSON Schema Profile** (and accompanying meta-schema). By establishing a strict I/O contract that sits above underlying workflow languages (e.g., CWL, WDL, Nextflow), this profile enables generic WES clients to automatically generate UI forms, validate complex inputs (like sample tables) client-side, and allows AI agents to deterministically construct valid execution payloads.
-
-Please see the [Formal Proposal Document](docs/proposal_ga4gh_io_schema.md) for full context, ecosystem survey, and design decisions.
-
----
-
-## Getting Started
-
-### Installation
-
-To install the validator tool and all development dependencies for local testing, clone the repository and install it in editable mode:
+Try it: the [live demo](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/)
+runs on a laptop, from workflows in a TRS stub (WDL, CWL, Nextflow and
+Snakemake) to generated forms and WES run requests, with one command in a
+clone of this repository (Docker with Compose v2 needed, no accounts or
+tokens):
 
 ```bash
-git clone https://github.com/uniqueg/ga4gh-io-schema.git
-cd ga4gh-io-schema
-pip install -e ".[dev]"
+make demo
 ```
+
+Then open <http://127.0.0.1:8000/>, edit a schema in `examples/workflows/`
+and reload the page to see the form change (see [Play
+around](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/#play-around));
+`make demo-down` stops it, and `make demo-start` starts it again
+without a network. The
+[testbed](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/)
+page describes the demo, the
+[runsheet](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/runsheet/)
+is the script for presenting it, and the
+[evaluation](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/prototype-evaluation/)
+what it showed about the profile.
+
+## Documentation
+
+The documentation is on [Read the Docs](https://ga4gh-io-schema.readthedocs.io/):
+
+- [Motivation](https://ga4gh-io-schema.readthedocs.io/en/latest/motivation/): the usability gap, goals and non-goals
+- [Specification](https://ga4gh-io-schema.readthedocs.io/en/latest/specification/): keywords, outputs model, meta-schema, conformance and examples
+- [Rationale](https://ga4gh-io-schema.readthedocs.io/en/latest/rationale/): ecosystem survey and design decisions
+- [Related work](https://ga4gh-io-schema.readthedocs.io/en/latest/related-work/): overlapping standards and tools, and how the profile relates to them
+- [Security considerations](https://ga4gh-io-schema.readthedocs.io/en/latest/security/)
+- [Tools](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/): the validator (CLI and Python API) and converters
+- [Adoption](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/): TRS, WES, portals and clients
+- [Testbed](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/testbed/): the live demo, runnable on a laptop: how to run it and play around with it, its parts, what is real and what is mocked, and its limits
+- [Runsheet](https://ga4gh-io-schema.readthedocs.io/en/latest/adoption/runsheet/): presenting the live demo in about ten minutes
+- [Roadmap](https://ga4gh-io-schema.readthedocs.io/en/latest/roadmap/)
+- [Development](https://ga4gh-io-schema.readthedocs.io/en/latest/development/): tests and checks
+
+The sources of the documentation are in [`docs/`](docs/).
 
 ---
 
 ## Usage
 
-Once installed, the package exposes a command-line interface to validate your drafted tool or workflow IO schemas against the GA4GH meta-schema.
+Install the package from a clone of the repository (Python 3.11 or later)
+and validate an IO schema against the profile:
 
 ```bash
-ga4gh-io-schema-validator --schema path/to/your-schema.json --meta-schema schemas/ga4gh-io-profile.schema.json
+pip install .
+ga4gh-io-schema validate path/to/your-schema.json
 ```
 
-Inside your own drafted schemas, you can reference the meta-schema directly to enable IDE autocompletion and validation:
+There are no releases yet: no tags, and the package isn't published on
+PyPI. Releases come with the move of the repository to GA4GH. Until then,
+pin a commit SHA: install the package from it
+(`pip install "git+https://github.com/<owner>/ga4gh-io-schema@<sha>"`), or
+download all schemas from
+`https://raw.githubusercontent.com/<owner>/ga4gh-io-schema/<sha>/schemas/...`
+and register each under its `$id`, without fetching remote references (see [Schema identifiers](https://ga4gh-io-schema.readthedocs.io/en/latest/development/#schema-identifiers)).
 
-```json
-{
-  "$schema": "https://raw.githubusercontent.com/uniqueg/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
-  "$id": "https://your-domain.org/my-tool-schema.json"
-}
-```
+Convert the input descriptions of CWL, Nextflow (nf-schema), Snakemake and WDL
+workflows into IO schemas with `ga4gh-io-schema convert cwl|nextflow|snakemake|wdl`;
+the CWL, Snakemake and WDL converters need the extras `cwl`, `snakemake` and
+`wdl` (e.g., `pip install ".[cwl]"`). See
+[Converters](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/converters/).
 
----
-
-## Development & Testing
-
-This project enforces a strict "full defense" CI/CD pipeline. All code must pass comprehensive unit tests, static analysis, and licensing checks before being merged.
-
-### 1. Unit Tests (pytest)
-
-Validate the core logic of the Python executable using `pytest`. The test suite uses mock schemas located in `tests/data/`.
+Turn input values into the `workflow_params` of a WES run request (see
+[WES parameters](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/wes-params/)):
 
 ```bash
-pytest
+ga4gh-io-schema wes-params --schema path/to/your-schema.json --values values.json
 ```
 
-### 2. Code Quality (Ruff)
-
-The codebase uses `Ruff` to enforce strict formatting, linting, and Google-style docstrings.
+WES servers translate the `workflow_params` of a request back into input
+values and validate them (see
+[WES request validation](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/wes-validate/)):
 
 ```bash
-ruff format .
-ruff check .
+ga4gh-io-schema wes-validate --schema path/to/your-schema.json --params workflow_params.json
 ```
 
-### 3. Meta-Schema Validation
-
-The GA4GH meta-schemas themselves must strictly conform to the JSON Schema Draft 2020-12 specification. We validate this using `check-jsonschema`.
+Clients and publishers check that the workflow block of a schema matches
+the workflow version and the checksum of its primary descriptor (see
+[Workflow block check](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/verify/)):
 
 ```bash
-check-jsonschema --check-metaschema schemas/ga4gh-io-profile.schema.json
-check-jsonschema --check-metaschema schemas/vocabularies/ui-widgets.schema.json
+ga4gh-io-schema verify --schema path/to/your-schema.json --descriptor main.wdl
 ```
 
-### 4. License Compliance (REUSE)
-
-All files must have clear copyright and licensing information compliant with the [REUSE specification](https://reuse.software/). The primary codebase is Apache-2.0, while documentation is CC-BY-4.0.
-
-```bash
-reuse lint
-```
-
-### 5. Documentation Linting
-
-Markdown files are linted to ensure consistent structure and catch broken links.
-
-```bash
-npx markdownlint-cli "**/*.md" --ignore "node_modules"
-```
-
----
-
-## Deployment
-
-As a schema standard, there is no active deployment of a service. The schemas and vocabularies are served statically via raw GitHub URLs. In the future, the goal is to integrate this schema format natively into **TRS (Tool Registry Service)** implementations as a new `IO_SCHEMA` file type.
-
----
+`ga4gh-io-schema --help` lists the subcommands; see the
+[command-line interface](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/cli/)
+for input from standard input, `--output`, `--json` and the exit codes.
+`ga4gh-io-schema outputs` normalises the outputs of a WES run (see
+[Outputs](https://ga4gh-io-schema.readthedocs.io/en/latest/tools/outputs/)).
 
 ## Contribute
 
-Contributions, issues, and feature requests are welcome! If you have suggestions for new UI widgets, ontology mappings, or tabular data validation strategies, please open an issue or submit a pull request.
+Contributions, issues, and feature requests are welcome! If you have suggestions for new UI widgets, ontology mappings, or tabular data validation strategies, please open an issue or submit a pull request. See [Development](https://ga4gh-io-schema.readthedocs.io/en/latest/development/) for the checks that changes must pass.
+
+---
+
+## Citation
+
+If you use the profile or the package, please cite it as described in
+[`CITATION.cff`](CITATION.cff) (GitHub shows it as "Cite this repository"),
+and give the commit that you used.
 
 ---
 
@@ -130,14 +137,14 @@ Contributions, issues, and feature requests are welcome! If you have suggestions
 
 This repository is multi-licensed in compliance with the [REUSE specification](https://reuse.software/):
 
-- **Original Code & Schemas (`/src`, `/schemas`):** Licensed under **Apache-2.0**.
-- **Documentation (`/docs`, `README.md`):** Licensed under **CC-BY-4.0**.
+- **Code, schemas, tests and this README (`/src`, `/schemas`, `/tests`, `README.md`):** Licensed under **Apache-2.0**.
+- **Documentation (`/docs`):** Licensed under **CC-BY-4.0**.
 
-Please see the [`LICENSE`](LICENSE) file and `REUSE.toml` for complete details and mapping. Full license texts are located in the `/LICENSES` directory.
+Each file's SPDX header, or its entry in `REUSE.toml`, is authoritative; `reuse lint` checks them in CI. Please see the [`LICENSE`](LICENSE) file and `REUSE.toml` for complete details and mapping. Full license texts are located in the `/LICENSES` directory. [Licences](https://ga4gh-io-schema.readthedocs.io/en/latest/governance/#licences) in the documentation says why these licences are kept.
 
 ---
 
 ## Contacts
 
-- **Maintainer:** ELIXIR On-Cloud / GA4GH Contributors
-- **Repository:** [https://github.com/uniqueg/ga4gh-io-schema](https://github.com/uniqueg/ga4gh-io-schema)
+- **Maintainer:** ELIXIR On-Cloud
+- **Repository:** [https://github.com/elixir-cloud-aai/ga4gh-io-schema](https://github.com/elixir-cloud-aai/ga4gh-io-schema)

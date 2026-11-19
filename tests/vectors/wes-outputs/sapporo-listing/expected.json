@@ -1,0 +1,15 @@
+{
+  "description": "Sapporo (2.x): RunLog.outputs is a list of files, each with file_name (relative to the output directory of the run) and file_url. Outputs are found by glob; secondary files are not values of their own; files that no output finds are reported.",
+  "conformance": "conformant",
+  "outputs": {
+    "qc_report": "https://wes.example.org/runs/run-5/outputs/multiqc/multiqc_report.html",
+    "alignments": [
+      "https://wes.example.org/runs/run-5/outputs/alignments/s1.bam",
+      "https://wes.example.org/runs/run-5/outputs/alignments/s2.bam"
+    ]
+  },
+  "unmatchedFiles": [
+    "https://wes.example.org/runs/run-5/outputs/counts/s1.tsv",
+    "https://wes.example.org/runs/run-5/outputs/pipeline_info/report%20%231.html"
+  ]
+}

@@ -1,0 +1,7 @@
+SPDX-FileCopyrightText: Common Workflow Language project contributors
+
+SPDX-License-Identifier: Apache-2.0
+
+Unchanged copy of testdata/formattest2_v1_0.cwl of cwl-utils 0.47
+(https://github.com/common-workflow-language/cwl-utils), which takes it from
+the conformance tests of CWL.

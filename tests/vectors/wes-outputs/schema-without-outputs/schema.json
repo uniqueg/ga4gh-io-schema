@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/no-outputs/cwl/1.0.0",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {}
+    }
+  }
+}

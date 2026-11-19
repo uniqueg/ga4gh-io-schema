@@ -1,0 +1,27 @@
+# Tools
+
+- [Command-line interface](cli.md): the `ga4gh-io-schema` command, with
+  one subcommand per tool.
+- [Validator](validator.md): checks IO schemas against the
+  [meta-schema](../specification/meta-schema.md), as a command-line tool and a
+  Python API.
+- [JavaScript validators](javascript.md): how to check IO schemas against
+  the meta-schema with Ajv or @hyperjump/json-schema, and the results of the
+  conformance suite with each.
+- [Converters](converters.md): translate the parameter descriptions of
+  workflow languages (Nextflow, Snakemake, CWL, WDL) into IO schemas.
+- [WES parameters](wes-params.md): validate input values against an IO
+  schema and translate them into the `workflow_params` of a WES run request,
+  or a full `RunRequest`, as a command-line tool and a Python API.
+- [WES request validation](wes-validate.md): translate the
+  `workflow_params` of a WES run request back into input values and validate
+  them, as a WES server does, as a command-line tool and a Python API.
+- [Workflow block check](verify.md): compares the workflow block
+  of an IO schema with the TRS tool version and the checksum of the primary
+  descriptor (step 2 of the guide for portals), as a command-line tool and
+  a Python API.
+- [Output normaliser](outputs.md): builds the normalised outputs object of
+  a WES run from what the server reports, as a command-line tool and a
+  Python API.
+- [TRS discovery](trs.md): finds the IO schema among the files of a TRS
+  tool version, as a Python API.

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/description-format-unknown",
+  "title": "Invalid: description-format-unknown",
+  "description": "x-ga4gh-description-format isn't one of the allowed formats.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string",
+          "x-ga4gh-description-format": "html"
+        }
+      }
+    }
+  }
+}

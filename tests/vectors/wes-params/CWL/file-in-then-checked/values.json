@@ -1,0 +1,4 @@
+{
+  "mode": "a",
+  "reads": "file:///etc/passwd"
+}

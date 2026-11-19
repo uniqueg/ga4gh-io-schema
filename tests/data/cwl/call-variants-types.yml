@@ -1,0 +1,20 @@
+# Types of call-variants.cwl, imported with $import.
+- name: Sample
+  type: record
+  label: Sample
+  doc: Sequencing reads of one sample.
+  fields:
+    - name: id
+      type: string
+      label: Sample ID
+    - name: reads
+      type: File[]
+      format: http://edamontology.org/format_1930
+    - name: alignment
+      type: File?
+      secondaryFiles: [^.bai]
+    - name: sex
+      type:
+        - "null"
+        - type: enum
+          symbols: [female, male, unknown]

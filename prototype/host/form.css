@@ -1,0 +1,54 @@
+/*
+SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+SPDX-License-Identifier: Apache-2.0
+*/
+
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0 auto;
+  max-width: 40rem;
+  padding: 1rem;
+}
+
+.poc {
+  border-left: 4px solid #b26a00;
+  padding-left: 0.5rem;
+}
+
+.field {
+  margin: 0 0 1rem;
+}
+
+.field > label,
+legend {
+  display: block;
+  font-weight: 600;
+}
+
+.description {
+  color: #555;
+  font-size: 0.9rem;
+  margin: 0.25rem 0;
+}
+
+.error,
+.form-error {
+  color: #b00020;
+  white-space: pre-line;
+}
+
+input[type="text"],
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+pre {
+  background: #f4f4f4;
+  overflow-x: auto;
+  padding: 0.5rem;
+}
+
+.run {
+  white-space: pre-line;
+}

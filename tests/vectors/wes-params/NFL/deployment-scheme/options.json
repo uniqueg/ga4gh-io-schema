@@ -1,0 +1,7 @@
+{
+  "allowedSchemes": [
+    "drs",
+    "https",
+    "s3"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "reads": {
+    "class": "File",
+    "location": "https://data.example.org/sample.bam"
+  },
+  "cwltool:overrides": {
+    "#main": {
+      "requirements": {
+        "DockerRequirement": {
+          "dockerPull": "example.org/other"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "run_id": "run-5",
+  "state": "COMPLETE",
+  "outputs": [
+    {
+      "file_name": "alignments/s1.bam",
+      "file_url": "https://wes.example.org/runs/run-5/outputs/alignments/s1.bam"
+    },
+    {
+      "file_name": "alignments/s1.bam.bai",
+      "file_url": "https://wes.example.org/runs/run-5/outputs/alignments/s1.bam.bai"
+    },
+    {
+      "file_name": "alignments/s2.bam",
+      "file_url": "https://wes.example.org/runs/run-5/outputs/alignments/s2.bam"
+    },
+    {
+      "file_name": "alignments/s2.bam.bai",
+      "file_url": "https://wes.example.org/runs/run-5/outputs/alignments/s2.bam.bai"
+    },
+    {
+      "file_name": "counts/s1.tsv",
+      "file_url": "https://wes.example.org/runs/run-5/outputs/counts/s1.tsv"
+    },
+    {
+      "file_name": "multiqc/multiqc_report.html",
+      "file_url": "https://wes.example.org/runs/run-5/outputs/multiqc/multiqc_report.html"
+    },
+    {
+      "file_name": "pipeline_info/report #1.html",
+      "file_url": "https://wes.example.org/runs/run-5/outputs/pipeline_info/report%20%231.html"
+    }
+  ]
+}

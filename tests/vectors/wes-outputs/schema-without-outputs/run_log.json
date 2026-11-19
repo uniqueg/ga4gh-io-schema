@@ -1,0 +1,7 @@
+{
+  "run_id": "run-13",
+  "state": "COMPLETE",
+  "outputs": {
+    "report": "s3://example-bucket/r.html"
+  }
+}

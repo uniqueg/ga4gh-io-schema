@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/invalid/hidden-not-boolean",
+  "title": "Invalid: hidden-not-boolean",
+  "description": "x-ga4gh-hidden is a string, not a boolean.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string",
+          "x-ga4gh-hidden": "true"
+        }
+      }
+    }
+  }
+}

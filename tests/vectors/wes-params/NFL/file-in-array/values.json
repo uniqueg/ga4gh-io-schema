@@ -1,0 +1,6 @@
+{
+  "fastqs": [
+    "https://data.example.org/r1.fq.gz",
+    "ftp://data.example.org/r2.fq.gz"
+  ]
+}

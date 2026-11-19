@@ -1,0 +1,7 @@
+SPDX-FileCopyrightText: 2017 Leiden University Medical Center
+
+SPDX-License-Identifier: MIT
+
+Unchanged copy of fastqc.wdl of https://github.com/biowdl/tasks at commit
+31d6845927dc0b8a783e86801cc4b9332fe53ba1, which is released under the MIT
+licence.

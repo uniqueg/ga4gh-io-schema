@@ -1,0 +1,12 @@
+{
+  "description": "An output reported by name is taken from the name, also if the value is null (it is then absent), and its glob is ignored: the listed file that the glob would match is reported as unmatched.",
+  "conformance": "partial",
+  "outputs": {
+    "alignments": [
+      "s3://example-bucket/runs/run-12/alignments/s1.bam"
+    ]
+  },
+  "unmatchedFiles": [
+    "s3://example-bucket/runs/run-12/multiqc/multiqc_report.html"
+  ]
+}

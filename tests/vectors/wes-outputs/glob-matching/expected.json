@@ -1,0 +1,49 @@
+{
+  "description": "Glob syntax and results: '*' and '?' within a segment (also matching a leading dot), '**' for any number of segments, case-sensitive; caret patterns of secondary files; directories that contain listed files; an ambiguous one-file output (several matches) is absent and reported, so the required output is missing.",
+  "conformance": "non-conformant",
+  "outputs": {
+    "bams": [
+      "s3://example-bucket/runs/run-9/s1.bam"
+    ],
+    "crams": [
+      "s3://example-bucket/runs/run-9/crams/s1.cram"
+    ],
+    "vcfs": [
+      "s3://example-bucket/runs/run-9/a.vcf.gz",
+      "s3://example-bucket/runs/run-9/x/y/b.vcf.gz"
+    ],
+    "single_char": [
+      "s3://example-bucket/runs/run-9/a.txt"
+    ],
+    "configs": [
+      "s3://example-bucket/runs/run-9/.hidden.cfg",
+      "s3://example-bucket/runs/run-9/run.cfg"
+    ],
+    "indexes": [
+      "s3://example-bucket/runs/run-9/index/salmon",
+      "s3://example-bucket/runs/run-9/index/star"
+    ],
+    "multiqc_data": "s3://example-bucket/runs/run-9/multiqc/multiqc_data"
+  },
+  "ambiguous": {
+    "report": [
+      "s3://example-bucket/runs/run-9/reports/a.html",
+      "s3://example-bucket/runs/run-9/reports/b.html"
+    ],
+    "everything_dir": [
+      "s3://example-bucket/runs/run-9/crams",
+      "s3://example-bucket/runs/run-9/index",
+      "s3://example-bucket/runs/run-9/index/salmon",
+      "s3://example-bucket/runs/run-9/index/star",
+      "s3://example-bucket/runs/run-9/multiqc",
+      "s3://example-bucket/runs/run-9/multiqc/multiqc_data",
+      "s3://example-bucket/runs/run-9/reports",
+      "s3://example-bucket/runs/run-9/x",
+      "s3://example-bucket/runs/run-9/x/y"
+    ]
+  },
+  "unmatchedFiles": [
+    "s3://example-bucket/runs/run-9/A.TXT",
+    "s3://example-bucket/runs/run-9/ab.txt"
+  ]
+}

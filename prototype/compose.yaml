@@ -1,0 +1,85 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# The prototype on a single laptop (a proof of concept, not a product): the
+# TRS stub serves the demo workflow and the seeded workflows with their IO
+# schemas, and the host lets users pick a workflow in the stub, fill in its
+# form and see the WES run request. See docs/adoption/testbed.md.
+#
+#   make demo    # or: docker compose -f prototype/compose.yaml up --build
+#
+# Then open http://127.0.0.1:8000/. The stub reads examples/ of the checkout
+# (mounted read-only) on every request: edits of a schema show when the page
+# is reloaded. Optional settings, from the environment:
+#
+# - DEMO_PORT, DEMO_TRS_PORT: ports of the host and the stub on 127.0.0.1
+#   (default: 8000 and 8080).
+# - WES_URL: base URL of a WES API to send run requests to (e.g.,
+#   https://wes.example.org/ga4gh/wes/v1); without it, nothing is sent.
+# - TRS_URL: base URL of another TRS API to pick workflows from (default:
+#   the stub). A WES must be able to fetch workflows from it: the stub is
+#   reachable only from the host.
+
+name: io-schema-prototype
+
+x-image: &image
+  build:
+    context: ..
+    dockerfile: prototype/Dockerfile
+  image: io-schema-prototype:local
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+services:
+  trs-stub:
+    <<: *image
+    command:
+      - python
+      - prototype/trs-stub/trs_stub.py
+      - --host
+      - 0.0.0.0
+      - --workflow
+      - examples/demo
+      - --workflows-dir
+      - examples/workflows
+      - --reload
+    # The workflows of the checkout, so that edits show without a rebuild
+    volumes:
+      - type: bind
+        source: ../examples
+        target: /app/examples
+        read_only: true
+    ports:
+      - "127.0.0.1:${DEMO_TRS_PORT:-8080}:8080"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/ga4gh/trs/v2/tools')"
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  host:
+    <<: *image
+    command: >-
+      python prototype/host/form_host.py --host 0.0.0.0
+      --trs-url ${TRS_URL:-http://trs-stub:8080/ga4gh/trs/v2}
+      --wes-url=${WES_URL:-}
+    ports:
+      - "127.0.0.1:${DEMO_PORT:-8000}:8000"
+    depends_on:
+      trs-stub:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/')"
+      interval: 2s
+      timeout: 5s
+      retries: 15

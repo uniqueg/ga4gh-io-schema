@@ -1,0 +1,24 @@
+{
+  "outputDir": "s3://example-bucket/runs/run-9",
+  "files": [
+    "reports/a.html",
+    "reports/b.html",
+    "s1.bam",
+    "s1.bai",
+    "crams/s1.cram",
+    "crams/s1.cram.crai",
+    "a.vcf.gz",
+    "a.vcf.gz.tbi",
+    "a.idx",
+    "x/y/b.vcf.gz",
+    "a.txt",
+    "ab.txt",
+    "A.TXT",
+    ".hidden.cfg",
+    "run.cfg",
+    "index/star/SA",
+    "index/star/Genome",
+    "index/salmon/info.json",
+    "multiqc/multiqc_data/multiqc.log"
+  ]
+}

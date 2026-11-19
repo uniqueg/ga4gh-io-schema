@@ -1,0 +1,13 @@
+{
+  "reference": {
+    "fasta": "https://data.example.org/ref.fa",
+    "name": "GRCh38"
+  },
+  "samples": [
+    {
+      "id": "a",
+      "bam": "drs://drs.example.org/a"
+    }
+  ],
+  "threads": 8
+}

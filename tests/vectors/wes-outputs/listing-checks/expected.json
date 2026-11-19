@@ -1,0 +1,30 @@
+{
+  "description": "Checks of a listing given with the files option, as paths and as URIs: entries that are absolute, have empty, '.' or '..' segments (also percent-encoded), backslashes, control characters, a colon in the first segment, a query or fragment, an encoded '/', invalid percent-encoding, or lie outside the output directory are skipped and reported; the queries and fragments of skipped URIs are removed from the report.",
+  "conformance": "conformant",
+  "outputs": {
+    "qc_report": "https://storage.example.org/runs/run-8/outputs/multiqc/multiqc_report.html",
+    "alignments": [
+      "https://storage.example.org/runs/run-8/outputs/alignments/s%201.bam"
+    ]
+  },
+  "skippedFiles": [
+    "/etc/passwd",
+    "alignments/../s0.bam",
+    "alignments/./s0.bam",
+    "alignments//s0.bam",
+    "alignments/",
+    "alignments\\s0.bam",
+    "alignments/s0\u0007.bam",
+    "c:/alignments/s0.bam",
+    "https://storage.example.org/runs/run-8/outputs/alignments/%2E%2E/%2E%2E/run-9/outputs/alignments/s9.bam",
+    "https://storage.example.org/runs/run-8/outputs/alignments/s0.bam",
+    "https://storage.example.org/runs/run-8/outputs/alignments/s0.bam",
+    "https://storage.example.org/runs/run-8/outputs/alignments/sub%2Fs0.bam",
+    "https://storage.example.org/runs/run-8/outputs/x%2F..%2F..%2Frun-9",
+    "https://storage.example.org/runs/run-8/outputs/alignments/s0%zz.bam",
+    "https://storage.example.org/runs/run-8/outputs/alignments/s0%FF.bam",
+    "https://storage.example.org/runs/run-8/outputs-other/alignments/s0.bam",
+    "https://other.example.org/alignments/s0.bam",
+    42
+  ]
+}

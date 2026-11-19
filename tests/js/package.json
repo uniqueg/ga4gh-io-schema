@@ -1,0 +1,20 @@
+{
+  "name": "ga4gh-io-schema-js-conformance",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Runs the conformance suite and the examples through JavaScript validators (Ajv, @hyperjump/json-schema), offline.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@hyperjump/browser": "1.6.0",
+    "@hyperjump/json-schema": "1.18.0",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1"
+  }
+}

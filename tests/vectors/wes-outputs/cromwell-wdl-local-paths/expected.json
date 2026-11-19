@@ -1,0 +1,18 @@
+{
+  "description": "Cromwell (92) WES API, local backend: WDL outputs keyed by names qualified with the workflow name, files as absolute local paths under the root of the run, turned into URIs of the output directory; null for an optional output that wasn't produced, Map[String, File] as files keyed by name, and an output that the schema doesn't declare. Captured from a real run; paths and run ID anonymised.",
+  "conformance": "conformant",
+  "outputs": {
+    "qc_report": "https://wes.example.org/cromwell/runs/run-18/call-qc/execution/multiqc_report.html",
+    "alignments": [
+      "https://wes.example.org/cromwell/runs/run-18/call-align/shard-0/execution/s1.bam",
+      "https://wes.example.org/cromwell/runs/run-18/call-align/shard-1/execution/s2.bam"
+    ],
+    "gene_counts": {
+      "s1": "https://wes.example.org/cromwell/runs/run-18/call-qc/execution/s1.tsv"
+    },
+    "samples_passed_qc": 2
+  },
+  "undeclared": [
+    "rnaseq.debug_log"
+  ]
+}

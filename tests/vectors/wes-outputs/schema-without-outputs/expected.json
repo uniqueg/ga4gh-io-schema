@@ -1,0 +1,8 @@
+{
+  "description": "A schema without outputs: the normalised outputs object is empty, and everything that the engine reports is undeclared.",
+  "conformance": "conformant",
+  "outputs": {},
+  "undeclared": [
+    "report"
+  ]
+}

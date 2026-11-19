@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 ELIXIR On-Cloud <cloud-service@elixir-europe.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# No `version` and `date-released`: there are no releases before the move
+# of the repository to GA4GH (see "Releases" in `docs/governance.md`); a
+# release sets them, and a DOI follows with the first archived release
+cff-version: 1.2.0
+message: >-
+  If you use this software or the profile, please cite it using the metadata
+  from this file. Until there are releases, also give the commit that you
+  used.
+title: GA4GH IO Schema Profile
+abstract: >-
+  A proposed GA4GH JSON Schema profile, with a meta-schema and a Python
+  package, for the inputs and outputs of workflows and workflow components:
+  an engine-neutral contract above workflow languages (e.g., CWL, WDL,
+  Nextflow, Snakemake) that lets WES clients render input forms, check input
+  values before they submit a run, and normalise the outputs of runs.
+type: software
+authors:
+  - given-names: Alexander
+    family-names: Kanitz
+    orcid: "https://orcid.org/0000-0002-3468-0652"
+    affiliation: >-
+      Biozentrum, University of Basel, Basel, Switzerland; SIB Swiss Institute
+      of Bioinformatics, Lausanne, Switzerland
+repository-code: "https://github.com/elixir-cloud-aai/ga4gh-io-schema"
+url: "https://ga4gh-io-schema.readthedocs.io/"
+keywords:
+  - GA4GH
+  - JSON Schema
+  - workflows
+  - WES
+  - TRS
+  - CWL
+  - WDL
+  - Nextflow
+  - Snakemake
+license: Apache-2.0

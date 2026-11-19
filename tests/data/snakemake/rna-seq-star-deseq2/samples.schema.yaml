@@ -1,0 +1,10 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+
+description: an entry in the sample sheet
+properties:
+  sample_name:
+    type: string
+    description: sample name/identifier
+
+required:
+  - sample_name

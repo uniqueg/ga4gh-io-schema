@@ -1,0 +1,10 @@
+{
+  "variant_calling.interval": {
+    "left": 1,
+    "right": "chr1"
+  },
+  "variant_calling.references": {
+    "GRCh38": "drs://drs.example.org/grch38"
+  },
+  "variant_calling.label": null
+}

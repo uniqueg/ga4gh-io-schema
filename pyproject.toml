@@ -3,37 +3,186 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [build-system]
-requires = ["hatchling"]
+# 1.27: license expressions and license files (PEP 639)
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
 name = "ga4gh-io-schema"
-version = "0.1.0"
+# No releases before the move to GA4GH (see docs/development.md).
+version = "0.3.0"
 description = "GA4GH standard profile for workflow and tool inputs and outputs"
 readme = "README.md"
-requires-python = ">=3.9"
+license = "Apache-2.0"
+# Only the Apache-2.0 text: `LICENSE` describes the whole repository (also
+# its CC-BY-4.0 docs), which the distributions don't contain
+license-files = ["LICENSES/Apache-2.0.txt"]
+# Keep in sync with the CI test matrix, ruff's target-version and mypy's
+# python_version.
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
 dependencies = [
-    "jsonschema>=4.21.1",
+    # "format-nongpl" enables format checks (e.g. "uri") without GPL-licensed
+    # extras; don't switch to "format", which pulls in rfc3987 (GPL-3.0).
+    # 4.25: the floor that passes the tests (the CI job `test-lowest` checks
+    # the floors); earlier versions differ in messages and JSON Paths of
+    # errors, and before 4.24, deeply nested values panic in rpds
+    "jsonschema[format-nongpl]>=4.25",
+    "referencing>=0.31.0",
+    # ECMA-262 regular expressions for `pattern` of values (MIT), as
+    # check-jsonschema uses
+    "regress>=2024.11.1",
 ]
 
 [project.scripts]
-ga4gh-io-schema-validator = "ga4gh_io_schema.cli:main"
+ga4gh-io-schema = "ga4gh_io_schema.cli:main"
 
 [project.optional-dependencies]
+# The CWL converter (`ga4gh-io-schema convert cwl`)
+cwl = ["cwl-utils>=0.47"]
+# The WDL converter (`ga4gh-io-schema convert wdl`) parses WDL with miniwdl
+wdl = ["miniwdl>=1.16,<2"]
 dev = [
+    "ga4gh-io-schema[wdl]",
+    "build>=1.2.1",
+    # The tests of `convert cwl` need the `cwl` extra.
+    "ga4gh-io-schema[cwl]",
     "pytest>=8.1.1",
+    "pytest-cov>=5.0.0",
     "check-jsonschema>=0.28.1",
+    # The Draft 2020-12 meta-schemas, for tests/test_meta_schema.py (also a
+    # dependency of jsonschema)
+    "jsonschema-specifications>=2023.3.6",
+    # Type checking (`[tool.mypy]`), with the stubs of the dependencies that
+    # ship no type information; bounded, as new releases add checks (and
+    # src/ga4gh_io_schema/patterns.py uses a class of the jsonschema stubs)
+    "mypy>=2.4,<3",
+    "types-jsonschema>=4.26.0.20261006,<4.27",
+    "types-PyYAML>=6.0.12",
+    # The tests of `convert snakemake` need the `snakemake` extra.
+    "ga4gh-io-schema[snakemake]",
     "reuse>=3.0.2",
-    "ruff>=0.4.0",
+    # Keep at least the version of the Ruff hook of `.pre-commit-config.yaml`
+    "ruff>=0.17.4",
+    # The local hooks of `.pre-commit-config.yaml` (ast-grep) and the hooks
+    # themselves
+    "ast-grep-cli>=0.51",
+    "pre-commit>=4.6",
+    # Locks the dependencies (`uv lock`, checked in CI); also the version of
+    # uv that CI installs (`astral-sh/setup-uv`)
+    "uv>=0.13",
 ]
+# The end-to-end tests of the prototype (tests/test_prototype_e2e.py); the
+# browser test also needs Chromium (`playwright install chromium`).
+e2e = [
+    "pytest>=8.1.1",
+    "pytest-cov>=5.0.0",
+    "playwright>=1.40",
+]
+# `ga4gh-io-schema convert snakemake` reads YAML schemas with PyYAML, as
+# Snakemake does; JSON schemas need no extra.
+snakemake = [
+    "pyyaml>=6.0.1",
+]
+# The documentation (`mkdocs.yml`), built by Read the Docs
+# (`.readthedocs.yaml`) and CI's `docs` job; the plugins of MkDocs are
+# listed too, to bound their major versions (new warnings of minor releases
+# still fail the strict build)
+docs = [
+    "griffelib>=2.4,<3",
+    "mkdocs>=1.6.1,<2",
+    "mkdocs-autorefs>=1.4.4,<2",
+    "mkdocs-material>=9.7.7,<10",
+    "mkdocstrings>=1.0.8,<2",
+    "mkdocstrings-python>=2.0.10,<3",
+    "pymdown-extensions>=12.3,<13",
+]
+
+# Only what builds the wheel (and `pyproject.toml`, `README.md`,
+# `.gitignore` and the licence text, which hatchling adds): all Apache-2.0,
+# the licence that `license` declares for both distributions. The docs
+# (CC-BY-4.0), the tests and their third-party data (e.g., MIT) stay in the
+# repository; the `Build` job of CI and `tests/test_wheel.py` check the
+# contents.
+[tool.hatch.build.targets.sdist]
+only-include = ["src/ga4gh_io_schema", "schemas"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ga4gh_io_schema"]
+
+# Ship the schemas as package data; the repository keeps them in schemas/.
+[tool.hatch.build.targets.wheel.force-include]
+"schemas" = "ga4gh_io_schema/schemas"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v"
+# The demo scripts import each other as top-level modules; the tests import
+# them, the host of the form (prototype/host/) and the TRS stub of the
+# prototype (prototype/trs-stub/), by module name.
+pythonpath = ["examples/demo", "prototype/host", "prototype/trs-stub"]
+addopts = "-v --cov --cov-report=term-missing"
+markers = [
+    "wheel: builds and installs the wheel (needs network access)",
+    "e2e: tests the running prototype (needs PROTOTYPE_URL; see tests/test_prototype_e2e.py)",
+]
+
+[tool.coverage.run]
+# The demo scripts (examples/demo/), and the host of the form and the TRS
+# stub of the prototype (prototype/) are tested too.
+source = [
+    "ga4gh_io_schema",
+    "examples/demo",
+    "prototype/host",
+    "prototype/trs-stub",
+]
+branch = true
+
+[tool.coverage.report]
+fail_under = 100
+
+[tool.mypy]
+files = [
+    "src",
+    "tests",
+    "examples/demo",
+    "prototype/host",
+    "prototype/trs-stub",
+    "docs_hooks",
+]
+# The demo scripts, the host of the form and the TRS stub are imported by
+# module name, as in the tests (see `pythonpath` of pytest).
+mypy_path = ["examples/demo", "prototype/host", "prototype/trs-stub"]
+# Lowest supported Python version (see requires-python).
+python_version = "3.11"
+# Complete type hints, and checked: all functions annotated, generic types
+# parametrized
+disallow_untyped_defs = true
+disallow_any_generics = true
+warn_unused_ignores = true
+
+# jsonschema-specifications ships no type information (used by the tests
+# only)
+[[tool.mypy.overrides]]
+module = ["jsonschema_specifications", "jsonschema_specifications.*"]
+ignore_missing_imports = true
+
+# Playwright is in the `e2e` extra only, not in `dev` (used by the
+# end-to-end tests only)
+[[tool.mypy.overrides]]
+module = ["playwright", "playwright.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 88
-target-version = "py314"
+# Lowest supported Python version (see requires-python).
+target-version = "py311"
 
 [tool.ruff.lint]
 # D: pydocstyle, E: pycodestyle, F: pyflakes, I: isort

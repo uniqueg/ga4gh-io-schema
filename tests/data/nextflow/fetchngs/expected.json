@@ -1,0 +1,302 @@
+{
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
+  "x-ga4gh-workflow": {
+    "descriptor_type": "NFL"
+  },
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "title": "nf-core/fetchngs pipeline parameters",
+      "description": "Pipeline to fetch metadata and raw FastQ files from public databases",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/input_output_options"
+        },
+        {
+          "$ref": "#/$defs/institutional_config_options"
+        },
+        {
+          "$ref": "#/$defs/max_job_request_options"
+        },
+        {
+          "$ref": "#/$defs/generic_options"
+        },
+        {
+          "$ref": "#/$defs/deprecated_options"
+        }
+      ]
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  "$defs": {
+    "input_output_options": {
+      "title": "Input/output options",
+      "type": "object",
+      "description": "Define where the pipeline should find input data and save output data.",
+      "required": [
+        "input",
+        "outdir"
+      ],
+      "properties": {
+        "input": {
+          "type": "string",
+          "pattern": "^\\S+\\.(csv|tsv|txt)$",
+          "description": "File containing SRA/ENA/GEO/DDBJ identifiers one per line to download their associated metadata and FastQ files.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "mediaType": "text/csv"
+          },
+          "x-ga4gh-tabular-schema": {
+            "title": "nf-core/fetchngs pipeline - params.input schema",
+            "description": "Schema for the file provided with params.input",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "": {
+                  "type": "string",
+                  "pattern": "^(((SR|ER|DR)[APRSX])|(SAM(N|EA|D))|(PRJ(NA|EB|DB))|(GS[EM]))(\\d+)$",
+                  "x-ga4gh-error-message": "Please provide a valid SRA, ENA, DDBJ or GEO identifier"
+                }
+              }
+            }
+          }
+        },
+        "ena_metadata_fields": {
+          "type": "string",
+          "description": "Comma-separated list of ENA metadata fields to fetch before downloading data.\n\nThe default list of fields used by the pipeline can be found at the top of the [`bin/sra_ids_to_runinfo.py`](https://github.com/nf-core/fetchngs/blob/master/bin/sra_ids_to_runinfo.py) script within the pipeline repo. This pipeline requires a minimal set of fields to download FastQ files i.e. `'run_accession,experiment_accession,library_layout,fastq_ftp,fastq_md5'`. Full list of accepted metadata fields can be obtained from the [ENA API](https://www.ebi.ac.uk/ena/portal/api/returnFields?dataPortal=ena&format=tsv&result=read_run).",
+          "x-ga4gh-description-format": "markdown"
+        },
+        "sample_mapping_fields": {
+          "type": "string",
+          "description": "Comma-separated list of ENA metadata fields used to create a separate 'id_mappings.csv' and 'multiqc_config.yml' with selected fields that can be used to rename samples in general and in MultiQC.",
+          "default": "experiment_accession,run_accession,sample_accession,experiment_alias,run_alias,sample_alias,experiment_title,sample_title,sample_description"
+        },
+        "nf_core_pipeline": {
+          "type": "string",
+          "description": "Name of supported nf-core pipeline e.g. 'rnaseq'. A samplesheet for direct use with the pipeline will be created with the appropriate columns.",
+          "enum": [
+            "rnaseq",
+            "atacseq",
+            "viralrecon",
+            "taxprofiler"
+          ]
+        },
+        "nf_core_rnaseq_strandedness": {
+          "type": "string",
+          "description": "Value for 'strandedness' entry added to samplesheet created when using '--nf_core_pipeline rnaseq'.\n\nThe default is 'auto' which can be used with nf-core/rnaseq v3.10 onwards to auto-detect strandedness during the pipeline execution.",
+          "default": "auto",
+          "x-ga4gh-description-format": "markdown"
+        },
+        "download_method": {
+          "type": "string",
+          "default": "ftp",
+          "enum": [
+            "aspera",
+            "ftp",
+            "sratools"
+          ],
+          "description": "Method to download FastQ files. Available options are 'aspera', 'ftp' or 'sratools'. Default is 'ftp'.\n\nFTP and Aspera CLI download FastQ files directly from the ENA FTP whereas sratools uses sra-tools to download *.sra files and convert to FastQ.",
+          "x-ga4gh-description-format": "markdown"
+        },
+        "skip_fastq_download": {
+          "type": "boolean",
+          "description": "Only download metadata for public data database ids and don't download the FastQ files."
+        },
+        "dbgap_key": {
+          "type": "string",
+          "description": "dbGaP repository key.\n\nPath to a JWT cart file used to access protected dbGAP data on SRA using the sra-toolkit. Users with granted access to controlled data can download the JWT cart file for the study from the SRA Run Selector upon logging in. The JWT file can only be used on cloud platforms and is valid for 1 hour upon creation.",
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-file": {
+            "kind": "file"
+          }
+        },
+        "outdir": {
+          "type": "string",
+          "description": "The output directory where the results will be saved. You have to use absolute paths to storage on Cloud infrastructure.",
+          "x-ga4gh-file": {
+            "kind": "directory"
+          }
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address for completion summary.\n\nSet this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits. If set in your user config file (`~/.nextflow/config`) then you don't need to specify this on the command line for every run.",
+          "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$",
+          "x-ga4gh-description-format": "markdown"
+        }
+      }
+    },
+    "institutional_config_options": {
+      "title": "Institutional config options",
+      "type": "object",
+      "description": "Parameters used to describe centralised config profiles. These should not be edited.\n\nThe centralised nf-core configuration profiles use a handful of pipeline parameters to describe themselves. This information is then printed to the Nextflow log when you run a pipeline. You should not need to change these values when you run a pipeline.",
+      "properties": {
+        "custom_config_version": {
+          "type": "string",
+          "description": "Git commit id for Institutional configs.",
+          "default": "master",
+          "x-ga4gh-hidden": true
+        },
+        "custom_config_base": {
+          "type": "string",
+          "description": "Base directory for Institutional configs.\n\nIf you're running offline, Nextflow will not be able to fetch the institutional config files from the internet. If you don't need them, then this is not a problem. If you do need them, you should download the files from the repo and tell Nextflow where to find them with this parameter.",
+          "default": "https://raw.githubusercontent.com/nf-core/configs/master",
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-hidden": true
+        },
+        "config_profile_name": {
+          "type": "string",
+          "description": "Institutional config name.",
+          "x-ga4gh-hidden": true
+        },
+        "config_profile_description": {
+          "type": "string",
+          "description": "Institutional config description.",
+          "x-ga4gh-hidden": true
+        },
+        "config_profile_contact": {
+          "type": "string",
+          "description": "Institutional config contact information.",
+          "x-ga4gh-hidden": true
+        },
+        "config_profile_url": {
+          "type": "string",
+          "description": "Institutional config URL link.",
+          "x-ga4gh-hidden": true
+        }
+      },
+      "x-ga4gh-description-format": "markdown"
+    },
+    "max_job_request_options": {
+      "title": "Max job request options",
+      "type": "object",
+      "description": "Set the top limit for requested resources for any single job.\n\nIf you are running on a smaller system, a pipeline step requesting more resources than are available may cause the Nextflow to stop the run with an error. These options allow you to cap the maximum resources requested by any single job so that the pipeline will run on your system.\n\nNote that you can not _increase_ the resources requested by any job using these options. For that you will need your own configuration file. See [the nf-core website](https://nf-co.re/usage/configuration) for details.",
+      "properties": {
+        "max_cpus": {
+          "type": "integer",
+          "description": "Maximum number of CPUs that can be requested for any single job.\n\nUse to set an upper-limit for the CPU requirement for each process. Should be an integer e.g. `--max_cpus 1`",
+          "default": 16,
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-hidden": true
+        },
+        "max_memory": {
+          "type": "string",
+          "description": "Maximum amount of memory that can be requested for any single job.\n\nUse to set an upper-limit for the memory requirement for each process. Should be a string in the format integer-unit e.g. `--max_memory '8.GB'`",
+          "default": "128.GB",
+          "pattern": "^\\d+(\\.\\d+)?\\.?\\s*(K|M|G|T)?B$",
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-hidden": true
+        },
+        "max_time": {
+          "type": "string",
+          "description": "Maximum amount of time that can be requested for any single job.\n\nUse to set an upper-limit for the time requirement for each process. Should be a string in the format integer-unit e.g. `--max_time '2.h'`",
+          "default": "240.h",
+          "pattern": "^(\\d+\\.?\\s*(s|m|h|d|day)\\s*)+$",
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-hidden": true
+        }
+      },
+      "x-ga4gh-description-format": "markdown"
+    },
+    "generic_options": {
+      "title": "Generic options",
+      "type": "object",
+      "description": "Less common options for the pipeline, typically set in a config file.\n\nThese options are common to all nf-core pipelines and allow you to customise some of the core preferences for how the pipeline runs.\n\nTypically these options would be set in a Nextflow config file loaded for all pipeline runs, such as `~/.nextflow/config`.",
+      "properties": {
+        "help": {
+          "type": "boolean",
+          "description": "Display help text.",
+          "x-ga4gh-hidden": true
+        },
+        "version": {
+          "type": "boolean",
+          "description": "Display version and exit.",
+          "x-ga4gh-hidden": true
+        },
+        "publish_dir_mode": {
+          "type": "string",
+          "default": "copy",
+          "description": "Method used to save pipeline results to output directory.\n\nThe Nextflow `publishDir` option specifies which intermediate files should be saved to the output directory. This option tells the pipeline what method should be used to move these files. See [Nextflow docs](https://www.nextflow.io/docs/latest/process.html#publishdir) for details.",
+          "enum": [
+            "symlink",
+            "rellink",
+            "link",
+            "copy",
+            "copyNoFollow",
+            "move"
+          ],
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-hidden": true
+        },
+        "email_on_fail": {
+          "type": "string",
+          "description": "Email address for completion summary, only when pipeline fails.\n\nAn email address to send a summary email to when the pipeline is completed - ONLY sent if the pipeline does not exit successfully.",
+          "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$",
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-hidden": true
+        },
+        "plaintext_email": {
+          "type": "boolean",
+          "description": "Send plain-text email instead of HTML.",
+          "x-ga4gh-hidden": true
+        },
+        "monochrome_logs": {
+          "type": "boolean",
+          "description": "Do not use coloured log outputs.",
+          "x-ga4gh-hidden": true
+        },
+        "hook_url": {
+          "type": "string",
+          "description": "Incoming hook URL for messaging service\n\nIncoming hook URL for messaging service. Currently, MS Teams and Slack are supported.",
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-hidden": true
+        },
+        "validate_params": {
+          "type": "boolean",
+          "description": "Boolean whether to validate parameters against the schema at runtime",
+          "default": true,
+          "x-ga4gh-hidden": true
+        },
+        "validationShowHiddenParams": {
+          "type": "boolean",
+          "description": "Show all params when using `--help`\n\nBy default, parameters set as _hidden_ in the schema are not shown on the command line when a user runs with `--help`. Specifying this option will tell the pipeline to show all parameters.",
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-hidden": true
+        },
+        "validationFailUnrecognisedParams": {
+          "type": "boolean",
+          "description": "Validation of parameters fails when an unrecognised parameter is found.\n\nBy default, when an unrecognised parameter is found, it returns a warinig.",
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-hidden": true
+        },
+        "validationLenientMode": {
+          "type": "boolean",
+          "description": "Validation of parameters in lenient more.\n\nAllows string values that are parseable as numbers or booleans. For further information see [JSONSchema docs](https://github.com/everit-org/json-schema#lenient-mode).",
+          "x-ga4gh-description-format": "markdown",
+          "x-ga4gh-hidden": true
+        }
+      },
+      "x-ga4gh-description-format": "markdown"
+    },
+    "deprecated_options": {
+      "title": "Deprecated options",
+      "type": "object",
+      "description": "List of parameters that have been deprecated.",
+      "default": "",
+      "properties": {
+        "force_sratools_download": {
+          "type": "boolean",
+          "description": "This parameter has been deprecated. Please use '--download_method sratools' instead.",
+          "enum": [
+            false
+          ],
+          "x-ga4gh-hidden": true
+        }
+      }
+    }
+  }
+}

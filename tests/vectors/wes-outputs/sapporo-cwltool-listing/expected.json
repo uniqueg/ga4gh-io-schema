@@ -1,0 +1,15 @@
+{
+  "description": "Sapporo (2.4) with cwltool: RunLog.outputs lists the files of the output directory, not the CWL output object. cwltool puts files directly in the output directory (Directory outputs keep their name), so globs match base names; samples_passed_qc, an integer, isn't in the listing and is absent. Captured from a real run; run ID anonymised.",
+  "conformance": "conformant",
+  "outputs": {
+    "qc_report": "https://wes.example.org/runs/run-16/outputs/multiqc_report.html",
+    "alignments": [
+      "https://wes.example.org/runs/run-16/outputs/s1.bam",
+      "https://wes.example.org/runs/run-16/outputs/s2.bam"
+    ],
+    "gene_counts": "https://wes.example.org/runs/run-16/outputs/counts"
+  },
+  "unmatchedFiles": [
+    "https://wes.example.org/runs/run-16/outputs/report%20%231.html"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "run_id": "run-11",
+  "state": "COMPLETE",
+  "outputs": {
+    "qc_report": "https://storage.example.org/run-11/report.html",
+    "alignments": [
+      "s3://example-bucket/run-11/s1.bam"
+    ]
+  }
+}

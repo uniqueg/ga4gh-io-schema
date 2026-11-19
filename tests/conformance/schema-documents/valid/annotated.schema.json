@@ -1,0 +1,66 @@
+{
+  "$schema": "https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/ga4gh-io-profile.schema.json",
+  "$id": "https://example.org/schemas/valid-workflow-schema.json",
+  "title": "Valid Workflow IO Schema",
+  "description": "An example schema defining inputs and outputs for a bioinformatics workflow.",
+  "type": "object",
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "sample_id": {
+          "type": "string",
+          "description": "The ID of the sample to process.",
+          "x-ga4gh-ui-widget": "text"
+        },
+        "input_bam": {
+          "type": "string",
+          "description": "The aligned reads file in BAM format, with its index (sample.bai).",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_2572",
+            "secondaryFiles": [
+              "^.bai"
+            ],
+            "schemes": [
+              "drs"
+            ]
+          },
+          "x-ga4gh-ui-widget": "file-picker"
+        },
+        "threads": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8,
+          "x-ga4gh-ui-widget": "number",
+          "x-ga4gh-hidden": true
+        }
+      },
+      "required": [
+        "sample_id",
+        "input_bam"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "output_vcf": {
+          "type": "string",
+          "description": "The resulting variant calls in VCF format.",
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_3016",
+            "compression": "bgzip",
+            "secondaryFiles": [
+              ".tbi"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "inputs"
+  ]
+}

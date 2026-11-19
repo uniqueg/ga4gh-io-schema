@@ -1,0 +1,7 @@
+{
+  "reads": {
+    "class": "File",
+    "location": "https://data.example.org/sample.bam"
+  },
+  "$include": "file:///etc/passwd"
+}

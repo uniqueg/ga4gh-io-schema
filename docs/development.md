@@ -1,0 +1,445 @@
+# Development
+
+CI (`.github/workflows/ci.yml`) runs the checks below on every pull request:
+lint (the pre-commit hooks with Ruff and mypy, `CITATION.cff`, REUSE,
+Markdown, meta-schema syntax), the build of the wheel, the Python tests on
+every supported version, the JavaScript tests, the strict documentation
+build and the end-to-end test. Run them locally before you open a pull
+request.
+
+To install the package with all development dependencies, see
+[Installation](tools/validator.md#installation).
+
+## Unit tests (pytest)
+
+Validate the core logic of the Python executable using `pytest`. The tests
+use the example schemas in `tests/data/` and the schema documents of the
+[conformance suite](specification/conformance.md#conformance-suite) in
+`tests/conformance/`.
+
+```bash
+pytest
+```
+
+`pytest` measures coverage of the package (with branches) and fails below
+100%. The CLI tests (`tests/test_cli.py`) run the command-line tool on the
+examples and the valid cases of the suite, and on one deliberately bad
+schema per rule of the meta-schema in
+`tests/conformance/schema-documents/invalid/`, and check the exit code and
+the error message of each; a new rule needs a new bad schema and its
+expected message. `tests/test_conformance.py` is the runner of the
+conformance suite for this package: it checks every case against the
+Python API, without error messages, as other implementations do.
+`tests/test_wes.py` runs the [test
+vectors](specification/engine-bindings.md#test-vectors) of `tests/vectors/`
+against the library, and `tests/test_cli_wes.py` and
+`tests/test_cli_wes_validate.py` test the `wes-params` and `wes-validate`
+subcommands; a change of the engine bindings comes with new or changed
+vectors. `tests/test_cli_framework.py` tests the shared conventions of all
+subcommands (standard input, `--output`, `--json`, exit codes) and the
+subcommand registry.
+`tests/test_trs_stub.py` tests the TRS stub of the
+[prototype](adoption/prototype.md) (`prototype/trs-stub/`) over HTTP;
+`prototype/` counts towards the coverage of `pytest`, but isn't part of
+the package. `tests/test_prototype_e2e.py` tests the running prototype
+(Docker Compose) end to end; `pytest` skips it unless `PROTOTYPE_URL` is
+set, and CI runs it in the job "End-to-end test" (see
+[Prototype](adoption/prototype.md#test-it)).
+
+`tests/test_wheel.py` builds the wheel, installs it into a fresh virtual
+environment and runs the command-line tool on the examples. It also builds
+the sdist. Both builds need network access to install the build backend
+and the dependencies; deselect these tests with `pytest -m "not wheel"`
+when offline.
+
+The sdist holds only what builds the wheel (the package, `schemas/`,
+`pyproject.toml`, `README.md`, `.gitignore` and the Apache-2.0 licence
+text; `[tool.hatch.build.targets.sdist]` in `pyproject.toml`), so that
+both distributions are what their licence, `Apache-2.0`, says: the docs
+(CC-BY-4.0), the tests and their third-party data (e.g., MIT) are in the
+repository only. `tests/test_wheel.py` and the CI job `Build` check its
+contents; change their lists of allowed files together.
+
+CI runs the tests on every supported Python version, from the lowest to the
+newest. The supported versions are set in `requires-python` and the classifiers of `pyproject.toml`, ruff's
+`target-version`, mypy's `python_version` and the test matrix of
+`.github/workflows/ci.yml`; change them together. The lowest supported
+version is also that of the job "Test (lowest dependencies)" (see
+[Dependencies](#dependencies-uv)).
+
+## JavaScript tests (Node.js)
+
+`tests/js/` runs the conformance suite and the examples through JavaScript
+validators (Ajv and @hyperjump/json-schema), offline, as described in
+[JavaScript validators](tools/javascript.md). `form.test.mjs` tests the
+logic of the [form proof of concept](adoption/form.md). CI runs them in the
+job `Test (JavaScript)`. It needs Node.js 22 or later:
+
+```bash
+cd tests/js
+npm ci
+npm test
+```
+
+The versions of the validators are pinned in `package.json` and
+`package-lock.json`; update them together (`npm install --save-exact
+<package>@<version>`), and update the results on the page.
+
+## Schema identifiers
+
+The profile has no releases and no tags yet (see [Versioning and
+governance](governance.md#releases)). Until it has, the `$id`s of the
+schemas in `schemas/`, and the `$schema` of the examples in `tests/data/`
+and `examples/`, of the cases in `tests/conformance/` and `tests/vectors/`
+and of the snippets in the documentation, start with
+
+```text
+https://raw.githubusercontent.com/elixir-cloud-aai/ga4gh-io-schema/main/schemas/
+```
+
+These URLs resolve once the repository has moved to elixir-cloud-aai and
+version 0.3.0 is merged into its `main` branch. `main` holds the latest
+reviewed state, so the content behind them changes, also with breaking
+changes: until the first release, `$schema` doesn't tell versions of the
+profile apart, and the commit you pin does.
+
+To use fixed content, pin a commit SHA (`<owner>` is the owner of the
+repository at that time: `uniqueg` before the move, `elixir-cloud-aai`
+after it):
+
+- In Python, install the package from that commit (`pip install
+  "git+https://github.com/<owner>/ga4gh-io-schema@<sha>"`); it ships the
+  schemas and never fetches them.
+- Elsewhere, download every file of `schemas/` from
+  `https://raw.githubusercontent.com/<owner>/ga4gh-io-schema/<sha>/schemas/...`,
+  register each under its `$id`, and turn off the fetching of remote
+  references, as [JavaScript validators](tools/javascript.md) describes. The
+  `$ref`s between the schemas name `main`, so a validator that fetches them
+  would mix the pinned file with the current ones.
+
+The `$schema` of your IO schemas stays as above: it identifies the profile,
+it isn't the place you fetch the meta-schema from. `version` in
+`pyproject.toml` is the version of the proposal: the latest version of the
+[document history](roadmap.md#document-history) (e.g., `0.3.0`), or a
+development version of the next one (e.g., `0.3.1.dev0`) for work after
+it. It isn't a release (versions 0.1.0 to 0.3.0 have no tags) and isn't
+bumped per commit (pin the commit, not the version); the tests check that
+it matches the document history.
+
+## Releases
+
+Releases (tags `vMAJOR.MINOR.PATCH`) come with the move of the repository
+to GA4GH. A stable identifier for the schemas
+([#26](https://github.com/elixir-cloud-aai/ga4gh-io-schema/issues/26)) then replaces
+the URLs above.
+
+## Changelog and conformance suite
+
+Every pull request that changes the profile or the package adds an entry to
+`CHANGELOG.md`, under "Unreleased", and says there whether the change is
+breaking (see [Versioning and governance](governance.md)). The
+[Changelog](changelog.md) page includes the file between the
+`--8<-- [start:changes]` and `--8<-- [end:changes]` markers; keep them.
+Each new rule of the meta-schema comes with a negative case in
+`tests/conformance/schema-documents/invalid/` (see
+[Adding keywords](#adding-keywords)), and a new
+implementation of the profile with a row in the
+[table of implementations](specification/conformance.md#implementations).
+
+## Adding keywords
+
+Keywords live in one vocabulary file per keyword group in
+`schemas/vocabularies/`. To add a keyword or a group:
+
+1. Add the keyword to the `properties` of its vocabulary file, or create a new
+   file (with an `$id` on the base of [Schema identifiers](#schema-identifiers)) and add a `$ref` to it to the
+   `allOf` of `$defs/node/$defs/keywords` in
+   `schemas/ga4gh-io-profile.schema.json`. A keyword that is allowed only at
+   the top level (like `x-ga4gh-workflow`) goes into
+   `vocabularies/workflow.schema.json`, which the check of `x-ga4gh-*`
+   keywords in the `allOf` of the top level references.
+   A keyword whose value is a schema (like `x-ga4gh-tabular-schema`) also
+   gets an entry in the `properties` of `$defs/node/$defs/subschemas`, so
+   that the nested schema is checked by all rules of the profile; its
+   vocabulary file only defines it, without applying a schema to the value,
+   so that validation time stays linear (see [Structure of the
+   meta-schema](specification/meta-schema.md#structure-of-the-meta-schema)).
+   Don't use `$dynamicRef` or `$dynamicAnchor`:
+   Ajv supports them only at the root of a schema (the tests check that no
+   schema uses them). Put `dependentSchemas` of a vocabulary file in an
+   `allOf`, not next to its `properties`: Ajv then forgets that the
+   keywords of `properties` were evaluated, and rejects them (the tests
+   check this too).
+2. Add one bad schema per new rule to
+   `tests/conformance/schema-documents/invalid/` and its expected message
+   to `INVALID` in `tests/test_cli.py`; for a schema-valued keyword,
+   include a bad schema nested in it.
+3. Document the keyword in `docs/specification/keywords.md` and in the table
+   in `docs/specification/meta-schema.md`.
+
+The wheel ships every file in `schemas/`, and the tests check that it does.
+
+## Adding subcommands
+
+Each subcommand of `ga4gh-io-schema` is a `Command` (see
+`src/ga4gh_io_schema/cli/base.py`) in a module of
+`src/ga4gh_io_schema/cli/commands/`; the dispatcher imports every module
+there, so a new subcommand needs no change elsewhere:
+
+1. Subclass `Command`: set `name` and `help`, add the arguments in
+   `configure()`, and return a `CommandResult` from `run()`: the text
+   result and, optionally, the data that `--json` writes (without data,
+   `--json` writes `{"output": <text>}`). On failure, raise a `CliError`
+   with an `ErrorKind`, which sets the label and the exit status. Read input
+   with `read_text()` or `read_json()`, which accept `-` for standard input.
+2. Register it at the end of the module: `ROOT.register(MyCommand())`, or, in
+   a group, `ROOT.group("name", help="...").register(MyCommand())`. A
+   converter registers in the `convert` group, which
+   `ga4gh_io_schema.cli.convert` declares once:
+   `CONVERT.register(MyCommand())`; `conversion_result()` of that module
+   turns a `Conversion` (see `ga4gh_io_schema.converters.common`) into the
+   result, with the notes on standard error (labelled `Note:`, or another
+   `label`; `allow_nan=False` makes the text strict JSON), so that every
+   converter's `--json` result has the same shape.
+3. Test it through `main()` of `ga4gh_io_schema.cli`, with 100% coverage.
+   Tests of the framework build their own `CommandGroup` and pass it as
+   `main(argv, root=group)`, so that they don't change `ROOT`.
+
+A new kind of error or exit status goes into `ErrorKind` and `ERROR_KINDS`,
+or `ExitCode` and `EXIT_STATUS`, of `base.py` and into
+`docs/tools/cli.md`; the tests check that the page lists all of them.
+Only modules in `cli/commands/` are loaded: other packages can't add
+subcommands yet (that would need entry points).
+
+The [CLI reference](tools/cli.md#reference) is generated from the parser
+when the documentation is built (`docs_hooks/cli_reference.py`), so it
+needs no update; describe new conventions or exit codes in
+`docs/tools/cli.md`.
+
+## Performance
+
+`validate_schema()` sets up the validation against a meta-schema once per
+process (profile, registry of the local schemas, check of the meta-schema,
+validator) and reuses it; validators are cached by the content of the
+meta-schema and by the state of the files in `schema_dir`, which is listed
+on every call. `tests/test_performance.py` checks that
+validation takes time linear in the size of a schema (#47), and that
+repeated calls don't set up the validation again (#66).
+
+The translation between input values and `workflow_params` (`wes.py`)
+asks, at every level of the values, which branches of `anyOf` and `oneOf`
+and which conditions of `if` and `contains` a value is valid against.
+During one translation, its validator keeps the validity of each subschema
+for each value (by their identities), so that a valid subtree isn't
+validated again at every level above it (#86); failures are validated
+again to report their errors. Schemas with `$dynamicRef`,
+`$dynamicAnchor`, an `$id` below the root, or references that don't start
+with `#` keep nothing: their results can depend on the path to a
+subschema, which isn't part of the key (a `$ref` to a `$dynamicAnchor`
+resolves through the dynamic scope too, and an embedded `$id` can take the
+URI of another document).
+`tests/test_performance.py` times recursive values at several depths, and
+`tests/test_wes.py` counts the validations.
+
+To measure the time of validation, run the tests of the validator without
+coverage, which almost triples their time, and time single steps in Python
+(take the best of several calls after the first):
+
+```bash
+pytest --no-cov --durations=10 tests/test_meta_schema.py \
+  tests/test_validator.py tests/test_conformance.py tests/test_performance.py
+python -X importtime -c "import jsonschema" 2>&1 | sort -t'|' -k2 -n | tail -5
+python -m timeit -s "from ga4gh_io_schema.validator import load_json, \
+validate_schema; s = load_json('tests/conformance/schema-documents/valid/annotated.schema.json'); \
+validate_schema(s)" "validate_schema(s)"
+```
+
+For example, on one laptop (Python 3.13), the four test files took about
+4 s, a small schema validated in about 13 ms after the first call, and
+`import jsonschema` took about 0.8 s, almost all of it in `rfc3987_syntax`.
+
+The time of that import is accepted: the
+`format-nongpl` extra of `jsonschema`, which the validator needs to check
+`format` (e.g., `uri`), installs `rfc3987_syntax`, and `jsonschema` imports
+it, and builds its grammar, as soon as it is imported itself, to check the
+`iri` and `iri-reference` formats. Avoiding it would mean dropping or
+replacing the extra, which changes the formats that are checked. The time
+of the command-line tool (about 1 s per run) is mostly this import.
+
+## Branches and pull requests
+
+Once the repository is at elixir-cloud-aai, `dev` is its default branch
+and the target of all pull requests; `main` holds the reviewed states that
+are published (and, later, the releases). The `v0.N` integration branches
+are no longer used. Pull requests are squash-merged, so their titles become
+the commit messages: Conventional Commits, at most 50 characters (checked
+by the job `PR title`). The only required check is `CI passed`, the gate of
+`.github/workflows/ci.yml`, which fails unless every other job passed.
+
+## Dependencies (uv)
+
+The dependencies are locked in `uv.lock`, which CI installs (`uv sync
+--locked`), so that pull requests are tested with the same versions.
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
+first (e.g., `pipx install uv`); `pip install -e ".[dev]"` still works, but
+ignores the lock. After you change dependencies in `pyproject.toml`, update
+the lock and commit it with them:
+
+```bash
+uv lock
+uv sync --extra dev
+```
+
+`uv sync --extra dev` installs the locked versions into `.venv`, as CI
+does.
+
+The lower bounds in `pyproject.toml` are tested too: the CI job "Test
+(lowest dependencies)" installs the lowest versions of the direct
+dependencies that they allow, on the lowest supported Python version, and
+runs the tests without the wheel tests. If it fails, raise the bound of the
+dependency that fails. To run it locally, in an environment of its own
+(the resolution also rewrites `uv.lock`, so the recipe keeps a copy of
+your lock, with any changes in it, and puts it back):
+
+```bash
+cp uv.lock uv.lock.mine
+UV_PROJECT_ENVIRONMENT=.venv-lowest uv sync --resolution lowest-direct --extra dev --python 3.11
+.venv-lowest/bin/pytest --no-cov -m "not wheel"
+mv uv.lock.mine uv.lock
+```
+
+The lock is installed outside CI too: the image of the
+[prototype](adoption/prototype.md) (`prototype/Dockerfile`) runs `uv sync
+--locked` without extras, with uv from an image pinned to a digest, and
+Read the Docs (`.readthedocs.yaml`) runs `uv sync --locked --extra docs`
+into its environment. Both fail if the lock doesn't match
+`pyproject.toml`. uv has the same version in all three places: in
+`uv.lock` (a dev dependency), in the image's tag and in
+`.readthedocs.yaml`, where Dependabot doesn't update it; a test fails
+until they agree. As in CI, the package itself is built with the newest
+hatchling that `build-system` allows (uv doesn't lock build
+dependencies).
+
+Dependabot updates the lock, the actions of the workflows, the
+JavaScript validators of `tests/js/`, the images of the prototype (pinned
+to digests) and the pre-commit hooks once a month
+(`.github/dependabot.yml`).
+
+## Code quality and security (pre-commit)
+
+The checks of `.pre-commit-config.yaml` run on each commit once you
+install the hooks, and in CI's job `Lint`:
+
+- Ruff: formatting, linting and Google-style docstrings
+- mypy: type checking (see [Type checking](#type-checking-mypy))
+- semgrep with the rules of `.semgrep/` (security issues that Ruff's rules
+  don't cover, e.g., YAML loaders that construct objects, requests without
+  a timeout)
+- ast-grep with the rules of `.ast-grep/rules/` (project-specific
+  anti-patterns, e.g., text files without an explicit encoding) and their
+  tests in `.ast-grep/rule-tests/`
+- gitleaks (secrets), actionlint (workflows) and checks of files (YAML
+  syntax, merge conflicts, large files, trailing whitespace)
+- markdownlint (see [Documentation linting](#documentation-linting))
+
+```bash
+pre-commit install
+pre-commit run --all-files
+```
+
+CI also scans the whole checkout for secrets, and validates
+`CITATION.cff`; run these checks locally with:
+
+```bash
+pre-commit run --all-files --hook-stage manual gitleaks-all
+pipx run --spec cffconvert==2.0.0 cffconvert --validate -i CITATION.cff
+```
+
+Locally, `gitleaks-all` also scans untracked and ignored files (e.g.,
+caches in `.venv`), so it may report findings there that CI doesn't see.
+
+A new semgrep or ast-grep rule comes with test cases that it finds and
+cases that it must not find: in `.semgrep/ga4gh-io-schema.py` (`# ruleid:`
+and `# ok:` comments) and in `.ast-grep/rule-tests/`. The hooks
+`semgrep-test` and `ast-grep-test` run them.
+
+## Type checking (mypy)
+
+The code is checked with [mypy](https://mypy.readthedocs.io/), which the
+`dev` extra installs with the stubs of the dependencies that ship no type
+information (`types-jsonschema`, `types-PyYAML`). `[tool.mypy]` in
+`pyproject.toml` lists the files (the package, the tests, the demo scripts,
+the prototype and the hooks of the documentation) and the options: every
+function has complete type hints (`disallow_untyped_defs`), generic types
+have their parameters (`disallow_any_generics`), and the checks run for the
+lowest supported Python version. It runs as a pre-commit hook (see
+above); to run it alone, call it without arguments, as the hook does:
+
+```bash
+mypy
+```
+
+Fix the errors instead of ignoring them. Where a stub is wrong or misses a
+private attribute that the code needs, ignore the one error with its code
+and a comment that says why (`# type: ignore[attr-defined]`);
+`warn_unused_ignores` reports comments that are no longer needed. Packages
+without type information and without stubs (`jsonschema-specifications`),
+or that the `dev` extra doesn't install (Playwright, in the `e2e` extra),
+get an override with `ignore_missing_imports` in `pyproject.toml`, with the
+reason.
+
+## Meta-schema validation
+
+The GA4GH meta-schemas themselves must strictly conform to the JSON Schema Draft 2020-12 specification. We validate this using `check-jsonschema`.
+
+```bash
+check-jsonschema --check-metaschema schemas/ga4gh-io-profile.schema.json
+check-jsonschema --check-metaschema schemas/vocabularies/*.schema.json
+```
+
+## License compliance (REUSE)
+
+All files must have clear copyright and licensing information compliant with the [REUSE specification](https://reuse.software/). The primary codebase is Apache-2.0, while documentation is CC-BY-4.0.
+
+```bash
+reuse lint
+```
+
+## Documentation linting
+
+Markdown files are linted to ensure consistent structure and catch broken
+links, with the rules of `.markdownlint.yaml`. markdownlint-cli runs as a
+pre-commit hook, pinned to the commit of a release that Dependabot updates,
+so that a new release of it can't fail unrelated pull requests. It needs
+Node.js, which pre-commit installs if it isn't there:
+
+```bash
+pre-commit run markdownlint --all-files
+```
+
+## Documentation
+
+The documentation is built with [MkDocs](https://www.mkdocs.org/) and
+[Material for MkDocs](https://squidfunk.github.io/mkdocs-material/), and
+published on [Read the Docs](https://ga4gh-io-schema.readthedocs.io/), which
+also builds a preview for each pull request. Its sources are in `docs/`, the
+navigation in `mkdocs.yml`; the [Python API](tools/validator.md#python-api)
+is generated from the docstrings with
+[mkdocstrings](https://mkdocstrings.github.io/). Install the `docs` extra
+at the versions of `uv.lock`, as CI and Read the Docs do, and build the
+site as CI does, which fails on any warning (e.g., broken links or
+anchors); `uv sync` removes the packages of extras that it isn't given,
+so name `dev` too to keep the development tools:
+
+```bash
+uv sync --locked --extra dev --extra docs
+uv run --locked mkdocs build --strict
+```
+
+`uv run --locked mkdocs serve` serves the site at <http://127.0.0.1:8000/>
+and rebuilds it on changes. The home page includes the synopsis of `README.md` (between the
+`--8<-- [start:synopsis]` and `--8<-- [end:synopsis]` markers), and
+[Examples](specification/examples.md) include the example schemas of
+`tests/data/`; the build fails if they are missing. Link to files of the
+repository with their URL on GitHub, as MkDocs can't check links outside
+`docs/`.

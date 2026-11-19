@@ -1,0 +1,18 @@
+{
+  "sample": {
+    "id": "a",
+    "bam": {
+      "class": "File",
+      "location": "https://data.example.org/a.bam"
+    }
+  },
+  "target": {
+    "class": "File",
+    "location": "https://data.example.org/targets.bed"
+  },
+  "threshold": 5,
+  "input_file": {
+    "class": "File",
+    "location": "inputs/x.txt"
+  }
+}

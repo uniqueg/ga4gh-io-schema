@@ -1,0 +1,21 @@
+{
+  "reads": {
+    "class": "File",
+    "location": "https://data.example.org/sample.bam"
+  },
+  "index": {
+    "class": "Directory",
+    "location": "drs://drs.example.org/index"
+  },
+  "fastqs": [
+    {
+      "class": "File",
+      "location": "inputs/r1.fq.gz"
+    },
+    {
+      "class": "File",
+      "location": "inputs/r2.fq.gz"
+    }
+  ],
+  "label": "sample"
+}

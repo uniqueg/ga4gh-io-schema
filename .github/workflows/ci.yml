@@ -2,61 +2,419 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-name: CI
+# Everything that must pass on pull requests and pushes: the pull request
+# title, lint (pre-commit hooks, citation metadata, REUSE, Markdown, the
+# syntax of the meta-schema), the build of the package, the Python tests on
+# every supported version and at the lowest versions of the dependencies,
+# the JavaScript tests, the strict docs build and
+# the end-to-end test of the prototype. The gate `passed` ("CI passed") is
+# the only required check. No `paths:` filters, so that the gate always
+# reports; skip jobs with `if:` instead (and allow the skip in the gate).
+# Runs also when a pull request is edited, so that the title check follows
+# the title; all jobs run then, as a run that skipped the tests would report
+# "CI passed" for the commit. Fork-safe: no job needs a secret on pull
+# requests (the Codecov upload fails the run only on pushes)
 
+name: CI
 on:
   push:
-    branches: [ "main" ]
+    # `dev` is the default branch after the move to elixir-cloud-aai;
+    # `main` and the `v0.N` integration branches stay until then (see
+    # "Branches" in `docs/development.md`)
+    branches: [dev, main, "v*"]
+  # All pull requests, also those into the `v0.N` integration branches
   pull_request:
-    branches: [ "main" ]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+# Only a new head commit of a pull request cancels its runs in progress
+# (action `synchronize`, first attempt); runs for other actions and reruns
+# wait, so that a run on the same commit never leaves a cancelled, failed
+# `CI passed` (see "Cancelled runs" in `actions/gate/README.md` of
+# `elixir-cloud-aai/.github`). Runs for pushes get their own group, so that
+# none is dropped. Runs for edits that leave the title unchanged (e.g. of
+# the description, also by bots) share a group of their own, so that they
+# don't wait for the run for the pull request's commit
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{
+      github.event_name == 'push' && github.sha ||
+      github.event.action == 'edited' && !github.event.changes.title &&
+        format('{0}-edited', github.ref) ||
+      github.ref }}
+  cancel-in-progress: >-
+    ${{ github.event_name == 'pull_request'
+    && github.event.action == 'synchronize'
+    && github.run_attempt == 1 }}
 
 jobs:
-  test:
+
+  # Pull request titles become the commit messages (squash merges):
+  # Conventional Commits, at most 50 characters (shared action of
+  # elixir-cloud-aai/.github, pinned to the commit of a release). Skipped on
+  # pushes and for Dependabot, whose titles can't be configured to pass,
+  # unless someone else edits the title
+  title:
+    name: PR title
+    if: >-
+      github.event_name == 'pull_request' && (
+        github.event.pull_request.user.login != 'dependabot[bot]' ||
+        github.event.changes.title &&
+        github.event.sender.login != 'dependabot[bot]')
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
+      - name: Check PR title
+        uses: elixir-cloud-aai/.github/actions/pr-title@31f22fccc1f3c597ed7c1d1f75b2f85522155348 # v1.1.0
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          python-version: "3.14"
-          cache: "pip"
-
-      - name: Install dependencies and build tools
+          persist-credentials: false
+      # Newest Python version in its security phase (organisation policy)
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      # uv, at the version locked in `uv.lock` (a dev dependency); the action
+      # checks its checksum
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version-file: uv.lock
+      # The lock must match `pyproject.toml` (run `uv lock` after changing
+      # dependencies; `uv sync --locked` below checks it too, but this step
+      # names the failure)
+      - name: Check lock file
+        run: uv lock --check
+      # The versions of `uv.lock`, checked against its hashes, into `.venv`,
+      # with the Python set up above; the local pre-commit hooks use them
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip build
-          pip install -e ".[dev]"
-
-      - name: Verify package build (sdist and wheel)
-        run: python -m build
-
+          uv sync --locked --extra dev --python "$(which python)"
+          echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
+      - name: Cache pre-commit hook environments
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+      # Ruff, mypy, semgrep, ast-grep, gitleaks, actionlint, markdownlint and
+      # the file checks of `.pre-commit-config.yaml`
+      - name: Run linters and security checks
+        run: |
+          pre-commit run --all-files --show-diff-on-failure
+          pre-commit run --all-files --hook-stage manual gitleaks-all
+      # In its own environment, as cffconvert pins an old jsonschema; 2.0.0
+      # is the latest stable release (not bumped by Dependabot; update
+      # manually)
+      - name: Validate citation metadata
+        run: pipx run --spec cffconvert==2.0.0 cffconvert --validate -i CITATION.cff
       - name: Check license compliance (REUSE)
         run: reuse lint
-
-      - name: Lint Markdown documentation
-        run: npx markdownlint-cli "**/*.md" --ignore "node_modules"
-
-      - name: Check code formatting (Ruff)
-        run: ruff format --check .
-
-      - name: Lint Python code (Ruff)
-        run: ruff check .
-
       - name: Validate GA4GH Meta-Schema syntax
         run: |
           check-jsonschema --check-metaschema schemas/ga4gh-io-profile.schema.json
-          check-jsonschema --check-metaschema schemas/vocabularies/ui-widgets.schema.json
+          check-jsonschema --check-metaschema schemas/vocabularies/*.schema.json
 
-      - name: Run Python validator tests
-        run: pytest
+  # The sdist and the wheel, and what they contain: the package, the schemas
+  # (package data in the wheel) and the licence texts, plus what builds the
+  # wheel in the sdist; nothing else
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      # As in `lint`
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version-file: uv.lock
+      - name: Install dependencies
+        run: |
+          uv sync --locked --extra dev --python "$(which python)"
+          echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
+      - name: Build distributions
+        run: python -m build
+      - name: Check wheel contents
+        run: |
+          unzip -Z1 dist/*.whl | tee wheel-contents.txt
+          if grep -Ev '^ga4gh_io_schema(/|-[^/]+\.dist-info/)' wheel-contents.txt; then
+            echo "::error::Unexpected files in wheel"
+            exit 1
+          fi
+          grep -qx 'ga4gh_io_schema/schemas/ga4gh-io-profile.schema.json' wheel-contents.txt
+          grep -Eqx 'ga4gh_io_schema-[^/]+\.dist-info/licenses/LICENSES/Apache-2\.0\.txt' wheel-contents.txt
+          # Typed package (PEP 561)
+          grep -qx 'ga4gh_io_schema/py.typed' wheel-contents.txt
+      # Only what builds the wheel, all Apache-2.0 (the licence of both
+      # distributions): no docs (CC-BY-4.0), tests or third-party data;
+      # keep the list in sync with `tests/test_wheel.py`
+      - name: Check sdist contents
+        run: |
+          tar -tzf dist/*.tar.gz | sed 's|^[^/]*/||' | grep -v '/$' | tee sdist-contents.txt
+          if grep -Ev '^(src/ga4gh_io_schema/|schemas/|(\.gitignore|LICENSES/Apache-2\.0\.txt|PKG-INFO|README\.md|pyproject\.toml)$)' sdist-contents.txt; then
+            echo "::error::Unexpected files in sdist"
+            exit 1
+          fi
+          grep -qx 'schemas/ga4gh-io-profile.schema.json' sdist-contents.txt
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # Lowest to newest supported version; keep in sync with pyproject.toml.
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      # As in `lint`
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version-file: uv.lock
+      - name: Install dependencies
+        run: |
+          uv sync --locked --extra dev --python "$(which python)"
+          echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
+      # 100% coverage (`fail_under` in `pyproject.toml`); the wheel tests
+      # build and install the wheel
+      - name: Run tests (including installed wheel)
+        run: pytest --cov-report=xml
+      # Uploaded once, from the version of the other single-version jobs.
+      # Upload errors fail the workflow only on pushes in elixir-cloud-aai:
+      # pull requests from forks and Dependabot get no access to the Codecov
+      # token, and Codecov isn't set up before the transfer
+      - name: Submit report to Codecov
+        if: ${{ matrix.python-version == '3.13' }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: >-
+            ${{ github.event_name == 'push'
+            && github.repository_owner == 'elixir-cloud-aai' }}
+          verbose: true
 
       - name: E2E CLI Validation (Valid Schemas)
         run: |
-          ga4gh-io-schema-validator tests/data/valid.schema.json
-          ga4gh-io-schema-validator tests/data/example_workflow.schema.json
-          ga4gh-io-schema-validator tests/data/example_tool.schema.json
+          for schema in tests/conformance/schema-documents/valid/*.schema.json; do
+            ga4gh-io-schema validate "$schema"
+          done
+          ga4gh-io-schema validate tests/data/example_workflow.schema.json
+          ga4gh-io-schema validate tests/data/example_wdl.schema.json
+          ga4gh-io-schema validate examples/demo/ga4gh-io.schema.json
+          ga4gh-io-schema validate - < tests/data/example_tool.schema.json
 
+      - name: E2E CLI Conversion (CWL)
+        run: |
+          # The fixture has an input of type Any, which fails without the option
+          ga4gh-io-schema convert cwl --allow-unmarked-files tests/data/cwl/call-variants.cwl -o "$RUNNER_TEMP/call-variants.json"
+          ga4gh-io-schema validate "$RUNNER_TEMP/call-variants.json"
+
+      - name: E2E CLI Conversion (Nextflow)
+        run: |
+          ga4gh-io-schema convert nextflow tests/data/nextflow/demo/nextflow_schema.json -o "$RUNNER_TEMP/demo.json"
+          ga4gh-io-schema validate "$RUNNER_TEMP/demo.json"
+
+      # Each bad schema must fail with exit code 1 and a validation error, not
+      # with any error (e.g. a missing file); tests/test_cli.py checks the
+      # exact message of each.
       - name: E2E CLI Validation (Invalid Schemas)
         run: |
-          ! ga4gh-io-schema-validator tests/data/invalid.schema.json
+          for schema in tests/conformance/schema-documents/invalid/*.schema.json; do
+            set +e
+            output=$(ga4gh-io-schema validate "$schema" 2>&1)
+            status=$?
+            set -e
+            echo "$schema: $output"
+            if [ "$status" -ne 1 ]; then
+              echo "::error::expected exit code 1 for $schema, got $status"
+              exit 1
+            fi
+            if [[ "$output" != "Validation Error: "* ]]; then
+              echo "::error::expected a validation error for $schema"
+              exit 1
+            fi
+          done
+
+  # The lowest versions of the direct dependencies that `pyproject.toml`
+  # allows (its floors), on the lowest supported Python version: a floor that
+  # fails the tests must be raised. Resolved here, not from `uv.lock` (which
+  # the resolution changes only in the runner); the wheel tests are left
+  # out, and coverage is the job of `test`
+  test-lowest:
+    name: Test (lowest dependencies)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      # As in `lint`
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version-file: uv.lock
+      - name: Install lowest dependencies
+        run: |
+          uv sync --resolution lowest-direct --extra dev --python "$(which python)"
+          echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
+      - name: Show resolved versions
+        run: uv pip list
+      - name: Run tests
+        run: pytest --no-cov -m "not wheel"
+
+  # The conformance suite and the examples through JavaScript validators
+  # (tests/js/), offline, so that JavaScript clients see the results of the
+  # Python validator.
+  test-js:
+    name: Test (JavaScript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tests/js
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Active LTS version of Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: tests/js/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run JavaScript validators
+        run: npm test
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Python version of Read the Docs (`.readthedocs.yaml`)
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      # As in `lint`
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version-file: uv.lock
+      - name: Install dependencies
+        run: |
+          uv sync --locked --extra docs --python "$(which python)"
+          echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
+      # Fails on warnings, e.g., of broken links, anchors and references
+      - name: Build documentation
+        run: mkdocs build --strict
+
+  # The prototype (prototype/compose.yaml) as a user runs it: the stack is
+  # built and started with Docker Compose, and tests/test_prototype_e2e.py
+  # follows the path from the TRS stub to the WES run request, over the
+  # host's API and in a browser.
+  e2e:
+    name: End-to-end test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The one command of the testbed page
+      - name: Start the prototype
+        run: make demo
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      # As in `lint`
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version-file: uv.lock
+      - name: Install test dependencies
+        run: |
+          uv sync --locked --extra e2e --python "$(which python)"
+          echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
+      - name: Install Chromium
+        run: playwright install --with-deps chromium
+
+      # Without Playwright, the browser test fails here instead of skipping
+      - name: Run end-to-end tests
+        env:
+          PROTOTYPE_URL: http://127.0.0.1:8000
+          PROTOTYPE_REQUIRE_BROWSER: "1"
+        run: pytest -m e2e --no-cov tests/test_prototype_e2e.py
+
+      - name: Show the logs of the prototype
+        if: failure()
+        run: docker compose -f prototype/compose.yaml logs
+
+      - name: Stop the prototype
+        if: always()
+        run: make demo-down
+
+  # The only required check: passes if every other job passed, or was skipped
+  # where that is intended (`title` on pushes and for Dependabot). Any other
+  # result (failure, cancelled, or an unintended skip) fails it. Add every
+  # new job to `needs`
+  passed:
+    name: CI passed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    needs: [title, lint, build, test, test-lowest, test-js, docs, e2e]
+    permissions: {}
+    steps:
+      - name: Check results of all jobs
+        uses: elixir-cloud-aai/.github/actions/gate@31f22fccc1f3c597ed7c1d1f75b2f85522155348 # v1.1.0
+        with:
+          needs: ${{ toJSON(needs) }}
+          # `title` is skipped on purpose on pushes and for Dependabot
+          allow-skipped: title

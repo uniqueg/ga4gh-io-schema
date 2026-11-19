@@ -1,0 +1,76 @@
+# GA4GH IO Schema Profile
+
+--8<-- "README.md:synopsis"
+
+!!! info "Status"
+    This is version 0.3.0 of a proposal, not a GA4GH standard: it has no
+    releases, and it waits for review by the GA4GH Federated Analysis Work
+    Stream (see [Roadmap](roadmap.md#next-steps)). Try it with the
+    [live demo](adoption/testbed.md), one command (`make demo`) on a
+    laptop.
+
+## Executive summary
+
+This document proposes a **JSON Schema profile** that describes the inputs and outputs of computational workflows and workflow components, in the role that an OpenAPI description plays for a web API.
+
+Today, the inputs and outputs of a workflow are described in the language of its engine (e.g., Nextflow, CWL, WDL), and each engine does it differently. The profile adds an engine-neutral contract for inputs and outputs that sits *above* these languages: it describes the public interface of a workflow, not how the workflow runs. With it, portals can render input forms (through an adapter that reads the `x-ga4gh-*` keywords, see [Portals and clients](adoption/portals.md)), catalogues and clients can interpret outputs, and AI agents can derive tool definitions for building run requests.
+
+The profile is designed for the GA4GH APIs for federated analysis (TRS, WES, DRS) and for workflows in the life sciences. Whether it also suits other kinds of workloads, such as machine learning pipelines, is an [open question](roadmap.md#open-questions).
+
+## Prototype
+
+A [prototype](adoption/prototype.md) runs the profile on a single laptop
+with one command (`make demo`): a portal picks a workflow in a TRS stub,
+renders the form of its IO schema and builds the WES run request, with no
+code for the workflow or its language. Its
+[evaluation](adoption/prototype-evaluation.md) concludes that the schema
+was enough for that flow and that TRS needed no change. The gaps it found
+are at the edges of the profile: matching TRS file entries, the imports of
+multi-file workflows in the `workflow_url`, whether a WES can fetch that
+URL, and a helper for checking the workflow block. 0.3.0 addresses each of
+them in the docs, the specification or the tools; whether a WES can fetch
+the URL stays an [open question](roadmap.md#open-questions) for the WES
+API. The [demo run](adoption/prototype-evaluation.md#demo-run) of 0.3.0,
+from a fresh checkout as the [testbed](adoption/testbed.md) describes,
+confirmed the flow and found nothing new for the specification; it says
+nothing about deployed services, runs or outputs, and leaves questions
+for the work stream.
+
+## Contents
+
+- [Motivation](motivation.md): the usability gap, goals, non-goals and the
+  concept of an interface description above workflow languages.
+- [Specification](specification/index.md): the keywords, the outputs model,
+  the meta-schema, conformance and examples.
+- [Rationale](rationale.md): the ecosystem survey and why no existing
+  solution is adopted.
+- [Related work](related-work.md): how the profile relates to overlapping
+  standards and tools (WES, Nextflow, RO-Crate, MCP, OGC and others).
+- [Security considerations](security.md): what validation with the profile
+  does and doesn't protect against.
+- [Tools](tools/index.md): the validator (CLI and Python API) and converters.
+- [Adoption](adoption/index.md): the adoption path and guides for TRS, WES,
+  and portals and clients.
+- [Prototype](adoption/prototype.md): try it on a laptop, from a workflow
+  in TRS to a form and a WES run request, with one command.
+- [Testbed](adoption/testbed.md): the live demo: how to run it and play
+  around with it, its parts, what is real and what is mocked, and its
+  limits.
+- [Runsheet](adoption/runsheet.md): presenting the live demo in about ten
+  minutes.
+- [Roadmap](roadmap.md): next steps, open questions and the history of this
+  proposal.
+- [Changelog](changelog.md): the changes of each version, including the
+  changes of scope since version 0.1.0.
+- [Versioning and governance](governance.md): what a version number says,
+  how releases are made and how changes are proposed.
+- [Development](development.md): tests and checks for contributors.
+
+## License
+
+The documentation is licensed under
+[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/), the code and
+schemas under [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) (see
+`REUSE.toml` in the
+[repository](https://github.com/elixir-cloud-aai/ga4gh-io-schema), and
+[Licences](governance.md#licences)).

@@ -1,0 +1,9 @@
+{
+  "reads": "https://data.example.org/sample.bam",
+  "index": "drs://drs.example.org/index",
+  "fastqs": [
+    "inputs/r1.fq.gz",
+    "inputs/r2.fq.gz"
+  ],
+  "label": "sample"
+}

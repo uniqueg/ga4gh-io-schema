@@ -1,0 +1,7 @@
+SPDX-FileCopyrightText: 2018 Leiden University Medical Center
+
+SPDX-License-Identifier: MIT
+
+Unchanged copy of QC.wdl of https://github.com/biowdl/QC at commit
+ce4ca66d5cf1a1b08b14458961a909854de8d15c, which is released under the MIT
+licence.

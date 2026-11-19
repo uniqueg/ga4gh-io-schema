@@ -1,0 +1,9 @@
+{
+  "reads": "drs://drs.example.org/314159",
+  "genome_index": "https://data.example.org/index/",
+  "sample_names": [
+    "s1",
+    "s2"
+  ],
+  "skip_qc": false
+}

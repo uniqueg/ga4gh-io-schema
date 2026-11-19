@@ -1,0 +1,9 @@
+SPDX-FileCopyrightText: nf-core contributors <https://github.com/nf-core/test-datasets>
+
+SPDX-License-Identifier: MIT
+
+Copy of data/genomics/sarscov2/illumina/bam/test.paired_end.bam of
+https://github.com/nf-core/test-datasets at commit
+3e548a3b34994380db1602506e0721fadbad6de1 (branch modules), which is
+released under the MIT licence. values.json refers to the same file at
+that commit.

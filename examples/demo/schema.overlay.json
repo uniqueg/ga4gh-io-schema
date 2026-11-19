@@ -1,0 +1,56 @@
+{
+  "title": "I/O Schema demo",
+  "x-ga4gh-workflow": {
+    "trs_tool_id": "ga4gh-io-schema-demo",
+    "trs_version_id": "1.0.0",
+    "primary_descriptor_path": "demo.wdl"
+  },
+  "properties": {
+    "inputs": {
+      "properties": {
+        "reads": {
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_2572",
+            "schemes": ["https", "s3"]
+          },
+          "examples": [
+            "https://raw.githubusercontent.com/nf-core/test-datasets/3e548a3b34994380db1602506e0721fadbad6de1/data/genomics/sarscov2/illumina/bam/test.paired_end.bam"
+          ]
+        },
+        "min_mapq": {
+          "minimum": 0,
+          "maximum": 60,
+          "x-ga4gh-ui-widget": "slider",
+          "x-ga4gh-error-message": "The minimum mapping quality is a whole number from 0 to 60"
+        },
+        "read_filter": {
+          "x-ga4gh-ui-widget": "radio"
+        }
+      }
+    },
+    "outputs": {
+      "properties": {
+        "filtered_bam": {
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_2572"
+          }
+        },
+        "filtered_bam_index": {
+          "x-ga4gh-file": {
+            "kind": "file",
+            "ontology": "http://edamontology.org/format_3327"
+          }
+        },
+        "report": {
+          "x-ga4gh-file": {
+            "kind": "file",
+            "mediaType": "text/html"
+          },
+          "x-ga4gh-ui-widget": "html-viewer"
+        }
+      }
+    }
+  }
+}

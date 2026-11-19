@@ -1,0 +1,46 @@
+{
+  "run_id": "run-2",
+  "state": "COMPLETE",
+  "outputs": {
+    "qc_report": {
+      "class": "File",
+      "location": "s3://example-bucket/toil/run-2/qc.html",
+      "basename": "qc.html",
+      "size": 120
+    },
+    "index_dir": {
+      "class": "Directory",
+      "location": "s3://example-bucket/toil/run-2/index",
+      "basename": "index",
+      "listing": [
+        {
+          "class": "File",
+          "location": "s3://example-bucket/toil/run-2/index/a.idx"
+        }
+      ]
+    },
+    "summary": {
+      "report": {
+        "class": "File",
+        "location": "s3://example-bucket/toil/run-2/summary.txt"
+      },
+      "contigs": 42,
+      "plot": null,
+      "coverage": {
+        "class": "File",
+        "location": "s3://example-bucket/toil/run-2/coverage.tsv"
+      }
+    },
+    "chunks": [
+      {
+        "class": "File",
+        "location": "s3://example-bucket/toil/run-2/chunk_1.fa"
+      },
+      null,
+      {
+        "class": "File",
+        "location": "s3://example-bucket/toil/run-2/chunk_2.fa"
+      }
+    ]
+  }
+}
