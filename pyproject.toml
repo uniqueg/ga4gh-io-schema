@@ -103,7 +103,7 @@ docs = [
     "mkdocs-material>=9.7.7,<10",
     "mkdocstrings>=1.0.8,<2",
     "mkdocstrings-python>=2.0.10,<3",
-    "pymdown-extensions>=12.3,<13",
+    "pymdown-extensions>=12.3,<14",
 ]
 
 # Only what builds the wheel (and `pyproject.toml`, `README.md`,
