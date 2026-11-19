@@ -19,7 +19,8 @@ and aren't for deployment: no authentication, no TLS, no persistence (see
   [Testbed](testbed.md#run-it)).
 - A web browser.
 - Network access for the first build only: it pulls `python:3.13-alpine`
-  and installs this package with its dependencies from PyPI. Nothing else
+  and installs this package with the versions of its dependencies locked
+  in `uv.lock`, from PyPI. Nothing else
   leaves the laptop; no account, token or outside service is needed.
 
 ## Run it
