@@ -67,7 +67,7 @@ jobs:
     permissions: {}
     steps:
       - name: Check PR title
-        uses: elixir-cloud-aai/.github/actions/pr-title@31f22fccc1f3c597ed7c1d1f75b2f85522155348 # v1.1.0
+        uses: elixir-cloud-aai/.github/actions/pr-title@bf3840c9c072aaf37d6cafe199aaa1994087d1ef # v1.2.0
 
   lint:
     name: Lint
@@ -412,7 +412,7 @@ jobs:
     permissions: {}
     steps:
       - name: Check results of all jobs
-        uses: elixir-cloud-aai/.github/actions/gate@31f22fccc1f3c597ed7c1d1f75b2f85522155348 # v1.1.0
+        uses: elixir-cloud-aai/.github/actions/gate@bf3840c9c072aaf37d6cafe199aaa1994087d1ef # v1.2.0
         with:
           needs: ${{ toJSON(needs) }}
           # `title` is skipped on purpose on pushes and for Dependabot
