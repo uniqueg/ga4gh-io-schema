@@ -171,7 +171,7 @@ With the stub, the `workflow_url` names the stub inside the stack
 (`http://trs-stub:8080/...`), which no WES outside can fetch: that is why
 the stack sends nothing by default.
 
-Without Docker, run the two parts directly (Python 3.11 or later, with this
+Without Docker, run the two parts directly (Python 3.11.5 or later, with this
 package installed: `pip install -e .`), each in its own terminal:
 
 ```bash

@@ -18,8 +18,9 @@ license = "Apache-2.0"
 # its CC-BY-4.0 docs), which the distributions don't contain
 license-files = ["LICENSES/Apache-2.0.txt"]
 # Keep in sync with the CI test matrix, ruff's target-version and mypy's
-# python_version.
-requires-python = ">=3.11"
+# python_version. At least 3.11.5, which pymdown-extensions 13 (docs)
+# requires.
+requires-python = ">=3.11.5"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
