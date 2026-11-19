@@ -18,11 +18,10 @@
 name: CI
 on:
   push:
-    # `dev` is the default branch after the move to elixir-cloud-aai;
-    # `main` and the `v0.N` integration branches stay until then (see
-    # "Branches" in `docs/development.md`)
-    branches: [dev, main, "v*"]
-  # All pull requests, also those into the `v0.N` integration branches
+    # `dev` is the default branch; `main` holds the published states (see
+    # "Branches and pull requests" in `docs/development.md`)
+    branches: [dev, main]
+  # All pull requests, whatever their base branch
   pull_request:
     types: [opened, synchronize, reopened, edited]
 

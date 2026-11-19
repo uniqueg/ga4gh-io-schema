@@ -4,7 +4,7 @@
 
 version: 2
 # No entry sets `target-branch`: pull requests go to the default branch
-# (`dev`, after the move to elixir-cloud-aai) anyway, and while
+# (`dev`) anyway, and while
 # `target-branch` is set, GitHub doesn't apply the entry's options
 # (`labels`, `ignore`, ...) to security updates
 updates:
