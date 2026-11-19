@@ -268,10 +268,10 @@ of the command-line tool (about 1 s per run) is mostly this import.
 
 ## Branches and pull requests
 
-Once the repository is at elixir-cloud-aai, `dev` is its default branch
-and the target of all pull requests; `main` holds the reviewed states that
-are published (and, later, the releases). The `v0.N` integration branches
-are no longer used. Pull requests are squash-merged, so their titles become
+`dev` is the default branch and the target of all pull requests; `main`
+holds the reviewed states that are published (and, later, the releases).
+The `v0.N` integration branches used before the move to elixir-cloud-aai
+are gone, and CI runs on pushes to `dev` and `main` only. Pull requests are squash-merged, so their titles become
 the commit messages: Conventional Commits, at most 50 characters (checked
 by the job `PR title`). The only required check is `CI passed`, the gate of
 `.github/workflows/ci.yml`, which fails unless every other job passed.
