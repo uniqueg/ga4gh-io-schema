@@ -57,6 +57,15 @@ updates:
     labels: ["type: dependencies"]
     schedule:
       interval: monthly
+    # The Python of the image stays at the newest version in its
+    # security-fix phase (3.13 until October 2027), within the versions
+    # the tests cover; Dependabot updates its digest only, the version is
+    # moved by hand
+    ignore:
+      - dependency-name: python
+        update-types: [
+          "version-update:semver-major", "version-update:semver-minor",
+        ]
     groups:
       docker:
         patterns: ["*"]

@@ -20,7 +20,7 @@ build:
   # it). `--inexact` keeps pip and uv in Read the Docs' environment
   jobs:
     pre_install:
-      - python -m pip install "uv==0.13.8"
+      - python -m pip install "uv==0.13.9"
     install:
       - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --locked --extra docs --inexact
 
