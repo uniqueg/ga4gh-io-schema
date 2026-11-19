@@ -123,6 +123,17 @@ only, with no deployed services and nothing registered in any TRS.
 The end-to-end tests of CI (`tests/test_prototype_e2e.py`, over the API
 and in Chrome) also passed against the running stack.
 
+**Since the run,** the testbed starts with one command (`make demo`),
+the stub serves one [seeded workflow](testbed.md#the-seeded-workflows)
+each in CWL, Nextflow and Snakemake next to the WDL demo, and it reads
+the files of the checkout on every request, so that edited schemas show
+on reload. The reference run wasn't repeated for these additions; CI's
+end-to-end test covers them on every change (see [How it is
+tested](testbed.md#how-it-is-tested)): it starts the stack with `make
+demo`, builds the run request of each seeded workflow from its example
+values, and edits a schema while the stack runs. They add languages to
+the flow, not steps, and don't change the conclusions below.
+
 **What it confirms for the profile:** the conclusions above, for a run
 that anybody can repeat from the repository alone. A client found the IO
 schema of a workflow in TRS by the [publishing
@@ -135,7 +146,8 @@ for the workflow or for WDL.
 **What it doesn't show:** a deployed TRS (the TRS is a stub, and nothing
 was registered in a TRS implementation), a WES run, outputs and their
 normalisation, authentication and TLS, browsers on another origin (CORS),
-and other languages than WDL. These are the [limits of the
+and, in this run, other languages than WDL (the seeded workflows came
+later, see above). These are the [limits of the
 prototype](#limits-of-the-prototype); the run didn't narrow them.
 
 **What follows for the specification:** nothing new. The run confirmed
@@ -167,8 +179,11 @@ makes any one deployment a requirement of the profile:
 - **No outputs:** it stops at the run request. The output side of the
   profile is shown by the [end-to-end demo](demo.md) and the [output
   normaliser](../tools/outputs.md), not here.
-- **One workflow, one language:** WDL only, one file; CWL, Nextflow and
-  Snakemake bindings are tested in the package, not in the stack.
+- **Small workflows, one file each:** the WDL demo and one [seeded
+  workflow](testbed.md#the-seeded-workflows) each in CWL, Nextflow and
+  Snakemake, each a single primary descriptor, written for the demo, with
+  schemas written by hand. Multi-file workflows and the converters are
+  tested in the package, not in the stack.
 - **No real services:** a TRS stub instead of a registry, no WES by
   default, no authentication, no DRS. Pointing it at a real TRS or WES
   (`TRS_URL`, `WES_URL`) was part neither of the CI runs nor of the [demo

@@ -31,8 +31,8 @@ profile.
   step 2).
 - A web browser.
 - Network access for the first build: it pulls `python:3.13-alpine` and
-  installs this package from the checkout, with its dependencies from
-  PyPI. Once the image is built, the stack runs offline.
+  installs this package from the checkout, with the versions of its
+  dependencies locked in `uv.lock`, from PyPI. Once the image is built, the stack runs offline.
 
 **Steps,** from any directory:
 
