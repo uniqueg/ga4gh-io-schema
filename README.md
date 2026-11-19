@@ -68,7 +68,7 @@ The sources of the documentation are in [`docs/`](docs/).
 
 ## Usage
 
-Install the package from a clone of the repository (Python 3.11 or later)
+Install the package from a clone of the repository (Python 3.11.5 or later)
 and validate an IO schema against the profile:
 
 ```bash

@@ -15,7 +15,7 @@ pip install -e ".[dev]"
 ```
 
 To install only the validator, run `pip install .` in the cloned repository
-instead. The package supports Python 3.11 and later. It ships the meta-schema
+instead. The package supports Python 3.11.5 and later. It ships the meta-schema
 and its vocabularies, so the validator works offline and outside the
 repository. Its dependencies are jsonschema and referencing, and regress for
 the [patterns of values](#patterns-of-values); the converters need the
