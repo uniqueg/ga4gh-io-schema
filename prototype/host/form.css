@@ -438,6 +438,18 @@ textarea:focus {
   box-shadow: 0 0 0 1px var(--error);
 }
 
+/* Radio buttons and checkboxes have no border of their own: an outline
+   marks them; an object with an error of its own gets a red frame */
+.field:has(> .error:not(:empty)) > :is([role="radiogroup"], input[type="checkbox"]) {
+  border-radius: 4px;
+  outline: 2px solid var(--error);
+  outline-offset: 4px;
+}
+
+fieldset.field:has(> .error:not(:empty)) {
+  border-color: var(--error);
+}
+
 details {
   border-top: 1px solid var(--border);
   margin: 0.5rem 0 1.25rem;
@@ -532,6 +544,11 @@ pre {
 
   .field:has(> .error:not(:empty)) > :is(input:not([type="checkbox"]), select, textarea),
   .field:has(> .error:not(:empty)) > .slider > input:not([type="range"]) {
+    border-style: double;
+    border-width: 3px;
+  }
+
+  fieldset.field:has(> .error:not(:empty)) {
     border-style: double;
     border-width: 3px;
   }

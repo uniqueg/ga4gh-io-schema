@@ -603,9 +603,11 @@ def test_page_colours_contrast(
 
 def test_page_loads_nothing_from_elsewhere() -> None:
     """Test that the stylesheet loads no files, so the demo works offline."""
-    css = FORM_CSS.read_text(encoding="utf-8")
+    # CSS keywords and functions are case-insensitive
+    css = FORM_CSS.read_text(encoding="utf-8").lower()
     assert "url(" not in css
     assert "@import" not in css
+    assert "image-set(" not in css
 
 
 def test_host_rejects_unknown_paths(host: str) -> None:
