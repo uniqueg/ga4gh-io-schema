@@ -217,12 +217,16 @@ main {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   }
 
-  /* The run request stays in view while the form scrolls */
+  /* The run request stays in view while the form scrolls; a long one
+     scrolls on its own, so that the button and the run stay in view */
   .request {
-    max-height: calc(100vh - 2rem);
-    overflow: auto;
     position: sticky;
     top: 1rem;
+  }
+
+  .request pre {
+    max-height: max(12rem, calc(100vh - 16rem));
+    overflow: auto;
   }
 }
 
@@ -515,5 +519,19 @@ pre {
 @media (prefers-reduced-motion: no-preference) {
   button {
     transition: background-color 120ms ease;
+  }
+}
+
+/* High contrast modes drop the drawn arrow and the colours of errors */
+@media (forced-colors: active) {
+  select:not([multiple]) {
+    appearance: auto;
+    padding-right: 0.75rem;
+  }
+
+  .field:has(> .error:not(:empty)) > :is(input:not([type="checkbox"]), select, textarea),
+  .field:has(> .error:not(:empty)) > .slider > input:not([type="range"]) {
+    border-style: double;
+    border-width: 3px;
   }
 }
