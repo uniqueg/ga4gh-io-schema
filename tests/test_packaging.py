@@ -671,6 +671,43 @@ def test_prototype_image_installs_pinned_versions() -> None:
     assert "!uv.lock" in dockerignore
 
 
+def test_prototype_image_sets_the_modes_it_copies() -> None:
+    """Test that every ``COPY`` of the prototype's image sets the modes.
+
+    A clone made with a strict umask (e.g., 077) has files that only their
+    owner can read; copied as they are, the image's unprivileged user
+    couldn't open them (#146). Each ``COPY`` makes them readable for all
+    and writable only by root. The CI job "End-to-end test" runs the demo
+    from such a checkout.
+    """
+    dockerfile = (REPO_ROOT / "prototype" / "Dockerfile").read_text("utf-8")
+    copies = re.findall(r"^COPY\s+(.*)$", dockerfile, re.M)
+
+    assert copies
+    for copy in copies:
+        assert copy.startswith("--chmod=u=rwX,go=rX "), copy
+
+
+def test_prototype_stub_runs_as_the_user_of_make() -> None:
+    """Test that ``make demo`` runs the TRS stub as the user running it.
+
+    The stub reads ``examples/`` of the checkout from a bind mount, which
+    the image's unprivileged user can't read if only the owner of the
+    checkout can (#146). Without ``make``, the stub stays that user.
+    """
+    compose = yaml.safe_load(
+        (REPO_ROOT / "prototype" / "compose.yaml").read_text("utf-8")
+    )
+    makefile = (REPO_ROOT / "Makefile").read_text("utf-8")
+
+    assert compose["services"]["trs-stub"]["user"] == (
+        "${DEMO_UID:-65534}:${DEMO_GID:-65534}"
+    )
+    assert "DEMO_UID ?= $(shell id -u)" in makefile
+    assert "DEMO_GID ?= $(shell id -g)" in makefile
+    assert re.search(r"^export .*\bDEMO_UID DEMO_GID\b", makefile, re.M)
+
+
 def test_read_the_docs_installs_the_lock() -> None:
     """Test that Read the Docs builds with the versions of ``uv.lock``.
 
