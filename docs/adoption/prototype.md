@@ -53,12 +53,14 @@ around](testbed.md#play-around) with the schemas while the stack runs.
 
 The page plays the portal: it knows a TRS and, optionally, a WES, and
 nothing about any workflow. Each step uses only what the IO schema and
-the GA4GH APIs give it.
+the GA4GH APIs give it. The workflow list is in the header; on wide
+screens, the run request is shown next to the form and stays in view
+while the form scrolls (under the form on narrow screens).
 
 ### 1. Pick a workflow in TRS
 
-![The page lists the workflows of the TRS stub; no form is shown before a
-pick.](../assets/prototype/pick.png)
+![The page lists the workflows of the TRS stub in its header; no form is
+shown before a pick.](../assets/prototype/pick.png)
 
 The list "Workflow in TRS" comes from `GET /tools` of the stub: one entry
 per tool version and descriptor type. Pick "I/O Schema demo 1.0.0 (WDL)".
@@ -97,7 +99,7 @@ file references](../specification/files.md), before anything is sent.
 
 ### 3. See the WES run request
 
-![The form with valid values, and the WES run request under
+![The form with valid values, and the WES run request next to
 it.](../assets/prototype/run-request.png)
 
 Set the mapping quality to 20, pick `proper_pairs` and submit. The page
@@ -126,9 +128,9 @@ the portal has no code for this workflow or for WDL.
 ### 4. Send it to a WES (optional)
 
 With `WES_URL` set (see below), a button "Send to WES" appears under a
-valid run request. The host posts the request to `POST /runs` of the WES
-and shows the run id and its state. Without `WES_URL`, nothing is ever
-sent; the banner at the top of the page says so.
+valid run request, in its panel. The host posts the request to
+`POST /runs` of the WES and shows the run id and its state. Without
+`WES_URL`, nothing is ever sent; the banner under the header says so.
 
 **What it shows:** the request is a plain WES `RunRequest`; any WES that
 can fetch the `workflow_url` can run it.
