@@ -37,6 +37,14 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
 COPY examples/demo examples/demo
 COPY prototype prototype
 
+# COPY keeps the modes of the checkout, and a clone made with a strict umask
+# (e.g., 077) has files that only their owner can read, which the user below
+# couldn't open: everything copied becomes readable for all and writable only
+# by root, directories searchable. A step of its own rather than `COPY
+# --chmod`, whose symbolic modes older Docker versions (Dockerfile frontend
+# before 1.14) reject or ignore; keep it after the last COPY
+RUN chmod -R u=rwX,go=rX /app
+
 USER 65534:65534
 
 CMD ["python", "prototype/host/form_host.py", "--host", "0.0.0.0"]

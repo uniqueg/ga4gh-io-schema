@@ -226,8 +226,11 @@ concept](form.md)), and `Dockerfile` and `compose.yaml`; the `Makefile` at
 the root has the short commands. The stub's container mounts `examples/`
 of the checkout read-only. The image, from `python:3.13-alpine` (pinned to
 a digest) with this package and the versions of `uv.lock` installed, runs
-as an unprivileged user; the containers are read-only, without
-capabilities, and their ports are bound to `127.0.0.1`. The root
+as an unprivileged user, with the files it copies readable for that user
+whatever the umask of the checkout; `make demo` runs the stub as the user
+running it instead (`DEMO_UID` and `DEMO_GID` without `make`), so that it
+can read the mount if only that user can. The containers are read-only,
+without capabilities, and their ports are bound to `127.0.0.1`. The root
 `.dockerignore` keeps the build context
 to the files that the image needs.
 

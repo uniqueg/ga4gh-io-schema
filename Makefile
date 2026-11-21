@@ -11,8 +11,15 @@
 COMPOSE = docker compose -f prototype/compose.yaml
 DEMO_PORT ?= 8000
 DEMO_TRS_PORT ?= 8080
+# The stub runs as the user running make (as root through sudo: the user who
+# called sudo), so that it can read examples/ even if the checkout isn't
+# readable by others (e.g., cloned with umask 077)
+MAKE_UID := $(shell id -u)
+MAKE_GID := $(shell id -g)
+DEMO_UID ?= $(if $(filter 0,$(MAKE_UID)),$(or $(SUDO_UID),0),$(MAKE_UID))
+DEMO_GID ?= $(if $(filter 0,$(MAKE_UID)),$(or $(SUDO_GID),0),$(MAKE_GID))
 PYTHON ?= python3
-export DEMO_PORT DEMO_TRS_PORT
+export DEMO_PORT DEMO_TRS_PORT DEMO_UID DEMO_GID
 
 .PHONY: help demo demo-start demo-logs demo-down demo-clean demo-checksums
 

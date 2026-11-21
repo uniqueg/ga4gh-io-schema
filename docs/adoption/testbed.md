@@ -60,7 +60,11 @@ profile.
     or of a `prototype/.env` file don't point the stack at another TRS or
     WES (see [Point it at a real
     TRS or WES](prototype.md#point-it-at-a-real-trs-or-wes)); `make demo`
-    does the same.
+    does the same. `make demo` also runs the TRS stub as your user, so
+    that it can read `examples/` even if only you can read the checkout
+    (e.g., cloned with `umask 077`); without `make`, put
+    `DEMO_UID=$(id -u) DEMO_GID=$(id -g)` in front of the command in that
+    case.
 
     If a port is in use (e.g., port 8080 by a local TRS-Filer or a port
     forward), Compose stops with `address already in use`. Pick other
