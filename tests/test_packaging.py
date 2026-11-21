@@ -682,8 +682,14 @@ def test_prototype_image_sets_the_modes_it_copies() -> None:
     CI job "End-to-end test" runs the demo from such a checkout.
     """
     dockerfile = (REPO_ROOT / "prototype" / "Dockerfile").read_text("utf-8")
-    instructions = re.findall(r"^([A-Z]+)\s+(.*)$", dockerfile, re.M)
-    last_copy = max(i for i, (name, _) in enumerate(instructions) if name == "COPY")
+    # Instructions are case-insensitive; ADD copies files too
+    instructions = [
+        (name.upper(), args)
+        for name, args in re.findall(r"^([A-Za-z]+)\s+(.*)$", dockerfile, re.M)
+    ]
+    last_copy = max(
+        i for i, (name, _) in enumerate(instructions) if name in {"COPY", "ADD"}
+    )
     chmod = instructions.index(("RUN", "chmod -R u=rwX,go=rX /app"))
 
     assert last_copy < chmod < instructions.index(("USER", "65534:65534"))
