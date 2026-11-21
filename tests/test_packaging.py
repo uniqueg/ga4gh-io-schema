@@ -672,20 +672,22 @@ def test_prototype_image_installs_pinned_versions() -> None:
 
 
 def test_prototype_image_sets_the_modes_it_copies() -> None:
-    """Test that every ``COPY`` of the prototype's image sets the modes.
+    """Test that the prototype's image sets the modes of what it copies.
 
     A clone made with a strict umask (e.g., 077) has files that only their
     owner can read; copied as they are, the image's unprivileged user
-    couldn't open them (#146). Each ``COPY`` makes them readable for all
-    and writable only by root. The CI job "End-to-end test" runs the demo
-    from such a checkout.
+    couldn't open them (#146). A ``chmod`` after the last ``COPY`` makes
+    them readable for all and writable only by root (not ``COPY --chmod``,
+    whose symbolic modes older Dockerfile frontends reject or ignore). The
+    CI job "End-to-end test" runs the demo from such a checkout.
     """
     dockerfile = (REPO_ROOT / "prototype" / "Dockerfile").read_text("utf-8")
-    copies = re.findall(r"^COPY\s+(.*)$", dockerfile, re.M)
+    instructions = re.findall(r"^([A-Z]+)\s+(.*)$", dockerfile, re.M)
+    last_copy = max(i for i, (name, _) in enumerate(instructions) if name == "COPY")
+    chmod = instructions.index(("RUN", "chmod -R u=rwX,go=rX /app"))
 
-    assert copies
-    for copy in copies:
-        assert copy.startswith("--chmod=u=rwX,go=rX "), copy
+    assert last_copy < chmod < instructions.index(("USER", "65534:65534"))
+    assert not [args for name, args in instructions if "--chmod" in args]
 
 
 def test_prototype_stub_runs_as_the_user_of_make() -> None:
