@@ -522,7 +522,8 @@ pre {
   }
 }
 
-/* High contrast modes drop the drawn arrow and the colours of errors */
+/* High contrast modes drop the drawn arrow and the colours of errors;
+   the selectors of errors are those of "A field with an error" above */
 @media (forced-colors: active) {
   select:not([multiple]) {
     appearance: auto;

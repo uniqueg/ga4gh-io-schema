@@ -578,11 +578,17 @@ def _themes() -> dict[str, dict[str, str]]:
         the dark mode over them.
     """
     css = FORM_CSS.read_text(encoding="utf-8")
-    light, dark = css.split("@media (prefers-color-scheme: dark)", 1)
+    marker = "@media (prefers-color-scheme: dark)"
+    assert marker in css, "form.css has no dark mode"
+    light, dark = css.split(marker, 1)
     dark = dark.split("\n}\n", 1)[0]
     pattern = re.compile(r"--([a-z-]+):\s*(#[0-9a-f]{6});")
     tokens = dict(pattern.findall(light))
-    return {"light": tokens, "dark": {**tokens, **dict(pattern.findall(dark))}}
+    dark_tokens = dict(pattern.findall(dark))
+    # Each colour of the dark mode is read, not left at its light value
+    declared = re.findall(r"--([a-z-]+):", dark)
+    assert set(declared) - {"shadow"} == set(dark_tokens), "unreadable dark colour"
+    return {"light": tokens, "dark": {**tokens, **dark_tokens}}
 
 
 @pytest.mark.parametrize("mode", ["light", "dark"])
@@ -600,7 +606,6 @@ def test_page_loads_nothing_from_elsewhere() -> None:
     css = FORM_CSS.read_text(encoding="utf-8")
     assert "url(" not in css
     assert "@import" not in css
-    assert "prefers-color-scheme: dark" in css
 
 
 def test_host_rejects_unknown_paths(host: str) -> None:

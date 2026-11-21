@@ -128,9 +128,9 @@ the portal has no code for this workflow or for WDL.
 ### 4. Send it to a WES (optional)
 
 With `WES_URL` set (see below), a button "Send to WES" appears under a
-valid run request, in its panel. The host posts the request to `POST /runs` of the WES
-and shows the run id and its state. Without `WES_URL`, nothing is ever
-sent; the banner under the header says so.
+valid run request, in its panel. The host posts the request to
+`POST /runs` of the WES and shows the run id and its state. Without
+`WES_URL`, nothing is ever sent; the banner under the header says so.
 
 **What it shows:** the request is a plain WES `RunRequest`; any WES that
 can fetch the `workflow_url` can run it.
