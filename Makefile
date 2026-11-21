@@ -11,8 +11,12 @@
 COMPOSE = docker compose -f prototype/compose.yaml
 DEMO_PORT ?= 8000
 DEMO_TRS_PORT ?= 8080
+# The stub runs as the user running make, so that it can read examples/
+# even if the checkout isn't readable by others (e.g., cloned with umask 077)
+DEMO_UID ?= $(shell id -u)
+DEMO_GID ?= $(shell id -g)
 PYTHON ?= python3
-export DEMO_PORT DEMO_TRS_PORT
+export DEMO_PORT DEMO_TRS_PORT DEMO_UID DEMO_GID
 
 .PHONY: help demo demo-start demo-logs demo-down demo-clean demo-checksums
 

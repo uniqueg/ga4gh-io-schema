@@ -20,6 +20,10 @@
 # - TRS_URL: base URL of another TRS API to pick workflows from (default:
 #   the stub). A WES must be able to fetch workflows from it: the stub is
 #   reachable only from the host.
+# - DEMO_UID, DEMO_GID: user and group that the stub runs as (default: the
+#   image's unprivileged user, 65534; `make demo` sets the user running it),
+#   so that it can read examples/ of a checkout that isn't readable by
+#   others (e.g., a clone made with umask 077).
 
 name: io-schema-prototype
 
@@ -45,6 +49,8 @@ services:
       - --workflows-dir
       - examples/workflows
       - --reload
+    # The owner of the checkout can read the mount below, whatever its modes
+    user: "${DEMO_UID:-65534}:${DEMO_GID:-65534}"
     # The workflows of the checkout, so that edits show without a rebuild
     volumes:
       - type: bind

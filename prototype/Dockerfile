@@ -23,19 +23,24 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Every COPY sets the modes (readable by all, writable only by root,
+# directories searchable) instead of keeping those of the checkout: a clone
+# made with a strict umask (e.g., 077) has files that only their owner can
+# read, which the unprivileged user below couldn't open
+
 # The package, for the host (validator and request builder), with the
 # runtime dependencies at the versions of `uv.lock` (no extras); the build
 # fails if the lock doesn't match `pyproject.toml`
-COPY pyproject.toml uv.lock README.md ./
-COPY LICENSES LICENSES
-COPY schemas schemas
-COPY src src
+COPY --chmod=u=rwX,go=rX pyproject.toml uv.lock README.md ./
+COPY --chmod=u=rwX,go=rX LICENSES LICENSES
+COPY --chmod=u=rwX,go=rX schemas schemas
+COPY --chmod=u=rwX,go=rX src src
 RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     uv sync --locked --no-dev --no-editable --python /usr/local/bin/python3
 
 # The demo workflow (served by the stub) and the prototype
-COPY examples/demo examples/demo
-COPY prototype prototype
+COPY --chmod=u=rwX,go=rX examples/demo examples/demo
+COPY --chmod=u=rwX,go=rX prototype prototype
 
 USER 65534:65534
 

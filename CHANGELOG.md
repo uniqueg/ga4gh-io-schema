@@ -12,6 +12,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The live demo works from a clone made with a strict umask (e.g., 077),
+  whose files only their owner can read: the prototype's image makes the
+  files that it copies readable for its unprivileged user, and `make demo`
+  runs the TRS stub as the user running it, so that the stub can read
+  `examples/` of the checkout (without `make`, set `DEMO_UID` and
+  `DEMO_GID`). (#146)
+
 ## 0.3.0 (not released, no tag)
 
 Version 0.3.0 of the profile; not released (no tag). Releases come with the
