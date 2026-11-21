@@ -57,8 +57,8 @@ the GA4GH APIs give it.
 
 ### 1. Pick a workflow in TRS
 
-![The page lists the workflows of the TRS stub; no form is shown before a
-pick.](../assets/prototype/pick.png)
+![The page lists the workflows of the TRS stub in its header; no form is
+shown before a pick.](../assets/prototype/pick.png)
 
 The list "Workflow in TRS" comes from `GET /tools` of the stub: one entry
 per tool version and descriptor type. Pick "I/O Schema demo 1.0.0 (WDL)".
@@ -97,7 +97,7 @@ file references](../specification/files.md), before anything is sent.
 
 ### 3. See the WES run request
 
-![The form with valid values, and the WES run request under
+![The form with valid values, and the WES run request next to
 it.](../assets/prototype/run-request.png)
 
 Set the mapping quality to 20, pick `proper_pairs` and submit. The page
