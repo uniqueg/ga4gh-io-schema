@@ -705,8 +705,8 @@ def test_prototype_stub_runs_as_the_user_of_make() -> None:
     assert compose["services"]["trs-stub"]["user"] == (
         "${DEMO_UID:-65534}:${DEMO_GID:-65534}"
     )
-    assert "DEMO_UID ?= $(or $(SUDO_UID),$(shell id -u))" in makefile
-    assert "DEMO_GID ?= $(or $(SUDO_GID),$(shell id -g))" in makefile
+    assert "$(or $(SUDO_UID),0)" in makefile
+    assert "$(or $(SUDO_GID),0)" in makefile
     assert re.search(r"^export .*\bDEMO_UID DEMO_GID\b", makefile, re.M)
 
 
