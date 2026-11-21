@@ -671,6 +671,51 @@ def test_prototype_image_installs_pinned_versions() -> None:
     assert "!uv.lock" in dockerignore
 
 
+def test_prototype_image_sets_the_modes_it_copies() -> None:
+    """Test that the prototype's image sets the modes of what it copies.
+
+    A clone made with a strict umask (e.g., 077) has files that only their
+    owner can read; copied as they are, the image's unprivileged user
+    couldn't open them (#146). A ``chmod`` after the last ``COPY`` makes
+    them readable for all and writable only by root (not ``COPY --chmod``,
+    whose symbolic modes older Dockerfile frontends reject or ignore). The
+    CI job "End-to-end test" runs the demo from such a checkout.
+    """
+    dockerfile = (REPO_ROOT / "prototype" / "Dockerfile").read_text("utf-8")
+    # Instructions are case-insensitive; ADD copies files too
+    instructions = [
+        (name.upper(), args)
+        for name, args in re.findall(r"^([A-Za-z]+)\s+(.*)$", dockerfile, re.M)
+    ]
+    last_copy = max(
+        i for i, (name, _) in enumerate(instructions) if name in {"COPY", "ADD"}
+    )
+    chmod = instructions.index(("RUN", "chmod -R u=rwX,go=rX /app"))
+
+    assert last_copy < chmod < instructions.index(("USER", "65534:65534"))
+    assert not [args for name, args in instructions if "--chmod" in args]
+
+
+def test_prototype_stub_runs_as_the_user_of_make() -> None:
+    """Test that ``make demo`` runs the TRS stub as the user running it.
+
+    The stub reads ``examples/`` of the checkout from a bind mount, which
+    the image's unprivileged user can't read if only the owner of the
+    checkout can (#146). Without ``make``, the stub stays that user.
+    """
+    compose = yaml.safe_load(
+        (REPO_ROOT / "prototype" / "compose.yaml").read_text("utf-8")
+    )
+    makefile = (REPO_ROOT / "Makefile").read_text("utf-8")
+
+    assert compose["services"]["trs-stub"]["user"] == (
+        "${DEMO_UID:-65534}:${DEMO_GID:-65534}"
+    )
+    assert "$(or $(SUDO_UID),0)" in makefile
+    assert "$(or $(SUDO_GID),0)" in makefile
+    assert re.search(r"^export .*\bDEMO_UID DEMO_GID\b", makefile, re.M)
+
+
 def test_read_the_docs_installs_the_lock() -> None:
     """Test that Read the Docs builds with the versions of ``uv.lock``.
 

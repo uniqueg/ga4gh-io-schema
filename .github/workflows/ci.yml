@@ -364,6 +364,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # The modes of a clone made with umask 077 (files and directories that
+      # only their owner can read), so that the test fails if the image or
+      # the stub's mount of examples/ depends on a lax umask
+      - name: Restrict the checkout to its owner
+        run: chmod -R go-rwx .
+
       # The one command of the testbed page
       - name: Start the prototype
         run: make demo
