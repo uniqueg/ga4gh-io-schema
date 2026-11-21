@@ -16,6 +16,7 @@ import email.policy
 import http.client
 import io
 import json
+import re
 import threading
 import urllib.error
 import urllib.parse
@@ -511,6 +512,95 @@ def test_host_serves_the_form(host: str) -> None:
     status, _, body = _request(f"{host}/api/schema?x=1")
     assert status == 200
     assert json.loads(body) == DEMO_SCHEMA
+
+
+#: The page's stylesheet.
+FORM_CSS = Path(form_host.__file__).with_name("form.css")
+#: Pairs of colour tokens of the stylesheet that must contrast, with the
+#: least ratio of WCAG AA: 4.5 for text, 3 for control borders and focus
+#: rings.
+CONTRAST_PAIRS = [
+    ("fg", "bg", 4.5),
+    ("fg", "card", 4.5),
+    ("muted-fg", "card", 4.5),
+    ("muted-fg", "bg", 4.5),
+    ("primary", "card", 4.5),
+    ("primary-fg", "primary", 4.5),
+    ("primary-fg", "primary-hover", 4.5),
+    ("error", "card", 4.5),
+    ("error", "error-bg", 4.5),
+    ("fg", "warning-bg", 4.5),
+    ("fg", "code-bg", 4.5),
+    ("masthead-fg", "masthead-bg", 4.5),
+    ("control-border", "card", 3),
+    ("ring", "card", 3),
+    ("ring", "bg", 3),
+    ("masthead-ring", "masthead-bg", 3),
+    ("warning", "warning-bg", 3),
+]
+
+
+def _luminance(colour: str) -> float:
+    """Return the relative luminance of a colour, as WCAG defines it.
+
+    Args:
+        colour: The colour, as ``#rrggbb``.
+
+    Returns:
+        The luminance, from 0 (black) to 1 (white).
+    """
+    channels = [int(colour[i : i + 2], 16) / 255 for i in (1, 3, 5)]
+    red, green, blue = (
+        c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels
+    )
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+
+def _contrast(first: str, second: str) -> float:
+    """Return the contrast ratio of two colours.
+
+    Args:
+        first: A colour, as ``#rrggbb``.
+        second: Another colour, as ``#rrggbb``.
+
+    Returns:
+        The ratio, from 1 to 21.
+    """
+    lighter, darker = sorted((_luminance(first), _luminance(second)), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def _themes() -> dict[str, dict[str, str]]:
+    """Read the colour tokens of the stylesheet, per mode.
+
+    Returns:
+        The tokens (``--name: #rrggbb``) of the light mode, and those of
+        the dark mode over them.
+    """
+    css = FORM_CSS.read_text(encoding="utf-8")
+    light, dark = css.split("@media (prefers-color-scheme: dark)", 1)
+    dark = dark.split("\n}\n", 1)[0]
+    pattern = re.compile(r"--([a-z-]+):\s*(#[0-9a-f]{6});")
+    tokens = dict(pattern.findall(light))
+    return {"light": tokens, "dark": {**tokens, **dict(pattern.findall(dark))}}
+
+
+@pytest.mark.parametrize("mode", ["light", "dark"])
+@pytest.mark.parametrize(("text", "background", "least"), CONTRAST_PAIRS)
+def test_page_colours_contrast(
+    mode: str, text: str, background: str, least: float
+) -> None:
+    """Test that the colours of the page meet WCAG AA in both modes."""
+    tokens = _themes()[mode]
+    assert _contrast(tokens[text], tokens[background]) >= least
+
+
+def test_page_loads_nothing_from_elsewhere() -> None:
+    """Test that the stylesheet loads no files, so the demo works offline."""
+    css = FORM_CSS.read_text(encoding="utf-8")
+    assert "url(" not in css
+    assert "@import" not in css
+    assert "prefers-color-scheme: dark" in css
 
 
 def test_host_rejects_unknown_paths(host: str) -> None:

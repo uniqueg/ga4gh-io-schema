@@ -8,7 +8,8 @@ The look of the demo page: plain CSS, no fonts or other files from
 elsewhere, so that the demo works offline. Colours are the tokens of the
 ELIXIR On-Cloud landing page (OKLCH there, sRGB here); each pair of text
 and background meets WCAG AA (4.5:1 for text, 3:1 for control borders and
-focus rings), in light and dark mode.
+focus rings), in light and dark mode: tests/test_form_host.py checks
+the pairs.
 */
 
 :root {
@@ -17,12 +18,10 @@ focus rings), in light and dark mode.
   --fg: #111826;
   --card: #ffffff;
   --border: #d8dfe6;
-  --muted: #ecf1f5;
   --muted-fg: #5b6472;
   --primary: #0073cf;
   --primary-hover: #005eb3;
   --primary-fg: #ffffff;
-  --accent: #e4f0fb;
   --control-border: #77818f;
   --ring: #2f8adc;
   --error: #bb0916;
@@ -54,12 +53,10 @@ focus rings), in light and dark mode.
     --fg: #eff2f5;
     --card: #131a25;
     --border: #2c3340;
-    --muted: #202733;
     --muted-fg: #9ca5b1;
     --primary: #52b5f4;
     --primary-hover: #78c7fd;
     --primary-fg: #0b0f18;
-    --accent: #212c3a;
     --control-border: #697280;
     --ring: #52b5f4;
     --error: #ff807f;
@@ -419,7 +416,7 @@ input[type="color"] {
   width: 6.5rem;
 }
 
-input:not([type="checkbox"], [type="radio"], [type="range"]):focus,
+input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]):focus,
 select:focus,
 textarea:focus {
   border-color: var(--primary);

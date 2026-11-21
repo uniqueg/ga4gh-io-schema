@@ -53,7 +53,9 @@ around](testbed.md#play-around) with the schemas while the stack runs.
 
 The page plays the portal: it knows a TRS and, optionally, a WES, and
 nothing about any workflow. Each step uses only what the IO schema and
-the GA4GH APIs give it.
+the GA4GH APIs give it. The workflow list is in the header; on wide
+screens, the run request is shown next to the form and stays in view
+while the form scrolls (under the form on narrow screens).
 
 ### 1. Pick a workflow in TRS
 
@@ -126,9 +128,9 @@ the portal has no code for this workflow or for WDL.
 ### 4. Send it to a WES (optional)
 
 With `WES_URL` set (see below), a button "Send to WES" appears under a
-valid run request. The host posts the request to `POST /runs` of the WES
+valid run request, in its panel. The host posts the request to `POST /runs` of the WES
 and shows the run id and its state. Without `WES_URL`, nothing is ever
-sent; the banner at the top of the page says so.
+sent; the banner under the header says so.
 
 **What it shows:** the request is a plain WES `RunRequest`; any WES that
 can fetch the `workflow_url` can run it.
